@@ -1,0 +1,569 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""Unit tests for the inference and lineage pipeline step types.
+
+The inference steps (EndpointConfigStep, EndpointStep,
+InferenceComponentStep) follow the ``step_args`` convention: the step
+arguments are captured by calling the corresponding session method under
+a ``PipelineSession``, which intercepts the request instead of calling
+the service.
+"""
+
+from __future__ import absolute_import
+
+from unittest.mock import Mock
+
+import pytest
+
+from sagemaker.workflow.pipeline_context import PipelineSession, _JobStepArguments
+from sagemaker.workflow.endpoint_step import EndpointConfigStep, EndpointStep
+from sagemaker.workflow.inference_component_step import InferenceComponentStep
+from sagemaker.lineage.action import Action
+from sagemaker.lineage.artifact import Artifact
+from sagemaker.lineage.association import Association
+from sagemaker.lineage.context import Context
+from sagemaker.workflow.lineage_step import (
+    LineageAssociation,
+    LineageEntityReference,
+    LineageStep,
+)
+from sagemaker.workflow.retry import (
+    StepExceptionTypeEnum,
+    StepRetryPolicy,
+)
+from sagemaker.workflow.steps import CacheConfig, StepTypeEnum
+
+ROLE = "arn:aws:iam::123456789012:role/SageMakerRole"
+
+
+@pytest.fixture
+def pipeline_session():
+    """A PipelineSession with a mocked client -- no AWS calls are made."""
+    return PipelineSession(
+        boto_session=Mock(region_name="us-west-2"),
+        sagemaker_client=Mock(),
+    )
+
+
+@pytest.fixture
+def endpoint_config_step_args(pipeline_session):
+    # v2's create_endpoint_config takes the model and instance directly and builds
+    # the production variant itself, unlike v3 which takes production_variants.
+    return pipeline_session.create_endpoint_config(
+        name="my-config",
+        model_name="my-model",
+        initial_instance_count=1,
+        instance_type="ml.m5.large",
+        kms_key="arn:aws:kms:us-west-2:123456789012:key/abc",
+    )
+
+
+@pytest.fixture
+def endpoint_step_args(pipeline_session):
+    return pipeline_session.create_endpoint(endpoint_name="my-endpoint", config_name="my-config")
+
+
+@pytest.fixture
+def inference_component_step_args(pipeline_session):
+    return pipeline_session.create_inference_component(
+        inference_component_name="my-component",
+        endpoint_name="my-endpoint",
+        variant_name="AllTraffic",
+        specification={"ModelName": "my-model"},
+        runtime_config={"CopyCount": 2},
+    )
+
+
+# ---------- step_args capture via PipelineSession ----------
+
+
+def test_capture_does_not_call_service(pipeline_session, endpoint_config_step_args):
+    assert isinstance(endpoint_config_step_args, _JobStepArguments)
+    assert not pipeline_session.sagemaker_client.create_endpoint_config.called
+    assert not pipeline_session.sagemaker_client.create_endpoint.called
+
+
+def test_captured_request_content(endpoint_config_step_args):
+    args = endpoint_config_step_args.args
+    assert args["EndpointConfigName"] == "my-config"
+    assert args["KmsKeyId"] == "arn:aws:kms:us-west-2:123456789012:key/abc"
+    assert args["ProductionVariants"][0]["ModelName"] == "my-model"
+
+
+# ---------- EndpointConfigStep ----------
+
+
+def test_endpoint_config_step_basic(endpoint_config_step_args):
+    step = EndpointConfigStep(name="Cfg", step_args=endpoint_config_step_args)
+    assert step.step_type == StepTypeEnum.ENDPOINT_CONFIG
+    assert step.arguments["EndpointConfigName"] == "my-config"
+    req = step.to_request()
+    assert req["Type"] == "EndpointConfig"
+    assert req["Name"] == "Cfg"
+
+
+def test_endpoint_config_step_to_request_includes_cache_and_retry(
+    endpoint_config_step_args,
+):
+    step = EndpointConfigStep(
+        name="Cfg",
+        step_args=endpoint_config_step_args,
+        cache_config=CacheConfig(enable_caching=True, expire_after="P30D"),
+        retry_policies=[
+            StepRetryPolicy(exception_types=[StepExceptionTypeEnum.THROTTLING], max_attempts=3)
+        ],
+    )
+    req = step.to_request()
+    assert req["CacheConfig"]["Enabled"] is True
+    assert req["RetryPolicies"][0]["MaxAttempts"] == 3
+
+
+def test_endpoint_config_step_rejects_wrong_producer(endpoint_step_args):
+    with pytest.raises(ValueError, match="create_endpoint_config"):
+        EndpointConfigStep(name="Cfg", step_args=endpoint_step_args)
+
+
+def test_endpoint_config_step_rejects_raw_dict():
+    with pytest.raises(TypeError):
+        EndpointConfigStep(name="Cfg", step_args={"EndpointConfigName": "x"})
+
+
+def test_endpoint_config_step_properties(endpoint_config_step_args):
+    step = EndpointConfigStep(name="Cfg", step_args=endpoint_config_step_args)
+    assert step.properties.EndpointConfigName.expr == {"Get": "Steps.Cfg.EndpointConfigName"}
+
+
+# ---------- EndpointStep ----------
+
+
+def test_endpoint_step_basic(endpoint_step_args):
+    step = EndpointStep(name="Deploy", step_args=endpoint_step_args)
+    assert step.step_type == StepTypeEnum.ENDPOINT
+    assert step.arguments["EndpointName"] == "my-endpoint"
+    assert step.arguments["EndpointConfigName"] == "my-config"
+    assert step.to_request()["Type"] == "Endpoint"
+
+
+def test_endpoint_step_cache_config(endpoint_step_args):
+    step = EndpointStep(
+        name="Deploy",
+        step_args=endpoint_step_args,
+        cache_config=CacheConfig(enable_caching=True, expire_after="P30D"),
+    )
+    assert step.to_request()["CacheConfig"]["Enabled"] is True
+
+
+def test_endpoint_step_rejects_retry_policies_kwarg(endpoint_step_args):
+    """EndpointStep is not retryable -- constructor must not accept retry_policies."""
+    with pytest.raises(TypeError):
+        EndpointStep(name="Deploy", step_args=endpoint_step_args, retry_policies=[])
+
+
+def test_endpoint_step_rejects_wrong_producer(endpoint_config_step_args):
+    with pytest.raises(ValueError, match="create_endpoint"):
+        EndpointStep(name="Deploy", step_args=endpoint_config_step_args)
+
+
+def test_endpoint_step_properties(endpoint_step_args):
+    step = EndpointStep(name="Deploy", step_args=endpoint_step_args)
+    assert step.properties.EndpointName.expr == {"Get": "Steps.Deploy.EndpointName"}
+
+
+# ---------- InferenceComponentStep ----------
+
+
+def test_inference_component_step_basic(inference_component_step_args):
+    step = InferenceComponentStep(name="IC", step_args=inference_component_step_args)
+    assert step.step_type == StepTypeEnum.INFERENCE_COMPONENT
+    args = step.arguments
+    assert args["InferenceComponentName"] == "my-component"
+    assert args["EndpointName"] == "my-endpoint"
+    assert args["VariantName"] == "AllTraffic"
+    assert args["Specification"] == {"ModelName": "my-model"}
+    assert args["RuntimeConfig"] == {"CopyCount": 2}
+
+
+def test_inference_component_step_default_runtime_config(pipeline_session):
+    step_args = pipeline_session.create_inference_component(
+        inference_component_name="ic",
+        endpoint_name="ep",
+        variant_name="v",
+        specification={"ModelName": "m"},
+    )
+    step = InferenceComponentStep(name="IC", step_args=step_args)
+    assert step.arguments["RuntimeConfig"] == {"CopyCount": 1}
+
+
+def test_inference_component_step_rejects_retry_policies_kwarg(
+    inference_component_step_args,
+):
+    with pytest.raises(TypeError):
+        InferenceComponentStep(
+            name="IC", step_args=inference_component_step_args, retry_policies=[]
+        )
+
+
+def test_inference_component_step_rejects_wrong_producer(endpoint_step_args):
+    with pytest.raises(ValueError, match="create_inference_component"):
+        InferenceComponentStep(name="IC", step_args=endpoint_step_args)
+
+
+def test_inference_component_step_properties(inference_component_step_args):
+    step = InferenceComponentStep(name="IC", step_args=inference_component_step_args)
+    assert step.properties.InferenceComponentName.expr == {"Get": "Steps.IC.InferenceComponentName"}
+
+
+# ---------- plain Session behavior is unchanged ----------
+
+
+def test_plain_session_still_calls_service():
+    from sagemaker.session import Session
+
+    session = Session(boto_session=Mock(region_name="us-west-2"), sagemaker_client=Mock())
+    session.sagemaker_client.create_endpoint.return_value = {"EndpointArn": "arn:x"}
+    name = session.create_endpoint(endpoint_name="ep", config_name="cfg", wait=False)
+    assert name == "ep"
+    assert session.sagemaker_client.create_endpoint.called
+
+
+# ---------- LineageStep ----------
+
+
+@pytest.fixture
+def action_step_args(pipeline_session):
+    return Action.create(
+        action_name="act1",
+        source_uri="s3://bucket/model.tar.gz",
+        source_type="S3ETag",
+        action_type="ModelTraining",
+        status="Completed",
+        sagemaker_session=pipeline_session,
+    )
+
+
+def test_lineage_step_action(pipeline_session, action_step_args):
+    step = LineageStep(name="RecA", actions=action_step_args)
+    assert step.step_type == StepTypeEnum.LINEAGE
+    args = step.arguments
+    assert list(args.keys()) == ["Actions"]
+    assert args["Actions"][0]["ActionName"] == "act1"
+    assert args["Actions"][0]["Source"]["SourceUri"] == "s3://bucket/model.tar.gz"
+    assert not pipeline_session.sagemaker_client.create_action.called
+
+
+def test_lineage_step_artifact(pipeline_session):
+    step_args = Artifact.create(
+        artifact_name="art1",
+        source_uri="s3://bucket/data",
+        artifact_type="Model",
+        sagemaker_session=pipeline_session,
+    )
+    step = LineageStep(name="RecB", artifacts=step_args)
+    assert list(step.arguments.keys()) == ["Artifacts"]
+    assert step.arguments["Artifacts"][0]["ArtifactName"] == "art1"
+
+
+def test_lineage_step_context(pipeline_session):
+    step_args = Context.create(
+        context_name="ctx1",
+        source_uri="s3://bucket/ctx",
+        context_type="Endpoint",
+        sagemaker_session=pipeline_session,
+    )
+    step = LineageStep(name="RecC", contexts=step_args)
+    assert list(step.arguments.keys()) == ["Contexts"]
+    assert step.arguments["Contexts"][0]["ContextName"] == "ctx1"
+
+
+def test_lineage_step_batches_multiple_entities(pipeline_session):
+    """One step carries Actions, Artifacts and Contexts together."""
+    actions = [
+        Action.create(
+            action_name=f"act{i}",
+            source_uri="s3://bucket/run",
+            source_type="S3ETag",
+            action_type="ModelTraining",
+            sagemaker_session=pipeline_session,
+        )
+        for i in range(2)
+    ]
+    artifact = Artifact.create(
+        artifact_name="art1",
+        source_uri="s3://bucket/model.tar.gz",
+        artifact_type="Model",
+        sagemaker_session=pipeline_session,
+    )
+    context = Context.create(
+        context_name="ctx1",
+        source_uri="s3://bucket/ctx",
+        context_type="Endpoint",
+        sagemaker_session=pipeline_session,
+    )
+
+    step = LineageStep(name="Rec", actions=actions, artifacts=artifact, contexts=context)
+    args = step.arguments
+
+    assert [a["ActionName"] for a in args["Actions"]] == ["act0", "act1"]
+    assert [a["ArtifactName"] for a in args["Artifacts"]] == ["art1"]
+    assert [c["ContextName"] for c in args["Contexts"]] == ["ctx1"]
+    assert "Associations" not in args
+    assert not pipeline_session.sagemaker_client.create_action.called
+    assert not pipeline_session.sagemaker_client.create_artifact.called
+    assert not pipeline_session.sagemaker_client.create_context.called
+
+
+def test_lineage_step_association_references_sibling_by_name_and_type(pipeline_session):
+    """Associations reference same-step entities by Name+Type, not by ARN."""
+    action = Action.create(
+        action_name="act1",
+        source_uri="s3://bucket/run",
+        source_type="S3ETag",
+        action_type="ModelTraining",
+        sagemaker_session=pipeline_session,
+    )
+    artifact = Artifact.create(
+        artifact_name="art1",
+        source_uri="s3://bucket/model.tar.gz",
+        artifact_type="Model",
+        sagemaker_session=pipeline_session,
+    )
+    step = LineageStep(
+        name="Rec",
+        actions=action,
+        artifacts=artifact,
+        associations=[
+            LineageAssociation(
+                source=LineageEntityReference(name="act1", type="Action"),
+                destination=LineageEntityReference(name="art1", type="Artifact"),
+                association_type="Produced",
+            )
+        ],
+    )
+
+    association = step.arguments["Associations"][0]
+    assert association["Source"] == {"Name": "act1", "Type": "Action"}
+    assert association["Destination"] == {"Name": "art1", "Type": "Artifact"}
+    assert association["AssociationType"] == "Produced"
+    assert not pipeline_session.sagemaker_client.add_association.called
+
+
+def test_lineage_step_association_accepts_literal_arn(pipeline_session, action_step_args):
+    """A pre-existing entity is referenced by ARN."""
+    existing = "arn:aws:sagemaker:us-west-2:123456789012:artifact/abc"
+    step = LineageStep(
+        name="Rec",
+        actions=action_step_args,
+        associations=[
+            LineageAssociation(
+                source=LineageEntityReference(name="act1", type="Action"),
+                destination=LineageEntityReference(arn=existing),
+                association_type="Produced",
+            )
+        ],
+    )
+    assert step.arguments["Associations"][0]["Destination"] == {"Arn": existing}
+
+
+def test_lineage_step_rejects_unresolvable_sibling_reference(action_step_args):
+    """A Name+Type reference this step does not create fails at construction.
+
+    The service resolves Name+Type only against entities created by the same
+    step, and would otherwise fail the execution at runtime.
+    """
+    with pytest.raises(ValueError, match="does not create"):
+        LineageStep(
+            name="Rec",
+            actions=action_step_args,
+            associations=[
+                LineageAssociation(
+                    source=LineageEntityReference(name="act1", type="Action"),
+                    destination=LineageEntityReference(name="ghost", type="Artifact"),
+                )
+            ],
+        )
+
+
+def test_lineage_step_rejects_captured_association(pipeline_session, action_step_args):
+    """Association.create() cannot express a sibling, so it is not a valid entity."""
+    captured = Association.create(
+        source_arn="arn:aws:sagemaker:us-west-2:123456789012:action/a",
+        destination_arn="arn:aws:sagemaker:us-west-2:123456789012:artifact/b",
+        association_type="Produced",
+        sagemaker_session=pipeline_session,
+    )
+    with pytest.raises(ValueError, match="associations argument"):
+        LineageStep(name="Rec", actions=[action_step_args, captured])
+
+
+def test_lineage_step_requires_an_entity_or_association():
+    with pytest.raises(ValueError, match="at least one entity"):
+        LineageStep(name="Rec")
+
+
+def test_lineage_entity_reference_validation():
+    with pytest.raises(ValueError, match="not both"):
+        LineageEntityReference(name="a", type="Action", arn="arn:x")
+    with pytest.raises(ValueError, match="both name and type"):
+        LineageEntityReference(name="a")
+    with pytest.raises(ValueError, match="Unsupported lineage entity type"):
+        LineageEntityReference(name="a", type="Endpoint")
+
+
+def test_lineage_association_rejects_non_reference_endpoint():
+    with pytest.raises(TypeError, match="LineageEntityReference"):
+        LineageAssociation(
+            source="arn:aws:sagemaker:us-west-2:123456789012:action/a",
+            destination=LineageEntityReference(arn="arn:x"),
+        )
+
+
+def test_lineage_step_rejects_wrong_producer(endpoint_step_args):
+    with pytest.raises(ValueError, match="Action.create"):
+        LineageStep(name="Rec", actions=endpoint_step_args)
+
+
+def test_lineage_step_rejects_entity_in_the_wrong_argument(pipeline_session):
+    """An artifact passed as an action is rejected, naming the right producer.
+
+    The per-kind arguments make the expected producer unambiguous, so a
+    misplaced entity fails at construction instead of building a request the
+    service would reject.
+    """
+    artifact = Artifact.create(
+        artifact_name="art1",
+        source_uri="s3://bucket/model.tar.gz",
+        artifact_type="Model",
+        sagemaker_session=pipeline_session,
+    )
+    with pytest.raises(ValueError, match="actions of LineageStep must be obtained from"):
+        LineageStep(name="Rec", actions=artifact)
+    with pytest.raises(ValueError, match="contexts of LineageStep must be obtained from"):
+        LineageStep(name="Rec", contexts=artifact)
+
+
+def test_lineage_step_rejects_raw_dict():
+    with pytest.raises(TypeError):
+        LineageStep(name="Rec", actions={"ActionName": "a"})
+
+
+def test_lineage_step_properties(action_step_args):
+    step = LineageStep(name="Rec", actions=action_step_args)
+    for field in ("ActionArns", "ArtifactArns", "ContextArns", "Associations"):
+        assert hasattr(step.properties, field)
+    assert step.properties.ArtifactArns["x"].expr == {"Get": "Steps.Rec.ArtifactArns['x']"}
+
+
+def test_all_four_producers_route_through_the_intercept_seam(pipeline_session):
+    """Every step's capture goes through PipelineSession._intercept_create_request.
+
+    Guards against re-introducing a second capture mechanism: the seam is the
+    only path, so patching it is enough to observe all four producers.
+    """
+    seen = []
+    real = pipeline_session._intercept_create_request
+
+    def record(request, create, func_name=None):
+        seen.append(func_name)
+        return real(request, create, func_name)
+
+    pipeline_session._intercept_create_request = record
+
+    pipeline_session.create_endpoint_config(
+        name="cfg",
+        model_name="my-model",
+        initial_instance_count=1,
+        instance_type="ml.m5.large",
+    )
+    pipeline_session.create_endpoint(endpoint_name="ep", config_name="cfg")
+    pipeline_session.create_inference_component(
+        inference_component_name="ic",
+        endpoint_name="ep",
+        variant_name="AllTraffic",
+        specification={"ModelName": "m"},
+    )
+    Action.create(
+        action_name="a",
+        source_uri="s3://b",
+        source_type="S3ETag",
+        action_type="T",
+        sagemaker_session=pipeline_session,
+    )
+
+    assert seen == [
+        "create_endpoint_config",
+        "create_endpoint",
+        "create_inference_component",
+        "create_action",
+    ]
+
+
+def test_base_session_has_no_pipeline_branch():
+    """Base Session must stay pipeline-agnostic (no _is_pipeline_context helper)."""
+    from sagemaker.session import Session
+
+    assert not hasattr(Session, "_is_pipeline_context")
+
+
+def test_lineage_create_on_plain_session_calls_service():
+    from sagemaker.session import Session
+
+    session = Session(boto_session=Mock(region_name="us-west-2"), sagemaker_client=Mock())
+    session.sagemaker_client.create_action.return_value = {"ActionArn": "arn:x"}
+    result = Action.create(
+        action_name="a",
+        source_uri="s3://b",
+        source_type="S3ETag",
+        action_type="T",
+        status="Completed",
+        sagemaker_session=session,
+    )
+    assert session.sagemaker_client.create_action.called
+    assert not isinstance(result, _JobStepArguments)
+
+
+# ---------- Cross-cutting ----------
+
+
+def test_all_steps_importable_from_their_modules():
+    """v2's workflow/__init__ deliberately exports no step classes.
+
+    Unlike v3, ``sagemaker.workflow.__init__`` exports only ``Expression`` and
+    ``ParameterString``, so steps are imported from their own modules. This
+    guards the module paths rather than a package-level re-export.
+    """
+    from sagemaker.workflow.endpoint_step import (  # noqa: F401
+        EndpointConfigStep,
+        EndpointStep,
+    )
+    from sagemaker.workflow.inference_component_step import (  # noqa: F401
+        InferenceComponentStep,
+    )
+    from sagemaker.workflow.lineage_step import (  # noqa: F401
+        LineageAssociation,
+        LineageEntityReference,
+        LineageStep,
+    )
+
+
+def test_step_type_enum_values():
+    assert StepTypeEnum.ENDPOINT_CONFIG.value == "EndpointConfig"
+    assert StepTypeEnum.ENDPOINT.value == "Endpoint"
+    assert StepTypeEnum.INFERENCE_COMPONENT.value == "InferenceComponent"
+    assert StepTypeEnum.LINEAGE.value == "Lineage"
+
+
+def test_depends_on_accepts_step_and_string(endpoint_config_step_args, endpoint_step_args):
+    cfg_step = EndpointConfigStep(name="Cfg", step_args=endpoint_config_step_args)
+    step = EndpointStep(name="Deploy", step_args=endpoint_step_args, depends_on=[cfg_step, "Other"])
+    req = step.to_request()
+    assert req["DependsOn"] == [cfg_step, "Other"]

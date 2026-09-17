@@ -4857,9 +4857,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def create_endpoint_config(
         self,
         name,
-        model_name,
-        initial_instance_count,
-        instance_type,
+        model_name=None,
+        initial_instance_count=None,
+        instance_type=None,
         accelerator_type=None,
         tags=None,
         kms_key=None,
@@ -4872,6 +4872,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         serverless_inference_config_dict=None,
         routing_config: Optional[Dict[str, Any]] = None,
         inference_ami_version: Optional[str] = None,
+        production_variants: Optional[List[Dict[str, Any]]] = None,
+        role: Optional[str] = None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -4933,6 +4935,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
              Specifies an option from a collection of preconfigured
              Amazon Machine Image (AMI) images. For a full list of options, see:
              https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
+            production_variants (Optional[List[Dict[str, Any]]]): Explicit
+                production variants to use as-is. When given, ``model_name``,
+                ``initial_instance_count`` and ``instance_type`` are ignored and
+                no variant is built. Use this for a variant a single-model
+                configuration cannot express, such as an inference-component
+                endpoint whose variant carries no model name.
+            role (Optional[str]): An AWS IAM role, name or full ARN. Required
+                when no production variant names a model, as with an
+                inference-component endpoint: the endpoint config then carries
+                ``ExecutionRoleArn`` in place of a model.
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -4942,24 +4954,25 @@ class Session(object):  # pylint: disable=too-many-public-methods
             .Client.add_tags
 
         Returns:
-            str: Name of the endpoint point configuration created.
+            str: Name of the endpoint point configuration created. Under a
+            ``PipelineSession`` the captured step arguments are returned instead
+            and no service call is made.
         """
-        logger.info("Creating endpoint-config with name %s", name)
-
         tags = format_tags(tags) or []
-        provided_production_variant = production_variant(
-            model_name,
-            instance_type,
-            initial_instance_count,
-            accelerator_type=accelerator_type,
-            serverless_inference_config=serverless_inference_config_dict,
-            volume_size=volume_size,
-            model_data_download_timeout=model_data_download_timeout,
-            container_startup_health_check_timeout=container_startup_health_check_timeout,
-            routing_config=routing_config,
-            inference_ami_version=inference_ami_version,
-        )
-        production_variants = [provided_production_variant]
+        if production_variants is None:
+            provided_production_variant = production_variant(
+                model_name,
+                instance_type,
+                initial_instance_count,
+                accelerator_type=accelerator_type,
+                serverless_inference_config=serverless_inference_config_dict,
+                volume_size=volume_size,
+                model_data_download_timeout=model_data_download_timeout,
+                container_startup_health_check_timeout=container_startup_health_check_timeout,
+                routing_config=routing_config,
+                inference_ami_version=inference_ami_version,
+            )
+            production_variants = [provided_production_variant]
         # Currently we just inject CoreDumpConfig.KmsKeyId from the config for production variant.
         # But if that parameter is injected, then CoreDumpConfig.DestinationS3Uri needs to be
         # present.
@@ -4975,17 +4988,43 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "ProductionVariants": production_variants,
         }
 
+        role = resolve_value_from_config(
+            role,
+            ENDPOINT_CONFIG_EXECUTION_ROLE_ARN_PATH,
+            sagemaker_session=self,
+        )
+        # For an Amazon SageMaker inference-component based endpoint, no Model name is
+        # passed during endpoint creation. ExecutionRoleArn is needed in the endpoint
+        # config instead, so that the Endpoint can be created.
+        model_names = [pv["ModelName"] for pv in production_variants if "ModelName" in pv]
+        if len(model_names) == 0:
+            # The SDK allows deploying with a role name rather than a full ARN, so
+            # expand it here.
+            role = self.expand_role(role)
+            request["ExecutionRoleArn"] = role
+
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
         )
         if tags is not None:
             request["Tags"] = tags
+        # When explicit variants are supplied there is no single instance_type to
+        # consult, so derive KMS support from the variants themselves, as
+        # endpoint_from_production_variants does.
+        if instance_type is not None:
+            supports_kms = instance_supports_kms(instance_type)
+        else:
+            supports_kms = any(
+                instance_supports_kms(pv["InstanceType"])
+                for pv in production_variants
+                if "InstanceType" in pv
+            )
         kms_key = (
             resolve_value_from_config(
                 kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
             )
-            if instance_supports_kms(instance_type)
+            if supports_kms
             else kms_key
         )
         if kms_key is not None:
@@ -5008,8 +5047,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if explainer_config_dict is not None:
             request["ExplainerConfig"] = explainer_config_dict
 
-        self.sagemaker_client.create_endpoint_config(**request)
-        return name
+        def submit(request):
+            logger.info("Creating endpoint-config with name %s", name)
+            self.sagemaker_client.create_endpoint_config(**request)
+            return name
+
+        return self._intercept_create_request(
+            request, submit, self.create_endpoint_config.__name__
+        )
 
     def create_endpoint_config_from_existing(
         self,
@@ -5169,29 +5214,39 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: None).
 
         Returns:
-            str: Name of the Amazon SageMaker ``Endpoint`` created.
+            str: Name of the Amazon SageMaker ``Endpoint`` created. Under a
+            ``PipelineSession`` the captured step arguments are returned instead
+            and no service call is made.
 
         Raises:
             botocore.exceptions.ClientError: If Sagemaker throws an exception while creating
             endpoint.
         """
-        logger.info("Creating endpoint with name %s", endpoint_name)
-
         tags = format_tags(tags) or []
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
         )
-        try:
-            res = self.sagemaker_client.create_endpoint(
-                EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
-            )
+        create_endpoint_request = {
+            "EndpointName": endpoint_name,
+            "EndpointConfigName": config_name,
+            "Tags": tags,
+        }
+
+        def submit(request):
+            logger.info("Creating endpoint with name %s", endpoint_name)
+            res = self.sagemaker_client.create_endpoint(**request)
             if res:
                 self.endpoint_arn = res["EndpointArn"]
 
             if wait:
                 self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
             return endpoint_name
+
+        try:
+            return self._intercept_create_request(
+                create_endpoint_request, submit, self.create_endpoint.__name__
+            )
         except Exception as e:
             troubleshooting = (
                 "https://docs.aws.amazon.com/sagemaker/latest/dg/"
@@ -5361,13 +5416,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Returns:
             str: Name of the Amazon SageMaker ``InferenceComponent`` if created.
+            Under a ``PipelineSession`` the captured step arguments are returned
+            instead and no service call is made.
         """
-        LOGGER.info(
-            "Creating inference component with name %s for endpoint %s",
-            inference_component_name,
-            endpoint_name,
-        )
-
         if runtime_config is None:
             runtime_config = {"CopyCount": 1}
 
@@ -5387,10 +5438,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags and len(tags) != 0:
             request["Tags"] = tags
 
-        self.sagemaker_client.create_inference_component(**request)
-        if wait:
-            self.wait_for_inference_component(inference_component_name)
-        return inference_component_name
+        def submit(request):
+            LOGGER.info(
+                "Creating inference component with name %s for endpoint %s",
+                inference_component_name,
+                endpoint_name,
+            )
+            self.sagemaker_client.create_inference_component(**request)
+            if wait:
+                self.wait_for_inference_component(inference_component_name)
+            return inference_component_name
+
+        return self._intercept_create_request(
+            request, submit, self.create_inference_component.__name__
+        )
 
     def wait_for_inference_component(self, inference_component_name, poll=20):
         """Wait for an Amazon SageMaker ``Inference Component`` deployment to complete.
