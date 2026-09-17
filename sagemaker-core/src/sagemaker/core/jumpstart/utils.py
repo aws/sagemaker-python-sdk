@@ -204,7 +204,7 @@ def get_jumpstart_content_bucket(
         except KeyError:
             formatted_launched_regions_str = get_jumpstart_launched_regions_message()
             raise ValueError(
-                f"Unable to get content bucket for Neo in {region} region. "
+                f"Unable to get content bucket for JumpStart in {region} region. "
                 f"{formatted_launched_regions_str}"
             )
 
