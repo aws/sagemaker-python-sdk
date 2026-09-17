@@ -20,17 +20,18 @@ This module defines:
 
 Example:
     Using Framework enum::
-    
+
         from sagemaker.serve.constants import Framework, DEFAULT_SERIALIZERS_BY_FRAMEWORK
-        
+
         # Get serializers for PyTorch
-        serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
+        serializer_cls, deserializer_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
+        serializer, deserializer = serializer_cls(), deserializer_cls()
 """
 from __future__ import absolute_import, annotations
 
 # Standard library imports
 from enum import Enum
-from typing import Dict, Set, Tuple
+from typing import Callable, Dict, Set, Tuple
 
 # SageMaker imports
 from sagemaker.serve.mode.function_pointers import Mode
@@ -100,7 +101,8 @@ class Framework(Enum):
         Using framework enum::
         
             if detected_framework == Framework.PYTORCH:
-                serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
+                ser_cls, deser_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
+                serializer, deserializer = ser_cls(), deser_cls()
     """
     XGBOOST = "XGBoost"
     LDA = "LDA"
@@ -120,17 +122,17 @@ class Framework(Enum):
 # Framework Serialization Mapping
 # ========================================
 
-DEFAULT_SERIALIZERS_BY_FRAMEWORK: Dict[Framework, Tuple] = {
-    Framework.XGBOOST: (LibSVMSerializer(), CSVDeserializer()),
-    Framework.LDA: (RecordSerializer(), RecordDeserializer()),
-    Framework.PYTORCH: (TorchTensorSerializer(), JSONDeserializer()),
-    Framework.TENSORFLOW: (NumpySerializer(), JSONDeserializer()),
-    Framework.MXNET: (RecordSerializer(), JSONDeserializer()),
-    Framework.CHAINER: (NumpySerializer(), JSONDeserializer()),
-    Framework.SKLEARN: (NumpySerializer(), NumpyDeserializer()),
-    Framework.HUGGINGFACE: (JSONSerializer(), JSONDeserializer()),
-    Framework.DJL: (JSONSerializer(), JSONDeserializer()),
-    Framework.SPARKML: (NumpySerializer(), JSONDeserializer()),
-    Framework.NTM: (RecordSerializer(), JSONDeserializer()),
-    Framework.SMD: (JSONSerializer(), JSONDeserializer()),
+DEFAULT_SERIALIZERS_BY_FRAMEWORK: Dict[Framework, Tuple[Callable, Callable]] = {
+    Framework.XGBOOST: (LibSVMSerializer, CSVDeserializer),
+    Framework.LDA: (RecordSerializer, RecordDeserializer),
+    Framework.PYTORCH: (TorchTensorSerializer, JSONDeserializer),
+    Framework.TENSORFLOW: (NumpySerializer, JSONDeserializer),
+    Framework.MXNET: (RecordSerializer, JSONDeserializer),
+    Framework.CHAINER: (NumpySerializer, JSONDeserializer),
+    Framework.SKLEARN: (NumpySerializer, NumpyDeserializer),
+    Framework.HUGGINGFACE: (JSONSerializer, JSONDeserializer),
+    Framework.DJL: (JSONSerializer, JSONDeserializer),
+    Framework.SPARKML: (NumpySerializer, JSONDeserializer),
+    Framework.NTM: (RecordSerializer, JSONDeserializer),
+    Framework.SMD: (JSONSerializer, JSONDeserializer),
 }

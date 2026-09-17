@@ -42,6 +42,7 @@ dependencies = [
 train = ["sagemaker-train"]
 serve = ["sagemaker-serve"]
 mlops = ["sagemaker-mlops"]
+torch = ["sagemaker-serve[torch]"]
 all = ["sagemaker-train", "sagemaker-serve", "sagemaker-mlops"]
 
 [project.urls]

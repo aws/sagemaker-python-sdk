@@ -443,17 +443,22 @@ class TorchTensorSerializer(SimpleBaseSerializer):
 
     def __init__(self, content_type="tensor/pt"):
         super(TorchTensorSerializer, self).__init__(content_type=content_type)
-        try:
-            from torch import Tensor
-
-            self.torch_tensor = Tensor
-        except ImportError as e:
-            raise ImportError(
-                "Unable to import torch. Please install torch to use TorchTensorSerializer: "
-                "pip install 'sagemaker-core[torch]'"
-            ) from e
-
         self.numpy_serializer = NumpySerializer()
+
+    @staticmethod
+    def _is_torch_tensor(data):
+        """Recognize a torch.Tensor without importing torch.
+
+        Serialization only needs the tensor's own detach()/numpy() methods, so
+        the type is identified structurally. A caller holding a real tensor
+        already has torch installed; importing it here would add nothing but a
+        multi-hundred-megabyte dependency for everyone else.
+        """
+        return (
+            type(data).__module__.split(".")[0] == "torch"
+            and callable(getattr(data, "detach", None))
+            and callable(getattr(data, "numpy", None))
+        )
 
     def serialize(self, data):
         """Serialize torch.Tensor to a buffer.
@@ -464,7 +469,7 @@ class TorchTensorSerializer(SimpleBaseSerializer):
         Returns:
             raw-bytes: The data serialized as raw-bytes from the input.
         """
-        if isinstance(data, self.torch_tensor):
+        if self._is_torch_tensor(data):
             try:
                 return self.numpy_serializer.serialize(data.detach().numpy())
             except Exception as e:
