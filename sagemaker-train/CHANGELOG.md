@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix(train): enforce S3 ownership on ai_registry default bucket (#6275)
+
+
 ## v1.22.0 (2026-09-14)
 
 ### New Features
