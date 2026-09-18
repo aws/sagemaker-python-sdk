@@ -2,14 +2,9 @@ from typing import Dict, Any
 from enum import Enum
 from sagemaker.core.telemetry.telemetry_logging import (
     _telemetry_emitter,
-    _send_telemetry_request,
-    _classify_error,
-    _get_default_sagemaker_session,
-    STATUS_TO_CODE,
-    FEATURE_TO_CODE,
+    _emit_failure_telemetry,
 )
-from sagemaker.core.telemetry.constants import Feature, Status
-from sagemaker.core.user_agent import SDK_VERSION
+from sagemaker.core.telemetry.constants import Feature
 
 JOB_TYPE = "FineTuning"
 
@@ -93,39 +88,6 @@ class FineTuningOptions:
         """Return only user-explicitly-set hyperparameters as string key-value pairs."""
         return {k: str(getattr(self, k)) for k in self._user_set if getattr(self, k, None) is not None}
     
-    def _emit_validation_failure(self, exc: Exception):
-        """Best-effort telemetry for client-side hyperparameter validation failures.
-
-        Emits a single FAILURE event (feature ``MODEL_CUSTOMIZATION``) when a caller
-        tries to set a hyperparameter that is not a valid/overridable option, or a
-        value outside its spec. This makes that class of client-side failure visible
-        in the SDK dev-experience logs so it can be detected and measured.
-
-        Emitted only on the failure path -- never on successful or internal attribute
-        sets -- so it adds no telemetry on the happy path. Fully best-effort: any error
-        raised while emitting is swallowed so telemetry never masks or replaces the
-        user-facing validation error.
-        """
-        try:
-            session = _get_default_sagemaker_session()
-            if not session:
-                return
-            extra = (
-                "FineTuningOptions.__setattr__"
-                f"&x-sdkVersion={SDK_VERSION}"
-                f"&x-errorCategory={_classify_error(exc)}"
-            )
-            _send_telemetry_request(
-                STATUS_TO_CODE[str(Status.FAILURE)],
-                [FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION)]],
-                session,
-                str(exc),
-                exc.__class__.__name__,
-                extra,
-            )
-        except Exception:  # noqa: E722 - telemetry must never break validation
-            pass
-
     def __setattr__(self, name: str, value: Any):
         if name.startswith('_'):
             super().__setattr__(name, value)
@@ -137,7 +99,9 @@ class FineTuningOptions:
                     try:
                         self._validate_value(name, value, spec)
                     except Exception as exc:
-                        self._emit_validation_failure(exc)
+                        _emit_failure_telemetry(
+                            Feature.MODEL_CUSTOMIZATION, "FineTuningOptions.__setattr__", exc
+                        )
                         raise
                 self._user_set.add(name)
             super().__setattr__(name, value)
@@ -146,7 +110,9 @@ class FineTuningOptions:
                 f"'{name}' is not a valid fine-tuning option. "
                 f"Valid options: {list(self._specs.keys())}"
             )
-            self._emit_validation_failure(exc)
+            _emit_failure_telemetry(
+                Feature.MODEL_CUSTOMIZATION, "FineTuningOptions.__setattr__", exc
+            )
             raise exc
         else:
             super().__setattr__(name, value)

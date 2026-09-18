@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -135,16 +135,12 @@ class TestValidateLengthConstraints:
         opts.validate_length_constraints()  # unknown ceiling -> no raise
 
 
-# STATUS_TO_CODE maps Status.FAILURE -> 0; asserted directly to avoid importing internals here.
-_FAILURE_STATUS_CODE = 0
-
-
 class TestFineTuningOptionsValidationTelemetry:
     """Failure-only telemetry emitted from FineTuningOptions.__setattr__.
 
-    A telemetry FAILURE event is emitted when a caller sets an invalid option name
-    or an out-of-spec value, and NOTHING is emitted on the happy path (valid sets,
-    internal sets, or construction).
+    A single FAILURE event (via the core _emit_failure_telemetry helper) is emitted
+    when a caller sets an invalid option name or an out-of-spec value, and NOTHING is
+    emitted on the happy path (valid sets, internal sets, or construction).
     """
 
     _SPECS = {
@@ -152,62 +148,54 @@ class TestFineTuningOptionsValidationTelemetry:
         "num_epochs": {"default": 3, "type": "integer", "min": 1, "max": 100},
     }
 
-    @patch("sagemaker.train.common._get_default_sagemaker_session", return_value=MagicMock())
-    @patch("sagemaker.train.common._send_telemetry_request")
-    def test_invalid_option_name_emits_failure(self, mock_send, _mock_session):
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_invalid_option_name_emits_failure(self, mock_emit):
         options = FineTuningOptions(self._SPECS)
         with pytest.raises(AttributeError):
             options.not_a_real_param = 5
 
-        mock_send.assert_called_once()
-        args = mock_send.call_args[0]
-        assert args[0] == _FAILURE_STATUS_CODE  # status
-        assert args[4] == "AttributeError"  # failure_type
+        mock_emit.assert_called_once()
+        args = mock_emit.call_args[0]
+        assert args[1] == "FineTuningOptions.__setattr__"  # func_name
+        assert isinstance(args[2], AttributeError)  # exc
 
-    @patch("sagemaker.train.common._get_default_sagemaker_session", return_value=MagicMock())
-    @patch("sagemaker.train.common._send_telemetry_request")
-    def test_out_of_range_value_emits_failure(self, mock_send, _mock_session):
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_out_of_range_value_emits_failure(self, mock_emit):
         options = FineTuningOptions(self._SPECS)
         with pytest.raises(ValueError):
             options.learning_rate = 999.0  # exceeds max=1.0
 
-        mock_send.assert_called_once()
-        args = mock_send.call_args[0]
-        assert args[0] == _FAILURE_STATUS_CODE
-        assert args[4] == "ValueError"
+        mock_emit.assert_called_once()
+        assert isinstance(mock_emit.call_args[0][2], ValueError)
 
-    @patch("sagemaker.train.common._get_default_sagemaker_session", return_value=MagicMock())
-    @patch("sagemaker.train.common._send_telemetry_request")
-    def test_wrong_type_value_emits_failure(self, mock_send, _mock_session):
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_wrong_type_value_emits_failure(self, mock_emit):
         options = FineTuningOptions(self._SPECS)
         with pytest.raises(ValueError):
             options.num_epochs = "three"  # not an integer
 
-        mock_send.assert_called_once()
-        assert mock_send.call_args[0][4] == "ValueError"
+        mock_emit.assert_called_once()
+        assert isinstance(mock_emit.call_args[0][2], ValueError)
 
-    @patch("sagemaker.train.common._get_default_sagemaker_session", return_value=MagicMock())
-    @patch("sagemaker.train.common._send_telemetry_request")
-    def test_valid_set_does_not_emit(self, mock_send, _mock_session):
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_valid_set_does_not_emit(self, mock_emit):
         options = FineTuningOptions(self._SPECS)
         options.learning_rate = 1e-3  # within range -> no telemetry
         assert options.learning_rate == 1e-3
-        mock_send.assert_not_called()
+        mock_emit.assert_not_called()
 
-    @patch("sagemaker.train.common._get_default_sagemaker_session", return_value=MagicMock())
-    @patch("sagemaker.train.common._send_telemetry_request")
-    def test_construction_does_not_emit(self, mock_send, _mock_session):
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_construction_does_not_emit(self, mock_emit):
         # __init__ sets defaults via super().__setattr__ and internal _-prefixed attrs,
         # none of which should emit telemetry.
         FineTuningOptions(self._SPECS)
-        mock_send.assert_not_called()
+        mock_emit.assert_not_called()
 
-    @patch("sagemaker.train.common._get_default_sagemaker_session", return_value=MagicMock())
-    @patch("sagemaker.train.common._send_telemetry_request")
-    def test_validation_error_still_raised_when_telemetry_fails(self, mock_send, _mock_session):
-        # Telemetry is best-effort: even if the emit raises, the user-facing
-        # validation error must still propagate unchanged.
-        mock_send.side_effect = RuntimeError("telemetry backend down")
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_emits_model_customization_feature(self, mock_emit):
+        from sagemaker.core.telemetry.constants import Feature
+
         options = FineTuningOptions(self._SPECS)
         with pytest.raises(AttributeError):
-            options.not_a_real_param = 5
+            options.bogus = 1
+        assert mock_emit.call_args[0][0] == Feature.MODEL_CUSTOMIZATION

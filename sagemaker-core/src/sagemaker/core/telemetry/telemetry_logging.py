@@ -471,6 +471,50 @@ def _send_telemetry_request(
     return thread
 
 
+def _emit_failure_telemetry(
+    feature: str,
+    func_name: str,
+    exc: Exception,
+    sagemaker_session: Session = None,
+) -> None:
+    """Emit a single FAILURE telemetry event for a client-side failure.
+
+    Unlike the ``@_telemetry_emitter`` decorator -- which wraps a call and emits on
+    both success and failure for every invocation -- this helper emits only when a
+    caller has explicitly hit a failure it wants recorded. Use it to capture a class
+    of client-side failure (e.g. invalid user input) without adding any happy-path
+    telemetry or per-call overhead to the surrounding code.
+
+    Best-effort: it resolves a session (falling back to the default) and swallows any
+    error while emitting, so it can never mask or replace the caller's own exception.
+
+    Args:
+        feature: The Feature enum value to attribute this event to.
+        func_name: Human-readable name of the failing operation, for tracking.
+        exc: The exception representing the failure (used for reason/type/category).
+        sagemaker_session: Optional session; the default session is used if omitted.
+    """
+    try:
+        session = sagemaker_session or _get_default_sagemaker_session()
+        if not session:
+            return
+        extra = (
+            f"{func_name}"
+            f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-errorCategory={_classify_error(exc)}"
+        )
+        _send_telemetry_request(
+            STATUS_TO_CODE[str(Status.FAILURE)],
+            [FEATURE_TO_CODE[str(feature)]],
+            session,
+            str(exc),
+            exc.__class__.__name__,
+            extra,
+        )
+    except Exception:  # pragma: no cover - telemetry must never break the caller
+        pass
+
+
 def _send_telemetry_request_sync(
     status: int,
     feature_list: List[int],
