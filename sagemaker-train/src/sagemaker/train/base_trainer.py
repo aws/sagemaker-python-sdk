@@ -178,10 +178,14 @@ class BaseTrainer(ABC):
         The fine-tuning trainers replace ``self.hyperparameters`` with a
         ``FineTuningOptions`` built from the model's Hub spec, which would otherwise
         discard any ``hyperparameters`` dict passed at construction. This re-applies
-        those user-provided values through ``FineTuningOptions.__setattr__`` so each is
-        validated against the model spec, exactly as ``trainer.hyperparameters.<name> =
-        value`` would be. Invalid option names or out-of-spec values therefore raise
-        (rather than being silently dropped).
+        those user-provided values, but only for names that are overridable for the
+        model (i.e. present in the options' ``_specs``). Each applied value goes through
+        ``FineTuningOptions.__setattr__``, so it is still validated against the spec and
+        an out-of-spec value for an overridable name raises, exactly as
+        ``trainer.hyperparameters.<name> = value`` would.
+
+        Names that are not overridable are ignored (not applied), and a single warning
+        lists them so the user knows those values will not take effect.
 
         No-op when nothing was supplied or when ``self.hyperparameters`` is not a
         spec-backed ``FineTuningOptions`` (e.g. a plain dict).
@@ -191,10 +195,22 @@ class BaseTrainer(ABC):
         """
         if not user_hyperparameters:
             return
-        if not hasattr(getattr(self, "hyperparameters", None), "_specs"):
+        specs = getattr(getattr(self, "hyperparameters", None), "_specs", None)
+        if not isinstance(specs, dict):
             return
+        ignored = []
         for name, value in user_hyperparameters.items():
+            if name not in specs:
+                ignored.append(name)
+                continue
             setattr(self.hyperparameters, name, value)
+        if ignored:
+            logger.warning(
+                "Ignoring hyperparameters that are not overridable for this model: %s. "
+                "These values will not take effect. Overridable hyperparameters: %s",
+                ignored,
+                list(specs.keys()),
+            )
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""

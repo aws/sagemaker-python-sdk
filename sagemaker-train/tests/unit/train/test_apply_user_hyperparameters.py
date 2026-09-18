@@ -41,16 +41,24 @@ def test_applies_valid_values_and_marks_user_set():
     assert trainer.hyperparameters._user_set == {"learning_rate", "epochs"}
 
 
-def test_invalid_option_name_raises():
+def test_invalid_option_name_is_ignored_with_warning(caplog):
     options = _make_options()
-    with pytest.raises(AttributeError):
-        _apply(options, {"not_a_real_option": 1})
+    with caplog.at_level("WARNING"):
+        trainer = _apply(options, {"not_a_real_option": 1, "learning_rate": 0.001})
+
+    # The overridable value is applied; the non-overridable one is skipped.
+    assert trainer.hyperparameters.learning_rate == 0.001
+    assert not hasattr(trainer.hyperparameters, "not_a_real_option")
+    assert trainer.hyperparameters._user_set == {"learning_rate"}
+    # A warning names the ignored, non-overridable hyperparameter.
+    assert "not_a_real_option" in caplog.text
+    assert "not overridable" in caplog.text.lower()
 
 
 def test_out_of_spec_value_raises():
     options = _make_options()
     with pytest.raises(ValueError):
-        _apply(options, {"learning_rate": 5.0})  # exceeds max of 1.0
+        _apply(options, {"learning_rate": 5.0})  # overridable name, but exceeds max of 1.0
 
 
 def test_empty_user_hyperparameters_is_noop():
