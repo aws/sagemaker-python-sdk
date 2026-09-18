@@ -62,6 +62,7 @@ class StepTypeEnum(Enum):
     EMR_SERVERLESS = "EMRServerless"
     FAIL = "Fail"
     AUTOML = "AutoML"
+    JOB = "Job"
 
 
 class Step(Entity):
@@ -789,3 +790,130 @@ class TuningStep(ConfigurableRetryStep):
                 "output/model.tar.gz",
             ],
         )
+
+
+class JobStep(ConfigurableRetryStep):
+    """`JobStep` for SageMaker Pipelines Workflows.
+
+    Wraps a `CreateJob` request captured from a producer running under a
+    `PipelineSession`. `CreateJob` is one control-plane API shared by every job
+    category: `JobCategory` names the category and all of its parameters travel
+    inside the `JobConfigDocument` envelope member, a serialized JSON string.
+    `properties.JobConfigDocument` is therefore a string, not a modeled structure,
+    but a property reference may descend into it: for example
+    ``step.properties.JobConfigDocument.OutputModelPackageArn`` resolves as a
+    String, with the backend parsing the JSON lazily at execution time.
+
+    When the captured request carries the job configuration as a dict, `arguments`
+    scopes `OutputDataConfig.S3OutputPath` per execution and encodes the document
+    (see `sagemaker.core.workflow.job_config_document` for the encoding and its
+    limits). A pre-encoded string document is passed through unchanged.
+
+    `SageMakerJobStepRetryPolicy` applies: `CreateJob` is a synchronous create
+    that can hit a resource limit, which is what that policy retries.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        step_args: Optional[_JobStepArguments] = None,
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        cache_config: Optional[CacheConfig] = None,
+        depends_on: Optional[List[Union[str, Step]]] = None,
+        retry_policies: Optional[List[RetryPolicy]] = None,
+    ):
+        """Construct a `JobStep` using step_args captured from a `CreateJob` producer.
+
+        Args:
+            name (str): The name of the `JobStep`.
+            step_args (_JobStepArguments): The arguments for the `JobStep` definition.
+            display_name (str): The display name of the `JobStep`.
+            description (str): The description of the `JobStep`.
+            cache_config (CacheConfig): A `sagemaker.workflow.steps.CacheConfig` instance.
+            depends_on (List[Union[str, Step]]): A list of `Step`
+                names or `Step` instances that this `JobStep`
+                depends on.
+            retry_policies (List[RetryPolicy]): A list of retry policies.
+        """
+        super(JobStep, self).__init__(
+            name, StepTypeEnum.JOB, display_name, description, depends_on, retry_policies
+        )
+
+        if step_args:
+            from sagemaker.core.workflow.utilities import validate_step_args_input
+
+            validate_step_args_input(
+                step_args=step_args,
+                expected_caller={"create_job"},
+                error_message="The step_args of JobStep must be obtained from a producer that "
+                "creates a SageMaker job via CreateJob.",
+            )
+
+        self.step_args = step_args
+        self._properties = Properties(step_name=name, step=self, shape_name="DescribeJobResponse")
+        self.cache_config = cache_config
+
+    @property
+    def arguments(self) -> RequestType:
+        """The arguments dictionary that is used to call `create_job`.
+
+        NOTE: `CreateJob` has no `ExperimentConfig` member, so unlike the training,
+        processing and transform steps there is no experiment config to trim.
+        """
+        from sagemaker.core.workflow.execution_variables import ExecutionVariables
+        from sagemaker.core.workflow.functions import Join
+        from sagemaker.core.workflow.job_config_document import convert_job_config_document_to_string
+        from sagemaker.core.workflow.utilities import execute_job_functions
+        from sagemaker.core.workflow.utilities import _pipeline_config
+
+        if self.step_args:
+            # execute the producer function with saved parameters,
+            # and store args in PipelineSession's _context
+            execute_job_functions(self.step_args)
+
+            # populate request dict with args
+            producer = self.step_args.func_args[0]
+            request_dict = producer.sagemaker_session.context.args
+        else:
+            raise ValueError("step_args input is required.")
+
+        document = request_dict.get("JobConfigDocument")
+        if isinstance(document, dict):
+            output_config = document.get("OutputDataConfig")
+            if isinstance(output_config, dict) and isinstance(
+                output_config.get("S3OutputPath"), str
+            ):
+                # Nothing scopes CreateJob output server-side (training appends the
+                # job name; CreateJob appends nothing), so executions sharing a
+                # prefix silently read each other's results. The execution id, not
+                # the job name: JobName is regenerated below, and a sibling step can
+                # rebuild this path from ExecutionVariables without a property
+                # reference. The trailing empty value yields the trailing slash.
+                output_config["S3OutputPath"] = Join(
+                    on="/",
+                    values=[
+                        output_config["S3OutputPath"].rstrip("/"),
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                        "",
+                    ],
+                )
+            request_dict["JobConfigDocument"] = convert_job_config_document_to_string(document)
+
+        # Continue to pop job name if not explicitly opted-in via config
+        request_dict = trim_request_dict(request_dict, "JobName", _pipeline_config)
+
+        return request_dict
+
+    @property
+    def properties(self):
+        """A `Properties` object representing the `DescribeJobResponse` data model."""
+        return self._properties
+
+    def to_request(self) -> RequestType:
+        """Updates the request dictionary with cache configuration."""
+        request_dict = super().to_request()
+        if self.cache_config:
+            request_dict.update(self.cache_config.config)
+
+        return request_dict

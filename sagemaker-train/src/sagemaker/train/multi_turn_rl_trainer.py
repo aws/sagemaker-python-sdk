@@ -17,15 +17,17 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any, Dict, Optional, Union
+from typing import Any, ClassVar, Dict, Optional, Union
 
 import boto3
 
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.core.resources import Job, ModelPackageGroup, ModelPackage, MlflowApp
-from sagemaker.core.shapes import VpcConfig
+from sagemaker.core.shapes import Tag, VpcConfig
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.core.workflow.pipeline_capture import capture_create_job_request
+from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.train.custom_agent_lambda import CustomAgentLambda
 from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.base_trainer import BaseTrainer
@@ -182,6 +184,8 @@ class MultiTurnRLTrainer(BaseTrainer):
 
     _customization_technique = "MTRL"
 
+    _pipeline_caller_name: ClassVar[str] = "create_job"
+
     def __init__(
         self,
         model: Union[str, ModelPackage],
@@ -277,22 +281,28 @@ class MultiTurnRLTrainer(BaseTrainer):
             ("wait", TelemetryParamType.KWARG_EXISTS),
         ],
     )
+    @runnable_by_pipeline
     def train(
         self,
         training_dataset: Optional[Union[str, DataSet]] = None,
         wait: bool = True,
         dry_run: bool = False,
-    ) -> AgentRFTJob:
+    ) -> Optional[AgentRFTJob]:
         """Launch an Agentic RFT job.
 
         Args:
             training_dataset: Training dataset override.
             wait: If True (default), block until job reaches terminal status.
+                Ignored under a ``PipelineSession``, where there is no job to wait
+                on -- ``runnable_by_pipeline`` forces it to ``False`` and warns.
             dry_run: If True, runs validation without submitting a job.
-                Returns None on success.
+                Returns None on success. Ignored (with a warning) under a
+                ``PipelineSession``, where nothing is submitted either way.
 
         Returns:
-            AgentRFTJob instance for tracking the job, or None if dry_run=True.
+            AgentRFTJob instance for tracking the job. ``None`` if dry_run=True
+            or under a ``PipelineSession``, where the assembled request is
+            captured for ``JobStep`` composition instead of submitted.
         """
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
@@ -313,16 +323,38 @@ class MultiTurnRLTrainer(BaseTrainer):
 
         if training_dataset is not None:
             self.training_dataset = training_dataset
-        job_config_doc = self._build_job_config_document(dry_run=dry_run)
-
-        if dry_run:
-            logger.info("Dry-run validation passed. No job submitted.")
-            return None
 
         tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
         # Merge user-provided tags with the JumpStart tags
         tags.extend(self.tags or [])
+
+        # Capture must come before the document build: a `PipelineVariable` in the
+        # config is only encodable by `JobStep`'s deferred encoding, and `json.dumps`
+        # rejects it. The decorator gates on the session too, but only the body runs
+        # when `execute_job_functions` re-invokes the captured function, so the test
+        # here is the one that populates `session.context`.
+        if isinstance(sagemaker_session, PipelineSession):
+            if dry_run:
+                logger.warning(
+                    "dry_run is ignored under a PipelineSession: the assembled "
+                    "CreateJob request is captured for pipeline composition instead."
+                )
+            return capture_create_job_request(
+                sagemaker_session,
+                job_name=current_job_name,
+                role_arn=role,
+                job_category=JOB_CATEGORY,
+                schema_version=JOB_CONFIG_SCHEMA_VERSION,
+                job_config=self._build_job_config(),
+                tags=[Tag(**tag) if isinstance(tag, dict) else tag for tag in tags],
+            )
+
+        job_config_doc = self._build_job_config_document(dry_run=dry_run)
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         try:
             job = Job.create(
@@ -421,8 +453,12 @@ class MultiTurnRLTrainer(BaseTrainer):
 
     # ---- Private: JobConfigDocument construction ----
 
-    def _build_job_config_document(self, dry_run: bool = False) -> str:
-        """Build the JobConfigDocument JSON string conforming to v1_0_0 schema."""
+    def _build_job_config(self, dry_run: bool = False) -> dict:
+        """Build the job configuration conforming to the v1_0_0 schema, as a dict.
+
+        The capture path hands this dict to ``JobStep``, which scopes the output
+        path per execution and encodes the document at definition time.
+        """
         config = {
             "AgentConfig": self._build_agent_config(),
             "InputDataConfig": self._build_input_data_config(),
@@ -435,7 +471,11 @@ class MultiTurnRLTrainer(BaseTrainer):
                 "SecurityGroupIds": self.networking.security_group_ids,
                 "Subnets": self.networking.subnets,
             }
-        doc = json.dumps(config, indent=2)
+        return config
+
+    def _build_job_config_document(self, dry_run: bool = False) -> str:
+        """Build the JobConfigDocument JSON string conforming to v1_0_0 schema."""
+        doc = json.dumps(self._build_job_config(dry_run=dry_run), indent=2)
         logger.info(f"JobConfigDocument:\n{doc}")
         return doc
 
