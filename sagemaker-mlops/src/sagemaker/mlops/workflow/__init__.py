@@ -38,6 +38,7 @@ from sagemaker.mlops.workflow.steps import (
     TrainingStep,
     ProcessingStep,
     TransformStep,
+    JobStep,
     TuningStep,
 )
 
@@ -97,6 +98,7 @@ __all__ = [
     "TrainingStep",
     "ProcessingStep",
     "TransformStep",
+    "JobStep",
     "TuningStep",
     # Step implementations
     "AutoMLStep",
