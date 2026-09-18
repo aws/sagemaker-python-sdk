@@ -220,6 +220,13 @@ class PipelineSession(Session):
             request (dict): the create job request
             create (functor): a functor calls the sagemaker client create method
             func_name (str): the name of the function needed intercepting
+
+        Returns:
+            The captured pipeline context, so that a producer method can simply
+            return the result of this call: under a plain ``Session`` the base
+            implementation returns the service result, and here it returns the
+            step arguments instead. This keeps the pipeline branch inside
+            ``PipelineSession`` rather than in the base ``Session``.
         """
         if func_name == "create_model":
             self.context.create_model_request = request
@@ -229,6 +236,7 @@ class PipelineSession(Session):
             self.context.caller_name = func_name
         else:
             self.context = _JobStepArguments(func_name, request)
+        return self.context
 
     def init_model_step_arguments(self, model):
         """Create a `_ModelStepArguments` (if not exist) as pipeline context

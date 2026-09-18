@@ -63,6 +63,10 @@ class StepTypeEnum(Enum):
     FAIL = "Fail"
     AUTOML = "AutoML"
     JOB = "Job"
+    ENDPOINT_CONFIG = "EndpointConfig"
+    ENDPOINT = "Endpoint"
+    INFERENCE_COMPONENT = "InferenceComponent"
+    LINEAGE = "Lineage"
 
 
 class Step(Entity):
