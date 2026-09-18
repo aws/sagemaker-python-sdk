@@ -491,7 +491,7 @@ class TestGetJumpstartContentBucket:
     def test_get_jumpstart_content_bucket_invalid_region(self):
         """Test with invalid region"""
         with patch.object(constants, "JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT", {}):
-            with pytest.raises(ValueError, match="Unable to get content bucket for Neo"):
+            with pytest.raises(ValueError, match="Unable to get content bucket for JumpStart"):
                 utils.get_jumpstart_content_bucket("invalid-region")
 
 
