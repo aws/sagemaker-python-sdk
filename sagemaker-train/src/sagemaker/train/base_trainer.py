@@ -153,6 +153,11 @@ class BaseTrainer(ABC):
         self.base_job_name = base_job_name
         self.tags = tags
         self.hyperparameters = hyperparameters or {}
+        # Preserve the constructor-supplied hyperparameters. The fine-tuning trainers
+        # replace ``self.hyperparameters`` with a spec-backed FineTuningOptions after
+        # this runs; they re-apply these captured values via _apply_user_hyperparameters
+        # so a dict passed at construction is not silently dropped.
+        self._constructor_hyperparameters = hyperparameters or {}
         self.output_data_config = output_data_config
         self.input_data_config = input_data_config
         self.environment = environment or {}
@@ -166,6 +171,30 @@ class BaseTrainer(ABC):
         if notifications:
             self.notification_rule_arn = self._setup_notifications(notifications)
         self._checkpoint_s3_uri = None
+
+    def _apply_user_hyperparameters(self, user_hyperparameters: Optional[Dict[str, Any]]) -> None:
+        """Apply constructor-supplied hyperparameters onto the resolved FineTuningOptions.
+
+        The fine-tuning trainers replace ``self.hyperparameters`` with a
+        ``FineTuningOptions`` built from the model's Hub spec, which would otherwise
+        discard any ``hyperparameters`` dict passed at construction. This re-applies
+        those user-provided values through ``FineTuningOptions.__setattr__`` so each is
+        validated against the model spec, exactly as ``trainer.hyperparameters.<name> =
+        value`` would be. Invalid option names or out-of-spec values therefore raise
+        (rather than being silently dropped).
+
+        No-op when nothing was supplied or when ``self.hyperparameters`` is not a
+        spec-backed ``FineTuningOptions`` (e.g. a plain dict).
+
+        Args:
+            user_hyperparameters: The hyperparameters dict captured from construction.
+        """
+        if not user_hyperparameters:
+            return
+        if not hasattr(getattr(self, "hyperparameters", None), "_specs"):
+            return
+        for name, value in user_hyperparameters.items():
+            setattr(self.hyperparameters, name, value)
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
