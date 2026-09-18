@@ -1,6 +1,9 @@
 from typing import Dict, Any
 from enum import Enum
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import (
+    _telemetry_emitter,
+    _emit_failure_telemetry,
+)
 from sagemaker.core.telemetry.constants import Feature
 
 JOB_TYPE = "FineTuning"
@@ -93,11 +96,24 @@ class FineTuningOptions:
             if getattr(self, '_initialized', False):
                 spec = self._specs[name]
                 if isinstance(spec, dict):
-                    self._validate_value(name, value, spec)
+                    try:
+                        self._validate_value(name, value, spec)
+                    except Exception as exc:
+                        _emit_failure_telemetry(
+                            Feature.MODEL_CUSTOMIZATION, "FineTuningOptions.__setattr__", exc
+                        )
+                        raise
                 self._user_set.add(name)
             super().__setattr__(name, value)
         elif hasattr(self, '_specs'):
-            raise AttributeError(f"'{name}' is not a valid fine-tuning option. Valid options: {list(self._specs.keys())}")
+            exc = AttributeError(
+                f"'{name}' is not a valid fine-tuning option. "
+                f"Valid options: {list(self._specs.keys())}"
+            )
+            _emit_failure_telemetry(
+                Feature.MODEL_CUSTOMIZATION, "FineTuningOptions.__setattr__", exc
+            )
+            raise exc
         else:
             super().__setattr__(name, value)
     
