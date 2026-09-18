@@ -198,12 +198,13 @@ class TestModelBuilderDeployMethod(unittest.TestCase):
         )
         builder.built_model = Mock(spec=Model)
         
-        result = builder.deploy(instance_type="ml.m5.large")
-        
+        result = builder.deploy(instance_type="ml.g5.xlarge")
+
         self.assertIsNotNone(result)
-        # Verify endpoint name was generated (contains uuid)
+        # Verify endpoint name generation and the deploy-time instance override.
         self.assertIn("endpoint-", builder.endpoint_name)
-        mock_deploy.assert_called_once()
+        self.assertEqual(builder.instance_type, "ml.g5.xlarge")
+        self.assertEqual(mock_deploy.call_args.kwargs["instance_type"], "ml.g5.xlarge")
 
     @patch('sagemaker.serve.model_builder.ModelBuilder._deploy')
     def test_deploy_with_serverless_config(self, mock_deploy):
