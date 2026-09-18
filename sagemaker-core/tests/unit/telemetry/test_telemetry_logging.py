@@ -893,9 +893,10 @@ class TestDefaultSessionRegion(unittest.TestCase):
 class TestEmitFailureTelemetry(unittest.TestCase):
     """Tests for the failure-only _emit_failure_telemetry helper."""
 
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False)
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
-    def test_emits_failure_event(self, mock_send, mock_default_session):
+    def test_emits_failure_event(self, mock_send, mock_default_session, mock_optout):
         mock_default_session.return_value = Mock()
         exc = ValueError("bad value")
 
@@ -908,18 +909,33 @@ class TestEmitFailureTelemetry(unittest.TestCase):
         assert args[4] == "ValueError"  # failure_type
         assert "MyClass.method" in args[5]  # extra_info carries func_name
 
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=True)
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
-    def test_no_session_does_not_emit(self, mock_send, mock_default_session):
+    def test_opt_out_suppresses_emit(self, mock_send, mock_default_session, mock_optout):
+        # A user who has opted out of telemetry must not have these events emitted.
+        mock_default_session.return_value = Mock()
+
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))
+
+        mock_send.assert_not_called()
+
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False)
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_no_session_does_not_emit(self, mock_send, mock_default_session, mock_optout):
         mock_default_session.return_value = None
 
         _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))
 
         mock_send.assert_not_called()
 
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False)
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
-    def test_uses_provided_session_without_default_lookup(self, mock_send, mock_default_session):
+    def test_uses_provided_session_without_default_lookup(
+        self, mock_send, mock_default_session, mock_optout
+    ):
         _emit_failure_telemetry(
             Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"),
             sagemaker_session=Mock(),
@@ -928,9 +944,10 @@ class TestEmitFailureTelemetry(unittest.TestCase):
         mock_default_session.assert_not_called()
         mock_send.assert_called_once()
 
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False)
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
-    def test_backend_error_is_swallowed(self, mock_send, mock_default_session):
+    def test_backend_error_is_swallowed(self, mock_send, mock_default_session, mock_optout):
         # Telemetry is best-effort: an error while emitting must never propagate.
         mock_default_session.return_value = Mock()
         mock_send.side_effect = RuntimeError("telemetry backend down")

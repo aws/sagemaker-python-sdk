@@ -485,8 +485,9 @@ def _emit_failure_telemetry(
     of client-side failure (e.g. invalid user input) without adding any happy-path
     telemetry or per-call overhead to the surrounding code.
 
-    Best-effort: it resolves a session (falling back to the default) and swallows any
-    error while emitting, so it can never mask or replace the caller's own exception.
+    Best-effort: it resolves a session (falling back to the default), honors the
+    telemetry opt-out configuration, and swallows any error while emitting, so it can
+    never mask or replace the caller's own exception.
 
     Args:
         feature: The Feature enum value to attribute this event to.
@@ -498,9 +499,23 @@ def _emit_failure_telemetry(
         session = sagemaker_session or _get_default_sagemaker_session()
         if not session:
             return
+        # Honor the same telemetry opt-out contract as @_telemetry_emitter: a user
+        # who has opted out must not have these events emitted.
+        if resolve_value_from_config(
+            direct_input=None,
+            config_path=TELEMETRY_OPT_OUT_PATH,
+            default_value=False,
+            sagemaker_session=session,
+        ):
+            return
+        # Mirror the decorator's platform/env dimensions so these events can be
+        # sliced consistently alongside decorator-emitted ones.
         extra = (
             f"{func_name}"
             f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-env={PYTHON_VERSION}"
+            f"&x-sys={OS_NAME_VERSION}"
+            f"&x-platform={process_studio_metadata_file()}"
             f"&x-errorCategory={_classify_error(exc)}"
         )
         _send_telemetry_request(
