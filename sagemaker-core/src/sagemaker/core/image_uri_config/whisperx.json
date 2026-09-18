@@ -3,7 +3,6 @@
         "inference"
     ],
     "version_aliases": {
-        "3.8": "3.8.6",
         "latest": "3.8"
     },
     "versions": {
