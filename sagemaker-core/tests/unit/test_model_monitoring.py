@@ -30,8 +30,8 @@ from sagemaker.core.model_monitor.model_monitoring import (
     DEFAULT_REPOSITORY_NAME,
 )
 from sagemaker.core.model_monitor.dataset_format import MonitoringDatasetFormat
-from sagemaker.core.processing import ProcessingInput, ProcessingOutput
-from sagemaker.core.shapes import ProcessingS3Input, ProcessingS3Output
+from sagemaker.core.processing import ProcessingOutput
+from sagemaker.core.shapes import ProcessingS3Output
 from sagemaker.core.network import NetworkConfig
 
 

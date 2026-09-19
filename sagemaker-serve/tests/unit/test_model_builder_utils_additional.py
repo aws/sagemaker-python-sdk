@@ -15,8 +15,6 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch
-from typing import Tuple
 
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 from sagemaker.serve.constants import Framework

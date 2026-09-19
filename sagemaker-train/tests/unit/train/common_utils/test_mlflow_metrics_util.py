@@ -13,7 +13,7 @@
 """Unit tests for mlflow_metrics_util module."""
 
 import pytest
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, patch
 import pandas as pd
 
 from sagemaker.train.common_utils.mlflow_metrics_util import (

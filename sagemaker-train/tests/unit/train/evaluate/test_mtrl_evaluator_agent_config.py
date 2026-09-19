@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import
 
-import pytest
 from unittest.mock import MagicMock
 
 from sagemaker.train.evaluate.multi_turn_rl_evaluator import MultiTurnRLEvaluator

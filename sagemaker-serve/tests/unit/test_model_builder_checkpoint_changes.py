@@ -9,11 +9,9 @@ Tests the is_checkpoint logic for:
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import uuid
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.serve.utils.types import ModelServer
 
 
 class TestResolveModelArtifactUriCheckpoint(unittest.TestCase):

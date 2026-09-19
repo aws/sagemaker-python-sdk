@@ -4,10 +4,7 @@ Targets uncovered lines from coverage report.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, mock_open
-import os
-import tempfile
-import json
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 from sagemaker.serve.constants import Framework

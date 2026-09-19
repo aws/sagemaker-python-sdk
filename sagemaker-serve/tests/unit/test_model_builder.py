@@ -415,7 +415,6 @@ class ModelCustomizationTest(unittest.TestCase):
 
     def test_fetch_peft_from_training_job(self):
         """Test fetching PEFT from TrainingJob."""
-        from sagemaker.core.utils.utils import Unassigned
 
         self.mock_training_job.serverless_job_config = Mock()
         self.mock_training_job.serverless_job_config.peft = "LORA"
@@ -471,7 +470,6 @@ class ModelCustomizationTest(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.is_1p_image_uri")
     def test_build_single_modelbuilder_with_model_customization(self, mock_is_1p, mock_model_class):
         """Test _build_single_modelbuilder when _is_model_customization returns True."""
-        from sagemaker.core.utils.utils import Unassigned
 
         # Mock is_1p_image_uri to return True to bypass validation
         mock_is_1p.return_value = True
@@ -1123,8 +1121,6 @@ class TestModelReuse(unittest.TestCase):
         model_package.model_package_arn = (
             "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-pkg/1"
         )
-
-        from sagemaker.core.resources import ModelPackage as CoreModelPackage
 
         with patch.object(ModelBuilder, "_fetch_model_package_arn") as mock_fetch:
             mock_fetch.return_value = (

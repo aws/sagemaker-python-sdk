@@ -375,7 +375,7 @@ class JumpStartTrainDefaults:
         )
         if hyperparameters is None:
             hyperparameters = {}
-            logger.info(f"Hyperparameters not provided. Using defaults")
+            logger.info("Hyperparameters not provided. Using defaults")
         variant = JumpStartTrainDefaults._get_training_variant(
             training_components_model=training_components_model,
             compute=compute,
@@ -499,7 +499,7 @@ class JumpStartTrainDefaults:
             else:
                 input_data_config = [] if input_data_config is None else input_data_config
                 logger.warning(
-                    f"Using default training dataset. "
+                    "Using default training dataset. "
                     "To override, provide custom input data to the 'training' "
                     "or 'train' input channel.\n"
                 )

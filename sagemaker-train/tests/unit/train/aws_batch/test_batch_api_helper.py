@@ -13,8 +13,7 @@
 """Unit tests for batch_api_helper module"""
 
 import json
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.train.aws_batch.batch_api_helper import (
     _submit_service_job,
@@ -31,13 +30,10 @@ from .conftest import (
     REASON,
     BATCH_TAGS,
     TRAINING_TAGS,
-    TRAINING_TAGS_CONVERTED,
-    MERGED_TAGS,
     DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
     TIMEOUT_CONFIG,
     SCHEDULING_PRIORITY,
     SHARE_IDENTIFIER,
-    QUOTA_SHARE_NAME,
     SUBMIT_SERVICE_JOB_RESP,
     DESCRIBE_SERVICE_JOB_RESP_RUNNING,
     LIST_SERVICE_JOB_RESP_EMPTY,

@@ -1,8 +1,7 @@
 """Unit tests for ModelBuilder utility methods that don't require complex initialization."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import packaging.version
+from unittest.mock import Mock, patch
 
 
 class TestModelBuilderMmsVersion(unittest.TestCase):
@@ -15,7 +14,7 @@ class TestModelBuilderMmsVersion(unittest.TestCase):
         mock_builder.framework_version = "1.5.0"
 
         # Import the method we want to test
-        from sagemaker.serve.model_builder import ModelBuilder, _LOWEST_MMS_VERSION
+        from sagemaker.serve.model_builder import ModelBuilder
 
         # Call the method directly
         result = ModelBuilder._is_mms_version(mock_builder)

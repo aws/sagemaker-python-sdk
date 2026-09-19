@@ -19,7 +19,6 @@ import logging
 import os
 from typing import Optional
 from packaging.version import Version
-import requests
 
 
 from sagemaker.core.serverless_inference_config import ServerlessInferenceConfig

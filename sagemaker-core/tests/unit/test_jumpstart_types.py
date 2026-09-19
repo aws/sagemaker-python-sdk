@@ -12,11 +12,8 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch
-from typing import List
 
 from sagemaker.core.jumpstart.types import (
-    JumpStartDataHolderType,
     JumpStartS3FileType,
     HubType,
     HubContentType,
@@ -24,10 +21,7 @@ from sagemaker.core.jumpstart.types import (
     JumpStartModelHeader,
     JumpStartVersionedModelId,
     JumpStartBenchmarkStat,
-    JumpStartHyperparameter,
-    JumpStartEnvironmentVariable,
     ModelAccessConfig,
-    HubAccessConfig,
     S3DataSource,
     AdditionalModelDataSource,
     JumpStartModelDataSource,
@@ -1138,7 +1132,6 @@ class TestModelAccessConfigExtended:
     """Extended test cases for ModelAccessConfig"""
 
     def test_from_json(self):
-        from sagemaker.core.jumpstart.types import ModelAccessConfig
 
         spec = {"accept_eula": True}
         config = ModelAccessConfig(spec)
@@ -1146,7 +1139,6 @@ class TestModelAccessConfigExtended:
         assert config.accept_eula is True
 
     def test_to_json(self):
-        from sagemaker.core.jumpstart.types import ModelAccessConfig
 
         spec = {"accept_eula": False}
         config = ModelAccessConfig(spec)

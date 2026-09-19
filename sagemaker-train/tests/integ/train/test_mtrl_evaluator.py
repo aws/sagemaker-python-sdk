@@ -19,7 +19,6 @@ the MultiTurnRLEvaluator to validate the end-to-end evaluation flow.
 from __future__ import absolute_import
 
 import json
-import os
 import pytest
 import logging
 

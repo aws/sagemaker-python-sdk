@@ -1,7 +1,6 @@
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.serve.predictor_async import AsyncPredictor
-from sagemaker.serve.async_inference import WaiterConfig
 
 
 class TestAsyncPredictor(unittest.TestCase):

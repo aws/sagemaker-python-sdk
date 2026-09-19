@@ -2016,7 +2016,6 @@ def get_hyperpod_recipe_path(
         RuntimeError: If the HyperPod CLI is not installed
     """
     import uuid
-    import yaml
 
     recipe, override_spec = _get_recipe_entry_and_override_spec(
         model_name=model_name,

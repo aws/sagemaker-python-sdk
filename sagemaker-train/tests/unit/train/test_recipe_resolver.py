@@ -4,9 +4,6 @@
 # may not use this file except in compliance with the License.
 """Unit tests for recipe_resolver module."""
 
-import os
-import tempfile
-
 import pytest
 import yaml
 

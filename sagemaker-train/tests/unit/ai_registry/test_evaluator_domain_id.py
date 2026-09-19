@@ -12,8 +12,7 @@
 # language governing permissions and limitations under the License.
 """Unit tests for domain-id tagging in Evaluator."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.ai_registry.evaluator import Evaluator, EvaluatorMethod
 
 

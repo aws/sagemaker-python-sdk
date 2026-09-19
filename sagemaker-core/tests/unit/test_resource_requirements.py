@@ -14,7 +14,6 @@
 
 from __future__ import absolute_import
 
-import pytest
 from sagemaker.core.compute_resource_requirements.resource_requirements import ResourceRequirements
 
 

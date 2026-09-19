@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 import json
 import pytest
-from unittest.mock import patch, MagicMock, Mock, call
+from unittest.mock import patch, MagicMock, call
 from io import BytesIO
 
 from sagemaker.train.common_utils.show_results_utils import (

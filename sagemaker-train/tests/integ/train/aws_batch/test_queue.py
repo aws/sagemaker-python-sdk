@@ -19,11 +19,10 @@ import random
 import string
 
 from sagemaker.train.model_trainer import ModelTrainer
-from sagemaker.train.configs import SourceCode, InputData, Compute
+from sagemaker.train.configs import SourceCode, Compute
 
 from sagemaker.train.aws_batch.training_queue import TrainingQueue
 
-from tests.integ import DATA_DIR
 from tests.integ.train.conftest import sagemaker_session  # noqa: F401
 from tests.integ.train.test_model_trainer import (
     DEFAULT_CPU_IMAGE,

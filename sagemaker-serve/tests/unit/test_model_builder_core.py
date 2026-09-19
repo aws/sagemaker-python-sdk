@@ -4,7 +4,7 @@ Focuses on increasing coverage for model_builder.py
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, PropertyMock
+from unittest.mock import Mock, patch
 import tempfile
 import os
 
@@ -13,9 +13,8 @@ from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.train.model_trainer import ModelTrainer
-from sagemaker.core.resources import TrainingJob, Model
 from sagemaker.core.session_settings import SessionSettings
-from sagemaker.core.training.configs import Compute, Networking, SourceCode
+from sagemaker.core.training.configs import Compute
 
 
 class TestModelBuilderInitialization(unittest.TestCase):

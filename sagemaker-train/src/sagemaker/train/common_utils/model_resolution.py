@@ -8,7 +8,6 @@ This module provides common functionality for resolving model metadata from:
 
 import json
 import logging
-import boto3
 from typing import Union, Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum

@@ -4,14 +4,13 @@ Targets remaining testable gaps.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import tempfile
 import os
 import json
 
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 from sagemaker.serve.constants import Framework
-from sagemaker.serve.utils.types import ModelServer
 
 
 class TestRetrieveHuggingFaceModelMapping(unittest.TestCase):

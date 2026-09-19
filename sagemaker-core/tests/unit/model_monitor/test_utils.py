@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 from sagemaker.core.model_monitor.utils import (
     boto_create_monitoring_schedule,
     boto_update_monitoring_schedule,
@@ -25,7 +25,6 @@ from sagemaker.core.model_monitor.utils import (
     boto_update_monitoring_alert,
     boto_list_monitoring_alerts,
     boto_list_monitoring_alert_history,
-    MODEL_MONITOR_ONE_TIME_SCHEDULE,
 )
 
 

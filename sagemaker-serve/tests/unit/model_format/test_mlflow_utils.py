@@ -5,11 +5,9 @@ Tests utility functions for MLflow model format handling.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 import os
 import tempfile
-import shutil
-import yaml
 from pathlib import Path
 
 from sagemaker.serve.model_format.mlflow.utils import (

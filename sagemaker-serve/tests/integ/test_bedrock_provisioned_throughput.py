@@ -24,7 +24,7 @@ from urllib.parse import urlparse
 import boto3
 import pytest
 
-from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.helper.session_helper import get_execution_role
 from sagemaker.core.resources import TrainingJob
 from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 

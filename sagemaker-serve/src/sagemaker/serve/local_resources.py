@@ -22,7 +22,6 @@ import json
 import logging
 from typing import Any, Dict, Optional, Tuple
 import io
-import json
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.core.serializers import JSONSerializer, IdentitySerializer
 from sagemaker.core.deserializers import JSONDeserializer, BytesDeserializer

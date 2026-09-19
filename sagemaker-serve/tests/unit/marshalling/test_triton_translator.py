@@ -1,7 +1,7 @@
 """Unit tests for sagemaker.serve.marshalling.triton_translator module."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import numpy as np
 
 

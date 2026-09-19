@@ -10,17 +10,14 @@ Tests for:
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import uuid
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.core.resources import Model, Endpoint
 from sagemaker.core.enums import EndpointType
 from sagemaker.core.inference_config import (
     AsyncInferenceConfig,
-    ServerlessInferenceConfig,
     ResourceRequirements,
 )
 

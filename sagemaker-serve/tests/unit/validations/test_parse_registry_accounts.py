@@ -15,10 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import patch, mock_open
-import json
 import sys
-import importlib
 
 
 # Mock the module to avoid file system dependencies during import

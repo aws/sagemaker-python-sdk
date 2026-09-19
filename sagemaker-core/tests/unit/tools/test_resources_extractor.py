@@ -14,9 +14,7 @@
 
 from __future__ import absolute_import
 
-import pytest
-import pandas as pd
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 from sagemaker.core.tools.resources_extractor import ResourcesExtractor
 

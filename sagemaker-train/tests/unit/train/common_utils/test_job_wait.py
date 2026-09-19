@@ -1,7 +1,6 @@
 """Unit tests for job_wait utilities."""
 
 import collections
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest

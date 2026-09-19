@@ -25,14 +25,10 @@ from __future__ import absolute_import
 
 import json
 import os
-import shutil
-from tempfile import TemporaryDirectory
 
-import pytest
 from unittest.mock import MagicMock, patch
 
 from sagemaker.train.tuner import HyperparameterTuner
-from sagemaker.train.constants import SM_DRIVERS_LOCAL_PATH
 from sagemaker.core.parameter import ContinuousParameter
 from sagemaker.core.shapes import (
     Channel,

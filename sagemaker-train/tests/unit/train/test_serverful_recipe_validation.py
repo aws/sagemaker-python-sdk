@@ -14,9 +14,8 @@ Covers:
 - HyperPod path: resolved recipe is flattened and passed as additional_overrides
 """
 
-import json
 from types import SimpleNamespace
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 import pytest
 

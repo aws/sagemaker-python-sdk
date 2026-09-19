@@ -15,7 +15,6 @@
 import logging
 from unittest.mock import Mock, patch, MagicMock
 
-import pytest
 
 from sagemaker.train.common_utils.finetune_utils import (
     _resolve_mlflow_resource_arn,

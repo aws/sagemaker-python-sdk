@@ -8,8 +8,6 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
 import asyncio
 import threading
-import io
-import json
 import sys
 
 # Mock optional dependencies before importing
@@ -144,7 +142,6 @@ class TestInProcessServerInvokeEndpoint(unittest.TestCase):
         invoke_func = server._router.routes[0].endpoint
 
         # Run async function
-        import asyncio
 
         result = asyncio.run(invoke_func(mock_request))
 

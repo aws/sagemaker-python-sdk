@@ -26,13 +26,11 @@ network-calling helpers rather than the entire evaluate flow.
 
 from __future__ import absolute_import
 
-from unittest.mock import Mock, patch, PropertyMock
+from unittest.mock import Mock, patch
 
-import pytest
 
 from sagemaker.train.common_utils.model_resolution import _ModelInfo, _ModelType
 from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator
-from sagemaker.train.evaluate.constants import EvalType
 from sagemaker.train.evaluate.custom_scorer_evaluator import CustomScorerEvaluator
 from sagemaker.train.evaluate.inspect_ai_evaluator import InspectAIEvaluator
 from sagemaker.train.evaluate.llm_as_judge_evaluator import LLMAsJudgeEvaluator

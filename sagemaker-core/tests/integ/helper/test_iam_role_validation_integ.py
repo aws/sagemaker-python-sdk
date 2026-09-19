@@ -39,7 +39,6 @@ from botocore.exceptions import ClientError, NoCredentialsError
 if __package__ in (None, ""):
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
 
-from sagemaker.core.helper.iam_role_resolver import RoleValidationError  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("iam_role_validation_integ")

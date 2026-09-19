@@ -25,7 +25,7 @@ from typing import Optional, Union, List
 from pydantic import BaseModel, model_validator, ConfigDict
 
 import sagemaker.core.shapes as shapes
-from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar, BoolPipeVar
+from sagemaker.core.helper.pipeline_variable import StrPipeVar
 
 # TODO: Can we add custom logic to some of these to set better defaults?
 from sagemaker.core.shapes import (

@@ -4,16 +4,14 @@ Focuses on increasing coverage for build-related methods.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 import tempfile
 import os
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve.constants import Framework
 from sagemaker.core.resources import Model
-from sagemaker.train.model_trainer import ModelTrainer
 
 
 class TestModelBuilderSaveModel(unittest.TestCase):

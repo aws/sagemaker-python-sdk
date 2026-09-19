@@ -14,8 +14,7 @@
 
 from __future__ import absolute_import
 
-import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 
 def test_model_step_properties():

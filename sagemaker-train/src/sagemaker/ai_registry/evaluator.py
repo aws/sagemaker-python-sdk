@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import io
 import json
-import os
 import zipfile
 from collections.abc import Sequence
 from datetime import datetime

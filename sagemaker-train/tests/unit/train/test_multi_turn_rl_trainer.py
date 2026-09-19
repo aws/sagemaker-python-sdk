@@ -1,7 +1,7 @@
 """Unit tests for MultiTurnRLTrainer."""
 
 import json
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,12 +14,7 @@ from sagemaker.train.multi_turn_rl_trainer import (
     LAMBDA_ARN_PATTERN,
     S3_URI_PATTERN,
     AGENT_RUNTIME_ID_PATTERN,
-    JOB_CATEGORY,
-    JOB_CONFIG_SCHEMA_VERSION,
-    # SUPPORTED_BASE_MODELS,
-    # _resolve_base_model_name,
     _resolve_agent_runtime_arn,
-    _list_all_mtrl_models,
 )
 
 BEDROCK_AGENT_ARN = "arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/AGENTID123"

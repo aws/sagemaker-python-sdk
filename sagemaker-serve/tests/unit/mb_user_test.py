@@ -6,15 +6,10 @@ This file tests the physical ModelBuilder.build() workflow with real AWS resourc
 WARNING: This creates actual AWS resources that need cleanup!
 """
 
-import tempfile
-import os
 import boto3
-import torch
 from sagemaker.serve.model_builder import ModelBuilder, Compute
 
 # from sagemaker.utils.jumpstart.model import JumpStartModel
-from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.core.helper.session_helper import Session
 
 # AWS Account Configuration
@@ -115,7 +110,7 @@ def test_basic_build():
         print("Building model (auto-detecting container)...")
         core_model = model_builder.build()
 
-        print(f"✅ Build successful!")
+        print("✅ Build successful!")
         print(f"Model type: {type(core_model)}")
         print(f"Model name: {core_model.model_name}")
         # print(f"Model name: {core_model.name}")
@@ -163,7 +158,7 @@ def test_basic_build_with_explicit_image():
         print("Building model with explicit image_uri...")
         core_model = model_builder.build()
 
-        print(f"✅ Build successful!")
+        print("✅ Build successful!")
         print(f"Model type: {type(core_model)}")
         print(f"Model name: {core_model.model_name}")
         print(f"Model ARN: {getattr(core_model, 'model_arn', 'Not available')}")
@@ -215,7 +210,7 @@ def test_build_with_vpc():
         print("Building model with VPC config...")
         core_model = model_builder.build()
 
-        print(f"✅ VPC build successful!")
+        print("✅ VPC build successful!")
         print(f"Model name: {core_model.model_name}")
         print(f"VPC config: {getattr(core_model, 'vpc_config', 'Not available')}")
 
@@ -254,7 +249,7 @@ def test_build_with_custom_role():
         print("Building model with custom role...")
         core_model = model_builder.build()
 
-        print(f"✅ Custom role build successful!")
+        print("✅ Custom role build successful!")
         print(f"Model name: {core_model.model_name}")
         print(f"Execution role: {getattr(core_model, 'execution_role_arn', 'Not available')}")
 

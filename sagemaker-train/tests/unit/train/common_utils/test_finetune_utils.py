@@ -37,7 +37,6 @@ from sagemaker.train.common_utils.finetune_utils import (
     _parse_sequence_length,
 )
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
-from sagemaker.core.utils.utils import Unassigned
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.common import TrainingType
 from sagemaker.train.configs import InputData

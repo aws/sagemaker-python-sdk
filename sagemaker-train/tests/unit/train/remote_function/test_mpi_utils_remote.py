@@ -14,11 +14,9 @@
 
 from __future__ import absolute_import
 
-import os
 import pytest
 import subprocess
-import time
-from unittest.mock import patch, MagicMock, mock_open, call
+from unittest.mock import patch, MagicMock, mock_open
 import paramiko
 
 from sagemaker.train.remote_function.runtime_environment.mpi_utils_remote import (
@@ -35,11 +33,8 @@ from sagemaker.train.remote_function.runtime_environment.mpi_utils_remote import
     start_sshd_daemon,
     write_status_file_to_workers,
     main,
-    SUCCESS_EXIT_CODE,
     DEFAULT_FAILURE_CODE,
     FAILURE_REASON_PATH,
-    FINISHED_STATUS_FILE,
-    READY_FILE,
     DEFAULT_SSH_PORT,
 )
 

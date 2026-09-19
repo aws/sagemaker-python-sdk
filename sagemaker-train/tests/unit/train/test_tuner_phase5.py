@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 from sagemaker.train.tuner import HyperparameterTuner
 from sagemaker.core.parameter import ContinuousParameter, IntegerParameter

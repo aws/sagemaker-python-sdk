@@ -21,7 +21,6 @@ import os
 from sagemaker.core.utils.code_injection.codec import pascal_to_snake
 from sagemaker.core.tools.constants import (
     LICENCES_STRING,
-    GENERATED_CLASSES_LOCATION,
     SHAPES_CODEGEN_FILE_NAME,
     SHAPES_CODEGEN_OUTPUT_DIR,
 )

@@ -1,7 +1,7 @@
 """Unit tests for sagemaker.serve.utils.local_hardware module."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from sagemaker.serve.utils.local_hardware import (
     _get_ram_usage_mb,
     _get_gpu_info_fallback,

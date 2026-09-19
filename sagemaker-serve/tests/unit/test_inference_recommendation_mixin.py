@@ -4,7 +4,7 @@ Tests Phase, ModelLatencyThreshold, and _InferenceRecommenderMixin classes.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 from sagemaker.serve.inference_recommendation_mixin import (
     Phase,
     ModelLatencyThreshold,

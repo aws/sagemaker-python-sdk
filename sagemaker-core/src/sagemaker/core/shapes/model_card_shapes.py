@@ -3,10 +3,9 @@ from pydantic import BaseModel, Field
 from enum import Enum
 
 from sagemaker.core import shapes
-from sagemaker.core.shapes import ModelDataSource
 
 if TYPE_CHECKING:
-    from sagemaker.core.shapes.shapes import BaseModel as CoreBaseModel
+    pass
 
 
 class RiskRating(str, Enum):

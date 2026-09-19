@@ -8,7 +8,6 @@ from __future__ import absolute_import
 # Standard library imports
 import json
 import logging
-import os
 import time
 import uuid
 from datetime import datetime
@@ -303,7 +302,6 @@ def _start_pipeline_execution(
     Raises:
         ClientError: If AWS service call fails
     """
-    import os
 
     import boto3
 
@@ -388,7 +386,6 @@ def _extract_output_s3_location_from_steps(
         S3 output location from OutputDataConfig if found, None otherwise
     """
     try:
-        import os
 
         import boto3
 
@@ -900,7 +897,6 @@ class EvaluationPipelineExecution(BaseModel):
         try:
             # TODO: Move to sagemaker_core PipelineExecution.stop() when session handling is fixed
             # For now, use boto3 directly to stop the pipeline execution
-            import os
 
             import boto3
 
@@ -965,14 +961,13 @@ class EvaluationPipelineExecution(BaseModel):
             ipython = get_ipython()
             if ipython is not None and "IPKernelApp" in ipython.config:
                 is_jupyter = True
-                from IPython.display import HTML, clear_output, display
+                from IPython.display import clear_output
         except:
             pass
 
         if is_jupyter:
             # Jupyter notebook experience with rich library
             from rich.console import Console, Group
-            from rich.layout import Layout
             from rich.panel import Panel
             from rich.table import Table
             from rich.text import Text

@@ -17,17 +17,14 @@ from __future__ import absolute_import
 import json
 import os
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from packaging.version import Version
+from unittest.mock import Mock, patch
 
 from sagemaker.core.jumpstart.cache import JumpStartModelsCache
 from sagemaker.core.jumpstart.types import (
-    JumpStartCachedContentKey,
     JumpStartVersionedModelId,
     JumpStartS3FileType,
     JumpStartModelHeader,
     JumpStartModelSpecs,
-    HubContentType,
 )
 from sagemaker.core.jumpstart.enums import JumpStartModelType
 

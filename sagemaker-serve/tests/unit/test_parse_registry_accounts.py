@@ -5,9 +5,7 @@ Tests the extract_account_ids function that parses registry account IDs from JSO
 """
 
 import unittest
-from unittest.mock import patch, mock_open, MagicMock
-import json
-import sys
+from unittest.mock import patch
 
 # Mock os.listdir to prevent FileNotFoundError during module import
 with patch("os.listdir", return_value=[]):

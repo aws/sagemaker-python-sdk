@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-from unittest.mock import Mock
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 
 

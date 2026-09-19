@@ -19,10 +19,6 @@ from unittest.mock import patch, MagicMock, Mock, PropertyMock
 from pydantic import ValidationError
 
 from sagemaker.core.shapes import VpcConfig
-from sagemaker.core.resources import ModelPackageGroup, Artifact
-from sagemaker.core.shapes import ArtifactSource, ArtifactSourceType
-from sagemaker.core.utils.utils import Unassigned
-from sagemaker.train.base_trainer import BaseTrainer
 
 from sagemaker.train.evaluate.base_evaluator import BaseEvaluator
 from sagemaker.train.evaluate.constants import EvalType

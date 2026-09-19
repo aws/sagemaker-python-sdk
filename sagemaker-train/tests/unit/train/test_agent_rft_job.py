@@ -3,7 +3,6 @@
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from sagemaker.train.agent_rft_job import AgentRFTJob
 

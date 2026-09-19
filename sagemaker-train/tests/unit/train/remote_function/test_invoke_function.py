@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 import json
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
 from sagemaker.train.remote_function.invoke_function import (
     _parse_args,

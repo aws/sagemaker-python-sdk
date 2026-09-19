@@ -1,7 +1,6 @@
 """Unit tests for metrics_visualizer module."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 
 class TestParseJobArn:

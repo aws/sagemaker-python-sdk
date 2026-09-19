@@ -13,7 +13,7 @@
 """Unit tests for CPTTrainer data mixing integration."""
 
 import pytest
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
 
 from sagemaker.train.cpt_trainer import CPTTrainer
 from sagemaker.train.data_mixing_config import DataMixingConfig

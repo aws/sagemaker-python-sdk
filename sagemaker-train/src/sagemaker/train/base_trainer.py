@@ -12,7 +12,6 @@ import tarfile
 import tempfile
 from urllib.parse import urlparse
 
-import yaml
 import boto3
 
 from sagemaker.core.helper.session_helper import Session
@@ -30,7 +29,6 @@ from sagemaker.core.shapes import S3DataSource
 from sagemaker.core.resources import TrainingJob
 from sagemaker.train.common_utils.recipe_utils import (
     _is_nova_model,
-    resolve_recipe,
     get_resolved_recipe_from_context,
     NoRecipeError,
 )
@@ -1023,7 +1021,6 @@ class BaseTrainer(ABC):
         from sagemaker.train.common_utils.finetune_utils import (
             _render_recipe_placeholders,
             _get_smtj_override_spec,
-            _get_smhp_replicas_enum,
             _resolve_base_model_weights_s3_uri,
         )
 

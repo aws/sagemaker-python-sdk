@@ -27,7 +27,6 @@ import logging
 
 from sagemaker.train.evaluate import (
     LLMAsJudgeEvaluator,
-    EvaluationPipelineExecution,
 )
 
 # Configure logging
@@ -153,7 +152,7 @@ class TestLLMAsJudgeBaseModelFix:
         assert evaluator is not None
         assert evaluator.evaluate_base_model is True, "evaluate_base_model should be True"
 
-        logger.info(f"✓ Created evaluator with evaluate_base_model=True")
+        logger.info("✓ Created evaluator with evaluate_base_model=True")
         logger.info(f"  Model Package ARN: {evaluator.model}")
         logger.info(f"  Judge Model: {evaluator.evaluator_model}")
 
@@ -166,7 +165,7 @@ class TestLLMAsJudgeBaseModelFix:
         assert execution.arn is not None
         assert execution.name is not None
 
-        logger.info(f"✓ Pipeline started successfully")
+        logger.info("✓ Pipeline started successfully")
         logger.info(f"  Execution ARN: {execution.arn}")
         logger.info(f"  Execution Name: {execution.name}")
         logger.info(f"  Initial Status: {execution.status.overall_status}")
@@ -222,20 +221,20 @@ class TestLLMAsJudgeBaseModelFix:
             has_custom_step
         ), f"Pipeline should have custom inference step. Found steps: {step_names}"
 
-        logger.info(f"✓ Pipeline has both base and custom inference steps")
+        logger.info("✓ Pipeline has both base and custom inference steps")
         logger.info(f"  Base model step: {'Found' if has_base_step else 'Missing'}")
         logger.info(f"  Custom model step: {'Found' if has_custom_step else 'Missing'}")
 
         # Step 4: Wait for completion
-        logger.info(f"\nWaiting for evaluation to complete...")
+        logger.info("\nWaiting for evaluation to complete...")
         logger.info(
             f"  Timeout: {EVALUATION_TIMEOUT_SECONDS}s ({EVALUATION_TIMEOUT_SECONDS//3600}h)"
         )
-        logger.info(f"  Poll interval: 30s")
+        logger.info("  Poll interval: 30s")
 
         try:
             execution.wait(target_status="Succeeded", poll=30, timeout=EVALUATION_TIMEOUT_SECONDS)
-            logger.info(f"\n✓ Evaluation completed successfully")
+            logger.info("\n✓ Evaluation completed successfully")
             logger.info(f"  Final Status: {execution.status.overall_status}")
 
             # Verify completion
@@ -336,14 +335,14 @@ class TestLLMAsJudgeBaseModelFix:
         assert evaluator is not None
         assert evaluator.evaluate_base_model is False
 
-        logger.info(f"✓ Created evaluator with evaluate_base_model=False")
+        logger.info("✓ Created evaluator with evaluate_base_model=False")
 
         # Start evaluation
         logger.info("\nStarting evaluation pipeline...")
         execution = evaluator.evaluate()
 
         assert execution is not None
-        logger.info(f"✓ Pipeline started successfully")
+        logger.info("✓ Pipeline started successfully")
         logger.info(f"  Execution ARN: {execution.arn}")
 
         # Verify pipeline structure - should only have custom inference step
@@ -394,7 +393,7 @@ class TestLLMAsJudgeBaseModelFix:
             has_custom_step
         ), f"Pipeline should have custom inference step. Found steps: {step_names}"
 
-        logger.info(f"✓ Pipeline structure correct for evaluate_base_model=False")
+        logger.info("✓ Pipeline structure correct for evaluate_base_model=False")
         logger.info(
             f"  Base model step: {'Found (ERROR!)' if has_base_step else 'Not present (correct)'}"
         )
@@ -403,11 +402,11 @@ class TestLLMAsJudgeBaseModelFix:
         )
 
         # Wait for completion
-        logger.info(f"\nWaiting for evaluation to complete...")
+        logger.info("\nWaiting for evaluation to complete...")
 
         try:
             execution.wait(target_status="Succeeded", poll=30, timeout=EVALUATION_TIMEOUT_SECONDS)
-            logger.info(f"\n✓ Evaluation completed successfully")
+            logger.info("\n✓ Evaluation completed successfully")
 
             assert execution.status.overall_status == "Succeeded"
 

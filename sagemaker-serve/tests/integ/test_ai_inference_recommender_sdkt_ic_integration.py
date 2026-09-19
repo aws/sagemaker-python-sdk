@@ -21,7 +21,6 @@ import uuid
 
 import pytest
 
-from sagemaker.core.enums import EndpointType
 from sagemaker.core.helper.session_helper import Session, get_execution_role
 from sagemaker.core.inference_config import ResourceRequirements
 from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent, Model

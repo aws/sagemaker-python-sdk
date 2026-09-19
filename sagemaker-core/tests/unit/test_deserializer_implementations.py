@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.core.deserializers import implementations
 from sagemaker.core.deserializers.base import JSONDeserializer
 

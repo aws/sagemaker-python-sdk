@@ -16,7 +16,6 @@
 import os
 import tempfile
 
-import pytest
 from sagemaker.ai_registry.air_hub import AIRHub
 from sagemaker.ai_registry.air_constants import DATASET_HUB_CONTENT_TYPE
 

@@ -5,8 +5,7 @@ Tests telemetry collection and logging functionality.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-from time import perf_counter
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.utils.telemetry_logger import (
     _capture_telemetry,
@@ -18,9 +17,7 @@ from sagemaker.serve.utils.telemetry_logger import (
     _get_image_uri_option,
     MODE_TO_CODE,
     MODEL_SERVER_TO_CODE,
-    MLFLOW_MODEL_PATH_CODE,
     MODEL_HUB_TO_CODE,
-    SD_DRAFT_MODEL_SOURCE_TO_CODE,
 )
 from sagemaker.serve.utils.types import ModelServer, ImageUriOption, ModelHub
 from sagemaker.serve.mode.function_pointers import Mode

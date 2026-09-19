@@ -171,7 +171,7 @@ class BatchTestResourceManager:
                 print(f"Quota share is now {expected_state}.")
                 return
             if status == "INVALID":
-                raise ValueError(f"Something went wrong!")
+                raise ValueError("Something went wrong!")
 
             time.sleep(5)
         raise TimeoutError(f"Quota share did not reach {expected_state} within {timeout}s")
@@ -209,7 +209,7 @@ class BatchTestResourceManager:
                     print(f"Queue {job_queue_name} is now {state}.")
                     return
                 if status == "INVALID":
-                    raise ValueError(f"Something went wrong!")
+                    raise ValueError("Something went wrong!")
             elif expected_status == "DELETED":
                 print(f"JobQueue {job_queue_name} has been deleted")
                 return
@@ -242,7 +242,7 @@ class BatchTestResourceManager:
                     )
                     return
                 if status == "INVALID":
-                    raise ValueError(f"Something went wrong!")
+                    raise ValueError("Something went wrong!")
             elif expected_status == "DELETED":
                 print(f"ServiceEnvironment {service_environment_name} has been deleted")
                 return

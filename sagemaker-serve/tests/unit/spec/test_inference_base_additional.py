@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from abc import ABC
 
 from sagemaker.serve.spec.inference_base import CustomOrchestrator, AsyncCustomOrchestrator

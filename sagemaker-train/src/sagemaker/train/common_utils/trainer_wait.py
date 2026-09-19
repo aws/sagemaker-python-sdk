@@ -518,7 +518,7 @@ def wait(training_job: TrainingJob, poll: int = 5, timeout: Optional[int] = 4320
 
         else:
             print(f"\nTraining job started: {training_job.training_job_name}", flush=True)
-            print(f"Log group: /aws/sagemaker/TrainingJobs", flush=True)
+            print("Log group: /aws/sagemaker/TrainingJobs", flush=True)
             print(f"Log stream prefix: {training_job.training_job_name}", flush=True)
             iteration = 0
             while True:
@@ -593,7 +593,7 @@ def wait(training_job: TrainingJob, poll: int = 5, timeout: Optional[int] = 4320
                         failure_reason = training_job.failure_reason
                         if failure_reason and not _is_unassigned_attribute(failure_reason):
                             print(f"\nFailure reason: {failure_reason}", flush=True)
-                        print(f"\nLog group: /aws/sagemaker/TrainingJobs", flush=True)
+                        print("\nLog group: /aws/sagemaker/TrainingJobs", flush=True)
                         print(f"Log stream prefix: {training_job.training_job_name}", flush=True)
                         from sagemaker.train.common_utils.metrics_visualizer import (
                             get_cloudwatch_logs_url,

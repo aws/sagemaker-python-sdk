@@ -20,7 +20,6 @@ of using torchrun for multi-GPU distributed training.
 from __future__ import absolute_import
 
 import os
-import time
 import logging
 
 import pytest

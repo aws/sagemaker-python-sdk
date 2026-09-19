@@ -14,7 +14,7 @@
 """Tests for AIRHubEntity base class."""
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededError
 

@@ -22,7 +22,7 @@ from copy import copy
 import logging
 import os
 from functools import lru_cache, wraps
-from typing import Any, Dict, List, Set, Optional, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
@@ -55,7 +55,6 @@ from sagemaker.core.jumpstart.types import (
     JumpStartVersionedModelId,
     DeploymentConfigMetadata,
 )
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.config.config import load_sagemaker_config
 from sagemaker.core.common_utils import (
     resolve_value_from_config,

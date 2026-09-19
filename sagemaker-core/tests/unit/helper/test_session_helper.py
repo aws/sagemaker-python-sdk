@@ -15,9 +15,8 @@
 from __future__ import absolute_import
 
 import json
-import os
 import pytest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 from sagemaker.core.helper.session_helper import Session

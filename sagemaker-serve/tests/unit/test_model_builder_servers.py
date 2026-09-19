@@ -1,10 +1,9 @@
 """Unit tests for _ModelBuilderServers class methods."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 
 from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.constants import SUPPORTED_MODEL_SERVERS
 
 
 class TestModelBuilderServersValidation(unittest.TestCase):
@@ -444,7 +443,6 @@ class TestModelBuilderServersAllModelServers(unittest.TestCase):
     def test_model_server_enum_values_exist(self):
         """Test that ModelServer enum values exist and are accessible."""
         # ModelServer is an enum, so values are enum members, not strings
-        from enum import Enum
 
         # Verify ModelServer has the expected attributes
         self.assertTrue(hasattr(ModelServer, "TORCHSERVE"))

@@ -4,15 +4,14 @@ These tests use heavy mocking to simulate flows without executing resource opera
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 import tempfile
 import os
 
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.serve.utils.types import ModelServer, ModelHub
+from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.constants import Framework
-from sagemaker.core.resources import Model
 
 # Import test fixtures
 from .test_fixtures import (
@@ -20,7 +19,6 @@ from .test_fixtures import (
     mock_model_object,
     mock_schema_builder,
     MOCK_ROLE_ARN,
-    MOCK_REGION,
     MOCK_IMAGE_URI,
     MOCK_S3_URI,
 )

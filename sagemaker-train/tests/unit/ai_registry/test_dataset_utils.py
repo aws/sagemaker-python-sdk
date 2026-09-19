@@ -14,7 +14,6 @@
 """Tests for dataset utilities."""
 
 import json
-import pytest
 
 from sagemaker.ai_registry.dataset_utils import (
     CustomizationTechnique,

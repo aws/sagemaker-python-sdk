@@ -15,10 +15,9 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 from sagemaker.mlops.local.pipeline import LocalPipelineExecutor
-from sagemaker.mlops.local.exceptions import StepExecutionException
 from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.core.workflow.execution_variables import ExecutionVariables
 

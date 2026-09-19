@@ -7,7 +7,6 @@ and inference parameters from SageMaker Hub content.
 
 import json
 import logging
-import os
 from typing import Any, Dict, List, Optional
 
 import boto3

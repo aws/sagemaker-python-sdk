@@ -15,7 +15,7 @@ import pytest
 import tempfile
 import os
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.core.workflow.utilities import (
     list_to_request,
     hash_file,
@@ -30,7 +30,6 @@ from sagemaker.core.workflow.utilities import (
     _collect_parameters,
 )
 from sagemaker.core.workflow.entities import Entity
-from sagemaker.core.workflow.parameters import Parameter
 from sagemaker.core.workflow.pipeline_context import _StepArguments
 
 

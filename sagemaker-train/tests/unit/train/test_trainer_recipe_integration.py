@@ -4,12 +4,11 @@
 # may not use this file except in compliance with the License.
 """Integration tests for get_resolved_recipe() on all trainer types."""
 
-import os
 import tempfile
 
 import pytest
 import yaml
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
 # --- Fixtures ---
 

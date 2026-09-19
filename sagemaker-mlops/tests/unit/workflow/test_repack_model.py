@@ -14,11 +14,8 @@
 
 from __future__ import absolute_import
 
-import pytest
-import tarfile
-import tempfile
 import os
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.mlops.workflow._repack_model import (
     _get_resolved_path,

@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, Mock
 from pydantic import ValidationError
 
 from sagemaker.train.evaluate.custom_scorer_evaluator import (

@@ -2,8 +2,6 @@
 # Licensed under the Apache License, Version 2.0
 """Unit tests for inputs.py (enums)."""
 
-import pytest
-
 from sagemaker.mlops.feature_store.inputs import (
     TargetStoreEnum,
     OnlineStoreStorageTypeEnum,

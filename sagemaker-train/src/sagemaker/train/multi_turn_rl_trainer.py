@@ -30,7 +30,6 @@ from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.custom_agent_lambda import CustomAgentLambda
 from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.base_trainer import BaseTrainer
-from sagemaker.train.common import CustomizationTechnique
 from sagemaker.train.common_utils.finetune_utils import (
     _get_default_s3_output_path,
     _get_fine_tuning_options_and_model_arn,

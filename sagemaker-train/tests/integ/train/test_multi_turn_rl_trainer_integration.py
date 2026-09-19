@@ -18,7 +18,6 @@ Requires valid AWS credentials with appropriate permissions.
 
 from __future__ import annotations
 
-import os
 import time
 
 import boto3

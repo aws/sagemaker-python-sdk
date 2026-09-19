@@ -851,7 +851,6 @@ class TestSFTTrainerComputeDispatch:
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
     def _make_trainer(self, mock_opts, mock_resolve, mock_validate, compute=None):
         from sagemaker.train.sft_trainer import SFTTrainer
-        from sagemaker.core.training.configs import Compute, HyperPodCompute
 
         mock_resolve.return_value = ("model", "nova-textgeneration-lite-v2")
         mock_validate.return_value = "group"

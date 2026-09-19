@@ -20,7 +20,7 @@ import os
 import tempfile
 from datetime import datetime
 from itertools import islice
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 from urllib.parse import urlparse
 
 import pandas as pd
@@ -58,18 +58,15 @@ from sagemaker.ai_registry.dataset_utils import (
     CustomizationTechnique,
     DataSetMethod,
     DataSetHubContentDocument,
-    DataSetList,
     _get_default_s3_prefix,
 )
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.common_utils.finetune_utils import _get_current_domain_id
-from sagemaker.ai_registry.dataset_validation import validate_dataset
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.core.utils.utils import (
     ResourceIterator,
 )
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.defaults import TrainDefaults
 
 

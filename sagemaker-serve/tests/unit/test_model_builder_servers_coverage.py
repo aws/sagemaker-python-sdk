@@ -4,7 +4,7 @@ Tests the _ModelBuilderServers mixin methods.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import tempfile
 import os
 
@@ -18,7 +18,6 @@ from .test_fixtures import (
     mock_model_object,
     MOCK_ROLE_ARN,
     MOCK_IMAGE_URI,
-    MOCK_S3_URI,
 )
 
 

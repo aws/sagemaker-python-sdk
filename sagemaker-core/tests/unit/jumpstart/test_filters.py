@@ -18,7 +18,6 @@ from sagemaker.core.jumpstart.filters import (
     BooleanValues,
     FilterOperators,
     Operand,
-    Operator,
     And,
     Or,
     Not,
@@ -28,11 +27,7 @@ from sagemaker.core.jumpstart.filters import (
     parse_filter_string,
     evaluate_filter_expression,
     _negate_boolean,
-    _evaluate_filter_expression_equals,
     _evaluate_filter_expression_in,
-    _evaluate_filter_expression_includes,
-    _evaluate_filter_expression_begins_with,
-    _evaluate_filter_expression_ends_with,
 )
 
 

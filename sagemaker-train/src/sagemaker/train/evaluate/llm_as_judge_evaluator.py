@@ -7,7 +7,7 @@ to evaluate LLM responses based on quality and responsible AI metrics.
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, List, Optional, Set, Union
 
 from pydantic import root_validator, validator
 
@@ -20,7 +20,6 @@ from .constants import (
     _get_nova_inference_image_uri,
     _REGION_TO_BEDROCK_PREFIX,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.common_utils.data_utils import validate_data_path_exists
 from sagemaker.train.common_utils.model_aliases import NOVA_BEDROCK_MODEL_IDS
@@ -980,7 +979,6 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 execution = evaluator.evaluate()
                 execution.wait()
         """
-        from .constants import EvalType, _get_inspect_ai_default_image_uri
         from .pipeline_templates import (
             LLMAJ_INSPECTAI_TEMPLATE,
             LLMAJ_TEMPLATE,
@@ -1194,7 +1192,6 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 all_executions = list(evaluations)
         """
         from .execution import EvaluationPipelineExecution
-        from .constants import EvalType
 
         # Use EvaluationPipelineExecution.get_all() with LLM_AS_JUDGE eval_type
         # This returns a generator, so we yield from it

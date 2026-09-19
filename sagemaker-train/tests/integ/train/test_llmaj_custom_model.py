@@ -28,12 +28,9 @@ Run with:
 
 import json
 import logging
-import os
 
-import boto3
 import pytest
 
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.evaluate import LLMAsJudgeEvaluator
 from sagemaker.train.utils import _get_unique_name
 

@@ -2,9 +2,8 @@
 # Licensed under the Apache License, Version 2.0
 """Unit tests for athena_query.py"""
 
-import os
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pandas as pd
 
 from sagemaker.mlops.feature_store.athena_query import AthenaQuery

@@ -30,12 +30,10 @@ from sagemaker.train.sm_recipes.utils import (
     _configure_gpu_args,
     _configure_trainium_args,
     _get_trainining_recipe_gpu_model_name_and_script,
-    _is_nova_recipe,
     _is_llmft_recipe,
     _get_args_from_nova_recipe,
     _get_args_from_llmft_recipe,
 )
-from sagemaker.train.utils import _run_clone_command_silent
 from sagemaker.train.configs import Compute
 
 
@@ -182,7 +180,6 @@ def test_load_base_recipe_types(
         # Create a mock recipe in the expected structure
         import os
         import tempfile
-        import shutil
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create the expected directory structure
@@ -311,7 +308,6 @@ def test_get_trainining_recipe_gpu_model_name_and_script(test_case):
 
 
 def test_get_args_from_recipe_with_evaluation(temporary_recipe):
-    import tempfile
     import os
     from sagemaker.train.configs import SourceCode
 

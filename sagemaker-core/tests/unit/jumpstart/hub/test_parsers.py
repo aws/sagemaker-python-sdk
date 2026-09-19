@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from sagemaker.core.jumpstart.hub.parsers import (
     _to_json,
     get_model_spec_arg_keys,

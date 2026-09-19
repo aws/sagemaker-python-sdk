@@ -26,7 +26,7 @@ from sagemaker.core.training.configs import Compute, HyperPodCompute
 from sagemaker.core.utils.utils import Unassigned
 
 if TYPE_CHECKING:
-    from sagemaker.core.helper.session_helper import Session
+    pass
 
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
@@ -45,7 +45,6 @@ from sagemaker.train.common_utils.log_streamer import (
     stream_log_loop,
 )
 from sagemaker.train.common_utils.recipe_utils import (
-    resolve_recipe,
     get_resolved_recipe_from_context,
 )
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
@@ -372,7 +371,6 @@ class BaseEvaluator(BaseModel):
             ValueError: If model resolution fails or base model is not supported.
         """
         from sagemaker.train.common_utils.model_resolution import _resolve_base_model
-        import os
 
         try:
             # Get the session for resolution. Due to pydantic v2 compat layer issues

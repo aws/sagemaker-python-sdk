@@ -5,10 +5,8 @@ Tests local endpoint and endpoint configuration classes for V3 ModelBuilder loca
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import datetime
-import io
-import json
 
 from sagemaker.serve.local_resources import (
     InvokeEndpointOutput,

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 

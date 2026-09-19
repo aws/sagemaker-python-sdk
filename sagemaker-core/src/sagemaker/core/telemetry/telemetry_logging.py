@@ -33,7 +33,6 @@ from botocore.exceptions import (
     ReadTimeoutError,
     EndpointConnectionError,
     ConnectionClosedError,
-    ClientError,
     NoRegionError,
 )
 from sagemaker.core.apiutils._boto_functions import to_lower_camel_case

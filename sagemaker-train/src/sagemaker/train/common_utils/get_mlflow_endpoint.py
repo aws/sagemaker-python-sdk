@@ -26,8 +26,6 @@ Example:
         print(f"MLflow endpoint: {endpoint_url}")
 """
 
-from typing import Optional
-
 import boto3
 from botocore.exceptions import ClientError
 

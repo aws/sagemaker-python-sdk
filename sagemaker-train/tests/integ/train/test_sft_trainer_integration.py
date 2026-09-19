@@ -17,8 +17,6 @@ from __future__ import absolute_import
 import time
 import random
 import pytest
-import boto3
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 

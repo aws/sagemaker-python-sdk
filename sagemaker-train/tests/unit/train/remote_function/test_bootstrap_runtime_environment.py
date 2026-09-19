@@ -15,10 +15,9 @@
 from __future__ import absolute_import
 
 import json
-import os
 import pytest
 import subprocess
-from unittest.mock import patch, MagicMock, mock_open, call
+from unittest.mock import patch, MagicMock, mock_open
 
 from sagemaker.train.remote_function.runtime_environment.bootstrap_runtime_environment import (
     _parse_args,
@@ -40,11 +39,6 @@ from sagemaker.train.remote_function.runtime_environment.bootstrap_runtime_envir
     SUCCESS_EXIT_CODE,
     DEFAULT_FAILURE_CODE,
     FAILURE_REASON_PATH,
-    REMOTE_FUNCTION_WORKSPACE,
-    BASE_CHANNEL_PATH,
-    JOB_REMOTE_FUNCTION_WORKSPACE,
-    SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME,
-    SENSITIVE_KEYWORDS,
     HIDDEN_VALUE,
 )
 from sagemaker.train.remote_function.runtime_environment.runtime_environment_manager import (

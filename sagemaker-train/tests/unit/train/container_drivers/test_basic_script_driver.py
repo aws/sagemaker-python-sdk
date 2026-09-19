@@ -14,9 +14,8 @@
 
 from __future__ import absolute_import
 
-import json
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Import the module under test
 import sys

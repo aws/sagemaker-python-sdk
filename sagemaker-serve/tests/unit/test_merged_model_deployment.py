@@ -12,8 +12,7 @@
 # language governing permissions and limitations under the License.
 """Unit tests for merged model (is_checkpoint=False) deployment path."""
 
-import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 
 
 class TestFetchPeftMergedModel:

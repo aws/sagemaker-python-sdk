@@ -19,7 +19,6 @@ import tempfile
 import json
 import os
 import yaml
-from omegaconf import OmegaConf
 import pytest
 from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
@@ -77,11 +76,6 @@ from sagemaker.train.configs import (
     InstanceGroup,
 )
 from sagemaker.train.distributed import Torchrun, SMP, MPI
-from sagemaker.train.sm_recipes.utils import (
-    _load_recipes_cfg,
-    _is_nova_recipe,
-    _get_args_from_nova_recipe,
-)
 from sagemaker.train.templates import EXEUCTE_DISTRIBUTED_DRIVER
 from tests.unit import DATA_DIR
 

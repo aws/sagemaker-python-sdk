@@ -8,7 +8,7 @@ import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from multiprocessing import Pool
-from typing import Any, Dict, Iterable, List, Sequence, Union
+from typing import Any, Dict, Iterable, List, Union
 
 import pandas as pd
 from pandas import DataFrame

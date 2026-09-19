@@ -17,7 +17,7 @@ from __future__ import absolute_import
 import pytest
 import os
 import tempfile
-from unittest.mock import Mock, MagicMock, patch, mock_open
+from unittest.mock import Mock, patch
 
 from sagemaker.mlops.workflow._utils import (
     FRAMEWORK_VERSION,

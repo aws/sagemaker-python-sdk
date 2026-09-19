@@ -19,7 +19,6 @@ from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.evaluator import Evaluator
 from sagemaker.train.configs import StoppingCondition
 from sagemaker.train.common_utils.finetune_utils import (
-    _get_beta_session,
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
     _extract_evaluator_arn,

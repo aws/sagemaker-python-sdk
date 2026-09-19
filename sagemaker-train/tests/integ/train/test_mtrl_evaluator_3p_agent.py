@@ -24,9 +24,7 @@ requests to an external agent endpoint.
 from __future__ import absolute_import
 
 import io
-import json
 import os
-import time
 import zipfile
 import pytest
 import logging

@@ -14,9 +14,8 @@
 
 from __future__ import absolute_import
 
-import json
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 import os
 
 from sagemaker.train.common_utils.model_resolution import (

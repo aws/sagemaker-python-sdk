@@ -14,8 +14,6 @@
 
 from __future__ import absolute_import
 
-import pytest
-from datetime import datetime
 
 from sagemaker.mlops.workflow.triggers import PipelineSchedule
 

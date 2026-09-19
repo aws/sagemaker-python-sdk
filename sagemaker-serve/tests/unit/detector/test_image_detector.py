@@ -4,7 +4,7 @@ Tests framework detection, version casting, and container auto-detection.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from packaging import version as pkg_version
 from sagemaker.serve.detector.image_detector import (
     auto_detect_container,

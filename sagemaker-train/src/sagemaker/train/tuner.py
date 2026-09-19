@@ -486,11 +486,8 @@ class HyperparameterTuner(object):
         from tempfile import TemporaryDirectory
 
         from sagemaker.train.constants import (
-            SM_CODE,
             SM_DRIVERS,
             SM_DRIVERS_LOCAL_PATH,
-            DEFAULT_CONTAINER_ENTRYPOINT,
-            DEFAULT_CONTAINER_ARGUMENTS,
         )
 
         source_code = model_trainer.source_code

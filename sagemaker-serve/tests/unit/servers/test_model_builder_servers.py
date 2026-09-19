@@ -2,10 +2,9 @@
 
 import json
 import os
-import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, PropertyMock
+from unittest.mock import Mock, patch
 import unittest
 
 # Prevent JumpStart from loading region config during import

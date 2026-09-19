@@ -14,12 +14,10 @@
 
 from __future__ import absolute_import
 
-import json
-import os
 import subprocess
 import sys
 import pytest
-from unittest.mock import patch, MagicMock, mock_open, call
+from unittest.mock import patch, MagicMock, mock_open
 
 from sagemaker.train.remote_function.runtime_environment.runtime_environment_manager import (
     _DependencySettings,

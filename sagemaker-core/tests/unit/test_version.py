@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 
 import os
-import pytest
 from unittest.mock import patch, mock_open
 
 
@@ -25,7 +24,6 @@ class TestVersion:
     def test_version_file_read(self):
         """Test that version is read from VERSION file."""
         # Read the VERSION file directly to verify it exists and has content
-        import os
 
         version_file_path = os.path.join(os.path.dirname(__file__), "..", "..", "VERSION")
 

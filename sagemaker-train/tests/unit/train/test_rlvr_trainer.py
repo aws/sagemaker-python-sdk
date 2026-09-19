@@ -755,7 +755,6 @@ class TestRLVRTrainerComputeDispatch:
     @patch("sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn")
     def _make_trainer(self, mock_opts, mock_resolve, mock_validate, compute=None):
         from sagemaker.train.rlvr_trainer import RLVRTrainer
-        from sagemaker.core.training.configs import Compute, HyperPodCompute
 
         mock_resolve.return_value = ("model", "nova-textgeneration-lite-v2")
         mock_validate.return_value = "group"
@@ -1077,7 +1076,7 @@ class TestRLVRTrainerPipelineSession:
     ):
         """TrainingStep.arguments produces valid PascalCase dict."""
         from sagemaker.train.rlvr_trainer import RLVRTrainer
-        from sagemaker.core.workflow.pipeline_context import PipelineSession, _StepArguments
+        from sagemaker.core.workflow.pipeline_context import PipelineSession
 
         # Avoid depending on sagemaker-mlops (the dependency direction is
         # sagemaker-mlops -> sagemaker-train). TrainingStep.arguments internally

@@ -3,7 +3,7 @@
 """Unit tests for BatchWriteRecord and ListRecords wiring."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pandas as pd
 import numpy as np
 

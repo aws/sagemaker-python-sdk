@@ -14,7 +14,7 @@
 
 import logging
 from typing import Optional
-from urllib.parse import urlparse, parse_qs, urlencode
+from urllib.parse import urlparse, parse_qs
 
 logger = logging.getLogger(__name__)
 

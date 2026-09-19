@@ -26,9 +26,8 @@ from pydantic import ValidationError
 from unittest.mock import patch, MagicMock
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.helper.pipeline_variable import PipelineVariable, StrPipeVar
 from sagemaker.core.workflow.parameters import ParameterString
-from sagemaker.train.model_trainer import ModelTrainer, Mode
+from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.train.configs import (
     Compute,
     StoppingCondition,

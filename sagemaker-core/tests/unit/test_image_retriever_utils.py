@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from sagemaker.core.image_retriever.image_retriever_utils import (
     _get_image_tag,
     _get_final_image_scope,

@@ -8,13 +8,11 @@ configuration, validation, and execution of evaluation pipelines.
 from __future__ import absolute_import
 
 import logging
-import re
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Type, Union
+from typing import Any, Dict, Iterator, List, Optional, Type, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import validator
 
-from sagemaker.core.resources import ModelPackageGroup
 
 from .base_evaluator import BaseEvaluator
 from .constants import EvalType
@@ -564,7 +562,7 @@ class BenchMarkEvaluator(BaseEvaluator):
                     evaluation_type = "DeterministicTextBenchmark"
 
             # Fetch override parameters from hub (let exceptions propagate)
-            _logger.info(f"Fetching evaluation override parameters for hyperparameters property")
+            _logger.info("Fetching evaluation override parameters for hyperparameters property")
 
             # Extract boto_session from sagemaker_core Session
             # HubContent.get() in recipe_utils expects boto3 session, not sagemaker_core Session

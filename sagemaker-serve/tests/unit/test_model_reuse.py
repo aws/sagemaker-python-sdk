@@ -14,7 +14,7 @@
 
 import hashlib
 import pytest
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
 
 from botocore.exceptions import ClientError
 
@@ -29,7 +29,6 @@ from sagemaker.serve.model_reuse import (
     build_source_tag,
     check_bedrock_model_status,
     check_sagemaker_endpoint_status,
-    _arn_to_name,
 )
 
 

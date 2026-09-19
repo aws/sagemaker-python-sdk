@@ -14,9 +14,8 @@
 
 from __future__ import absolute_import
 
-import json
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
 from sagemaker.train.evaluate.multi_turn_rl_evaluator import MultiTurnRLEvaluator
 from sagemaker.train.evaluate.constants import EvalType, _get_pipeline_name_prefix

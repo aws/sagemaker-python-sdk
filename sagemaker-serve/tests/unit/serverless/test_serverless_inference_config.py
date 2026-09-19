@@ -11,9 +11,6 @@ class TestServerlessInferenceConfig(unittest.TestCase):
 
             if "sagemaker.serve.serverless.serverless_inference_config" in sys.modules:
                 del sys.modules["sagemaker.serve.serverless.serverless_inference_config"]
-            from sagemaker.serve.serverless.serverless_inference_config import (
-                ServerlessInferenceConfig,
-            )
 
             self.assertGreaterEqual(len(w), 1)
             # Check if any warning is a DeprecationWarning

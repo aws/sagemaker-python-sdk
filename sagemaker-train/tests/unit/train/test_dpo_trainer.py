@@ -715,7 +715,6 @@ class TestDPOTrainerComputeDispatch:
     @patch("sagemaker.train.dpo_trainer._resolve_model_and_name")
     @patch("sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn")
     def _make_trainer(self, mock_opts, mock_resolve, mock_validate, compute=None):
-        from sagemaker.core.training.configs import Compute, HyperPodCompute
 
         mock_resolve.return_value = ("model", "nova-textgeneration-lite-v2")
         mock_validate.return_value = "group"
@@ -725,7 +724,6 @@ class TestDPOTrainerComputeDispatch:
         return DPOTrainer(model="amazon.nova-lite-v2", compute=compute, model_package_group="grp")
 
     def test_rejects_invalid_compute_type(self):
-        from sagemaker.core.training.configs import Compute, HyperPodCompute
 
         with pytest.raises(TypeError, match="Compute or HyperPodCompute"):
             self._make_trainer(compute="invalid")
@@ -1048,7 +1046,7 @@ class TestDPOTrainerPipelineSession:
     ):
         """TrainingStep.arguments produces valid PascalCase dict."""
         from sagemaker.train.dpo_trainer import DPOTrainer
-        from sagemaker.core.workflow.pipeline_context import PipelineSession, _StepArguments
+        from sagemaker.core.workflow.pipeline_context import PipelineSession
 
         # Avoid depending on sagemaker-mlops (the dependency direction is
         # sagemaker-mlops -> sagemaker-train). TrainingStep.arguments internally

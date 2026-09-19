@@ -4,10 +4,8 @@ Focuses on lines: 376-378, 416, 442-448, 461, 464, 472-476, 492-493, 516-518, 54
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.mode.function_pointers import Mode
 
 
 class TestModelBuilderMissingCoverage(unittest.TestCase):
@@ -72,7 +70,6 @@ class TestModelBuilderMissingCoverage(unittest.TestCase):
 
     def test_initialize_network_config_with_subnets(self):
         """Test _initialize_network_config with subnets (line 461)."""
-        from sagemaker.core.training.configs import Networking
 
         network = Mock()
         network.vpc_config = None

@@ -5,7 +5,7 @@ import os
 import shutil
 import sys
 import tempfile
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, patch
 import json
 from urllib.error import HTTPError, URLError
 from json import JSONDecodeError

@@ -1,7 +1,7 @@
 """Additional unit tests for deployment_progress.py to increase coverage."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 

@@ -16,7 +16,6 @@ from __future__ import absolute_import
 
 import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
 import tempfile
 
 from sagemaker.serve.detector.dependency_manager import (

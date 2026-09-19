@@ -1,11 +1,10 @@
 """Tests for training job observability prints in script/terminal mode."""
 
-import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from sagemaker.train.common_utils.trainer_wait import wait, _is_unassigned_attribute
+from sagemaker.train.common_utils.trainer_wait import wait
 
 
 class MockUnassigned:

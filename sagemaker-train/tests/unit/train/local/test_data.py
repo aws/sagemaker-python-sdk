@@ -17,14 +17,13 @@ from __future__ import absolute_import
 import os
 import tempfile
 import pytest
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock
 
 from sagemaker.train.local.data import (
     get_data_source_instance,
     get_splitter_instance,
     get_batch_strategy_instance,
     LocalFileDataSource,
-    S3DataSource,
     NoneSplitter,
     LineSplitter,
     RecordIOSplitter,

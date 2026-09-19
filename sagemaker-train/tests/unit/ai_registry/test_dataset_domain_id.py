@@ -16,7 +16,7 @@ import json
 import tempfile
 import os
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.dataset_utils import CustomizationTechnique
 

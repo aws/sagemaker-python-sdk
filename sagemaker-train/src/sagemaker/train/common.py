@@ -156,6 +156,6 @@ class FineTuningOptions:
                 if "enum" in spec:
                     print(f"  Valid options: {spec['enum']}")
                 if spec.get("required"):
-                    print(f"  Required: Yes")
+                    print("  Required: Yes")
             else:
                 print(f"\n{name}: {getattr(self, name)}")

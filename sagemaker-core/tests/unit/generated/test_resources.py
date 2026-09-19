@@ -3,7 +3,7 @@ import importlib
 import inspect
 import unittest
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
 from sagemaker.core.resources import Base, Action
 
@@ -131,7 +131,7 @@ class ResourcesTest(unittest.TestCase):
                             "JobDefinitionSummaries": [summary],
                             f"{name}SummaryList": [summary],
                             f"{name}s": [summary],
-                            f"Summaries": [summary],
+                            "Summaries": [summary],
                         }
                         if name == "MlflowTrackingServer":
                             summary_response = {"TrackingServerSummaries": [summary]}

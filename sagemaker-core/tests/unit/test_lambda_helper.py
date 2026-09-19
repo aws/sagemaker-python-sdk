@@ -15,10 +15,9 @@
 from __future__ import absolute_import
 
 import pytest
-import os
 import zipfile
 from io import BytesIO
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 from sagemaker.core.lambda_helper import (

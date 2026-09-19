@@ -15,9 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-import json
-from unittest.mock import Mock, MagicMock, patch
-from botocore.exceptions import ClientError
+from unittest.mock import Mock, patch
 
 from sagemaker.mlops.local.pipeline import (
     LocalPipelineExecutor,
@@ -31,10 +29,9 @@ from sagemaker.mlops.local.pipeline import (
 )
 from sagemaker.mlops.local.exceptions import StepExecutionException
 from sagemaker.mlops.workflow.steps import StepTypeEnum
-from sagemaker.core.workflow.parameters import ParameterString, ParameterInteger
+from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.core.workflow.execution_variables import ExecutionVariables
-from sagemaker.core.workflow.functions import Join, JsonGet
-from sagemaker.core.workflow.properties import Properties
+from sagemaker.core.workflow.functions import Join
 
 
 @pytest.fixture

@@ -16,13 +16,11 @@ import json
 import uuid
 import pytest
 import logging
-import boto3
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.train.configs import Compute
 from sagemaker.core.resources import EndpointConfig
-from sagemaker.core.helper.session_helper import Session
 
 logger = logging.getLogger(__name__)
 

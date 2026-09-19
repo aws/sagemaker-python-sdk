@@ -13,15 +13,13 @@
 """Unit tests for trainer_wait module."""
 
 import pytest
-import time
-from unittest.mock import MagicMock, patch, Mock, call
+from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
 
-from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededError
+from sagemaker.core.utils.exceptions import FailedStatusError
 
 from sagemaker.train.common_utils.trainer_wait import (
     _setup_mlflow_integration,
-    _is_jupyter_environment,
     _is_unassigned_attribute,
     _calculate_training_progress,
     _calculate_transition_duration,

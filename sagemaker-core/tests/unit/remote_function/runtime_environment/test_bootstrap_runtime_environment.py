@@ -12,9 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, mock_open, MagicMock
-import json
-import sys
+from unittest.mock import Mock, patch, mock_open
 
 from sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment import (
     _bootstrap_runtime_env_for_remote_function,
@@ -35,7 +33,6 @@ from sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_enviro
     main,
     SUCCESS_EXIT_CODE,
     DEFAULT_FAILURE_CODE,
-    SENSITIVE_KEYWORDS,
     HIDDEN_VALUE,
 )
 from sagemaker.core.remote_function.runtime_environment.runtime_environment_manager import (

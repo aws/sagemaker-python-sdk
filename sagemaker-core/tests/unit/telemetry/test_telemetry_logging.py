@@ -19,7 +19,6 @@ import pytest
 import requests
 from unittest.mock import Mock, patch, MagicMock
 import boto3
-import sagemaker
 from sagemaker.core.telemetry.constants import Feature, DEFAULT_AWS_REGION
 from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.telemetry_logging import (

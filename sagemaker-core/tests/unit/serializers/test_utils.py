@@ -15,10 +15,8 @@
 from __future__ import absolute_import
 
 import pytest
-import struct
 import numpy as np
 from io import BytesIO
-from unittest.mock import Mock, patch
 
 from sagemaker.core.serializers.utils import (
     _write_recordio,

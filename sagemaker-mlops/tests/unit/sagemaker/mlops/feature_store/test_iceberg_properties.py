@@ -927,7 +927,6 @@ class TestGetWithIcebergProperties:
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
     def test_no_iceberg_fetch_by_default(self, mock_get_client, mock_get_iceberg):
         """Test that Iceberg properties are not fetched when flag is False (default)."""
-        from sagemaker.core.shapes import FeatureDefinition
 
         mock_client = MagicMock()
         mock_client.describe_feature_group.return_value = {

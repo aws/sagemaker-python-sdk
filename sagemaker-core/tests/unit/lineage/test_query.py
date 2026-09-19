@@ -14,7 +14,7 @@
 """Unit tests for sagemaker.core.lineage.query module"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime
 
 from sagemaker.core.lineage.query import (

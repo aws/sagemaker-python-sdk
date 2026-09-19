@@ -2,7 +2,6 @@
 # Licensed under the Apache License, Version 2.0
 """Unit tests for list_records function."""
 
-import pytest
 from unittest.mock import Mock, patch
 
 

@@ -1,9 +1,7 @@
 """Unit tests for sagemaker.serve.detector.pickle_dependencies module."""
 
 import unittest
-from unittest.mock import Mock, patch, mock_open, MagicMock
-from pathlib import Path
-import subprocess
+from unittest.mock import Mock, patch
 import json
 from sagemaker.serve.detector.pickle_dependencies import (
     batched,

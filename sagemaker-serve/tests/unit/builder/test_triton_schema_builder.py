@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 import pytest
 import numpy as np
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
 from sagemaker.serve.builder.triton_schema_builder import (
     TritonSchemaBuilder,

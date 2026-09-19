@@ -119,7 +119,6 @@ from sagemaker.core.explainer.explainer_config import ExplainerConfig
 from sagemaker.core.enums import EndpointType
 from sagemaker.core.common_utils import (
     Tags,
-    ModelApprovalStatusEnum,
     _resolve_routing_config,
     format_tags,
     resolve_value_from_config,

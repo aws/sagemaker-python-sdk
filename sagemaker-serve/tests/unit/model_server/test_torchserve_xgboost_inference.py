@@ -4,7 +4,7 @@ Simple tests that don't require module import.
 """
 
 import unittest
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, patch
 import os
 
 

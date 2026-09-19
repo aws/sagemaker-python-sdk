@@ -3,7 +3,6 @@
 import unittest
 from unittest.mock import Mock, patch, mock_open
 import tempfile
-import os
 
 
 class TestGetAllFilesForInstalledPackagesPip(unittest.TestCase):

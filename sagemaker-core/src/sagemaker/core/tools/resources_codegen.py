@@ -366,7 +366,7 @@ class ResourcesCodeGen:
             resource_class = f"class {resource_name}(Base):\n"
 
             class_documentation_string = f"Class representing resource {resource_name}\n\n"
-            class_documentation_string += f"Attributes:\n"
+            class_documentation_string += "Attributes:\n"
             class_documentation_string += self._get_shape_attr_documentation_string(
                 attributes_and_documentation
             )
@@ -1029,13 +1029,13 @@ class ResourcesCodeGen:
                 exclude_resource_attrs=exclude_resource_attrs,
             )
             if _shape_attr_documentation_string:
-                docstring += f"\nParameters:\n"
+                docstring += "\nParameters:\n"
                 docstring += _shape_attr_documentation_string
 
         if include_session_region:
             if not _shape_attr_documentation_string:
-                docstring += f"\nParameters:\n"
-            docstring += add_indent(f"session: Boto3 session.\nregion: Region name.\n")
+                docstring += "\nParameters:\n"
+            docstring += add_indent("session: Boto3 session.\nregion: Region name.\n")
 
         if include_return_resource_docstring:
             docstring += f"\nReturns:\n" f"    The {resource_name} resource.\n"
@@ -1947,7 +1947,7 @@ if not isinstance(self.resource_config, Unassigned):
         ]
 
         if custom_key_mapping_str:
-            resource_iterator_args_list.append(f"custom_key_mapping=custom_key_mapping")
+            resource_iterator_args_list.append("custom_key_mapping=custom_key_mapping")
 
         exclude_list = ["next_token", "max_results"]
         get_all_args = self._generate_method_args(operation_input_shape_name, exclude_list)

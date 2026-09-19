@@ -14,10 +14,9 @@
 
 from __future__ import absolute_import
 
-import pytest
 import os
 import tempfile
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.core.tools.shapes_codegen import ShapesCodeGen
 

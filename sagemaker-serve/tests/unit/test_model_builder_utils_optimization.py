@@ -4,11 +4,9 @@ Targets uncovered optimization and deployment config functionality.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import tempfile
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
-from sagemaker.core.enums import Tag
 
 
 class TestExtractOptimizationConfigAndEnv(unittest.TestCase):

@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import json
 import os
 import tempfile
@@ -28,7 +28,6 @@ from sagemaker.ai_registry.air_constants import (
     RESPONSE_KEY_HUB_CONTENT_ARN,
     RESPONSE_KEY_HUB_CONTENT_VERSION,
     DATASET_MAX_FILE_SIZE_BYTES,
-    DATASET_SUPPORTED_EXTENSIONS,
 )
 
 

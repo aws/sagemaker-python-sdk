@@ -36,14 +36,10 @@ from sagemaker.core.common_utils import (
 import sagemaker.core.logs
 from sagemaker.core.session_settings import SessionSettings
 from sagemaker.core.common_utils import (
-    secondary_training_status_changed,
-    secondary_training_status_message,
     sts_regional_endpoint,
     retries,
     resolve_value_from_config,
     get_sagemaker_config_value,
-    resolve_class_attribute_from_config,
-    resolve_nested_dict_value_from_config,
     update_nested_dictionary_with_values_from_config,
     update_list_of_dicts_with_values_from_config,
     format_tags,
@@ -59,12 +55,6 @@ from sagemaker.core._studio import _append_project_tags
 from sagemaker.core.config.config import load_sagemaker_config, validate_sagemaker_config
 from sagemaker.core.config.config_schema import (
     KEY,
-    TRANSFORM_JOB,
-    TRANSFORM_JOB_ENVIRONMENT_PATH,
-    TRANSFORM_JOB_KMS_KEY_ID_PATH,
-    TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
-    VOLUME_KMS_KEY_ID,
-    TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
     MODEL,
     MODEL_CONTAINERS_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
@@ -72,7 +62,6 @@ from sagemaker.core.config.config_schema import (
     MODEL_PRIMARY_CONTAINER_PATH,
     MODEL_VPC_CONFIG_PATH,
     ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
-    KMS_KEY_ID,
     ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
     ENDPOINT_CONFIG,
     ENDPOINT_CONFIG_DATA_CAPTURE_PATH,

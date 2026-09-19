@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 """Unit tests for mlflow_url_utils module."""
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from sagemaker.train.common_utils.mlflow_url_utils import (

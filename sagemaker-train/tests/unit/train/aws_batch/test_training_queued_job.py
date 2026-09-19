@@ -15,7 +15,7 @@
 import pytest
 import time
 import asyncio
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.train.aws_batch.training_queued_job import TrainingQueuedJob
 from sagemaker.train.aws_batch.exception import NoTrainingJob, MissingRequiredArgument
@@ -24,8 +24,6 @@ from .conftest import (
     JOB_ARN,
     JOB_ID,
     REASON,
-    TRAINING_JOB_NAME,
-    TRAINING_JOB_ARN,
     JOB_STATUS_PENDING,
     JOB_STATUS_RUNNING,
     JOB_STATUS_SUCCEEDED,

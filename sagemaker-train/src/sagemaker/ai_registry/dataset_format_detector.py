@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from pathlib import Path
 
 

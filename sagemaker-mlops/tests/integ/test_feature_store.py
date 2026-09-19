@@ -19,7 +19,6 @@ from sagemaker.mlops.feature_store.feature_utils import (
 )
 from sagemaker.mlops.feature_store.dataset_builder import DatasetBuilder
 from sagemaker.core.utils import unique_name_from_base
-from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
 
 
 @pytest.fixture(scope="module")

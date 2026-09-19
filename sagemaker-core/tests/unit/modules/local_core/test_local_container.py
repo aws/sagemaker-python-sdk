@@ -12,20 +12,18 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch, mock_open
 import os
 import subprocess
 
 from sagemaker.core.modules.local_core.local_container import (
     _LocalContainer,
-    DOCKER_COMPOSE_FILENAME,
     DOCKER_COMPOSE_HTTP_TIMEOUT_ENV,
     DOCKER_COMPOSE_HTTP_TIMEOUT,
 )
 from sagemaker.core.modules import Session
 from sagemaker.core.modules.configs import Channel
 from sagemaker.core.shapes import DataSource, S3DataSource, FileSystemDataSource
-from sagemaker.core.utils.utils import Unassigned
 
 
 @pytest.fixture

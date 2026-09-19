@@ -19,7 +19,7 @@ import time
 import tempfile
 import os
 import tarfile
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 from sagemaker.core.common_utils import (

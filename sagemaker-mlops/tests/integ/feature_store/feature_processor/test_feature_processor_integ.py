@@ -16,8 +16,6 @@ import glob
 import logging
 import os
 import subprocess
-import sys
-import tempfile
 import time
 from typing import Dict
 from datetime import datetime

@@ -1,7 +1,7 @@
 """Unit tests for tensorflow_serving prepare.py module."""
 
 import unittest
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import patch, mock_open
 from pathlib import Path
 import tempfile
 import shutil

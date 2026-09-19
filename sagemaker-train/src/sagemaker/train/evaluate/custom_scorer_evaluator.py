@@ -243,7 +243,7 @@ class CustomScorerEvaluator(BaseEvaluator):
             region = self.region
 
             # Fetch override parameters from hub (let exceptions propagate)
-            _logger.info(f"Fetching evaluation override parameters for hyperparameters property")
+            _logger.info("Fetching evaluation override parameters for hyperparameters property")
 
             # Extract boto_session from sagemaker_core Session
             # HubContent.get() in recipe_utils expects boto3 session, not sagemaker_core Session
@@ -526,7 +526,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         pipeline_definition = self._render_pipeline_definition(template_str, template_context)
 
         # Generate execution name
-        name = self.base_eval_name or f"custom-scorer-eval"
+        name = self.base_eval_name or "custom-scorer-eval"
 
         # Validate dataset path exists
         if hasattr(self, "dataset") and self.dataset:

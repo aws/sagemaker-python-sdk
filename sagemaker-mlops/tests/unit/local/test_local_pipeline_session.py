@@ -15,9 +15,8 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
-from datetime import datetime
 
 from sagemaker.mlops.local.local_pipeline_session import LocalPipelineSession
 

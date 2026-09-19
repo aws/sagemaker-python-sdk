@@ -22,7 +22,6 @@ import warnings
 import six
 from six.moves import urllib
 import re
-from pathlib import Path
 from urllib.parse import urlparse
 
 

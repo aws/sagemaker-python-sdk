@@ -12,7 +12,7 @@ from __future__ import absolute_import
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pydantic import Field, root_validator, validator
 
@@ -535,7 +535,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         return {
             "pipeline_name": aws_context.get("pipeline_name")
             or artifacts.get("pipeline_name")
-            or f"SagemakerEvaluation-MTRLEvaluation",
+            or "SagemakerEvaluation-MTRLEvaluation",
             "role_arn": aws_context["role_arn"],
             "base_model_arn": base_model_arn,
             "agent_arn": self._agent_arn_resolved,
@@ -800,7 +800,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             eval_mode = "Base + Fine-tuned comparison"
 
         print(f"\n{'─' * 60}")
-        print(f"  MTRL Evaluation Job")
+        print("  MTRL Evaluation Job")
         print(f"{'─' * 60}")
         print(f"  Model          : {self._base_model_name_cache or self.model}")
         print(f"  Eval mode      : {eval_mode}")

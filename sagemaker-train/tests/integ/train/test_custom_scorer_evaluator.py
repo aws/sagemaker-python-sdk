@@ -124,7 +124,7 @@ class TestCustomScorerEvaluatorIntegration:
         assert evaluator.dataset == TEST_CONFIG["dataset_s3_uri"]
         assert evaluator.evaluate_base_model == TEST_CONFIG["evaluate_base_model"]
 
-        logger.info(f"Created evaluator with custom evaluator ARN")
+        logger.info("Created evaluator with custom evaluator ARN")
 
         # Step 2: Access hyperparameters
         logger.info("Accessing hyperparameters")

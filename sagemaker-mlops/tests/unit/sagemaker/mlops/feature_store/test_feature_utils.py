@@ -5,7 +5,6 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
-import numpy as np
 
 from sagemaker.mlops.feature_store.feature_utils import (
     load_feature_definitions_from_dataframe,
@@ -14,11 +13,6 @@ from sagemaker.mlops.feature_store.feature_utils import (
     ingest_dataframe,
     get_session_from_role,
     _is_collection_column,
-    _generate_feature_definition,
-)
-from sagemaker.mlops.feature_store.feature_definition import (
-    FeatureDefinition,
-    ListCollectionType,
 )
 
 

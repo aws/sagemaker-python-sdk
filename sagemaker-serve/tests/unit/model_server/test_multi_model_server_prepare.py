@@ -1,7 +1,7 @@
 """Unit tests for multi_model_server prepare.py module."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
 import tempfile
 import shutil

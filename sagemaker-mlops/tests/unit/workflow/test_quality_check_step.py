@@ -14,14 +14,11 @@
 
 from __future__ import absolute_import
 
-import pytest
-from unittest.mock import Mock
 
 from sagemaker.mlops.workflow.quality_check_step import (
     DataQualityCheckConfig,
     ModelQualityCheckConfig,
 )
-from sagemaker.mlops.workflow.steps import StepTypeEnum
 
 
 def test_data_quality_check_config_init():

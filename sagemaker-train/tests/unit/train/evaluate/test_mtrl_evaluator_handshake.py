@@ -19,7 +19,6 @@ passed to existing evaluators (BenchMarkEvaluator, CustomScorerEvaluator).
 from __future__ import absolute_import
 
 import os
-import json
 from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
@@ -32,9 +31,7 @@ from sagemaker.train.common_utils.model_resolution import (
     _ModelResolver,
     _ModelInfo,
     _ModelType,
-    _resolve_base_model,
 )
-from sagemaker.train.base_trainer import BaseTrainer
 
 # ============================================================
 # Fixtures
@@ -244,7 +241,7 @@ class TestCustomScorerEvaluatorWithMTRLTrainer:
     )
     def test_custom_scorer_evaluator_accepts_mtrl_trainer(self, mock_resolve_mp, mock_mlflow):
         """CustomScorerEvaluator should accept a MultiTurnRLTrainer with completed job."""
-        from sagemaker.train.evaluate import CustomScorerEvaluator, get_builtin_metrics
+        from sagemaker.train.evaluate import CustomScorerEvaluator
 
         mock_mlflow.return_value = MLFLOW_ARN
 

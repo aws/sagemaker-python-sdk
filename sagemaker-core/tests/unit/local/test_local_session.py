@@ -14,7 +14,7 @@
 """Unit tests for sagemaker.core.local.local_session module"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 from sagemaker.core.local.local_session import (

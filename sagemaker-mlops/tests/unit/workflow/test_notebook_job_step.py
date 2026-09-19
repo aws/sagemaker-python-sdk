@@ -17,10 +17,8 @@ from __future__ import absolute_import
 import os
 import tempfile
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.mlops.workflow.notebook_job_step import NotebookJobStep
-from sagemaker.mlops.workflow.retry import RetryPolicy
-from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.config.config_schema import (
     NOTEBOOK_JOB_ROLE_ARN,
     NOTEBOOK_JOB_S3_ROOT_URI,

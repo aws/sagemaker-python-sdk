@@ -15,7 +15,6 @@
 
 import pytest
 import tempfile
-import json
 import os
 
 from sagemaker.ai_registry.dataset_validation import (

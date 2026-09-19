@@ -163,7 +163,6 @@ def test_cache_config_without_expire_after():
 
 def test_configurable_retry_step_add_retry_policy_empty():
     from sagemaker.mlops.workflow.steps import TrainingStep
-    from sagemaker.mlops.workflow.retry import RetryPolicy
 
     step = TrainingStep(name="test", step_args=None)
     step.retry_policies = []
@@ -271,7 +270,6 @@ def test_step_validate_json_get_property_file_reference_invalid_step_type():
 def test_step_validate_json_get_property_file_reference_undefined_property_file():
     from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
     from sagemaker.core.workflow.functions import JsonGet
-    from sagemaker.core.workflow.properties import PropertyFile
 
     step = Mock(spec=Step)
     step.name = "current-step"

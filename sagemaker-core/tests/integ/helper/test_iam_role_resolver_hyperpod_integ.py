@@ -44,7 +44,6 @@ import sys
 import uuid
 
 import boto3
-import pytest
 from botocore.exceptions import ClientError, NoCredentialsError
 
 # Allow running as a bare script (python tests/.../this_file.py) by making the

@@ -4,14 +4,13 @@ Focuses on build() and deploy() methods with various configurations.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 import tempfile
 import os
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer, ModelHub
 from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve.constants import Framework
 from sagemaker.core.resources import Model, Endpoint
 from sagemaker.core.inference_config import (
     ServerlessInferenceConfig,

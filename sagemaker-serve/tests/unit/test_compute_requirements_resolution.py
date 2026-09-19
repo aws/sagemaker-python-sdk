@@ -4,13 +4,12 @@ Tests the _resolve_compute_requirements method with various scenarios.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pytest
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.core.inference_config import ResourceRequirements
-from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
 
 
 class TestComputeRequirementsResolution(unittest.TestCase):

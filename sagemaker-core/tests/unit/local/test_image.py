@@ -14,10 +14,9 @@
 import pytest
 import os
 import tempfile
-import platform
 import subprocess
 import json
-from unittest.mock import Mock, MagicMock, patch, call
+from unittest.mock import Mock, patch
 from sagemaker.core.local.image import (
     _SageMakerContainer,
     _Volume,
@@ -27,13 +26,11 @@ from sagemaker.core.local.image import (
     _create_processing_config_file_directories,
     _delete_tree,
     _aws_credentials,
-    _aws_credentials_available_in_metadata_service,
     _use_short_lived_credentials,
     _write_json_file,
     _ecr_login_if_needed,
     _pull_image,
     _HostingContainer,
-    CONTAINER_PREFIX,
     STUDIO_HOST_NAME,
 )
 

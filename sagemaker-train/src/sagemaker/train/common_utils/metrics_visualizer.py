@@ -3,7 +3,7 @@
 import io
 import base64
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from sagemaker.core.resources import TrainingJob
 

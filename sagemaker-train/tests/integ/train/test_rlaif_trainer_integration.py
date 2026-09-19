@@ -16,8 +16,6 @@ from __future__ import absolute_import
 
 import time
 import random
-import boto3
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.rlaif_trainer import RLAIFTrainer
 from sagemaker.train.common import TrainingType
 import pytest

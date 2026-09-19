@@ -26,7 +26,6 @@ from sagemaker.mlops.feature_store.feature_processor._constants import (
     SPARK_FILES_PATH,
     S3_DATA_DISTRIBUTION_TYPE,
 )
-from sagemaker.core.inputs import TrainingInput
 from sagemaker.core.shapes import Channel, DataSource, S3DataSource
 from sagemaker.core.remote_function.core.stored_function import StoredFunction
 from sagemaker.core.remote_function.job import (

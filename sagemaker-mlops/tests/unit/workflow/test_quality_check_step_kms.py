@@ -14,15 +14,11 @@
 
 from __future__ import absolute_import
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.mlops.workflow.quality_check_step import (
     QualityCheckStep,
-    DataQualityCheckConfig,
-    ModelQualityCheckConfig,
 )
-from sagemaker.mlops.workflow.check_job_config import CheckJobConfig
 
 _OUTPUT_KMS_KEY = "arn:aws:kms:us-east-1:123456789012:key/output-key-id"
 _VOLUME_KMS_KEY = "arn:aws:kms:us-east-1:123456789012:key/volume-key-id"

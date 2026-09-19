@@ -1,11 +1,10 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from botocore.exceptions import ClientError
 from sagemaker.serve.async_inference.async_inference_response import AsyncInferenceResponse
 from sagemaker.serve.async_inference import WaiterConfig
 from sagemaker.core.exceptions import (
     ObjectNotExistedError,
-    UnexpectedClientError,
     AsyncInferenceModelError,
 )
 

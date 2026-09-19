@@ -11,14 +11,12 @@ Tests utility functions for ModelBuilder including:
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import os
 import tempfile
-from typing import Optional
 
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 from sagemaker.serve.constants import Framework
-from sagemaker.serve.utils.types import ModelServer
 
 
 class TestSessionManagement(unittest.TestCase):

@@ -18,7 +18,6 @@ import os
 import tempfile
 import shutil
 from unittest.mock import patch, MagicMock
-import pytest
 
 from sagemaker.train.remote_function.custom_file_filter import (
     CustomFileFilter,

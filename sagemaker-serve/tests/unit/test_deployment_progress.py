@@ -1,7 +1,7 @@
 """Unit tests for sagemaker.serve.deployment_progress module."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 from sagemaker.serve.deployment_progress import (
     EndpointDeploymentProgress,

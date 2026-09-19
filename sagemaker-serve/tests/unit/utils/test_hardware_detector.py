@@ -1,7 +1,7 @@
 """Unit tests for sagemaker.serve.utils.hardware_detector module."""
 
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from sagemaker.serve.utils.hardware_detector import (
     _format_instance_type,
     MIB_CONVERSION_FACTOR,

@@ -21,7 +21,6 @@ import base64
 import io
 
 import sys
-import hmac
 import hashlib
 import pickle
 

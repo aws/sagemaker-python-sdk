@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.core.model_registry import (
     get_model_package_args,
     get_create_model_package_request,

@@ -16,7 +16,7 @@ from __future__ import absolute_import
 
 import pytest
 import json
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 from sagemaker.mlops.workflow.pipeline import (
@@ -27,7 +27,6 @@ from sagemaker.mlops.workflow.pipeline import (
 from sagemaker.mlops.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.core.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.mlops.workflow.parallelism_config import ParallelismConfiguration
-from sagemaker.mlops.workflow.selective_execution_config import SelectiveExecutionConfig
 from sagemaker.core.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 

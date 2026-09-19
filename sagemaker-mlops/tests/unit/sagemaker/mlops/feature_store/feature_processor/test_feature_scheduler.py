@@ -57,9 +57,7 @@ from sagemaker.core.remote_function.job import (
     _JobSettings,
     SPARK_APP_SCRIPT_PATH,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
-    REMOTE_FUNCTION_WORKSPACE,
     ENTRYPOINT_SCRIPT_NAME,
-    SPARK_CONF_CHANNEL_NAME,
 )
 from sagemaker.core.workflow.parameters import Parameter, ParameterTypeEnum
 from sagemaker.mlops.workflow.retry import (

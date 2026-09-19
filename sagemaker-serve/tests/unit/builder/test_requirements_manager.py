@@ -1,7 +1,7 @@
 """Unit tests for sagemaker.serve.builder.requirements_manager module."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 import os
 from sagemaker.serve.builder.requirements_manager import RequirementsManager
 

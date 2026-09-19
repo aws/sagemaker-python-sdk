@@ -15,14 +15,12 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.core.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.core.deserializers import JSONDeserializer, TorchTensorDeserializer
-from sagemaker.serve.constants import Framework
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.core.training.configs import SourceCode
 

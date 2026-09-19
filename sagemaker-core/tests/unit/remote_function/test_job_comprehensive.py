@@ -18,9 +18,7 @@ import json
 import os
 import pytest
 import sys
-import tempfile
-from unittest.mock import Mock, patch, MagicMock, mock_open
-from io import BytesIO
+from unittest.mock import Mock, patch, MagicMock
 
 from sagemaker.core.remote_function.job import (
     _JobSettings,
@@ -36,7 +34,6 @@ from sagemaker.core.remote_function.job import (
     _logs_init,
     _get_initial_job_state,
     LogState,
-    _RunInfo,
 )
 from sagemaker.core.remote_function.checkpoint_location import CheckpointLocation
 

@@ -295,7 +295,7 @@ def generate_field_definition(
     if "pattern" in prop_schema:
         constraints.append(f'pattern="{prop_schema["pattern"]}"')
     if field_type == "string" and "enum" in prop_schema and len(prop_schema["enum"]) == 1:
-        constraints.append(f"const=True")
+        constraints.append("const=True")
 
     if required and not constraints:
         field_def = f"{prop_name}: {field_type_str}"

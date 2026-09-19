@@ -322,7 +322,7 @@ def _download_bedrock_aggregate_json(pipeline_execution, training_job_name: str)
                 obj_data = s3_client.get_object(Bucket=bucket_name, Key=obj["Key"])
                 return (json.loads(obj_data["Body"].read().decode("utf-8")), match.group(1))
 
-    raise FileNotFoundError(f"[PySDK Error] bedrock_llm_judge_results.json not found")
+    raise FileNotFoundError("[PySDK Error] bedrock_llm_judge_results.json not found")
 
 
 def _parse_prompt(prompt_str: str) -> str:
@@ -700,7 +700,7 @@ def _show_llmaj_results(
         custom_aggregate, bedrock_job_name = _download_bedrock_aggregate_json(
             pipeline_execution, primary_job_name
         )
-        logger.info(f"Successfully downloaded primary model aggregate results")
+        logger.info("Successfully downloaded primary model aggregate results")
     except FileNotFoundError as e:
         # Parse S3 path for detailed error message
         s3_path = (
@@ -727,7 +727,7 @@ def _show_llmaj_results(
             base_aggregate, base_bedrock_job_name = _download_bedrock_aggregate_json(
                 pipeline_execution, base_job_name
             )
-            logger.info(f"Successfully downloaded base model aggregate results")
+            logger.info("Successfully downloaded base model aggregate results")
         except FileNotFoundError as e:
             # Parse S3 path for detailed error message
             s3_path = (
@@ -944,7 +944,7 @@ def _show_inspect_ai_results(execution) -> None:
         s3_output = response.get("OutputDataConfig", {}).get("S3OutputPath", "")
         model_artifacts = response.get("ModelArtifacts", {}).get("S3ModelArtifacts", "")
 
-        console.print(f"\n[bold]InspectAI Evaluation Results[/bold]")
+        console.print("\n[bold]InspectAI Evaluation Results[/bold]")
         console.print("═" * 70)
 
         table = Table(show_header=True, header_style="bold")

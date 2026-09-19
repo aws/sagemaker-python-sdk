@@ -13,7 +13,7 @@
 """Unit tests for training_queue module"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.train.aws_batch.training_queue import TrainingQueue
 from sagemaker.train.model_trainer import ModelTrainer, Mode
@@ -21,10 +21,8 @@ from .conftest import (
     JOB_NAME,
     JOB_QUEUE,
     JOB_ARN,
-    JOB_ID,
     SCHEDULING_PRIORITY,
     SHARE_IDENTIFIER,
-    QUOTA_SHARE_NAME,
     TIMEOUT_CONFIG,
     BATCH_TAGS,
     DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,

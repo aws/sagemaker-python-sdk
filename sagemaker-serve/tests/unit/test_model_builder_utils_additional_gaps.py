@@ -4,9 +4,7 @@ Targets remaining gaps from coverage report.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import tempfile
-import os
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 from sagemaker.serve.constants import Framework

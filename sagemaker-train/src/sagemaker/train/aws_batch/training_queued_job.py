@@ -27,8 +27,6 @@ from sagemaker.train.configs import (
     Compute,
     Networking,
     StoppingCondition,
-    SourceCode,
-    TrainingImageConfig,
 )
 from .batch_api_helper import _terminate_service_job, _describe_service_job, _update_service_job
 from .exception import NoTrainingJob, MissingRequiredArgument

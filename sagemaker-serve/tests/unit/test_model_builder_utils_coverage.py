@@ -4,21 +4,18 @@ Focuses on utility methods that haven't been fully tested yet.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 import os
 import tempfile
 
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 from sagemaker.serve.constants import Framework
-from sagemaker.serve.utils.types import ModelServer
 
 # Import test fixtures
 from .test_fixtures import (
     mock_sagemaker_session,
     MOCK_ROLE_ARN,
     MOCK_REGION,
-    MOCK_IMAGE_URI,
-    MOCK_S3_URI,
 )
 
 

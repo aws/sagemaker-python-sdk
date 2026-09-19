@@ -1,7 +1,7 @@
 """Unit tests for sagemaker.serve.utils.lineage_utils module."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from sagemaker.serve.utils.lineage_utils import _get_mlflow_model_path_type
 from sagemaker.serve.utils.lineage_constants import (
     MLFLOW_RUN_ID,

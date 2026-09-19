@@ -1177,7 +1177,7 @@ class TestRLAIFTrainerPipelineSession:
     ):
         """TrainingStep.arguments produces valid PascalCase dict."""
         from sagemaker.train.rlaif_trainer import RLAIFTrainer
-        from sagemaker.core.workflow.pipeline_context import PipelineSession, _StepArguments
+        from sagemaker.core.workflow.pipeline_context import PipelineSession
 
         # Avoid depending on sagemaker-mlops (the dependency direction is
         # sagemaker-mlops -> sagemaker-train). TrainingStep.arguments internally

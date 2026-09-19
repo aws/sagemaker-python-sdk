@@ -12,22 +12,17 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List, Optional
-from packaging.version import Version
+from unittest.mock import Mock, patch
 
 import sagemaker
 from sagemaker.core.jumpstart import utils, enums, constants
 from sagemaker.core.jumpstart.types import (
     JumpStartVersionedModelId,
-    JumpStartModelHeader,
     JumpStartModelSpecs,
-    JumpStartBenchmarkStat,
     DeploymentConfigMetadata,
 )
 from sagemaker.core.jumpstart.exceptions import VulnerableJumpStartModelError
 from sagemaker.core.jumpstart.models import HubContentDocument
-from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
 
 class TestIsPipelineVariable:

@@ -4,8 +4,7 @@ This test validates task 4.4 requirements.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import pytest
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode

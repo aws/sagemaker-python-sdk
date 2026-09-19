@@ -5,7 +5,7 @@
 import json
 import logging
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from pydantic import model_validator
 
@@ -13,15 +13,6 @@ import botocore.exceptions
 
 from sagemaker.core.resources import FeatureGroup
 from sagemaker.core.resources import Base
-from sagemaker.core.shapes import (
-    FeatureDefinition,
-    OfflineStoreConfig,
-    OnlineStoreConfig,
-    OnlineStoreConfigUpdate,
-    Tag,
-    ThroughputConfig,
-    ThroughputConfigUpdate,
-)
 from sagemaker.core.shapes import Unassigned
 from sagemaker.core.helper.pipeline_variable import StrPipeVar
 from sagemaker.core.s3.utils import parse_s3_url

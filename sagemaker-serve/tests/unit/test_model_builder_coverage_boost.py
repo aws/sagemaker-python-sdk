@@ -5,13 +5,11 @@ Targets specific uncovered lines from coverage report.
 
 import unittest
 from unittest.mock import Mock, patch, MagicMock, PropertyMock
-from dataclasses import dataclass
-import tempfile
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.types import ModelServer
-from sagemaker.core.training.configs import Compute, Networking
+from sagemaker.core.training.configs import Compute
 from sagemaker.core.jumpstart.configs import JumpStartConfig
 from sagemaker.core.inference_config import AsyncInferenceConfig
 from botocore.exceptions import ClientError

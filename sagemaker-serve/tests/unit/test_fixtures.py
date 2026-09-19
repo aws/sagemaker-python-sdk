@@ -3,7 +3,7 @@ Test fixtures and mock helpers for ModelBuilder unit tests.
 Based on patterns from legacy PySDK tests.
 """
 
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
 # Mock constants
 MOCK_IMAGE_CONFIG = {"RepositoryAccessMode": "Vpc"}

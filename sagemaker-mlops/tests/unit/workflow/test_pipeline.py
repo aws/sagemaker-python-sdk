@@ -259,7 +259,6 @@ def test_pipeline_get_latest_execution_arn_none(mock_session, mock_step):
 
 
 def test_pipeline_build_parameters_from_execution(mock_session, mock_step):
-    from sagemaker.mlops.workflow.pipeline import PipelineExecution
 
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
 
@@ -418,7 +417,6 @@ def test_pipeline_execution_list_parameters(mock_session):
 
 def test_pipeline_execution_wait(mock_session):
     from sagemaker.mlops.workflow.pipeline import PipelineExecution
-    import botocore.waiter
 
     execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     with patch("botocore.waiter.create_waiter_with_client") as mock_waiter:

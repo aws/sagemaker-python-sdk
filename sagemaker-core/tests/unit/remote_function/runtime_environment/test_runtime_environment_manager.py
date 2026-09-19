@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 import subprocess
 import sys
 
@@ -24,8 +24,6 @@ from sagemaker.core.remote_function.runtime_environment.runtime_environment_mana
     _run_and_get_output_shell_cmd,
     _run_pre_execution_command_script,
     _run_shell_cmd,
-    _log_output,
-    _log_error,
     _python_executable,
 )
 

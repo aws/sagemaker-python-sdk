@@ -1,6 +1,3 @@
-import os
-import subprocess
-import sys
 from datasets import load_dataset
 from transformers import AutoTokenizer
 

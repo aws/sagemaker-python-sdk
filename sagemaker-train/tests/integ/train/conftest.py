@@ -202,7 +202,6 @@ def sagemaker_session_us_east_1():
     return Session(boto_session=boto_session)
 
 
-import time
 import logging
 
 logger = logging.getLogger(__name__)

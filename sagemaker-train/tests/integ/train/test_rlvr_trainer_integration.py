@@ -18,12 +18,9 @@ import time
 import random
 import tempfile
 import pytest
-import boto3
 import yaml
 import logging
 
-from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.resources import ModelPackageGroup
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 from sagemaker.ai_registry.evaluator import Evaluator

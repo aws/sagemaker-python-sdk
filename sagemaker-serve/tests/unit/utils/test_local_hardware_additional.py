@@ -1,8 +1,7 @@
 """Additional unit tests for local_hardware.py to increase coverage."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import subprocess
+from unittest.mock import Mock, patch
 
 
 class TestGetAvailableGpus(unittest.TestCase):

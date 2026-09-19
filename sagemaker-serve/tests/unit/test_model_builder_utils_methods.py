@@ -1,8 +1,7 @@
 """Unit tests for _ModelBuilderUtils class utility methods."""
 
 import unittest
-from unittest.mock import Mock, patch
-from typing import Optional, Dict
+from unittest.mock import Mock
 
 from sagemaker.serve.constants import Framework
 

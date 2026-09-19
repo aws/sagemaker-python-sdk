@@ -14,8 +14,7 @@
 """Extended unit tests for sagemaker.core.jumpstart.utils module"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List
+from unittest.mock import Mock, patch
 
 from sagemaker.core.jumpstart import utils, constants, enums
 from sagemaker.core.jumpstart.types import JumpStartModelSpecs
