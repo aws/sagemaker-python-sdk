@@ -228,7 +228,7 @@ class TestLLMAsJudgeBaseModelFix:
         # Step 4: Wait for completion
         logger.info("\nWaiting for evaluation to complete...")
         logger.info(
-            f"  Timeout: {EVALUATION_TIMEOUT_SECONDS}s ({EVALUATION_TIMEOUT_SECONDS//3600}h)"
+            f"  Timeout: {EVALUATION_TIMEOUT_SECONDS}s ({EVALUATION_TIMEOUT_SECONDS // 3600}h)"
         )
         logger.info("  Poll interval: 30s")
 

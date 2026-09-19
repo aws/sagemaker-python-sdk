@@ -1,3 +1,5 @@
+"""Common types and options shared across SageMaker training modules."""
+
 from typing import Dict, Any
 from enum import Enum
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
@@ -91,6 +93,7 @@ class FineTuningOptions:
         }
 
     def __setattr__(self, name: str, value: Any):
+        """Set an attribute, routing private names to the instance dict."""
         if name.startswith("_"):
             super().__setattr__(name, value)
         elif hasattr(self, "_specs") and name in self._specs:
@@ -114,9 +117,9 @@ class FineTuningOptions:
         expected_type = spec.get("type")
         if expected_type == "float" and not isinstance(value, (int, float)):
             raise ValueError(f"{name} must be a number, got {type(value).__name__}")
-        elif expected_type == "integer" and not isinstance(value, int):
+        if expected_type == "integer" and not isinstance(value, int):
             raise ValueError(f"{name} must be an integer, got {type(value).__name__}")
-        elif expected_type == "string" and not isinstance(value, str):
+        if expected_type == "string" and not isinstance(value, str):
             raise ValueError(f"{name} must be a string, got {type(value).__name__}")
 
         # Range validation

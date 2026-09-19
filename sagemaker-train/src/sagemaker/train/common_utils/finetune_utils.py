@@ -12,6 +12,7 @@ from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
+from sagemaker.train.common_utils.model_aliases import normalize_model_name as _normalize_model_name
 
 # Single source of truth for Lambda-ARN detection, shared with the reward verifier
 # so both code paths agree on what counts as a Lambda ARN.
@@ -41,9 +42,6 @@ OPEN_WEIGHTS_REGIONS = [
 NOVA_REGIONS = ["us-east-1", "us-west-2"]  # IAD, PDX
 # Constants
 DEFAULT_REGION = "us-west-2"
-
-
-from sagemaker.train.common_utils.model_aliases import normalize_model_name as _normalize_model_name
 
 
 def _select_recipe_by_training_type(recipes: list, training_type, with_fallback: bool = True):
@@ -836,6 +834,7 @@ def _get_fine_tuning_options_and_model_arn(
     compute: Optional[Union[HyperPodCompute, TrainingJobCompute]] = None,
 ) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
+
     Returns:
         tuple: (FineTuningOptions, model_arn, is_gated_model)
     """
@@ -919,7 +918,8 @@ def _get_fine_tuning_options_and_model_arn(
                     )
             else:
                 raise ValueError(
-                    f"No recipes found with {platform_label} for technique: {customization_technique},training_type:{training_type}, "
+                    f"No recipes found with {platform_label} for technique: "
+                    f"{customization_technique},training_type:{training_type}, "
                     f"and sequence length:{sequence_length}"
                 )
 
@@ -928,7 +928,8 @@ def _get_fine_tuning_options_and_model_arn(
 
         if not recipe:
             raise ValueError(
-                f"No recipes found with {platform_label} for technique: {customization_technique},training_type:{training_type}"
+                f"No recipes found with {platform_label} for technique: "
+                f"{customization_technique},training_type:{training_type}"
             )
 
         # Start with the recipe's override_params (platform-specific key)
@@ -1193,7 +1194,7 @@ def _resolve_model_and_name(model, sagemaker_session=None):
                 import boto3
 
                 region_name = boto3.Session().region_name or os.environ.get("AWS_DEFAULT_REGION")
-            except:
+            except Exception:
                 pass
 
     if isinstance(model, str):

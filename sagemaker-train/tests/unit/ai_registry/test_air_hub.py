@@ -123,7 +123,7 @@ class TestAIRHub:
         AIRHub._sagemaker_client = mock_client
         AIRHub.hubName = "test-hub"
 
-        result = AIRHub.delete_hub_content("DataSet", "test-dataset", "1.0.0")
+        AIRHub.delete_hub_content("DataSet", "test-dataset", "1.0.0")
 
         mock_client.delete_hub_content.assert_called_once_with(
             HubName="test-hub",

@@ -280,7 +280,7 @@ class TestFinetuneUtils:
     ):
         """Test that a Lambda ARN triggers auto-creation of an Evaluator and returns its ARN."""
         lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-fn"
-        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"
+        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"  # noqa: E501
 
         # Simulate evaluator not found
         mock_evaluator_get.side_effect = Exception("Not found")
@@ -370,7 +370,7 @@ class TestFinetuneUtils:
     ):
         """Test that an existing evaluator pointing to the same Lambda ARN is reused without creating a new version."""
         lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-fn"
-        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"
+        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"  # noqa: E501
 
         # Simulate existing evaluator with the same Lambda reference
         mock_existing = Mock()
@@ -395,11 +395,11 @@ class TestFinetuneUtils:
         """Test that a new version is created if existing evaluator points to a different Lambda."""
         lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-fn"
         old_lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:old-reward-fn"
-        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/2.0"
+        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/2.0"  # noqa: E501
 
         # Simulate existing evaluator with a different Lambda reference
         mock_existing = Mock()
-        mock_existing.arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"
+        mock_existing.arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"  # noqa: E501
         mock_existing.reference = old_lambda_arn
         mock_evaluator_get.return_value = mock_existing
 
@@ -537,7 +537,7 @@ class TestFinetuneUtils:
             options, model_arn, is_gated_model = result
             assert model_arn == "arn:aws:sagemaker:us-east-1:123456789012:model/test-model"
             assert options is not None
-            assert is_gated_model == False
+            assert is_gated_model is False
         else:
             # If function returns None, test should still pass
             assert result is None
@@ -689,24 +689,24 @@ class TestFinetuneUtils:
         model_package = Mock(spec=ModelPackage)
 
         result = _validate_eula_for_gated_model(model_package, False, True)
-        assert result == True
+        assert result is True
 
     def test__validate_eula_for_gated_model_with_arn(self):
         """Test EULA validation returns True for ARN input"""
         model_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/test/1"
 
         result = _validate_eula_for_gated_model(model_arn, False, True)
-        assert result == True
+        assert result is True
 
     def test__validate_eula_for_gated_model_non_gated(self):
         """Test EULA validation for non-gated model"""
         result = _validate_eula_for_gated_model("test-model", False, False)
-        assert result == False
+        assert result is False
 
     def test__validate_eula_for_gated_model_gated_accepted(self):
         """Test EULA validation for gated model with EULA accepted"""
         result = _validate_eula_for_gated_model("gated-model", True, True)
-        assert result == True
+        assert result is True
 
     def test__validate_eula_for_gated_model_gated_rejected(self):
         """Test EULA validation raises error for gated model with EULA not accepted"""
@@ -1090,8 +1090,10 @@ class TestResolveIntermediateCheckpointMpg:
                     },
                     {
                         "CustomizationTechnique": "SFT",
-                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-123456789012/source/template.yaml",
-                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/"
+                        "recipes-123456789012/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/"
+                        "recipes-{customer_id}/source/params.json",
                         "Name": "datamix_sft",
                         "IsSubscriptionModel": True,
                     },
@@ -1149,8 +1151,10 @@ class TestResolveIntermediateCheckpointMpg:
                     },
                     {
                         "CustomizationTechnique": "SFT",
-                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/template.yaml",
-                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/"
+                        "recipes-{customer_id}/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/"
+                        "recipes-{customer_id}/source/params.json",
                         "Name": "datamix_sft",
                         "IsSubscriptionModel": True,
                     },
@@ -1202,8 +1206,10 @@ class TestResolveIntermediateCheckpointMpg:
                     },
                     {
                         "CustomizationTechnique": "SFT",
-                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/template.yaml",
-                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/"
+                        "recipes-{customer_id}/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/"
+                        "recipes-{customer_id}/source/params.json",
                         "Name": "datamix_sft",
                         "IsSubscriptionModel": True,
                     },

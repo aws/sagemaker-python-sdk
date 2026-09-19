@@ -27,7 +27,7 @@ os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
 os.environ.setdefault("SAGEMAKER_REGION", "us-west-2")
 os.environ.setdefault("AWS_REGION", "us-west-2")
 
-from sagemaker.train.common_utils.model_resolution import (
+from sagemaker.train.common_utils.model_resolution import (  # noqa: E402
     _ModelResolver,
     _ModelInfo,
     _ModelType,
@@ -38,7 +38,7 @@ from sagemaker.train.common_utils.model_resolution import (
 # ============================================================
 
 MODEL_PACKAGE_ARN = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-finetuned-model/1"
-BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/openai-reasoning-gpt-oss-20b/1.0.0"
+BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/openai-reasoning-gpt-oss-20b/1.0.0"  # noqa: E501
 BASE_MODEL_NAME = "openai-reasoning-gpt-oss-20b"
 MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-app/app-ABCDEF"
 S3_OUTPUT = "s3://sagemaker-us-west-2-123456789012/eval-output/"
@@ -100,7 +100,7 @@ class TestModelResolutionWithMTRLTrainer:
         assert result.model_type == _ModelType.FINE_TUNED
 
     def test_resolve_mtrl_trainer_with_model_arn_no_job(self):
-        """MTRLTrainer with _model_arn but no _latest_job should resolve as JumpStart-like (no source_model_package_arn)."""
+        """MTRLTrainer with _model_arn but no _latest_job should resolve as JumpStart-like (no source MP arn)."""
         trainer = _make_mock_mtrl_trainer(with_job=False)
 
         resolver = _ModelResolver(sagemaker_session=None)

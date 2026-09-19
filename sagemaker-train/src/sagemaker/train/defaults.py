@@ -32,7 +32,7 @@ from sagemaker.core.jumpstart.models import (
     TrainingVariantModel,
 )
 
-from sagemaker.train import logger
+from sagemaker.core.utils.utils import logger
 from sagemaker.train.utils import _get_repo_name_from_image, _default_s3_uri
 from sagemaker.train import configs
 from sagemaker.train.configs import (
@@ -191,7 +191,6 @@ class TrainDefaults:
             )
             logger.info(f"OutputDataConfig not provided. Using default:\n{output_data_config}")
         if output_data_config.s3_output_path is None:
-            base_job_name = base_job_name
             output_data_config.s3_output_path = _default_s3_uri(
                 session=sagemaker_session, additional_path=base_job_name
             )
@@ -291,6 +290,7 @@ class JumpStartTrainDefaults:
             )
         return compute
 
+    @staticmethod
     def get_networking(
         jumpstart_config: JumpStartConfig,
         networking: Optional[Networking] = None,
@@ -319,6 +319,7 @@ class JumpStartTrainDefaults:
                 )
         return networking
 
+    @staticmethod
     def get_training_image(
         jumpstart_config: JumpStartConfig,
         compute: Compute,
@@ -346,6 +347,7 @@ class JumpStartTrainDefaults:
             logger.info(f"Training image not provided. Using default:\n{training_image}")
         return training_image
 
+    @staticmethod
     def get_base_job_name(
         jumpstart_config: JumpStartConfig,
         base_job_name: Optional[str] = None,
@@ -356,6 +358,7 @@ class JumpStartTrainDefaults:
             logger.info(f"Base name not provided. Using default name:\n{base_job_name}")
         return base_job_name
 
+    @staticmethod
     def get_hyperparameters(
         jumpstart_config: JumpStartConfig,
         compute: Compute,
@@ -405,6 +408,7 @@ class JumpStartTrainDefaults:
 
         return final_hyperparameters
 
+    @staticmethod
     def get_enviornment(
         jumpstart_config: JumpStartConfig,
         compute: Compute,
@@ -436,6 +440,7 @@ class JumpStartTrainDefaults:
                 environment.update(variant.Properties.EnvironmentVariables)
         return environment
 
+    @staticmethod
     def get_source_code(
         jumpstart_config: JumpStartConfig,
         source_code: Optional[SourceCode] = None,
@@ -464,6 +469,7 @@ class JumpStartTrainDefaults:
                 source_code.requirements = "auto"
         return source_code
 
+    @staticmethod
     def get_training_dataset_input(
         jumpstart_config: JumpStartConfig,
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
@@ -523,6 +529,7 @@ class JumpStartTrainDefaults:
                 input_data_config.append(input_data)
         return input_data_config
 
+    @staticmethod
     def get_model_artifact_input(
         jumpstart_config: JumpStartConfig,
         compute: Compute,
@@ -612,12 +619,14 @@ class JumpStartTrainDefaults:
                 input_data_config.append(input_data)
         return input_data_config
 
+    @staticmethod
     def get_output_data_config(
         jumpstart_config: JumpStartConfig,
         base_job_name: str,
         output_data_config: Optional[shapes.OutputDataConfig] = None,
         sagemaker_session: Optional[Session] = None,
     ) -> shapes.OutputDataConfig:
+        """Resolve the output data configuration for a training job."""
         sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
         _, document = get_hub_content_and_document(
             jumpstart_config=jumpstart_config,
@@ -653,6 +662,7 @@ class JumpStartTrainDefaults:
         output_data_config.compression_type = compression_type
         return output_data_config
 
+    @staticmethod
     def get_tags(
         jumpstart_config: JumpStartConfig,
         tags: Optional[List[Tag]] = None,

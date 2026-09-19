@@ -325,18 +325,21 @@ def wait(training_job: TrainingJob, poll: int = 5, timeout: Optional[int] = 4320
                         console_url = get_console_job_url(training_job.training_job_arn)
                         if console_url:
                             links_row1.append(
-                                f"[bright_blue underline][link={console_url}]🔗 Training Job (Console)[/link][/bright_blue underline]"
+                                f"[bright_blue underline][link={console_url}]🔗 Training Job (Console)"
+                                f"[/link][/bright_blue underline]"
                             )
                         if _is_in_studio():
                             studio_url = get_studio_url(training_job)
                             if studio_url:
                                 links_row1.append(
-                                    f"[bright_blue underline][link={studio_url}]🔗 Training Job (Studio)[/link][/bright_blue underline]"
+                                    f"[bright_blue underline][link={studio_url}]🔗 Training Job (Studio)"
+                                    f"[/link][/bright_blue underline]"
                                 )
                         cw_url = get_cloudwatch_logs_url(training_job.training_job_arn)
                         if cw_url:
                             links_row2.append(
-                                f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs[/link][/bright_blue underline]"
+                                f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs"
+                                f"[/link][/bright_blue underline]"
                             )
                     except Exception:
                         pass
@@ -344,7 +347,8 @@ def wait(training_job: TrainingJob, poll: int = 5, timeout: Optional[int] = 4320
                         cached_url = get_cached_mlflow_url()
                         if cached_url:
                             links_row2.append(
-                                f"[bright_blue underline][link={cached_url}]🔗 MLflow Experiment[/link][/bright_blue underline]"
+                                f"[bright_blue underline][link={cached_url}]🔗 MLflow Experiment"
+                                f"[/link][/bright_blue underline]"
                             )
                         elif mlflow_link_cache["error"]:
                             header_table.add_row(
@@ -420,7 +424,11 @@ def wait(training_job: TrainingJob, poll: int = 5, timeout: Optional[int] = 4320
 
                             # Add progress bar for Training step
                             if trans.status == "Training" and training_progress_pct is not None:
-                                bar = f"[green][{'█' * int(training_progress_pct / 5)}{'░' * (20 - int(training_progress_pct / 5))}][/green] {training_progress_pct:.1f}% {training_progress_text}"
+                                bar = (
+                                    f"[green][{'█' * int(training_progress_pct / 5)}"
+                                    f"{'░' * (20 - int(training_progress_pct / 5))}][/green] "
+                                    f"{training_progress_pct:.1f}% {training_progress_text}"
+                                )
                                 transitions_table.add_row(check, trans.status, bar, duration)
                             else:
                                 transitions_table.add_row(

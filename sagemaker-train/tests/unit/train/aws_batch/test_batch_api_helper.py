@@ -259,7 +259,7 @@ class TestListServiceJob:
 
         filters = [{"name": "JOB_NAME", "values": [JOB_NAME]}]
         gen = _list_service_job(JOB_QUEUE, filters=filters)
-        result = next(gen)
+        next(gen)
 
         call_kwargs = mock_client.list_service_jobs.call_args[1]
         assert call_kwargs["filters"] == filters
@@ -272,7 +272,7 @@ class TestListServiceJob:
         mock_get_client.return_value = mock_client
 
         gen = _list_service_job(JOB_QUEUE, job_status=JOB_STATUS_RUNNING)
-        result = next(gen)
+        next(gen)
 
         call_kwargs = mock_client.list_service_jobs.call_args[1]
         assert call_kwargs["jobStatus"] == JOB_STATUS_RUNNING

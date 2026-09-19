@@ -1,3 +1,5 @@
+"""Entities for local training job execution and status tracking."""
+
 import datetime
 
 

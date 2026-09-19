@@ -1,5 +1,4 @@
-"""
-Common utilities for fetching recipe metadata and override parameters from JumpStart Hub.
+"""Common utilities for fetching recipe metadata and override parameters from JumpStart Hub.
 
 This module provides reusable functionality for retrieving evaluation recipe configurations
 and inference parameters from SageMaker Hub content.
@@ -295,7 +294,8 @@ def _extract_eval_override_options(
         override_params: The override parameters JSON from _get_evaluation_override_params()
         param_names: Optional list of parameter names to extract.
                     If None, extracts common evaluation override options:
-                    ['max_new_tokens', 'temperature', 'top_k', 'top_p', 'aggregation', 'postprocessing', 'max_model_len']
+                    ['max_new_tokens', 'temperature', 'top_k', 'top_p',
+                     'aggregation', 'postprocessing', 'max_model_len']
         return_full_spec: If True, returns full parameter specifications (dict with type, min, max, etc.).
                          If False, returns only default values as strings.
 

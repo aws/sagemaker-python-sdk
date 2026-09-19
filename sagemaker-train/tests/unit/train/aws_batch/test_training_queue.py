@@ -363,7 +363,7 @@ class TestTrainingQueueList:
         mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_RESP_WITH_JOBS])
 
         queue = TrainingQueue(JOB_QUEUE)
-        jobs = queue.list_jobs(job_name=JOB_NAME)
+        queue.list_jobs(job_name=JOB_NAME)
 
         # Verify list_service_job was called
         mock_list_service_job.assert_called_once()
@@ -425,7 +425,7 @@ class TestTrainingQueueListByShare:
         mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS])
 
         queue = TrainingQueue(JOB_QUEUE)
-        jobs = queue.list_jobs_by_share(share_identifier=SHARE_IDENTIFIER)
+        queue.list_jobs_by_share(share_identifier=SHARE_IDENTIFIER)
 
         # Verify list_service_job was called
         mock_list_service_job.assert_called_once()

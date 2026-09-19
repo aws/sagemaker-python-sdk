@@ -105,7 +105,8 @@ class TestRuntimeEnvironmentManager:
         assert result is None
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._capture_from_local_runtime"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._capture_from_local_runtime"
     )
     def test_snapshot_auto_capture(self, mock_capture):
         """Test snapshot with auto_capture."""
@@ -162,7 +163,8 @@ class TestRuntimeEnvironmentManager:
         assert result == "myenv"
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._export_conda_env_from_prefix"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._export_conda_env_from_prefix"
     )
     @patch("os.getcwd")
     @patch("os.getenv")
@@ -186,7 +188,8 @@ class TestRuntimeEnvironmentManager:
             manager._capture_from_local_runtime()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._install_requirements_txt"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._install_requirements_txt"
     )
     def test_bootstrap_with_txt_file_no_conda(self, mock_install):
         """Test bootstrap with requirements.txt without conda."""
@@ -195,10 +198,12 @@ class TestRuntimeEnvironmentManager:
         mock_install.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._write_conda_env_to_file"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._write_conda_env_to_file"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._install_req_txt_in_conda_env"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._install_req_txt_in_conda_env"
     )
     def test_bootstrap_with_txt_file_with_conda(self, mock_install, mock_write):
         """Test bootstrap with requirements.txt with conda."""
@@ -208,10 +213,12 @@ class TestRuntimeEnvironmentManager:
         mock_write.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._write_conda_env_to_file"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._write_conda_env_to_file"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._update_conda_env"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._update_conda_env"
     )
     def test_bootstrap_with_yml_file_with_conda(self, mock_update, mock_write):
         """Test bootstrap with conda.yml with existing conda env."""
@@ -221,13 +228,16 @@ class TestRuntimeEnvironmentManager:
         mock_write.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._write_conda_env_to_file"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._write_conda_env_to_file"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._validate_python_version"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._validate_python_version"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._create_conda_env"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._create_conda_env"
     )
     def test_bootstrap_with_yml_file_without_conda(self, mock_create, mock_validate, mock_write):
         """Test bootstrap with conda.yml without existing conda env."""
@@ -238,7 +248,8 @@ class TestRuntimeEnvironmentManager:
         mock_write.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._run_pre_execution_command_script"
     )
     @patch("os.path.isfile")
     def test_run_pre_exec_script_exists(self, mock_isfile, mock_run_script):
@@ -258,7 +269,8 @@ class TestRuntimeEnvironmentManager:
         manager.run_pre_exec_script("/path/to/script.sh")
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._run_pre_execution_command_script"
     )
     @patch("os.path.isfile")
     def test_run_pre_exec_script_raises_error_on_failure(self, mock_isfile, mock_run_script):
@@ -295,7 +307,8 @@ class TestRuntimeEnvironmentManager:
             manager.change_dir_permission(["/tmp/dir1"], "777")
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._run_shell_cmd"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._run_shell_cmd"
     )
     def test_install_requirements_txt(self, mock_run_cmd):
         """Test installs requirements.txt."""
@@ -304,10 +317,12 @@ class TestRuntimeEnvironmentManager:
         mock_run_cmd.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._run_shell_cmd"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._run_shell_cmd"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
     )
     def test_create_conda_env(self, mock_get_conda, mock_run_cmd):
         """Test creates conda environment."""
@@ -317,10 +332,12 @@ class TestRuntimeEnvironmentManager:
         mock_run_cmd.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._run_shell_cmd"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._run_shell_cmd"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
     )
     def test_install_req_txt_in_conda_env(self, mock_get_conda, mock_run_cmd):
         """Test installs requirements.txt in conda environment."""
@@ -330,10 +347,12 @@ class TestRuntimeEnvironmentManager:
         mock_run_cmd.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._run_shell_cmd"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._run_shell_cmd"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
     )
     def test_update_conda_env(self, mock_get_conda, mock_run_cmd):
         """Test updates conda environment."""
@@ -343,10 +362,12 @@ class TestRuntimeEnvironmentManager:
         mock_run_cmd.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._run_shell_cmd"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._run_shell_cmd"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
     )
     def test_export_conda_env_from_prefix(self, mock_get_conda, mock_run_cmd):
         """Test exports conda environment."""
@@ -391,7 +412,8 @@ class TestRuntimeEnvironmentManager:
 
     @patch("subprocess.check_output")
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
     )
     def test_python_version_in_conda_env(self, mock_get_conda, mock_check_output):
         """Test gets Python version in conda environment."""
@@ -403,7 +425,8 @@ class TestRuntimeEnvironmentManager:
 
     @patch("subprocess.check_output")
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._get_conda_exe"
     )
     def test_python_version_in_conda_env_raises_error(self, mock_get_conda, mock_check_output):
         """Test raises error when getting Python version fails."""
@@ -421,7 +444,8 @@ class TestRuntimeEnvironmentManager:
         assert result == expected
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._python_version_in_conda_env"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._python_version_in_conda_env"
     )
     def test_validate_python_version_with_conda(self, mock_python_version):
         """Test validates Python version with conda environment."""
@@ -431,7 +455,8 @@ class TestRuntimeEnvironmentManager:
         manager._validate_python_version("3.8", "myenv")
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._python_version_in_conda_env"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._python_version_in_conda_env"
     )
     def test_validate_python_version_mismatch_with_conda(self, mock_python_version):
         """Test raises error on Python version mismatch with conda."""
@@ -441,7 +466,8 @@ class TestRuntimeEnvironmentManager:
             manager._validate_python_version("3.8", "myenv")
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._current_python_version"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._current_python_version"
     )
     def test_validate_python_version_without_conda(self, mock_current_version):
         """Test validates Python version without conda environment."""
@@ -451,7 +477,8 @@ class TestRuntimeEnvironmentManager:
         manager._validate_python_version("3.8", None)
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._current_python_version"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._current_python_version"
     )
     def test_validate_python_version_mismatch_without_conda(self, mock_current_version):
         """Test raises error on Python version mismatch without conda."""
@@ -461,7 +488,8 @@ class TestRuntimeEnvironmentManager:
             manager._validate_python_version("3.8", None)
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._current_sagemaker_pysdk_version"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._current_sagemaker_pysdk_version"
     )
     def test_validate_sagemaker_pysdk_version_match(self, mock_current_version):
         """Test validates matching SageMaker SDK version."""
@@ -471,7 +499,8 @@ class TestRuntimeEnvironmentManager:
         manager._validate_sagemaker_pysdk_version("2.100.0")
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._current_sagemaker_pysdk_version"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._current_sagemaker_pysdk_version"
     )
     def test_validate_sagemaker_pysdk_version_mismatch(self, mock_current_version):
         """Test logs warning on SageMaker SDK version mismatch."""
@@ -481,7 +510,8 @@ class TestRuntimeEnvironmentManager:
         manager._validate_sagemaker_pysdk_version("2.100.0")
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager.RuntimeEnvironmentManager._current_sagemaker_pysdk_version"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager.RuntimeEnvironmentManager._current_sagemaker_pysdk_version"
     )
     def test_validate_sagemaker_pysdk_version_none(self, mock_current_version):
         """Test handles None client version."""
@@ -506,10 +536,12 @@ class TestRunPreExecutionCommandScript:
     """Test _run_pre_execution_command_script function."""
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._log_error"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._log_error"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._log_output"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._log_output"
     )
     @patch("subprocess.Popen")
     @patch("os.path.dirname")
@@ -529,10 +561,12 @@ class TestRunPreExecutionCommandScript:
         assert error_logs == ""
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._log_error"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._log_error"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._log_output"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._log_output"
     )
     @patch("subprocess.Popen")
     @patch("os.path.dirname")
@@ -556,10 +590,12 @@ class TestRunShellCmd:
     """Test _run_shell_cmd function."""
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._log_error"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._log_error"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._log_output"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._log_output"
     )
     @patch("subprocess.Popen")
     def test_runs_command_successfully(self, mock_popen, mock_log_output, mock_log_error):
@@ -574,10 +610,12 @@ class TestRunShellCmd:
         mock_popen.assert_called_once()
 
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._log_error"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._log_error"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.runtime_environment_manager._log_output"
+        "sagemaker.train.remote_function.runtime_environment."
+        "runtime_environment_manager._log_output"
     )
     @patch("subprocess.Popen")
     def test_runs_command_raises_error_on_failure(

@@ -1,4 +1,4 @@
-"""Job notification utilities for SageMaker training jobs.
+r"""Job notification utilities for SageMaker training jobs.
 
 Manages EventBridge rules that route SageMaker Training Job status change
 events to user-provided SNS topics. Supports SMTJ (serverless and serverful)

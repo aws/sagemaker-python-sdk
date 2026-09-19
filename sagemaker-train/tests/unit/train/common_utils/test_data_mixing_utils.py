@@ -649,7 +649,6 @@ class TestResolveHyperPodDatamixContext:
         calls = s3_client.get_object.call_args_list
         assert len(calls) == 2
         # The bucket name should contain the resolved account ID, not the placeholder
-        first_call_bucket = calls[0][1]["Bucket"] if "Bucket" in calls[0][1] else calls[0][0][0]
         assert "123456789012" in str(calls[0])
         assert "{customer_id}" not in str(calls[0])
         assert "{customer_id}" not in str(calls[1])

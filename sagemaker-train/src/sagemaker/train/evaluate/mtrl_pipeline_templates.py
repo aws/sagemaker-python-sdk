@@ -85,7 +85,8 @@ def _create_eval_action_step(source_uri_expr: str, source_type: str) -> str:
         '                "Associations": [\n'
         "                    {\n"
         '                        "Source": { "Name": { "Get": "Execution.PipelineExecutionId" }, "Type": "Action" },\n'
-        '                        "Destination": { "Name": { "Get": "Execution.PipelineExecutionId" }, "Type": "Context" },\n'
+        '                        "Destination": { "Name": '
+        '{ "Get": "Execution.PipelineExecutionId" }, "Type": "Context" },\n'
         '                        "AssociationType": "ContributedTo"\n'
         "                    }{% if dataset_artifact_arn %},\n"
         "                    {\n"
@@ -150,10 +151,13 @@ def _associate_lineage_step(artifact_entries, depends_on: str) -> str:
             f'                            "{label}"\n'
             "                        ] } },\n"
             '                        "ArtifactType": "EvaluationReport",\n'
-            f'                        "Source": {{ "SourceUri": {{ "Get": "Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.RunId" }} }},\n'
+            f'                        "Source": {{ "SourceUri": {{ "Get": '
+            f'"Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.RunId" }} }},\n'
             '                        "Properties": {\n'
-            f'                            "MlflowExperimentId": {{ "Get": "Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.ExperimentId" }},\n'
-            f'                            "MlflowRunName": {{ "Get": "Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.RunName" }}\n'
+            f'                            "MlflowExperimentId": {{ "Get": '
+            f'"Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.ExperimentId" }},\n'
+            f'                            "MlflowRunName": {{ "Get": '
+            f'"Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.RunName" }}\n'
             "                        }\n"
             "                    }"
         )

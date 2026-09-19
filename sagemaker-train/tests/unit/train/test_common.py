@@ -1,5 +1,7 @@
 from sagemaker.train.common import FineTuningOptions
 
+import pytest
+
 
 class TestFineTuningOptionsToDict:
     """Tests for FineTuningOptions.to_dict() None value handling."""
@@ -64,9 +66,6 @@ class TestFineTuningOptionsToDict:
         )
         result = options.to_dict()
         assert result == {}
-
-
-import pytest
 
 
 class TestValidateLengthConstraints:

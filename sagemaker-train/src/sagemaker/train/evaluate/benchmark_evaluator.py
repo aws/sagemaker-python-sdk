@@ -115,7 +115,8 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
     },
     _Benchmark.MMLU_PRO: {
         "modality": "Text",
-        "description": "MMLU – Professional Subset – Focuses on professional domains such as law, medicine, accounting, and engineering.",
+        "description": "MMLU – Professional Subset – Focuses on professional domains "
+        "such as law, medicine, accounting, and engineering.",
         "metrics": ["accuracy"],
         "strategy": "zs_cot",
         "subtask_available": False,
@@ -123,7 +124,8 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
     },
     _Benchmark.BBH: {
         "modality": "Text",
-        "description": "Advanced Reasoning Tasks – A collection of challenging problems that test higher-level cognitive and problem-solving skills.",
+        "description": "Advanced Reasoning Tasks – A collection of challenging problems "
+        "that test higher-level cognitive and problem-solving skills.",
         "metrics": ["accuracy"],
         "strategy": "fs_cot",
         "subtask_available": True,
@@ -159,7 +161,8 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
     },
     _Benchmark.GPQA: {
         "modality": "Text",
-        "description": "General Physics Question Answering – Assesses comprehension of physics concepts and related problem-solving abilities.",
+        "description": "General Physics Question Answering – Assesses comprehension "
+        "of physics concepts and related problem-solving abilities.",
         "metrics": ["accuracy"],
         "strategy": "zs_cot",
         "subtask_available": False,
@@ -167,7 +170,8 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
     },
     _Benchmark.MATH: {
         "modality": "Text",
-        "description": "Mathematical Problem Solving – Measures mathematical reasoning across topics including algebra, calculus, and word problems.",
+        "description": "Mathematical Problem Solving – Measures mathematical reasoning "
+        "across topics including algebra, calculus, and word problems.",
         "metrics": ["exact_match"],
         "strategy": "zs_cot",
         "subtask_available": True,
@@ -183,7 +187,8 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
     },
     _Benchmark.STRONG_REJECT: {
         "modality": "Text",
-        "description": "Quality-Control Task – Tests the model's ability to detect and reject inappropriate, harmful, or incorrect content.",
+        "description": "Quality-Control Task – Tests the model's ability to detect "
+        "and reject inappropriate, harmful, or incorrect content.",
         "metrics": ["deflection"],
         "strategy": "zs",
         "subtask_available": True,
@@ -191,7 +196,8 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
     },
     _Benchmark.IFEVAL: {
         "modality": "Text",
-        "description": "Instruction-Following Evaluation – Gauges how accurately a model follows given instructions and completes tasks to specification.",
+        "description": "Instruction-Following Evaluation – Gauges how accurately a model "
+        "follows given instructions and completes tasks to specification.",
         "metrics": ["accuracy"],
         "strategy": "zs",
         "subtask_available": False,
@@ -199,7 +205,9 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
     },
     _Benchmark.MMMU: {
         "modality": "Multi-Modal",
-        "description": "Massive Multidiscipline Multimodal Understanding (MMMU) – College-level benchmark comprising multiple-choice and open-ended questions from 30 disciplines.",
+        "description": "Massive Multidiscipline Multimodal Understanding (MMMU) – "
+        "College-level benchmark comprising multiple-choice and open-ended questions "
+        "from 30 disciplines.",
         "metrics": ["accuracy"],
         "strategy": "zs_cot",
         "subtask_available": True,
@@ -238,7 +246,8 @@ _BENCHMARK_CONFIG: Dict[_Benchmark, Dict[str, Any]] = {
     },
     _Benchmark.LLM_JUDGE: {
         "modality": "Text",
-        "description": "LLM-as-a-Judge - Uses a user-selected judge model to judge a set of customer-provided inference responses.",
+        "description": "LLM-as-a-Judge - Uses a user-selected judge model to judge "
+        "a set of customer-provided inference responses.",
         "metrics": ["all"],
         "strategy": "judge",
         "subtask_available": False,
@@ -318,7 +327,7 @@ def get_benchmark_properties(benchmark: _Benchmark) -> Dict[str, Any]:
     if config is None:
         raise ValueError(
             f"Benchmark '{benchmark.value}' not found in configuration. "
-            f"Available benchmarks: {', '.join(b.value for b in _BENCHMARK_CONFIG.keys())}"
+            f"Available benchmarks: {', '.join(b.value for b in _BENCHMARK_CONFIG)}"
         )
 
     # Return a copy of the configuration dictionary
@@ -402,6 +411,7 @@ class BenchMarkEvaluator(BaseEvaluator):
     _hyperparameters: Optional[Any] = None
 
     @validator("benchmark")
+    @classmethod
     def _validate_benchmark_model_compatibility(cls, v, values):
         """Validate that benchmark is compatible with model type (Nova vs non-Nova)"""
         from ..common_utils.recipe_utils import _is_nova_model
@@ -430,6 +440,7 @@ class BenchMarkEvaluator(BaseEvaluator):
         return v
 
     @validator("subtasks", always=True)
+    @classmethod
     def _validate_subtasks(cls, v, values):
         """Validate that subtasks is provided when required and in correct format"""
         if "benchmark" in values:
@@ -749,7 +760,7 @@ class BenchMarkEvaluator(BaseEvaluator):
 
         if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
             return self._evaluate_serverful_smtj(subtask=subtask)
-        elif isinstance(self.compute, HyperPodCompute):
+        if isinstance(self.compute, HyperPodCompute):
             return self._evaluate_hyperpod(subtask=subtask)
 
         # Default: serverless compute via SageMaker Pipelines
@@ -786,7 +797,9 @@ class BenchMarkEvaluator(BaseEvaluator):
 
         # Log resolved model information for debugging
         _logger.info(
-            f"Resolved model info - base_model_name: {self._base_model_name}, base_model_arn: {self._base_model_arn}, source_model_package_arn: {self._source_model_package_arn}"
+            f"Resolved model info - base_model_name: {self._base_model_name}, "
+            f"base_model_arn: {self._base_model_arn}, "
+            f"source_model_package_arn: {self._source_model_package_arn}"
         )
 
         # Build base template context

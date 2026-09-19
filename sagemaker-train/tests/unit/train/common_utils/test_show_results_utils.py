@@ -601,7 +601,8 @@ class TestDownloadBedrockAggregateJson:
         s3_mock.list_objects_v2.return_value = {
             "Contents": [
                 {
-                    "Key": f"{DEFAULT_PREFIX}/{DEFAULT_JOB_NAME}/output/output/bedrock-job-123/bedrock_llm_judge_results.json"
+                    "Key": f"{DEFAULT_PREFIX}/{DEFAULT_JOB_NAME}/output/output/"
+                    f"bedrock-job-123/bedrock_llm_judge_results.json"
                 }
             ]
         }
@@ -1195,8 +1196,6 @@ class TestBugConditionExploration:
         mock_extract_job.side_effect = ["custom-training-job", "base-training-job"]
 
         # Return distinct bedrock_job_name values for custom and base aggregates
-        custom_aggregate = {"results": {"Metric1": {"score": 0.8, "total_evaluations": 5}}}
-        base_aggregate = {"results": {"Metric1": {"score": 0.5, "total_evaluations": 5}}}
         mock_download_aggregate.side_effect = [
             ("custom_agg", "custom-bedrock-job"),
             ("base_agg", "base-bedrock-job"),

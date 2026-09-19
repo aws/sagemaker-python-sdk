@@ -21,13 +21,16 @@ from sagemaker.train.common_utils.constants import AUTH_ERROR_CODES
 
 FAKE_SFT_LOGS = [
     {
-        "message": "Training epoch 0, iteration 0/9 | lr: 6.25e-07 | global_batch_size: 32 | global_step: 1 | reduced_train_loss: 9.240 | ..."
+        "message": "Training epoch 0, iteration 0/9 | lr: 6.25e-07 | global_batch_size: 32 | "
+        "global_step: 1 | reduced_train_loss: 9.240 | ..."
     },
     {
-        "message": "Training epoch 0, iteration 1/9 | lr: 1.25e-06 | global_batch_size: 32 | global_step: 2 | reduced_train_loss: 7.750 | ..."
+        "message": "Training epoch 0, iteration 1/9 | lr: 1.25e-06 | global_batch_size: 32 | "
+        "global_step: 2 | reduced_train_loss: 7.750 | ..."
     },
     {
-        "message": "Training epoch 0, iteration 2/9 | lr: 1.87e-06 | global_batch_size: 32 | global_step: 3 | reduced_train_loss: 6.615 | ..."
+        "message": "Training epoch 0, iteration 2/9 | lr: 1.87e-06 | global_batch_size: 32 | "
+        "global_step: 3 | reduced_train_loss: 6.615 | ..."
     },
     {"message": "Some other log line without any metrics"},
 ]

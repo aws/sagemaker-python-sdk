@@ -200,7 +200,7 @@ class TestExecuteRemoteFunction:
             s3_base_uri="s3://bucket/path",
             s3_kms_key="key-123",
             run_in_context=None,
-            hmac_key="hmac-key",
+            signing_key="hmac-key",
             context=mock_context,
         )
 
@@ -208,7 +208,7 @@ class TestExecuteRemoteFunction:
             sagemaker_session=mock_session,
             s3_base_uri="s3://bucket/path",
             s3_kms_key="key-123",
-            hmac_key="hmac-key",
+            signing_key="hmac-key",
             context=mock_context,
         )
         mock_stored_func.load_and_invoke.assert_called_once()
@@ -230,7 +230,7 @@ class TestExecuteRemoteFunction:
             s3_base_uri="s3://bucket/path",
             s3_kms_key=None,
             run_in_context=run_json,
-            hmac_key="hmac-key",
+            signing_key="hmac-key",
             context=mock_context,
         )
 

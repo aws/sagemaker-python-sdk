@@ -1,5 +1,4 @@
-"""
-Internal utilities for resolving model information from various input types.
+"""Internal utilities for resolving model information from various input types.
 
 This module provides common functionality for resolving model metadata from:
 - JumpStart model IDs (strings like "llama3-2-1b-instruct")
@@ -8,13 +7,16 @@ This module provides common functionality for resolving model metadata from:
 
 import json
 import logging
-from typing import Union, Optional, Dict, Any
+from typing import Union, Optional, Dict, Any, TYPE_CHECKING
 from dataclasses import dataclass
 from enum import Enum
 import re
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.core.utils.utils import Unassigned
+
+if TYPE_CHECKING:
+    from sagemaker.core.resources import ModelPackage
 
 _logger = logging.getLogger(__name__)
 
@@ -56,8 +58,7 @@ def _detect_checkpoint_platform(s3_path: str) -> Optional["_CheckpointPlatform"]
 
 @dataclass
 class _ModelInfo:
-    """
-    Internal dataclass containing resolved model information.
+    """Internal dataclass containing resolved model information.
 
     Attributes:
         base_model_name: Human-readable model name
@@ -79,16 +80,14 @@ class _ModelInfo:
 
 
 class _ModelResolver:
-    """
-    Internal utility class for resolving model information.
+    """Internal utility class for resolving model information.
 
     Handles resolution of model metadata from both JumpStart model IDs
     and fine-tuned ModelPackage objects/ARNs.
     """
 
     def __init__(self, sagemaker_session=None):
-        """
-        Initialize the resolver.
+        """Initialize the resolver.
 
         Args:
             sagemaker_session: SageMaker session to use for API calls.
@@ -99,11 +98,11 @@ class _ModelResolver:
     def resolve_model_info(
         self, base_model: Union[str, BaseTrainer, "ModelPackage"], hub_name: Optional[str] = None
     ) -> _ModelInfo:
-        """
-        Resolve model information from various input types.
+        """Resolve model information from various input types.
 
         Args:
-            base_model: Either a JumpStart model ID (str) or ModelPackage object/ARN or BaseTrainer object with a completed job
+            base_model: Either a JumpStart model ID (str) or ModelPackage object/ARN
+                or BaseTrainer object with a completed job
             hub_name: Optional hub name for JumpStart models (defaults to SageMakerPublicHub)
 
         Returns:
@@ -261,8 +260,7 @@ class _ModelResolver:
         )
 
     def _resolve_jumpstart_model(self, model_id: str, hub_name: str) -> _ModelInfo:
-        """
-        Resolve JumpStart model information from Hub API.
+        """Resolve JumpStart model information from Hub API.
 
         Args:
             model_id: JumpStart model identifier
@@ -322,8 +320,7 @@ class _ModelResolver:
             )
 
     def _resolve_model_package_object(self, model_package: "ModelPackage") -> _ModelInfo:
-        """
-        Resolve model information from ModelPackage object.
+        """Resolve model information from ModelPackage object.
 
         Args:
             model_package: ModelPackage object
@@ -345,7 +342,8 @@ class _ModelResolver:
             or not model_package.inference_specification
         ):
             raise ValueError(
-                f"NotSupported: Evaluation is only supported for model packages customized by SageMaker's fine-tuning flows. "
+                f"NotSupported: Evaluation is only supported for model packages "
+                f"customized by SageMaker's fine-tuning flows. "
                 f"The provided model package (ARN: {getattr(model_package, 'model_package_arn', 'unknown')}) "
                 f"does not have an inference_specification."
             )
@@ -353,7 +351,8 @@ class _ModelResolver:
         # Check if containers exist
         if not model_package.inference_specification.containers:
             raise ValueError(
-                f"NotSupported: Evaluation is only supported for model packages customized by SageMaker's fine-tuning flows. "
+                f"NotSupported: Evaluation is only supported for model packages "
+                f"customized by SageMaker's fine-tuning flows. "
                 f"The provided model package (ARN: {getattr(model_package, 'model_package_arn', 'unknown')}) "
                 f"does not have any containers in its inference_specification."
             )
@@ -390,12 +389,16 @@ class _ModelResolver:
                             hub_content_name, hub_content_version, region
                         )
                         hub_account = "aws" if hub_name == "SageMakerPublicHub" else account
-                        base_model_arn = f"arn:aws:sagemaker:{region}:{hub_account}:hub-content/{hub_name}/Model/{hub_content_name}/{hub_content_version}"
+                        base_model_arn = (
+                            f"arn:aws:sagemaker:{region}:{hub_account}:hub-content/"
+                            f"{hub_name}/Model/{hub_content_name}/{hub_content_version}"
+                        )
 
         # If we couldn't extract or construct base model ARN, this is not a supported model package
         if not base_model_arn:
             raise ValueError(
-                f"NotSupported: Evaluation is only supported for model packages customized by SageMaker's fine-tuning flows. "
+                f"NotSupported: Evaluation is only supported for model packages "
+                f"customized by SageMaker's fine-tuning flows. "
                 f"The provided model package (ARN: {getattr(model_package, 'model_package_arn', 'unknown')}) "
                 f"does not have base_model metadata in its inference_specification.containers[0]. "
                 f"Please ensure the model was created using SageMaker's fine-tuning capabilities."
@@ -422,8 +425,7 @@ class _ModelResolver:
         )
 
     def _resolve_model_package_arn(self, model_package_arn: str) -> _ModelInfo:
-        """
-        Resolve model information from ModelPackage ARN.
+        """Resolve model information from ModelPackage ARN.
 
         Args:
             model_package_arn: ARN of the model package
@@ -463,8 +465,7 @@ class _ModelResolver:
             raise ValueError(f"Failed to resolve model package ARN '{model_package_arn}': {e}")
 
     def _validate_model_package_arn(self, arn: str) -> bool:
-        """
-        Validate ModelPackage ARN format.
+        """Validate ModelPackage ARN format.
 
         Args:
             arn: ARN to validate
@@ -530,8 +531,7 @@ class _ModelResolver:
             return "SageMakerPublicHub"
 
     def _get_session(self):
-        """
-        Get or create SageMaker session.
+        """Get or create SageMaker session.
 
         Returns:
             SageMaker session
@@ -547,8 +547,7 @@ class _ModelResolver:
 def _resolve_base_model(
     base_model: Union[str, "ModelPackage"], sagemaker_session=None, hub_name: Optional[str] = None
 ) -> _ModelInfo:
-    """
-    Convenience function to resolve model information.
+    """Convenience function to resolve model information.
 
     This is the main entry point for model resolution. It handles both:
     - JumpStart model IDs (e.g., "llama3-2-1b-instruct")

@@ -24,11 +24,6 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 
-# Constant defined here to avoid importing from sagemaker.serve.model
-# which would unnecessarily load deployment-related dependencies
-DIR_PARAM_NAME = "sagemaker_submit_directory"
-logger = logging.getLogger(__name__)
-
 from sagemaker.core.local.image import (
     _stream_output,
     _pull_image,
@@ -53,6 +48,11 @@ from sagemaker.core.utils.utils import Unassigned
 from sagemaker.core.shapes import DataSource
 
 from six.moves.urllib.parse import urlparse
+
+# Constant defined here to avoid importing from sagemaker.serve.model
+# which would unnecessarily load deployment-related dependencies
+DIR_PARAM_NAME = "sagemaker_submit_directory"
+logger = logging.getLogger(__name__)
 
 STUDIO_HOST_NAME = "sagemaker-local"
 DOCKER_COMPOSE_FILENAME = "docker-compose.yaml"

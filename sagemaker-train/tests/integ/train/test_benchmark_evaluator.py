@@ -34,9 +34,11 @@ EVALUATION_TIMEOUT_SECONDS = 14400  # 4 hours
 # Test configuration values from benchmark_demo.ipynb
 # TEST_CONFIG = {
 #     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models/28",
-#     "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
+#     "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/"
+#     "d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
 #     "s3_output_path": "s3://mufi-test-serverless-smtj/eval/",
-#     "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
+#     "mlflow_tracking_server_arn":
+#     "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
 #     "model_package_group_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package-group/example-name-aovqo",
 #     "region": "us-west-2",
 # }
@@ -177,7 +179,8 @@ class TestBenchmarkEvaluatorIntegration:
 
         # Step 5: Wait for completion
         logger.info(
-            f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)"
+            f"Waiting for evaluation to complete "
+            f"(timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS // 3600}h)"
         )
 
         try:
@@ -335,7 +338,8 @@ class TestBenchmarkEvaluatorIntegration:
 
         # Wait for completion
         logger.info(
-            f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)"
+            f"Waiting for evaluation to complete "
+            f"(timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS // 3600}h)"
         )
         execution.wait(target_status="Succeeded", poll=30, timeout=EVALUATION_TIMEOUT_SECONDS)
 

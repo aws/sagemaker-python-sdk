@@ -63,7 +63,8 @@ CUSTOM_METRIC_DICT = {
 #     "builtin_metrics": ["Completeness", "Faithfulness"],
 #     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
 #     "s3_output_path": "s3://mufi-test-serverless-smtj/eval/",
-#     "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
+#     "mlflow_tracking_server_arn":
+#     "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
 #     "evaluate_base_model": False,
 #     "region": "us-west-2",
 # }
@@ -76,7 +77,8 @@ TEST_CONFIG = {
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
     "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
-    # "model_package_group_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+    # "model_package_group_arn":
+    # "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
     "evaluate_base_model": False,
     "region": "us-west-2",
 }
@@ -159,7 +161,8 @@ class TestLLMAsJudgeEvaluatorIntegration:
 
         # Step 4: Wait for completion
         logger.info(
-            f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)"
+            f"Waiting for evaluation to complete "
+            f"(timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS // 3600}h)"
         )
 
         try:

@@ -10,8 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
-DEPRECATED: This module has been moved to sagemaker.core.training.configs
+"""DEPRECATED: This module has been moved to sagemaker.core.training.configs
 
 This is a backward compatibility shim. Please update your imports to:
     from sagemaker.core.training.configs import ...

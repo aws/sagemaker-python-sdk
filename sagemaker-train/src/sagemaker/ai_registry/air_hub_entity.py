@@ -80,13 +80,11 @@ class AIRHubEntity(ABC):
     @abstractmethod
     def hub_content_type(self) -> str:
         """Return the hub content type for this entity."""
-        pass
 
     @classmethod
     @abstractmethod
     def _get_hub_content_type_for_list(cls) -> str:
         """Return the hub content type for list operation."""
-        pass
 
     @classmethod
     def list(cls, max_results: Optional[int] = None, next_token: Optional[str] = None) -> List:

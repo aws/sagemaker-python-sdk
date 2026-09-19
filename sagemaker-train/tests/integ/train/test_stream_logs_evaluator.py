@@ -43,14 +43,32 @@ MODEL_PACKAGE_ARN = (
 )
 DATASET_S3 = "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl"
 
-BENCHMARK_EXECUTION_ARN = "arn:aws:sagemaker:us-west-2:729646638167:pipeline/SagemakerEvaluation-BenchmarkEvaluation-499b3c7e-e456-4297-9dc0-cc5737137c9c/execution/p1gtwhjm9dzt"
-BENCHMARK_STEP_ARN = "arn:aws:sagemaker:us-west-2:729646638167:training-job/pipelines-p1gtwhjm9dzt-EvaluateCustomModel-XEdt5h2gQC"
+BENCHMARK_EXECUTION_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
+    "SagemakerEvaluation-BenchmarkEvaluation-499b3c7e-e456-4297-9dc0-cc5737137c9c/execution/p1gtwhjm9dzt"
+)
+BENCHMARK_STEP_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
+    "pipelines-p1gtwhjm9dzt-EvaluateCustomModel-XEdt5h2gQC"
+)
 
-CUSTOM_SCORER_EXECUTION_ARN = "arn:aws:sagemaker:us-west-2:729646638167:pipeline/SagemakerEvaluation-CustomScorerEvaluation-2d0fde36-af0f-49d7-8b8e-a5e11352dc1f/execution/yca2ij65mlhr"
-CUSTOM_SCORER_STEP_ARN = "arn:aws:sagemaker:us-west-2:729646638167:training-job/pipelines-yca2ij65mlhr-EvaluateCustomModel-MlMUskwbNB"
+CUSTOM_SCORER_EXECUTION_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
+    "SagemakerEvaluation-CustomScorerEvaluation-2d0fde36-af0f-49d7-8b8e-a5e11352dc1f/execution/yca2ij65mlhr"
+)
+CUSTOM_SCORER_STEP_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
+    "pipelines-yca2ij65mlhr-EvaluateCustomModel-MlMUskwbNB"
+)
 
-LLMAJ_EXECUTION_ARN = "arn:aws:sagemaker:us-west-2:729646638167:pipeline/SagemakerEvaluation-LLMAJEvaluation-ac7a1fe7-fe8a-445c-8aa5-702b3d6b7771/execution/hmk0lcu6ufzc"
-LLMAJ_STEP_ARN = "arn:aws:sagemaker:us-west-2:729646638167:training-job/pipelines-hmk0lcu6ufzc-EvaluateCustomModelM-6UaY2bgNL5"
+LLMAJ_EXECUTION_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
+    "SagemakerEvaluation-LLMAJEvaluation-ac7a1fe7-fe8a-445c-8aa5-702b3d6b7771/execution/hmk0lcu6ufzc"
+)
+LLMAJ_STEP_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
+    "pipelines-hmk0lcu6ufzc-EvaluateCustomModelM-6UaY2bgNL5"
+)
 
 
 @pytest.fixture(scope="module")

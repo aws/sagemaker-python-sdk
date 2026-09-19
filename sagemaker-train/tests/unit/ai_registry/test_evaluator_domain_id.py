@@ -49,7 +49,7 @@ class TestEvaluatorDomainId:
                 "sagemaker.ai_registry.evaluator.Evaluator._handle_reward_function",
                 return_value=(EvaluatorMethod.LAMBDA, "arn:aws:lambda:..."),
             ):
-                evaluator = Evaluator.create(
+                Evaluator.create(
                     name="test-evaluator",
                     type="RewardFunction",
                     source="arn:aws:lambda:us-west-2:123:function:test",
@@ -96,7 +96,7 @@ class TestEvaluatorDomainId:
                 "sagemaker.ai_registry.evaluator.Evaluator._handle_reward_function",
                 return_value=(EvaluatorMethod.LAMBDA, "arn:aws:lambda:..."),
             ):
-                evaluator = Evaluator.create(
+                Evaluator.create(
                     name="test-evaluator",
                     type="RewardFunction",
                     source="arn:aws:lambda:us-west-2:123:function:test",

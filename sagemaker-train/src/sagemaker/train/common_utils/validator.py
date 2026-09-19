@@ -1,3 +1,5 @@
+"""Validation helpers for SageMaker training configuration inputs."""
+
 from typing import Optional
 
 from sagemaker.core.helper.session_helper import Session

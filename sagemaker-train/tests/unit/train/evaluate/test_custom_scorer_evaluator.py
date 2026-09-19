@@ -35,7 +35,7 @@ DEFAULT_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-s
 DEFAULT_MODEL_PACKAGE_GROUP_ARN = (
     "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test-group"
 )
-DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"
+DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"  # noqa: E501
 DEFAULT_ARTIFACT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
 DEFAULT_EVALUATOR_ARN = (
     "arn:aws:sagemaker:us-west-2:123456789012:hub-content/AIRegistry/Evaluator/my-evaluator/1"
@@ -1057,7 +1057,7 @@ def test_custom_scorer_evaluator_lambda_type_for_nova_models(
     mock_resolve_mlflow.return_value = DEFAULT_MLFLOW_ARN
     mock_info = Mock()
     mock_info.base_model_name = "nova-textgeneration-micro"
-    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-micro/1.0.0"
+    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-micro/1.0.0"  # noqa: E501
     mock_info.source_model_package_arn = None
     mock_resolve.return_value = mock_info
 

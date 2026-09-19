@@ -38,7 +38,7 @@ class DataMixingConfig(BaseModel):
     @classmethod
     def _validate_customer_percent(cls, v: float) -> float:
         """Validate that customer_data_percent is between 0 and 100 inclusive."""
-        if not (0 <= v <= 100):
+        if not 0 <= v <= 100:
             raise ValueError(f"customer_data_percent must be between 0 and 100 inclusive, got {v}")
         return v
 
@@ -49,7 +49,7 @@ class DataMixingConfig(BaseModel):
         if v is None:
             return v
         for category, percent in v.items():
-            if not (0 <= percent <= 100):
+            if not 0 <= percent <= 100:
                 raise ValueError(
                     f"Each nova data category percent must be between 0 and 100 inclusive, "
                     f"but '{category}' has value {percent}"

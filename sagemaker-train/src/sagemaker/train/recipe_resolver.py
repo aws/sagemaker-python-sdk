@@ -18,13 +18,16 @@ import copy
 import logging
 import os
 import tempfile
-from typing import Any, Dict, Optional, Set, Tuple, Union
+from typing import Any, Dict, Optional, Set, Tuple, Union, TYPE_CHECKING
 
 import yaml
 from omegaconf import OmegaConf
 
 from sagemaker.core.training.configs import HyperPodCompute, TrainingJobCompute
 from sagemaker.train.sm_recipes.utils import _register_custom_resolvers
+
+if TYPE_CHECKING:
+    from sagemaker.core.training.configs import Compute
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +53,7 @@ def render_template(
     def _walk(obj, path_parts):
         if isinstance(obj, dict):
             return {k: _walk(v, path_parts + [k]) for k, v in obj.items()}
-        elif isinstance(obj, list):
+        if isinstance(obj, list):
             return [_walk(item, path_parts + [str(i)]) for i, item in enumerate(obj)]
         elif isinstance(obj, str) and "{{" in obj and "}}" in obj:
             spec_key = obj.removeprefix("'").removesuffix("'")
@@ -427,7 +430,6 @@ class RecipeResolver:
         # Use key_path_map to place them at the correct nested position.
         if overrides_for_merge and key_path_map:
             expanded = {}
-            remaining = {}
 
             # Build a map of recipe field names → dotpaths so users can override
             # using actual recipe field names (e.g. lora_plus_lr_ratio)

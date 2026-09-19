@@ -1,3 +1,5 @@
+"""SFT (Supervised Fine-Tuning) trainer for SageMaker fine-tuning."""
+
 from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
@@ -313,10 +315,8 @@ class SFTTrainer(BaseTrainer):
         # Dispatch based on compute type
         if isinstance(self.compute, HyperPodCompute):
             if self.data_mixing_config is not None:
-                from sagemaker.train.defaults import TrainDefaults as _TrainDefaults
-
                 validate_data_mixing_model(self._model_name)
-                _session = _TrainDefaults.get_sagemaker_session(
+                _session = TrainDefaults.get_sagemaker_session(
                     sagemaker_session=self.sagemaker_session
                 )
                 is_multimodal = self.is_multimodal if self.is_multimodal is not None else False
@@ -347,7 +347,7 @@ class SFTTrainer(BaseTrainer):
                 poll=poll,
                 dry_run=dry_run,
             )
-        elif isinstance(self.compute, TrainingJobCompute):
+        if isinstance(self.compute, TrainingJobCompute):
             if self.data_mixing_config is not None:
                 validate_data_mixing_platform(TrainingPlatform.SAGEMAKER_TRAINING_JOB_SERVERFUL)
             return self._train_serverful_smtj(

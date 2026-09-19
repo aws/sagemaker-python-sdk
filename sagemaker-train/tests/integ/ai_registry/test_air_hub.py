@@ -80,7 +80,7 @@ class TestAIRHubIntegration:
 
     def test_delete_hub_content(self, unique_name, sample_hub_content_document):
         """Test deleting hub content."""
-        response = AIRHub.import_hub_content(
+        AIRHub.import_hub_content(
             hub_content_type=DATASET_HUB_CONTENT_TYPE,
             hub_content_name=unique_name,
             document_schema_version="2.0.0",

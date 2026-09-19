@@ -316,7 +316,7 @@ class TestDataSet:
 
             mock_temp.return_value.__enter__.return_value.name = "/tmp/test_file.jsonl"
 
-            dataset = DataSet.create(
+            DataSet.create(
                 name="test-dataset",
                 source="s3://test-bucket/path/to/dataset.jsonl",
                 customization_technique=CustomizationTechnique.SFT,

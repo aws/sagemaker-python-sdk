@@ -742,7 +742,7 @@ class TestFullRecipeTemplateResolution:
         with (
             patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
-            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._create_input_data_config"),
             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
             patch(
@@ -805,7 +805,7 @@ class TestFullRecipeTemplateResolution:
         with (
             patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
-            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._create_input_data_config"),
             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
             patch(
@@ -870,7 +870,7 @@ class TestFullRecipeTemplateResolution:
         with (
             patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
-            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._create_input_data_config"),
             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
             patch(
@@ -1119,7 +1119,7 @@ class TestSFTTrainerRecipeFlowsIntoTrain:
         with (
             patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
-            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._create_input_data_config"),
             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
             patch(
@@ -1180,7 +1180,7 @@ class TestSFTTrainerRecipeFlowsIntoTrain:
         with (
             patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
-            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._create_input_data_config"),
             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
             patch(

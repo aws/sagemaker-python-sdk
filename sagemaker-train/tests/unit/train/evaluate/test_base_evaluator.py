@@ -163,7 +163,7 @@ class TestBaseEvaluatorInit:
         mock_boto_session.region_name = "us-west-2"
         mock_boto_session_cls.return_value = mock_boto_session
 
-        evaluator = BaseEvaluator(
+        BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
@@ -262,9 +262,6 @@ class TestMLFlowARNValidation:
         mock_resolve.return_value = mock_model_info
         provided_arn = (
             "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/provided-server"
-        )
-        resolved_arn = (
-            "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/resolved-server"
         )
         mock_resolve_mlflow.return_value = provided_arn  # Should use provided, not resolve
 
@@ -1039,7 +1036,7 @@ class TestBaseTemplateContext:
     def test_get_base_template_context_deferred_mlflow_resolution(
         self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info
     ):
-        """Test that mlflow_resource_arn is resolved in _get_base_template_context when session was None at construction."""
+        """Test mlflow_resource_arn is resolved in _get_base_template_context when session was None at construction."""
         mock_resolve.return_value = mock_model_info
         # Validator returns None because session was None at construction time
         mock_resolve_mlflow.return_value = None

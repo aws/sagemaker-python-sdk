@@ -26,7 +26,7 @@ def lambda_handler(event, context):
 
         idx = "no id"
         # print(sample)
-        if not "id" in sample:
+        if "id" not in sample:
             print(f"ID is None/empty for sample: {sample}")
             continue
 
@@ -34,7 +34,7 @@ def lambda_handler(event, context):
 
         ro = RewardOutput(id=idx, aggregate_reward_score=0.0)
 
-        if not "messages" in sample:
+        if "messages" not in sample:
             print(f"Messages is None/empty for id: {idx}")
             # scores.append(RewardOutput(id="0", aggregate_reward_score=0.0))
             continue
@@ -49,7 +49,7 @@ def lambda_handler(event, context):
         last_message = sample["messages"][-1]
         # completion_text = last_message["content"]
 
-        if not "content" in last_message:
+        if "content" not in last_message:
             print(f"Completion text is empty for id: {idx}")
             # scores.append(RewardOutput(id="0", aggregate_reward_score=0.0))
             continue

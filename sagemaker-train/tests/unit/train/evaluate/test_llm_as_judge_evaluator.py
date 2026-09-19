@@ -81,7 +81,7 @@ DEFAULT_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-s
 DEFAULT_MODEL_PACKAGE_GROUP_ARN = (
     "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test-group"
 )
-DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"
+DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"  # noqa: E501
 DEFAULT_ARTIFACT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
 DEFAULT_EVALUATOR_MODEL = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 
@@ -252,7 +252,7 @@ def test_llm_as_judge_evaluator_nova_model_auto_routed(mock_artifact, mock_resol
     """Test that Nova models are accepted and auto-routed to InspectAI+Bedrock."""
     mock_info = Mock()
     mock_info.base_model_name = "amazon-nova-lite-v1"
-    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/amazon-nova-lite-v1/1.0.0"
+    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/amazon-nova-lite-v1/1.0.0"  # noqa: E501
     mock_info.source_model_package_arn = None
     mock_resolve.return_value = mock_info
 
@@ -1045,7 +1045,7 @@ def test_nova_model_allowed_auto_routed(mock_artifact, mock_resolve):
     """Test that Nova JumpStart model is allowed — auto-routes to InspectAI+Bedrock."""
     mock_info = Mock()
     mock_info.base_model_name = "nova-textgeneration-lite"
-    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-lite/1.0.0"
+    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-lite/1.0.0"  # noqa: E501
     mock_info.source_model_package_arn = None
     mock_resolve.return_value = mock_info
 
@@ -1118,7 +1118,7 @@ def test_nova_model_rejected_in_unsupported_region(mock_artifact, mock_resolve):
     """
     mock_info = Mock()
     mock_info.base_model_name = "nova-textgeneration-lite"
-    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-lite/1.0.0"
+    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-lite/1.0.0"  # noqa: E501
     mock_info.source_model_package_arn = None
     mock_resolve.return_value = mock_info
 

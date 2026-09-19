@@ -1,3 +1,6 @@
+"""Encoding and identifier utilities for the AI Registry."""
+
+
 def base32_encode(data: bytes, padding: bool = True) -> str:
     """Encode bytes using RFC4648 base32 hex alphabet.
 

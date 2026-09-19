@@ -29,7 +29,7 @@ from omegaconf import OmegaConf, dictconfig
 
 # from sagemaker.utils.image_uris import retrieve
 
-from sagemaker.train import logger
+from sagemaker.core.utils.utils import logger
 from sagemaker.train.utils import _run_clone_command_silent
 from sagemaker.train.configs import Compute, SourceCode
 from sagemaker.train.distributed import Torchrun, SMP

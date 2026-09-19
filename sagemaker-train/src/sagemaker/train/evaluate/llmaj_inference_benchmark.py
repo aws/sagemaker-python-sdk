@@ -10,7 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
+"""Generate the InspectAI benchmark file and supporting configuration for LLMAJ evaluation.
+
 This module generates the InspectAI benchmark Python file and supporting
 configuration that runs inside the InspectAI container to produce inference
 responses for LLM-as-Judge evaluation. It also handles dataset format

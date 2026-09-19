@@ -31,7 +31,7 @@ container_drivers_path = (
 )
 sys.path.insert(0, str(container_drivers_path))
 
-from distributed_drivers.basic_script_driver import create_commands, main
+from distributed_drivers.basic_script_driver import create_commands, main  # noqa: E402
 
 
 class TestCreateCommands:

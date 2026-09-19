@@ -148,6 +148,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         return "custom"
 
     @validator("dataset", pre=True)
+    @classmethod
     def _resolve_dataset(cls, v):
         """Resolve dataset to string (S3 URI or ARN) and validate format.
 
@@ -156,6 +157,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         return BaseEvaluator._validate_and_resolve_dataset(v)
 
     @validator("evaluator")
+    @classmethod
     def _validate_evaluator(cls, v):
         """Validate evaluator parameter is a built-in metric, Evaluator object, or ARN string"""
         # Check if it's a built-in metric enum
@@ -374,7 +376,9 @@ class CustomScorerEvaluator(BaseEvaluator):
             # Get the hub content name from the base model
             hub_content_name = self._base_model_name
             if not hub_content_name:
-                logger.warning("Base model name not available, using fallback inference parameters")
+                _logger.warning(
+                    "Base model name not available, using fallback inference parameters"
+                )
                 return fallback_params
 
             # Get boto session for API calls
@@ -461,7 +465,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         # Dispatch based on compute type
         if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
             return self._evaluate_serverful_smtj()
-        elif isinstance(self.compute, HyperPodCompute):
+        if isinstance(self.compute, HyperPodCompute):
             return self._evaluate_hyperpod()
 
         # Default: serverless compute via SageMaker Pipelines
@@ -492,7 +496,9 @@ class CustomScorerEvaluator(BaseEvaluator):
 
         # Log resolved model information for debugging
         _logger.info(
-            f"Resolved model info - base_model_name: {self._base_model_name}, base_model_arn: {self._base_model_arn}, source_model_package_arn: {self._source_model_package_arn}"
+            f"Resolved model info - base_model_name: {self._base_model_name}, "
+            f"base_model_arn: {self._base_model_arn}, "
+            f"source_model_package_arn: {self._source_model_package_arn}"
         )
 
         # Resolve evaluator configuration

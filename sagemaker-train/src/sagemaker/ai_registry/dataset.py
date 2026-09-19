@@ -157,6 +157,7 @@ class DataSet(AIRHubEntity):
         return self
 
     def __repr__(self):
+        """Return a detailed representation of the dataset."""
         return (
             f"DataSet(\n"
             f"  name={self.name!r},\n"
@@ -172,10 +173,12 @@ class DataSet(AIRHubEntity):
         )
 
     def __str__(self):
+        """Return the string representation of the dataset."""
         return self.__repr__()
 
     @property
     def hub_content_type(self) -> str:
+        """Return the hub content type for datasets."""
         return DATASET_HUB_CONTENT_TYPE
 
     @classmethod

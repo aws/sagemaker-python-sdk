@@ -52,6 +52,7 @@ class HyperPodTemplateContext:
     image_uri: str | None = None  # Container image URI from template (None if not found)
 
     def __post_init__(self):
+        """Validate the dataclass fields after initialization."""
         if not self.raw_template:
             raise ValueError("raw_template must not be empty")
         if not self.recipe_name:

@@ -32,11 +32,15 @@ EVALUATION_TIMEOUT_SECONDS = 14400  # 4 hours
 
 # Test configuration values from custom_scorer_demo.ipynb
 # TEST_CONFIG = {
-#     "evaluator_arn": "arn:aws:sagemaker:us-west-2:052150106756:hub-content/F3LMYANDKWPZCROJVCKMJ7TOML6QMZBZRRQOVTUL45VUK7PJ4SXA/JsonDoc/eval-lambda-test/0.0.1",
-#     "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
+#     "evaluator_arn":
+#     "arn:aws:sagemaker:us-west-2:052150106756:hub-content/"
+#     "F3LMYANDKWPZCROJVCKMJ7TOML6QMZBZRRQOVTUL45VUK7PJ4SXA/JsonDoc/eval-lambda-test/0.0.1",
+#     "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/"
+#     "d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
 #     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models/28",
 #     "s3_output_path": "s3://mufi-test-serverless-smtj/eval/",
-#     "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
+#     "mlflow_tracking_server_arn":
+#     "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
 #     "evaluate_base_model": False,
 #     "region": "us-west-2",
 # }
@@ -165,7 +169,8 @@ class TestCustomScorerEvaluatorIntegration:
 
         # Step 5: Wait for completion
         logger.info(
-            f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)"
+            f"Waiting for evaluation to complete "
+            f"(timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS // 3600}h)"
         )
 
         try:
@@ -295,7 +300,8 @@ class TestCustomScorerEvaluatorIntegration:
 
         # Wait for completion
         logger.info(
-            f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)"
+            f"Waiting for evaluation to complete "
+            f"(timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS // 3600}h)"
         )
         execution.wait(target_status="Succeeded", poll=30, timeout=EVALUATION_TIMEOUT_SECONDS)
 
@@ -381,7 +387,8 @@ class TestCustomScorerEvaluatorIntegration:
 
         # Step 5: Wait for completion
         logger.info(
-            f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)"
+            f"Waiting for evaluation to complete "
+            f"(timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS // 3600}h)"
         )
 
         try:

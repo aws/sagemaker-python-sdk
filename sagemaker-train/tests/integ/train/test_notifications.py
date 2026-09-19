@@ -210,6 +210,7 @@ def test_notifications_creates_eventbridge_rule_and_cleanup(
     # Try extracting rule name from ARN format: arn:aws:events:region:account:rule/rule-name
     if "/rule/" in rule_arn:
         rule_name = rule_arn.split("/rule/")[-1]
+    logger.debug(f"Resolved rule name: {rule_name}")
 
     rules_response = events_client.list_rules(NamePrefix="sm-pysdk-job-notif")
     rule_names = [r["Name"] for r in rules_response["Rules"]]

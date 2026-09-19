@@ -80,15 +80,19 @@ class EvaluatorList(Sequence):
         self.next_token = next_token
 
     def __getitem__(self, index):
+        """Return the evaluator at the given index."""
         return self._evaluators[index]
 
     def __len__(self):
+        """Return the number of evaluators."""
         return len(self._evaluators)
 
     def __repr__(self):
+        """Return the repr of the underlying evaluators list."""
         return repr(self._evaluators)
 
     def __str__(self):
+        """Return the string form of the underlying evaluators list."""
         return str(self._evaluators)
 
 
@@ -139,6 +143,7 @@ class Evaluator(AIRHubEntity):
         self.reference = reference
 
     def __repr__(self):
+        """Return a detailed representation of the evaluator."""
         return (
             f"Evaluator(\n"
             f"  name={self.name!r},\n"
@@ -153,6 +158,7 @@ class Evaluator(AIRHubEntity):
         )
 
     def __str__(self):
+        """Return the string representation of the evaluator."""
         return self.__repr__()
 
     def refresh(self):
@@ -189,6 +195,7 @@ class Evaluator(AIRHubEntity):
 
     @property
     def hub_content_type(self) -> str:
+        """Return the hub content type for evaluators."""
         return EVALUATOR_HUB_CONTENT_TYPE
 
     @classmethod
@@ -489,8 +496,7 @@ class Evaluator(AIRHubEntity):
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="Evaluator.get_versions")
     def get_versions(self) -> List["Evaluator"]:
-        """
-        List all versions of this evaluator.
+        """List all versions of this evaluator.
 
         Returns:
             List[Evaluator]: List of all versions of this evaluator

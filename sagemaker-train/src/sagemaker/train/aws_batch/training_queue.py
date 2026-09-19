@@ -72,7 +72,7 @@ class TrainingQueue:
                 "TrainingQueue requires using a ModelTrainer with Mode.SAGEMAKER_TRAINING_JOB"
             )
 
-        if share_identifier != None and quota_share_name != None:
+        if share_identifier is not None and quota_share_name is not None:
             raise ValueError(
                 "Either share_identifier or quota_share_name can be specified, but not both"
             )
@@ -208,7 +208,7 @@ class TrainingQueue:
 
         """
         filters = None
-        if share_identifier != None and quota_share_name != None:
+        if share_identifier is not None and quota_share_name is not None:
             raise ValueError(
                 "Either share_identifier or quota_share_name can be specified, but not both"
             )

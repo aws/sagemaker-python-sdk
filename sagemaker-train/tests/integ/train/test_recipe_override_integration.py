@@ -22,13 +22,13 @@ import time
 import pytest
 import yaml
 
-logger = logging.getLogger(__name__)
-
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 from sagemaker.core.training.configs import TrainingJobCompute
+
+logger = logging.getLogger(__name__)
 
 
 # Ensure bundled service model is available for botocore
@@ -72,7 +72,8 @@ class TestSFTTrainerRecipeOverrideInteg:
             sft_trainer = SFTTrainer(
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+                "model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 accept_eula=True,
                 recipe=recipe_path,
@@ -101,7 +102,8 @@ class TestSFTTrainerRecipeOverrideInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -121,7 +123,8 @@ class TestSFTTrainerRecipeOverrideInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             sagemaker_session=sagemaker_session,
@@ -148,7 +151,8 @@ class TestSFTTrainerRecipeOverrideInteg:
             sft_trainer = SFTTrainer(
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+                "model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 s3_output_path="s3://mc-flows-sdk-testing/output/",
                 accept_eula=True,
@@ -195,7 +199,8 @@ class TestSFTTrainerFullRecipeOverrideInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -218,7 +223,8 @@ class TestSFTTrainerFullRecipeOverrideInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -240,7 +246,8 @@ class TestSFTTrainerFullRecipeOverrideInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             sagemaker_session=sagemaker_session,
@@ -280,7 +287,8 @@ class TestSFTTrainerFullRecipeOverrideInteg:
             sft_trainer = SFTTrainer(
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+                "model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 accept_eula=True,
                 recipe=recipe_path,
@@ -311,7 +319,8 @@ class TestSFTTrainerNestedRecipeOverrideInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -339,7 +348,8 @@ class TestSFTTrainerNestedRecipeOverrideInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -376,7 +386,8 @@ class TestSFTTrainerNestedRecipeOverrideInteg:
             sft_trainer = SFTTrainer(
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+                "model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 accept_eula=True,
                 recipe=recipe_path,
@@ -470,7 +481,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="nova-textgeneration-lite-v2",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -491,7 +503,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -509,7 +522,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -527,7 +541,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -546,7 +561,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="nova-textgeneration-lite-v2",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             sagemaker_session=sagemaker_session_us_east_1,
@@ -572,7 +588,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="nova-textgeneration-lite-v2",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             compute=compute,
@@ -598,7 +615,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             compute=compute,
@@ -625,7 +643,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="nova-textgeneration-lite-v2",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             compute=compute,
@@ -648,7 +667,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             compute=compute,
@@ -668,7 +688,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -693,7 +714,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -728,7 +750,8 @@ class TestSFTTrainerValidationFailuresInteg:
             sft_trainer = SFTTrainer(
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+                "model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 accept_eula=True,
                 recipe=recipe_path,
@@ -757,7 +780,8 @@ class TestSFTTrainerValidationFailuresInteg:
             sft_trainer = SFTTrainer(
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+                "model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 accept_eula=True,
                 sagemaker_session=sagemaker_session,
@@ -780,7 +804,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             recipe="/tmp/nonexistent_recipe_file_abc123.yaml",
@@ -794,7 +819,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             recipe="https://evil.example.com/recipe.yaml",
@@ -808,7 +834,8 @@ class TestSFTTrainerValidationFailuresInteg:
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
             overrides={
@@ -839,7 +866,8 @@ class TestSFTTrainerValidationFailuresInteg:
             sft_trainer = SFTTrainer(
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+                "model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 accept_eula=True,
                 recipe=recipe_path,
@@ -1023,7 +1051,8 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
                 training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
                 s3_output_path="s3://mc-flows-sdk-testing/output/",
                 sagemaker_session=sagemaker_session,
-                custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+                custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:"
+                "hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
                 accept_eula=True,
                 base_job_name="rlvr-override-keys-integ",
                 overrides={

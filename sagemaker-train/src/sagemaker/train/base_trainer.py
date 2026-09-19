@@ -1,18 +1,20 @@
+"""Base trainer providing shared fine-tuning workflow logic for SageMaker trainers."""
+
 import copy
-import time
-import yaml
-from abc import ABC, abstractmethod
-from datetime import datetime as _datetime
-from typing import Optional, Dict, Any, List, Union
 import json
 import logging
 import re
 import subprocess
 import tarfile
 import tempfile
+import time
+from abc import ABC, abstractmethod
+from datetime import datetime as _datetime
+from typing import Optional, Dict, Any, List, Union
 from urllib.parse import urlparse
 
 import boto3
+import yaml
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import (
@@ -245,7 +247,6 @@ class BaseTrainer(ABC):
             return None
 
         try:
-            from sagemaker.core.training.configs import HyperPodCompute
             from sagemaker.train.common_utils.finetune_utils import (
                 _get_recipe_entry_and_override_spec,
                 _extract_recipe_from_helm_template,
@@ -389,7 +390,8 @@ class BaseTrainer(ABC):
         expectation for hyperparameter values).
 
         For serverless training (``self.compute`` is None), only user-provided
-        keys (from .hyperparameters.*, recipe or overrides dict) are included because CreateTrainingJob limits HyperParameters to
+        keys (from .hyperparameters.*, recipe or overrides dict) are included because
+        CreateTrainingJob limits HyperParameters to
         100 members and the full resolved recipe can exceed that.
 
         Args:
@@ -891,13 +893,12 @@ class BaseTrainer(ABC):
                     f"Node/Instance count '{instance_count}' is not supported. "
                     f"Allowed values: {sorted(smhp_replicas_enum)}."
                 )
-            else:
-                logger.warning(
-                    f"Instance count '{instance_count}' is not in the recommended values "
-                    f"{sorted(smhp_replicas_enum)} from the model recipe. "
-                    f"This may or may not work depending on the model. "
-                    f"Proceeding anyway for SMTJ compute."
-                )
+            logger.warning(
+                f"Instance count '{instance_count}' is not in the recommended values "
+                f"{sorted(smhp_replicas_enum)} from the model recipe. "
+                f"This may or may not work depending on the model. "
+                f"Proceeding anyway for SMTJ compute."
+            )
         return smhp_replicas_enum
 
     def _validate_instance_type(self, instance_type, sagemaker_session):
@@ -926,7 +927,6 @@ class BaseTrainer(ABC):
         dry_run: bool = False,
     ):
         """Common training method that calls the specific implementation."""
-        pass
 
     def _get_extra_smtj_hyperparameters(self) -> Dict[str, Any]:
         """Return extra hyperparameters to inject for SMTJ training.
@@ -1190,9 +1190,7 @@ class BaseTrainer(ABC):
         # training (resuming from a previously trained checkpoint).
         # Only applies to Nova models — OSS models handle this via the input channel.
         if getattr(self, "model_source", None) and _is_nova_model(self._model_name):
-            import yaml as _yaml
-
-            recipe_dict = _yaml.safe_load(recipe_content)
+            recipe_dict = yaml.safe_load(recipe_content)
 
             applied = False
             if "run" in recipe_dict and isinstance(recipe_dict["run"], dict):
@@ -1205,7 +1203,7 @@ class BaseTrainer(ABC):
                     "'model_name_or_path' was not found. The checkpoint path will not be applied."
                 )
             else:
-                recipe_content = _yaml.dump(recipe_dict, default_flow_style=False, sort_keys=False)
+                recipe_content = yaml.dump(recipe_dict, default_flow_style=False, sort_keys=False)
                 logger.info(f"Overriding model_name_or_path with checkpoint: {self.model_source}")
 
         with open(recipe_local_path, "w") as f:

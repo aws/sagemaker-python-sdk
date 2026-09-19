@@ -47,7 +47,7 @@ class TestGetDataSourceInstance:
     def test_returns_s3_data_source(self, mock_s3_data_source):
         """Test returns S3DataSource for s3:// URI."""
         mock_session = MagicMock()
-        data_source = get_data_source_instance("s3://bucket/prefix", mock_session)
+        get_data_source_instance("s3://bucket/prefix", mock_session)
         mock_s3_data_source.assert_called_once_with("bucket", "/prefix", mock_session)
 
     def test_raises_error_for_invalid_scheme(self):

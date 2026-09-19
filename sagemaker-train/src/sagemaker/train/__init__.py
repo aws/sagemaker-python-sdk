@@ -25,7 +25,7 @@ def __getattr__(name):
         from sagemaker.core.helper.session_helper import Session
 
         return Session
-    elif name == "get_execution_role":
+    if name == "get_execution_role":
         from sagemaker.core.helper.session_helper import get_execution_role
 
         return get_execution_role

@@ -38,7 +38,7 @@ DEFAULT_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-s
 DEFAULT_MODEL_PACKAGE_GROUP_ARN = (
     "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test-group"
 )
-DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"
+DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"  # noqa: E501
 DEFAULT_ARTIFACT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
 
 
@@ -255,7 +255,7 @@ def test_benchmark_evaluator_dataset_resolution_from_object(mock_artifact, mock_
     mock_dataset = Mock()
     mock_dataset.arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/AIRegistry/DataSet/test/1.0.0"
 
-    evaluator = BenchMarkEvaluator(
+    BenchMarkEvaluator(
         benchmark=_Benchmark.MMLU,
         model=DEFAULT_MODEL,
         s3_output_path=DEFAULT_S3_OUTPUT,

@@ -10,8 +10,9 @@ from __future__ import absolute_import
 import logging
 import re
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
+import boto3
 from botocore.exceptions import ClientError
 from pydantic import BaseModel, PrivateAttr, validator
 
@@ -24,9 +25,6 @@ from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.core.training.configs import Compute, HyperPodCompute
 from sagemaker.core.utils.utils import Unassigned
-
-if TYPE_CHECKING:
-    pass
 
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
@@ -107,7 +105,8 @@ class BaseEvaluator(BaseModel):
             - ModelPackage object: A fine-tuned model package
             - ModelPackage ARN (str): e.g., 'arn:aws:sagemaker:region:account:model-package/name/version'
             - S3 checkpoint path (str): e.g., 's3://bucket/path/to/checkpoint' (for HyperPod outputs)
-            - BaseTrainer object: A completed training job (i.e., it must have _latest_training_job with output_model_package_arn populated)
+            - BaseTrainer object: A completed training job (i.e., it must have
+              _latest_training_job with output_model_package_arn populated)
         base_model_name (Optional[str]): Base model name for recipe lookup when using S3 checkpoint
             paths. Required when model is an S3 URI. E.g., 'amazon.nova-lite-v2' or
             'nova-textgeneration-lite-v2'.
@@ -166,6 +165,8 @@ class BaseEvaluator(BaseModel):
     _latest_execution: Any = PrivateAttr(default=None)
 
     class Config:
+        """Pydantic model configuration."""
+
         arbitrary_types_allowed = True
 
     @staticmethod
@@ -214,7 +215,8 @@ class BaseEvaluator(BaseModel):
                 f"Invalid dataset format: '{dataset_str}'. "
                 f"Dataset must be either:\n"
                 f"  1. A hub-content DataSet ARN matching pattern: arn:*:hub-content/*/DataSet/*\n"
-                f"     Example: arn:aws:sagemaker:us-east-1:123456789012:hub-content/AIRegistry/DataSet/my-dataset/1.0\n"
+                f"     Example: arn:aws:sagemaker:us-east-1:123456789012:"
+                f"hub-content/AIRegistry/DataSet/my-dataset/1.0\n"
                 f"  2. An S3 URI matching pattern: s3://*\n"
                 f"     Example: s3://my-bucket/path/to/dataset.jsonl"
             )
@@ -222,6 +224,7 @@ class BaseEvaluator(BaseModel):
         return dataset_str
 
     @validator("mlflow_resource_arn", pre=True, always=True)
+    @classmethod
     def _resolve_mlflow_arn(cls, v, values):
         """Resolve MLflow resource ARN using default experience logic if not provided."""
         # Get sagemaker_session from values
@@ -243,11 +246,13 @@ class BaseEvaluator(BaseModel):
         return resolved_arn
 
     @validator("model_package_group", pre=True)
+    @classmethod
     def _validate_and_resolve_model_package_group(cls, v, values):
         r"""Validate and resolve model_package_group to ARN string.
 
         Accepts three input types:
-        1. ARN string matching pattern: arn:aws(-cn|-us-gov|-iso-f)?:sagemaker:[a-z0-9\-]{9,16}:[0-9]{12}:model-package-group/[\S]{1,2048}
+        1. ARN string matching pattern:
+           arn:aws(-cn|-us-gov|-iso-f)?:sagemaker:[a-z0-9\-]{9,16}:[0-9]{12}:model-package-group/[\S]{1,2048}
         2. ModelPackageGroup object - extracts ARN from object.model_package_group_arn
         3. Model package group name string - fetches object via ModelPackageGroup.get() and extracts ARN
 
@@ -322,6 +327,7 @@ class BaseEvaluator(BaseModel):
         )
 
     @validator("mlflow_resource_arn")
+    @classmethod
     def _validate_mlflow_arn_format(cls, v: Optional[str]) -> Optional[str]:
         """Validate MLFlow resource ARN format if provided.
 
@@ -342,12 +348,14 @@ class BaseEvaluator(BaseModel):
             raise ValueError(
                 f"Invalid MLFlow resource ARN format: {v}. "
                 f"Expected formats:\n"
-                f"  - MLflow tracking server: arn:aws[a-z-]*:sagemaker:[region]:[account-id]:mlflow-tracking-server/[name]\n"
+                f"  - MLflow tracking server: "
+                f"arn:aws[a-z-]*:sagemaker:[region]:[account-id]:mlflow-tracking-server/[name]\n"
                 f"  - MLflow app: arn:aws[a-z-]*:sagemaker:[region]:[account-id]:mlflow-app/[app-id]"
             )
         return v
 
     @validator("model")
+    @classmethod
     def _resolve_model_info(
         cls, v: Union[str, BaseTrainer, ModelPackage], values: dict
     ) -> Union[str, Any]:
@@ -361,7 +369,8 @@ class BaseEvaluator(BaseModel):
         The resolved information is stored in private attributes for use by subclasses.
 
         Args:
-            v (Union[str, BaseTrainer, ModelPackage]): Model identifier (JumpStart ID, ModelPackage, ARN, or BaseTrainer).
+            v (Union[str, BaseTrainer, ModelPackage]): Model identifier
+                (JumpStart ID, ModelPackage, ARN, or BaseTrainer).
             values (dict): Dictionary of already-validated fields.
 
         Returns:
@@ -382,7 +391,6 @@ class BaseEvaluator(BaseModel):
 
             # If the model is an ARN, ensure the session region matches the ARN region
             if isinstance(v, str) and v.startswith("arn:aws:sagemaker:"):
-                import boto3
                 from sagemaker.core.helper.session_helper import Session
 
                 arn_parts = v.split(":")
@@ -428,6 +436,7 @@ class BaseEvaluator(BaseModel):
             raise ValueError(f"Failed to resolve model: {e}")
 
     @validator("sagemaker_session", always=True, pre=True)
+    @classmethod
     def _create_default_session(cls, v: Optional[Any], values: dict) -> Any:
         """Create a default SageMaker session if not provided.
 
@@ -440,7 +449,6 @@ class BaseEvaluator(BaseModel):
         """
         if v is None:
             import os
-            import boto3
             from sagemaker.core.helper.session_helper import Session
 
             region = (
@@ -510,10 +518,10 @@ class BaseEvaluator(BaseModel):
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
-        from ..common_utils.recipe_utils import _is_nova_model
+        from ..common_utils.recipe_utils import _is_nova_model as _is_nova_model_by_id
 
         base_model_name = self._base_model_name
-        return _is_nova_model(base_model_name) if base_model_name else False
+        return _is_nova_model_by_id(base_model_name) if base_model_name else False
 
     def _resolve_model_name_for_recipe(self) -> str:
         """Resolve the model name for recipe lookup in SageMaker Hub.
@@ -637,7 +645,8 @@ class BaseEvaluator(BaseModel):
                 return inferred_arn
             else:
                 raise ValueError(
-                    f"Could not infer model_package_group from source_model_package_arn: {self._source_model_package_arn}. "
+                    f"Could not infer model_package_group from "
+                    f"source_model_package_arn: {self._source_model_package_arn}. "
                     f"Please provide model_package_group explicitly."
                 )
 
@@ -728,6 +737,7 @@ class BaseEvaluator(BaseModel):
             )
 
     @validator("base_eval_name", always=True)
+    @classmethod
     def _generate_default_eval_name(cls, v: Optional[str], values: dict) -> str:
         """Generate a unique eval name if not provided using format: eval-{model_name}-{uuid}.
 
@@ -744,7 +754,6 @@ class BaseEvaluator(BaseModel):
         """
         if v is None:
             import uuid
-            import re
 
             # Generate shorter UUID (first 8 characters)
             short_uuid = str(uuid.uuid4())[:8]
@@ -1293,7 +1302,7 @@ class BaseEvaluator(BaseModel):
         """Resolve CloudWatch log group from a pipeline step's job ARN."""
         if ":training-job/" in arn:
             return "/aws/sagemaker/TrainingJobs"
-        elif ":job/" in arn:
+        if ":job/" in arn:
             # Only MTRL evals use Job-API steps in pipelines today
             return "/aws/sagemaker/Job/AgentRFTEvaluation"
         return "/aws/sagemaker/TrainingJobs"
@@ -1314,8 +1323,6 @@ class BaseEvaluator(BaseModel):
         Returns:
             tuple: (sagemaker_session, role, region)
         """
-        from sagemaker.train.defaults import TrainDefaults
-
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
         )
@@ -1905,7 +1912,6 @@ class BaseEvaluator(BaseModel):
         """
         import yaml
         from sagemaker.train.model_trainer import ModelTrainer
-        from sagemaker.core.training.configs import Compute as TrainingJobCompute
 
         # Validate no unresolved {{...}} placeholders remain in the recipe
         # before writing, to prevent literal template strings from leaking into
@@ -1915,7 +1921,7 @@ class BaseEvaluator(BaseModel):
         with open(recipe_tmp_path, "w") as f:
             yaml.dump(recipe_dict, f, default_flow_style=False, sort_keys=False)
 
-        compute = TrainingJobCompute(
+        compute = Compute(
             instance_type=self.compute.instance_type,
             instance_count=self.compute.instance_count,
             volume_size_in_gb=self.compute.volume_size_in_gb,
@@ -2053,8 +2059,6 @@ class BaseEvaluator(BaseModel):
             base_overrides["recipes.run.model_name_or_path"] = self.model
         else:
             # Check if model is a BaseTrainer with a completed training job
-            from sagemaker.train.base_trainer import BaseTrainer
-
             if isinstance(self.model, BaseTrainer):
                 checkpoint_uri = None
                 training_job = getattr(self.model, "_latest_training_job", None)

@@ -130,8 +130,7 @@ class MultiTurnRLTrainer(BaseTrainer):
     Uses CreateJob API (not CreateTrainingJob) with a JobConfigDocument JSON string.
 
     Example:
-
-    .. code:: python
+        .. code:: python
 
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
@@ -337,7 +336,6 @@ class MultiTurnRLTrainer(BaseTrainer):
         agent_rft_job = AgentRFTJob.from_job(job)
         logger.info(f"Created Job: {agent_rft_job.job_arn}")
 
-        hp = self._final_hyperparameters
         agent_rft_job.description = f"Multi-turn RFT training using {self._model_name}"
 
         if wait:

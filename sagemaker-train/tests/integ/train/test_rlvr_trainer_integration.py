@@ -70,12 +70,6 @@ def evaluator(sagemaker_session, lambda_arn):
     return evaluator
 
 
-@pytest.fixture(scope="module")
-def lambda_arn(region, account_id):
-    """Construct the Lambda function ARN from account and region."""
-    return f"arn:aws:lambda:{region}:{account_id}:function:{LAMBDA_OSS_REWARD_FUNCTION_NAME}"
-
-
 @pytest.mark.gpu_intensive
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
@@ -132,7 +126,8 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
         mlflow_run_name="test-rlvr-finetuned-models-run",
         training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
-        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/"
+        "sdktest/JsonDoc/rlvr-test-rf/0.0.1",
         accept_eula=True,
         base_job_name=f"rlvr-rf-integ-{unique_id}",
     )
@@ -176,7 +171,8 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
         training_dataset="s3://sagemaker-us-east-1-784379639078/input_data/rlvr-nova/grpo-64-sample.jsonl",
         validation_dataset="s3://sagemaker-us-east-1-784379639078/input_data/rlvr-nova/grpo-64-sample.jsonl",
         s3_output_path="s3://sagemaker-us-east-1-784379639078/output/",
-        custom_reward_function="arn:aws:sagemaker:us-east-1:784379639078:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
+        custom_reward_function="arn:aws:sagemaker:us-east-1:784379639078:hub-content/"
+        "sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
         # Can uncomment below reward function to test lambda arn flow as well.
         # custom_reward_function="arn:aws:lambda:us-east-1:784379639078:function:rlvr-nova-reward-function",
         accept_eula=True,
@@ -312,7 +308,8 @@ def test_rlvr_trainer_nemotron_with_kl_and_recipe(sagemaker_session):
         training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         sagemaker_session=sagemaker_session,
-        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/"
+        "sdktest/JsonDoc/rlvr-test-rf/0.0.1",
         accept_eula=True,
         base_job_name=f"rlvr-nemotron-kl-integ-{unique_id}",
         overrides={
@@ -365,7 +362,8 @@ def test_rlvr_trainer_lora_with_sequence_length(sagemaker_session):
         mlflow_run_name="test-rlvr-finetuned-models-run",
         training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
-        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/"
+        "sdktest/JsonDoc/rlvr-test-rf/0.0.1",
         accept_eula=True,
         sequence_length="8K",
         base_job_name=f"rlvr-seqlen-integ-{unique_id}",

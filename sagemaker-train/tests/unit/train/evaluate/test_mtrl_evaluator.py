@@ -83,7 +83,7 @@ class TestStartMtrlExecution:
             "PipelineExecutionArn": f"arn:aws:sagemaker:us-west-2:123:pipeline/{PIPELINE_PREFIX}/execution/exec-2"
         }
 
-        result = evaluator._start_mtrl_execution(
+        evaluator._start_mtrl_execution(
             pipeline_definition='{"Steps": []}',
             name="test-eval",
             role_arn=ROLE,
@@ -278,7 +278,7 @@ class TestModelResolutionWithLatestJob:
                 base_model_arn="arn:aws:sagemaker:us-west-2:aws:hub-content/test",
                 source_model_package_arn=SOURCE_MP_ARN,
             )
-            result = resolver.resolve_model_info(mock_trainer)
+            resolver.resolve_model_info(mock_trainer)
 
             mock_resolve.assert_called_once_with(SOURCE_MP_ARN)
 
@@ -316,6 +316,6 @@ class TestModelResolutionWithLatestJob:
                 base_model_arn="arn:aws:sagemaker:us-west-2:aws:hub-content/test",
                 source_model_package_arn=SOURCE_MP_ARN,
             )
-            result = resolver.resolve_model_info(mock_trainer)
+            resolver.resolve_model_info(mock_trainer)
 
             mock_resolve.assert_called_once_with(SOURCE_MP_ARN)

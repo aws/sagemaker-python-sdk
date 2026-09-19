@@ -10,11 +10,15 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Dataset wrappers and helpers for the AI Registry."""
 
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from enum import Enum
 from collections.abc import Sequence
 import json
+
+if TYPE_CHECKING:
+    from sagemaker.ai_registry.dataset import DataSet
 
 
 class CustomizationTechnique(str, Enum):
@@ -40,15 +44,19 @@ class DataSetList(Sequence):
         self.next_token = next_token
 
     def __getitem__(self, index):
+        """Return the dataset at the given index."""
         return self._datasets[index]
 
     def __len__(self):
+        """Return the number of datasets."""
         return len(self._datasets)
 
     def __repr__(self):
+        """Return the repr of the underlying datasets list."""
         return repr(self._datasets)
 
     def __str__(self):
+        """Return the string form of the underlying datasets list."""
         return str(self._datasets)
 
 

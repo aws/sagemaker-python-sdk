@@ -135,7 +135,7 @@ def _resolve_bedrock_model_id(base_model_name: str, region: str) -> Optional[str
 
 
 class LLMAsJudgeEvaluator(BaseEvaluator):
-    """LLM-as-judge evaluation job.
+    r"""LLM-as-judge evaluation job.
 
     This evaluator uses foundation models to evaluate LLM responses
     based on various quality and responsible AI metrics.
@@ -203,7 +203,8 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 {
                     "customMetricDefinition": {
                         "name": "PositiveSentiment",
-                        "instructions": "Assess if the response has positive sentiment. Prompt: {{prompt}}\\nResponse: {{prediction}}",
+                        "instructions": "Assess if the response has positive sentiment. "
+                        "Prompt: {{prompt}}\nResponse: {{prediction}}",
                         "ratingScale": [
                             {"definition": "Good", "value": {"floatValue": 1.0}},
                             {"definition": "Poor", "value": {"floatValue": 0.0}}
@@ -242,6 +243,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
     evaluate_base_model: bool = False
 
     @validator("dataset", pre=True)
+    @classmethod
     def _resolve_dataset(cls, v):
         """Resolve dataset to string (S3 URI or ARN) and validate format.
 
@@ -250,6 +252,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         return BaseEvaluator._validate_and_resolve_dataset(v)
 
     @root_validator(skip_on_failure=True)
+    @classmethod
     def _validate_model_compatibility(cls, values):
         """Validate Nova model region compatibility for LLM-as-Judge.
 
@@ -281,6 +284,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         return values
 
     @validator("evaluator_model")
+    @classmethod
     def _validate_evaluator_model(cls, v, values):
         """Validate that evaluator_model is a supported judge model (construction step 1).
 
@@ -816,8 +820,6 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         :rtype: str
         :raises ValueError: If the ARN cannot be resolved to an S3 location.
         """
-        import json as _json
-
         from sagemaker.ai_registry.air_hub import AIRHub
         from sagemaker.ai_registry.air_constants import (
             DOC_KEY_DATASET_S3_BUCKET,
@@ -840,7 +842,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 hub_content_name=hub_content_name,
                 session=self.sagemaker_session,
             )
-            doc = _json.loads(response[RESPONSE_KEY_HUB_CONTENT_DOCUMENT])
+            doc = json.loads(response[RESPONSE_KEY_HUB_CONTENT_DOCUMENT])
             bucket = doc.get(DOC_KEY_DATASET_S3_BUCKET, "")
             prefix = doc.get(DOC_KEY_DATASET_S3_PREFIX, "")
 

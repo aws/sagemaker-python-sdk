@@ -175,6 +175,7 @@ class InspectAIEvaluator(BaseEvaluator):
     max_tokens: int = 8192
 
     @validator("environment")
+    @classmethod
     def _validate_environment(cls, v):
         if v is None:
             return v
@@ -184,6 +185,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @validator("benchmarks_path")
+    @classmethod
     def _validate_benchmarks_path(cls, v):
         if not v or not v.strip():
             raise ValueError("benchmarks_path is required and cannot be empty")
@@ -192,6 +194,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @validator("tasks")
+    @classmethod
     def _validate_tasks(cls, v):
         if v is None:
             return v
@@ -215,6 +218,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @validator("output_format")
+    @classmethod
     def _validate_output_format(cls, v):
         if v is None:
             return v
@@ -224,24 +228,28 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @validator("model_s3_uri")
+    @classmethod
     def _validate_model_s3_uri(cls, v):
         if v is not None and not v.startswith("s3://"):
             raise ValueError(f"model_s3_uri must start with 's3://'. Got: '{v}'")
         return v
 
     @validator("inference_image_uri")
+    @classmethod
     def _validate_inference_image_uri(cls, v):
         if v is not None and not _ECR_URI_PATTERN.match(v):
             raise ValueError(f"inference_image_uri must be a valid ECR URI. Got: '{v}'")
         return v
 
     @validator("endpoint_instance_type")
+    @classmethod
     def _validate_endpoint_instance_type(cls, v):
         if v is not None and not v.startswith("ml."):
             raise ValueError(f"endpoint_instance_type must start with 'ml.'. Got: '{v}'")
         return v
 
     @validator("endpoint_execution_role_arn")
+    @classmethod
     def _validate_endpoint_execution_role_arn(cls, v):
         if v is not None and not _IAM_ROLE_ARN_PATTERN.match(v):
             raise ValueError(
@@ -250,6 +258,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @root_validator(skip_on_failure=True)
+    @classmethod
     def _validate_inference_mode_consistency(cls, values):
         from sagemaker.train.base_trainer import BaseTrainer
 
@@ -282,6 +291,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return values
 
     @root_validator(skip_on_failure=True)
+    @classmethod
     def _resolve_trainer_model(cls, values):
         """Auto-resolve model artifacts from a BaseTrainer for endpoint creation.
 
@@ -444,54 +454,63 @@ class InspectAIEvaluator(BaseEvaluator):
         return values
 
     @validator("image_uri")
+    @classmethod
     def _validate_image_uri(cls, v):
         if v is not None and not _ECR_URI_PATTERN.match(v):
             raise ValueError(f"image_uri must be a valid ECR URI. Got: '{v}'")
         return v
 
     @validator("instance_type")
+    @classmethod
     def _validate_instance_type(cls, v):
         if not v.startswith("ml."):
             raise ValueError(f"instance_type must start with 'ml.'. Got: '{v}'")
         return v
 
     @validator("max_connections")
+    @classmethod
     def _validate_max_connections(cls, v):
         if v < 1:
             raise ValueError(f"max_connections must be >= 1. Got: {v}")
         return v
 
     @validator("max_retries")
+    @classmethod
     def _validate_max_retries(cls, v):
         if v < 1:
             raise ValueError(f"max_retries must be >= 1. Got: {v}")
         return v
 
     @validator("max_tokens")
+    @classmethod
     def _validate_max_tokens(cls, v):
         if v < 1:
             raise ValueError(f"max_tokens must be >= 1. Got: {v}")
         return v
 
     @validator("timeout")
+    @classmethod
     def _validate_timeout(cls, v):
         if v < 1:
             raise ValueError(f"timeout must be >= 1 (seconds). Got: {v}")
         return v
 
     @validator("temperature")
+    @classmethod
     def _validate_temperature(cls, v):
         if v < 0.0 or v > 2.0:
             raise ValueError(f"temperature must be in [0.0, 2.0]. Got: {v}")
         return v
 
     @validator("top_p")
+    @classmethod
     def _validate_top_p(cls, v):
         if v < 0.0 or v > 1.0:
             raise ValueError(f"top_p must be in [0.0, 1.0]. Got: {v}")
         return v
 
     @validator("top_k")
+    @classmethod
     def _validate_top_k(cls, v):
         # -1 disables top-k sampling; otherwise must be a positive int
         if v != -1 and v < 1:
@@ -546,7 +565,7 @@ class InspectAIEvaluator(BaseEvaluator):
                     "region": region,
                 }
             }
-        elif scenario == "existing_endpoint":
+        if scenario == "existing_endpoint":
             config = {
                 "sagemaker_endpoint": {
                     "endpoint_name": self.endpoint_name,
@@ -602,7 +621,9 @@ class InspectAIEvaluator(BaseEvaluator):
             benchmarks["s3_path"] = self.benchmarks_path
         if self.tasks:
             benchmarks["tasks"] = []
-            for task in self.tasks:
+            for (
+                task
+            ) in self.tasks:  # pylint: disable=not-an-iterable  # Optional[List], guarded above
                 task_entry = {"name": task["name"]}
                 if "path" in task:
                     task_entry["path"] = task["path"]

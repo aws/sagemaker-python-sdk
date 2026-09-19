@@ -41,6 +41,7 @@ class CustomAgentLambda:
         self.lambda_arn = lambda_arn
 
     def __repr__(self):
+        """Return a representation of the custom agent Lambda."""
         return f"CustomAgentLambda(lambda_arn={self.lambda_arn!r})"
 
     @classmethod

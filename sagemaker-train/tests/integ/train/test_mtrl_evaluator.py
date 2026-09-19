@@ -47,11 +47,13 @@ def _get_test_config():
     role_arn = TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
     return {
         "base_model": "mock-oss-test",
-        "agent_arn": f"arn:aws:bedrock-agentcore:{_REGION}:{account_id}:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
+        "agent_arn": f"arn:aws:bedrock-agentcore:{_REGION}:{account_id}:runtime/"
+        f"sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/output-artifacts/",
         "mlflow_resource_arn": f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
-        "model_package_group": f"arn:aws:sagemaker:{_REGION}:{account_id}:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
+        "model_package_group": f"arn:aws:sagemaker:{_REGION}:{account_id}:model-package-group/"
+        f"openai-reasoning-gpt-oss-20b-mtrl-mpg",
         "role": role_arn,
         "region": _REGION,
         "account_id": account_id,
@@ -147,7 +149,10 @@ def mtrl_trainer(sagemaker_session_mtrl, test_config):
 
     trainer = object.__new__(MultiTurnRLTrainer)
     trainer._model_name = test_config["base_model"]
-    trainer._model_arn = f"arn:aws:sagemaker:{_REGION}:{test_config['account_id']}:hub-content/sdktest/Model/{test_config['base_model']}/0.0.1"
+    trainer._model_arn = (
+        f"arn:aws:sagemaker:{_REGION}:{test_config['account_id']}:hub-content/sdktest/Model/"
+        f"{test_config['base_model']}/0.0.1"
+    )
     trainer.agent_env = test_config["agent_arn"]
     trainer.bedrock_agentcore_qualifier = "DEFAULT"
     trainer.output_model_package_group = test_config["model_package_group"]

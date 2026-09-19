@@ -10,8 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
-DEPRECATED: This module has been moved to sagemaker.core.remote_function.core.stored_function
+"""DEPRECATED: This module has been moved to sagemaker.core.remote_function.core.stored_function
 
 This is a backward compatibility shim.
 """
@@ -24,7 +23,8 @@ import warnings
 from sagemaker.core.remote_function.core.stored_function import *  # noqa: F401, F403
 
 warnings.warn(
-    "sagemaker.train.remote_function.core.stored_function has been moved to sagemaker.core.remote_function.core.stored_function. "
+    "sagemaker.train.remote_function.core.stored_function has been moved to "
+    "sagemaker.core.remote_function.core.stored_function. "
     "Please update your imports. This shim will be removed in a future version.",
     DeprecationWarning,
     stacklevel=2,

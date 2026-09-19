@@ -103,7 +103,7 @@ from sagemaker.train.templates import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train import logger
+from sagemaker.core.utils.utils import logger
 from sagemaker.train.sm_recipes.utils import (
     _get_args_from_recipe,
     _determine_device_type,
@@ -567,6 +567,7 @@ class ModelTrainer(BaseModel):
         boto3: bool = False,
     ) -> Dict[str, Any]:
         """Create the training job arguments.
+
         Args:
             input_data_config (Optional[List[Union[Channel, InputData]]]):
             input_data_config (Optional[List[Union[Channel, InputData]]]):
@@ -992,7 +993,8 @@ class ModelTrainer(BaseModel):
                 ``s3://<default_bucket_path>/<key_prefix>/<channel_name>/``
             ignore_patterns: (Optional[List[str]]) :
                 The ignore patterns to ignore specific files/folders when uploading to S3.
-                If not specified, default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
+                If not specified, default to:
+                ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
             instance_group_names: (Optional[List[str]]) :
                 The names of the instance groups (for heterogeneous clusters) that this
                 channel's data should be assigned to. Only applied when the channel is
@@ -1463,10 +1465,7 @@ class ModelTrainer(BaseModel):
             return copy.deepcopy(self._resolved_recipe_cache)
 
         from omegaconf import OmegaConf
-        from sagemaker.train.sm_recipes.utils import (
-            _load_base_recipe,
-            _register_custom_resolvers,
-        )
+        from sagemaker.train.sm_recipes.utils import _register_custom_resolvers
         import copy
 
         recipe = _load_base_recipe(
@@ -1602,7 +1601,11 @@ class ModelTrainer(BaseModel):
                 "Set a single ``instance_type`` in Compute for JumpStart models."
             )
         if compute and document.SupportedTrainingInstanceTypes:
-            if compute.instance_type not in document.SupportedTrainingInstanceTypes:
+            # Optional[List] is guarded by the enclosing ``if``; pylint cannot see that.
+            if (
+                compute.instance_type
+                not in document.SupportedTrainingInstanceTypes  # pylint: disable=unsupported-membership-test
+            ):
                 raise ValueError(
                     "Training is not supported for model ID with instance type: "
                     f" {compute.instance_type}.\n"
@@ -1849,19 +1852,22 @@ class ModelTrainer(BaseModel):
         self, metric_definitions: List[MetricDefinition]
     ) -> "ModelTrainer":  # noqa: D412
         """Set the metric definitions for the training job.
+
         Example:
-        .. code:: python
-            from sagemaker.modules.train import ModelTrainer
-            from sagemaker.modules.configs import MetricDefinition
-            metric_definitions = [
-                MetricDefinition(
-                    name="loss",
-                    regex="Loss: (.*?)",
-                )
-            ]
-            model_trainer = ModelTrainer(
-                ...
-            ).with_metric_definitions(metric_definitions)
+            .. code:: python
+
+                from sagemaker.modules.train import ModelTrainer
+                from sagemaker.modules.configs import MetricDefinition
+                metric_definitions = [
+                    MetricDefinition(
+                        name="loss",
+                        regex="Loss: (.*?)",
+                    )
+                ]
+                model_trainer = ModelTrainer(
+                    ...
+                ).with_metric_definitions(metric_definitions)
+
         Args:
             metric_definitions (List[MetricDefinition]):
                 The metric definitions for the training job.

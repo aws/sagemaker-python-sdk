@@ -1,3 +1,5 @@
+"""RLAIF (Reinforcement Learning from AI Feedback) trainer for SageMaker fine-tuning."""
+
 from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
@@ -42,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class RLAIFTrainer(BaseTrainer):
-    """Class that performs Reinforcement Learning from AI Feedback (RLAIF) fine-tuning on foundation models using AWS SageMaker.
+    """Class that performs Reinforcement Learning from AI Feedback (RLAIF) fine-tuning on foundation models.
 
     Example:
 
@@ -101,7 +103,8 @@ class RLAIFTrainer(BaseTrainer):
         reward_prompt (Union[str, Evaluator]):
             The reward prompt or evaluator for AI feedback generation.
             Can be a prompt string or Evaluator object.
-            For Builtin metric prompts refer: https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation-metrics.html
+            For Builtin metric prompts refer:
+            https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation-metrics.html
         mlflow_resource_arn (Optional[Union[str, MlflowTrackingServer]]):
             The MLflow tracking server ARN for experiment tracking.
             If not specified, uses default MLflow experience.

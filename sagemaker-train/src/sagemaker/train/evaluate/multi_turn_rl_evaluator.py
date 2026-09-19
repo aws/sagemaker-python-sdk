@@ -164,6 +164,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
     # --- Validators ------------------------------------------------------
 
     @validator("dataset", pre=True, always=True)
+    @classmethod
     def _resolve_dataset(cls, v):
         if v is None:
             raise ValueError(
@@ -174,6 +175,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         return BaseEvaluator._validate_and_resolve_dataset(v)
 
     @validator("agent_config", pre=True, always=True)
+    @classmethod
     def _resolve_agent_config(cls, v):
         if v is None:
             return None
@@ -190,6 +192,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         )
 
     @validator("stopping_condition", always=True)
+    @classmethod
     def _validate_stopping_condition(cls, v):
         if v is None:
             return 86400
@@ -204,6 +207,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         return v
 
     @root_validator(skip_on_failure=True)
+    @classmethod
     def _check_agent_config_for_non_trainer_models(cls, values):
         """When the model is not a ``MultiTurnRLTrainer``, require ``agent_config``.
 

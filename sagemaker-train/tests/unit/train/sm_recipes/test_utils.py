@@ -238,7 +238,7 @@ def test_get_args_from_recipe_compute(
     if test_case["type"] == "gpu":
         mock_gpu_args.side_effect = _configure_gpu_args
 
-        args = _get_args_from_recipe(
+        _get_args_from_recipe(
             training_recipe=temporary_recipe,
             compute=compute,
             region_name="us-west-2",
@@ -251,7 +251,7 @@ def test_get_args_from_recipe_compute(
     if test_case["type"] == "trn":
         mock_trainium_args.side_effect = _configure_trainium_args
 
-        args = _get_args_from_recipe(
+        _get_args_from_recipe(
             training_recipe=temporary_recipe,
             compute=compute,
             region_name="us-west-2",
@@ -263,7 +263,7 @@ def test_get_args_from_recipe_compute(
 
     if test_case["type"] == "cpu":
         with pytest.raises(ValueError):
-            args = _get_args_from_recipe(
+            _get_args_from_recipe(
                 training_recipe=temporary_recipe,
                 compute=compute,
                 region_name="us-west-2",

@@ -25,16 +25,20 @@ SAMPLE_DATASET = {
     "data_source": "openai/gsm8k",
     "prompt": [
         {
-            "content": 'Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May? Let\'s think step by step and output the final answer after "####".',
+            "content": "Natalia sold clips to 48 of her friends in April, and then she sold half as many "
+            "clips in May. How many clips did Natalia sell altogether in April and May? "
+            'Let\'s think step by step and output the final answer after "####".',
             "role": "user",
         }
     ],
     "ability": "math",
     "reward_model": {"ground_truth": "72", "style": "rule"},
     "extra_info": {
-        "answer": "Natalia sold 48/2 = <<48/2=24>>24 clips in May.\nNatalia sold 48+24 = <<48+24=72>>72 clips altogether in April and May.\n#### 72",
+        "answer": "Natalia sold 48/2 = <<48/2=24>>24 clips in May.\n"
+        "Natalia sold 48+24 = <<48+24=72>>72 clips altogether in April and May.\n#### 72",
         "index": 0,
-        "question": "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?",
+        "question": "Natalia sold clips to 48 of her friends in April, and then she sold half as many "
+        "clips in May. How many clips did Natalia sell altogether in April and May?",
         "split": "train",
     },
 }
@@ -97,7 +101,7 @@ class TestDataSetDomainId:
 
         # Create dataset with real file
         with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
-            dataset = DataSet.create(
+            DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
                 customization_technique=CustomizationTechnique.SFT,
@@ -152,7 +156,7 @@ class TestDataSetDomainId:
 
         # Create dataset with real file
         with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
-            dataset = DataSet.create(
+            DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
                 customization_technique=CustomizationTechnique.SFT,
@@ -208,7 +212,7 @@ class TestDataSetDomainId:
 
         # Create dataset WITHOUT customization_technique using real file
         with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
-            dataset = DataSet.create(
+            DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
                 # No customization_technique

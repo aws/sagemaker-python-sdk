@@ -107,8 +107,7 @@ def verify_reward_function(
     compute: Optional[Union[TrainingJobCompute, HyperPodCompute]] = None,
     is_nova: bool = True,
 ) -> Dict[str, Any]:
-    """
-    Verify a reward function with sample data before using it in RLVR training or evaluation.
+    """Verify a reward function with sample data before using it in RLVR training or evaluation.
 
     This function allows you to test your reward function implementation with sample
     conversation data to ensure it works correctly before submitting a training or evaluation job.
@@ -194,7 +193,8 @@ def verify_reward_function(
                 # Check if function name contains 'SageMaker' (case-insensitive)
                 if not re.search(r"sagemaker", function_name, re.IGNORECASE):
                     raise ValueError(
-                        f"Lambda ARN for HyperPod compute must contain 'SageMaker' in the function name for Nova models. "
+                        f"Lambda ARN for HyperPod compute must contain 'SageMaker' "
+                        f"in the function name for Nova models. "
                         f"Current function name: '{function_name}'. "
                         f"Expected format: 'arn:aws:lambda:*:*:function:*SageMaker*'"
                     )

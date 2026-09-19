@@ -648,14 +648,16 @@ class TestMain:
     @patch(
         "builtins.open",
         new_callable=mock_open,
-        read_data='{"current_host": "algo-1", "current_instance_type": "ml.m5.xlarge", "hosts": ["algo-1"], "network_interface_name": "eth0"}',
+        read_data='{"current_host": "algo-1", "current_instance_type": "ml.m5.xlarge", '
+        '"hosts": ["algo-1"], "network_interface_name": "eth0"}',
     )
     @patch("os.path.exists")
     @patch(
         "sagemaker.train.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.bootstrap_runtime_environment._bootstrap_runtime_env_for_remote_function"
+        "sagemaker.train.remote_function.runtime_environment."
+        "bootstrap_runtime_environment._bootstrap_runtime_env_for_remote_function"
     )
     @patch("getpass.getuser")
     @patch(
@@ -731,14 +733,16 @@ class TestMain:
     @patch(
         "builtins.open",
         new_callable=mock_open,
-        read_data='{"current_host": "algo-1", "current_instance_type": "ml.m5.xlarge", "hosts": ["algo-1"], "network_interface_name": "eth0"}',
+        read_data='{"current_host": "algo-1", "current_instance_type": "ml.m5.xlarge", '
+        '"hosts": ["algo-1"], "network_interface_name": "eth0"}',
     )
     @patch("os.path.exists")
     @patch(
         "sagemaker.train.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager"
     )
     @patch(
-        "sagemaker.train.remote_function.runtime_environment.bootstrap_runtime_environment._bootstrap_runtime_env_for_pipeline_step"
+        "sagemaker.train.remote_function.runtime_environment."
+        "bootstrap_runtime_environment._bootstrap_runtime_env_for_pipeline_step"
     )
     @patch("getpass.getuser")
     @patch(

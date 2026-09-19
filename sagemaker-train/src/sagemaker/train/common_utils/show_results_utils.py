@@ -1,5 +1,5 @@
-"""
-Utility functions for displaying evaluation results.
+"""Utility functions for displaying evaluation results.
+
 Supports both Benchmark and LLM As Judge evaluation types.
 """
 
@@ -73,8 +73,7 @@ def _extract_training_job_name_from_steps(
 
 
 def _extract_metrics_from_results(results_dict: Dict[str, Any]) -> Dict[str, float]:
-    """
-    Extract metrics from results dictionary.
+    """Extract metrics from results dictionary.
 
     Tries to get metrics from results["all"] first (standard case for benchmarks like MMLU).
     Falls back to finding metrics in nested keys like "custom|gen_qa_gen_qa|0" (gen_qa case).
@@ -105,8 +104,7 @@ def _extract_metrics_from_results(results_dict: Dict[str, Any]) -> Dict[str, flo
 
 
 def _show_benchmark_results(pipeline_execution):
-    """
-    Display benchmark evaluation results by downloading from S3 and showing with Rich tables.
+    """Display benchmark evaluation results by downloading from S3 and showing with Rich tables.
 
     This simplified implementation:
     1. Extracts training job names from pipeline step metadata
@@ -221,7 +219,7 @@ def _display_metrics_tables(
         ipython = get_ipython()
         if ipython is not None and "IPKernelApp" in ipython.config:
             is_jupyter = True
-    except:
+    except Exception:
         pass
 
     # Display with Rich
@@ -326,7 +324,7 @@ def _download_bedrock_aggregate_json(pipeline_execution, training_job_name: str)
 
 
 def _parse_prompt(prompt_str: str) -> str:
-    """Parse prompt from format: "[{'role': 'user', 'content': '...'}]" """
+    """Parse prompt from format: "[{'role': 'user', 'content': '...'}]"."""
     try:
         parsed = json.loads(prompt_str.replace("'", '"'))
         if isinstance(parsed, list) and len(parsed) > 0 and "content" in parsed[0]:
@@ -337,7 +335,7 @@ def _parse_prompt(prompt_str: str) -> str:
 
 
 def _parse_response(response_str: str) -> str:
-    """Parse response from format: "['response text']" """
+    """Parse response from format: "['response text']"."""
     try:
         parsed = json.loads(response_str.replace("'", '"'))
         if isinstance(parsed, list) and len(parsed) > 0:
@@ -660,7 +658,7 @@ def _show_llmaj_results(
         ipython = get_ipython()
         if ipython is not None and "IPKernelApp" in ipython.config:
             is_jupyter = True
-    except:
+    except Exception:
         pass
 
     from rich.console import Console

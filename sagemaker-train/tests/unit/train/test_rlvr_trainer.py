@@ -398,7 +398,7 @@ class TestRLVRTrainer:
         trainer = RLVRTrainer(
             model="gated-model", model_package_group="test-group", accept_eula=True
         )
-        assert trainer.accept_eula == True
+        assert trainer.accept_eula is True
 
     def test_process_hyperparameters_removes_constructor_handled_keys(self):
         """Test that _process_hyperparameters removes keys handled by constructor inputs."""

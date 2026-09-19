@@ -179,7 +179,8 @@ def display_job_links_html(rows: list, as_html: bool = False):
 
         html_rows += (
             f"<tr>"
-            f'<td style="padding:4px 8px;text-align:left;font-weight:bold;color:var(--jp-brand-color1,#4fc3f7);">{escaped_label}</td>'
+            f'<td style="padding:4px 8px;text-align:left;font-weight:bold;'
+            f'color:var(--jp-brand-color1,#4fc3f7);">{escaped_label}</td>'
             f'<td style="padding:4px 8px;text-align:left;">{link_html}</td>'
             f'<td style="padding:4px 8px;text-align:left;">'
             f'<code style="font-size:12px;word-break:break-all;">{escaped_arn}</code>'

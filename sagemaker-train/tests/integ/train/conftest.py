@@ -18,6 +18,7 @@ import pytest
 
 import io
 import json
+import logging
 import os
 import time
 import zipfile
@@ -201,8 +202,6 @@ def sagemaker_session_us_east_1():
     boto_session = boto3.Session(region_name=NOVA_REGION)
     return Session(boto_session=boto_session)
 
-
-import logging
 
 logger = logging.getLogger(__name__)
 

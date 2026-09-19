@@ -18,7 +18,6 @@ import tempfile
 import uuid
 import zipfile
 import pytest
-import boto3
 
 from sagemaker.ai_registry.air_utils import _get_default_bucket
 from sagemaker.train.defaults import TrainDefaults

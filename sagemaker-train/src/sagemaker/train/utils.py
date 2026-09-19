@@ -26,7 +26,7 @@ from typing import Literal, Any
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.shapes import Unassigned
-from sagemaker.train import logger
+from sagemaker.core.utils.utils import logger
 from sagemaker.core.workflow.parameters import PipelineVariable
 
 
@@ -188,7 +188,7 @@ def safe_serialize(data):
     """
     if isinstance(data, str):
         return data
-    elif isinstance(data, PipelineVariable):
+    if isinstance(data, PipelineVariable):
         return data
     try:
         return json.dumps(data)
@@ -251,6 +251,7 @@ def _get_jumpstart_tags(model_id: str, hub_name: str):
 
 def _get_training_job_name_from_training_job_arn(training_job_arn: str) -> str:
     """Extract Training job name from Training job arn.
+
     Args:
         training_job_arn: Training job arn.
     Returns: Training job name.

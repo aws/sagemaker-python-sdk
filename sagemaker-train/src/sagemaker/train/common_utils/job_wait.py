@@ -11,10 +11,13 @@ import json
 import logging
 import time
 from contextlib import contextmanager
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 
 from sagemaker.core.resources import Job
 from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededError
+
+if TYPE_CHECKING:
+    from sagemaker.core.utils.logs import MultiLogStreamHandler
 
 logger = logging.getLogger(__name__)
 
@@ -638,7 +641,8 @@ def _wait_jupyter(
                         if base:
                             studio_url = f"{base}/jobs/{job.job_name}"
                             links_row1.append(
-                                f"[bright_blue underline][link={studio_url}]🔗 Job (Studio)[/link][/bright_blue underline]"
+                                f"[bright_blue underline][link={studio_url}]🔗 Job (Studio)"
+                                f"[/link][/bright_blue underline]"
                             )
             except Exception:
                 pass

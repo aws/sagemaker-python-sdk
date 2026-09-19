@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Utilities for detecting the format of a customization dataset."""
 
 import json
 from typing import Dict, Any
@@ -33,8 +34,7 @@ class DatasetFormatDetector:
 
     @staticmethod
     def validate_dataset(file_path: str) -> bool:
-        """
-        Validate if the dataset adheres to any known format.
+        """Validate if the dataset adheres to any known format.
 
         Args:
             file_path: Path to the JSONL, Parquet, JSON, or CSV file

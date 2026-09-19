@@ -753,7 +753,7 @@ class TestBaseTrainerHandling:
         ) as mock_resolve_arn:
             mock_resolve_arn.return_value = MagicMock()
 
-            result = _resolve_base_model(mock_trainer)
+            _resolve_base_model(mock_trainer)
 
             # Verify model package ARN resolution was called
             mock_resolve_arn.assert_called_once_with(

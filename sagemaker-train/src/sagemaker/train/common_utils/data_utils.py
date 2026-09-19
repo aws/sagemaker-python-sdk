@@ -1,3 +1,5 @@
+"""Data utility functions for inspecting and processing datasets."""
+
 # Data utility functions for inspecting and processing datasets
 import re
 import json
@@ -30,8 +32,7 @@ def _parse_s3_uri(uri: str) -> Optional[Tuple[str, str]]:
 
 
 def _validate_extension(path: str, extension: str) -> None:
-    """
-    Validate that the given path has the required file extension.
+    """Validate that the given path has the required file extension.
 
     Args:
         path: File path or S3 URI
@@ -50,8 +51,8 @@ def load_file_content(
     encoding: Optional[str] = "utf-8",
     region: Optional[str] = None,
 ):
-    """
-    Stream file content line by line from S3 or local filesystem.
+    """Stream file content line by line from S3 or local filesystem.
+
     This is a generator that yields lines lazily without loading the entire file into memory.
 
     Args:
@@ -222,8 +223,7 @@ def _check_records(records) -> bool:
 
 
 def is_multimodal_data(dataset: Union[str, "DataSet"]) -> bool:
-    """
-    Check if dataset contains multimodal data by scanning records.
+    """Check if dataset contains multimodal data by scanning records.
 
     Supports .jsonl (line-delimited JSON, streamed) and .json (full JSON array/object,
     loaded into memory). Returns True as soon as a multimodal record is found.

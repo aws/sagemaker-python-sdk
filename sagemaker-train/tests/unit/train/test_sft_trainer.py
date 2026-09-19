@@ -304,7 +304,7 @@ class TestSFTTrainer:
         trainer = SFTTrainer(
             model="gated-model", model_package_group="test-group", accept_eula=True
         )
-        assert trainer.accept_eula == True
+        assert trainer.accept_eula is True
 
     @patch("sagemaker.train.sft_trainer._resolve_model_and_name")
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")

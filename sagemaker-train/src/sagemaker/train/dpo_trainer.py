@@ -1,3 +1,5 @@
+"""DPO (Direct Preference Optimization) trainer for SageMaker fine-tuning."""
+
 from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.ai_registry.dataset import DataSet
@@ -288,7 +290,7 @@ class DPOTrainer(BaseTrainer):
                 poll=poll,
                 dry_run=dry_run,
             )
-        elif isinstance(self.compute, TrainingJobCompute):
+        if isinstance(self.compute, TrainingJobCompute):
             return self._train_serverful_smtj(
                 training_dataset=training_dataset,
                 validation_dataset=validation_dataset,

@@ -1,3 +1,5 @@
+"""RLVR (Reinforcement Learning from Verifiable Rewards) trainer for SageMaker fine-tuning."""
+
 import json
 import logging
 from typing import Any, Dict, List, Optional, Union
@@ -53,7 +55,7 @@ logger = logging.getLogger(__name__)
 
 
 class RLVRTrainer(BaseTrainer):
-    """Class that performs Reinforcement Learning from Verifiable Rewards (RLVR) fine-tuning on foundation models using AWS SageMaker.
+    """Class that performs Reinforcement Learning from Verifiable Rewards (RLVR) fine-tuning on foundation models.
 
     Example:
 
@@ -464,7 +466,7 @@ class RLVRTrainer(BaseTrainer):
                 poll=poll,
                 dry_run=dry_run,
             )
-        elif isinstance(self.compute, TrainingJobCompute):
+        if isinstance(self.compute, TrainingJobCompute):
             return self._train_serverful_smtj(
                 training_dataset=training_dataset,
                 validation_dataset=validation_dataset,
