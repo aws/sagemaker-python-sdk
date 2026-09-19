@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utility functions for data mixing validation and resolution."""
+
 from __future__ import annotations
 
 import json
@@ -187,11 +188,10 @@ def resolve_hyperpod_datamix_context(
 
     categories: Dict[str, float] = {}
     for field_name, field_spec in overrides_template.items():
-        if (
-            field_name.startswith(_DATAMIX_NOVA_PREFIX)
-            and field_name.endswith(_DATAMIX_PERCENT_SUFFIX)
+        if field_name.startswith(_DATAMIX_NOVA_PREFIX) and field_name.endswith(
+            _DATAMIX_PERCENT_SUFFIX
         ):
-            category = field_name[len(_DATAMIX_NOVA_PREFIX):-len(_DATAMIX_PERCENT_SUFFIX)]
+            category = field_name[len(_DATAMIX_NOVA_PREFIX) : -len(_DATAMIX_PERCENT_SUFFIX)]
             if isinstance(field_spec, dict) and "default" in field_spec:
                 categories[category] = float(field_spec["default"])
             else:
@@ -276,10 +276,7 @@ def validate_data_mixing_model(model_name: str) -> None:
     known_models = set(MODEL_NAME_ALIASES.keys()) | set(MODEL_NAME_ALIASES.values())
     normalized_name = model_name.lower().replace(".", "-")
 
-    if not any(
-        known_id.lower().replace(".", "-") in normalized_name
-        for known_id in known_models
-    ):
+    if not any(known_id.lower().replace(".", "-") in normalized_name for known_id in known_models):
         raise ValueError(
             f"Data mixing is only supported for Nova models "
             f"({', '.join(sorted(known_models))}), "
@@ -410,9 +407,7 @@ def resolve_datamix_recipe(
             f"'SmtjOverrideParamsS3Uri'."
         )
 
-    override_params_s3_uri = resolve_s3_uri_placeholders(
-        override_params_s3_uri, sagemaker_session
-    )
+    override_params_s3_uri = resolve_s3_uri_placeholders(override_params_s3_uri, sagemaker_session)
 
     s3_client = sagemaker_session.boto_session.client("s3")
     s3_path = override_params_s3_uri.replace("s3://", "")
@@ -437,11 +432,10 @@ def resolve_datamix_recipe(
 
     categories: Dict[str, float] = {}
     for field_name, field_spec in override_params.items():
-        if (
-            field_name.startswith(_DATAMIX_NOVA_PREFIX)
-            and field_name.endswith(_DATAMIX_PERCENT_SUFFIX)
+        if field_name.startswith(_DATAMIX_NOVA_PREFIX) and field_name.endswith(
+            _DATAMIX_PERCENT_SUFFIX
         ):
-            category = field_name[len(_DATAMIX_NOVA_PREFIX):-len(_DATAMIX_PERCENT_SUFFIX)]
+            category = field_name[len(_DATAMIX_NOVA_PREFIX) : -len(_DATAMIX_PERCENT_SUFFIX)]
             if isinstance(field_spec, dict) and "default" in field_spec:
                 categories[category] = float(field_spec["default"])
             else:
@@ -511,9 +505,7 @@ def build_hyperpod_datamix_recipe_from_context(
     recipe_yaml_str = template_content
 
     if "training-config.yaml" in template_content:
-        recipe_pattern = (
-            r"# Source: .*/training-config\.yaml.*?config\.yaml: \|-\n(.*?)(?=---|\Z)"
-        )
+        recipe_pattern = r"# Source: .*/training-config\.yaml.*?config\.yaml: \|-\n(.*?)(?=---|\Z)"
         recipe_match = re.search(recipe_pattern, template_content, re.DOTALL)
         if recipe_match:
             recipe_yaml_str = textwrap.dedent(recipe_match.group(1)).strip()
@@ -548,7 +540,8 @@ def build_hyperpod_datamix_recipe_from_context(
 
     # Add customer_data percent
     overrides_template["percent"] = {
-        "default": float(validated_config.customer_data_percent), "type": "float"
+        "default": float(validated_config.customer_data_percent),
+        "type": "float",
     }
     if "customer_data_percent" in overrides_template:
         overrides_template["customer_data_percent"]["default"] = float(
@@ -557,11 +550,8 @@ def build_hyperpod_datamix_recipe_from_context(
 
     # Add short keys for nova fields not already present (use template defaults)
     for ov_key, ov_val in list(overrides_template.items()):
-        if (
-            ov_key.startswith(_DATAMIX_NOVA_PREFIX)
-            and ov_key.endswith(_DATAMIX_PERCENT_SUFFIX)
-        ):
-            short_key = ov_key[len(_DATAMIX_NOVA_PREFIX):-len(_DATAMIX_PERCENT_SUFFIX)]
+        if ov_key.startswith(_DATAMIX_NOVA_PREFIX) and ov_key.endswith(_DATAMIX_PERCENT_SUFFIX):
+            short_key = ov_key[len(_DATAMIX_NOVA_PREFIX) : -len(_DATAMIX_PERCENT_SUFFIX)]
             if short_key not in overrides_template:
                 if isinstance(ov_val, dict) and "default" in ov_val:
                     overrides_template[short_key] = {"default": ov_val["default"], "type": "float"}
@@ -642,9 +632,7 @@ def build_hyperpod_datamix_recipe_from_context(
     HYPERPOD_RECIPE_PATH = os.path.join(
         "sagemaker_hyperpod_recipes", "recipes_collection", "recipes"
     )
-    hp_cli_recipes_dir = os.path.join(
-        os.path.dirname(hyperpod_cli.__file__), HYPERPOD_RECIPE_PATH
-    )
+    hp_cli_recipes_dir = os.path.join(os.path.dirname(hyperpod_cli.__file__), HYPERPOD_RECIPE_PATH)
 
     recipe_dir = os.path.join(hp_cli_recipes_dir, "fine-tuning", "nova")
     os.makedirs(recipe_dir, exist_ok=True)
@@ -661,4 +649,3 @@ def build_hyperpod_datamix_recipe_from_context(
     )
 
     return recipe_path, context.image_uri
-

@@ -25,7 +25,13 @@ from sagemaker.core.image_retriever.image_retriever_utils import (
     config_for_framework,
 )
 from sagemaker.core.workflow.utilities import override_pipeline_parameter_var
-from sagemaker.core.config.config_schema import IMAGE_RETRIEVER, MODULES, PYTHON_SDK, SAGEMAKER, _simple_path
+from sagemaker.core.config.config_schema import (
+    IMAGE_RETRIEVER,
+    MODULES,
+    PYTHON_SDK,
+    SAGEMAKER,
+    _simple_path,
+)
 from sagemaker.core.config.config_manager import SageMakerConfig
 
 
@@ -33,6 +39,7 @@ def _to_pascal_case(name):
     """Convert snake_case to PascalCase."""
     camel = to_camel_case(name)
     return camel[0].upper() + camel[1:] if camel else camel
+
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
@@ -138,7 +145,9 @@ class ImageRetriever:
         training_compiler_config = args.get("training_compiler_config", training_compiler_config)
         sdk_version = args.get("sdk_version", sdk_version)
         inference_tool = args.get("inference_tool", inference_tool)
-        serverless_inference_config = args.get("serverless_inference_config", serverless_inference_config)
+        serverless_inference_config = args.get(
+            "serverless_inference_config", serverless_inference_config
+        )
 
         if training_compiler_config:
             final_image_scope = image_scope
@@ -544,7 +553,9 @@ class ImageRetriever:
         model_version = args.get("model_version", model_version)
         sdk_version = args.get("sdk_version", sdk_version)
         inference_tool = args.get("inference_tool", inference_tool)
-        serverless_inference_config = args.get("serverless_inference_config", serverless_inference_config)
+        serverless_inference_config = args.get(
+            "serverless_inference_config", serverless_inference_config
+        )
 
         for name, val in args.items():
             if is_pipeline_variable(val):

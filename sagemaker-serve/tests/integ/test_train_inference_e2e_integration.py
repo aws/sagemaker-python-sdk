@@ -38,27 +38,27 @@ TRAINING_JOB_PREFIX = "e2e-v3-pytorch"
 def test_train_inference_e2e_build_deploy_invoke_cleanup():
     """Integration test for Train-Inference E2E workflow"""
     logger.info("Starting Train-Inference E2E integration test...")
-    
+
     model_trainer = None
     core_model = None
     core_endpoint = None
-    
+
     try:
         # Step 1: Train model
         logger.info("Training model...")
         model_trainer, unique_id = train_model()
-        
+
         # Step 2: Build and deploy
         logger.info("Building and deploying model...")
         core_model, core_endpoint = build_and_deploy(model_trainer, unique_id)
-        
+
         # Step 3: Test inference
         logger.info("Making prediction...")
         make_prediction(core_endpoint)
-        
+
         # Test passed successfully
         logger.info("Train-Inference E2E integration test completed successfully")
-        
+
     except Exception as e:
         logger.error(f"Train-Inference E2E integration test failed: {str(e)}")
         raise
@@ -72,8 +72,8 @@ def test_train_inference_e2e_build_deploy_invoke_cleanup():
 def create_pytorch_training_code():
     """Create PyTorch training script."""
     temp_dir = tempfile.mkdtemp()
-    
-    train_script = '''import torch
+
+    train_script = """import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
@@ -119,14 +119,14 @@ def train():
 
 if __name__ == "__main__":
     train()
-'''
-    
-    with open(os.path.join(temp_dir, 'train.py'), 'w') as f:
+"""
+
+    with open(os.path.join(temp_dir, "train.py"), "w") as f:
         f.write(train_script)
-    
-    with open(os.path.join(temp_dir, 'requirements.txt'), 'w') as f:
-        f.write('torch>=1.13.0,<2.0.0\n')
-    
+
+    with open(os.path.join(temp_dir, "requirements.txt"), "w") as f:
+        f.write("torch>=1.13.0,<2.0.0\n")
+
     return temp_dir
 
 
@@ -141,14 +141,14 @@ def train_model():
     """Train model using ModelTrainer."""
     from sagemaker.core import image_uris
     from sagemaker.core.helper.session_helper import Session
-    
+
     # Get the current region from a session
     session = Session()
     region = session.boto_region_name
-    
+
     training_code_dir = create_pytorch_training_code()
     unique_id = str(uuid.uuid4())[:8]
-    
+
     # Get training image for the current region
     training_image = image_uris.retrieve(
         framework="pytorch",
@@ -156,9 +156,9 @@ def train_model():
         version="1.13.1",
         py_version="py39",
         instance_type="ml.m5.xlarge",
-        image_scope="training"
+        image_scope="training",
     )
-    
+
     model_trainer = ModelTrainer(
         training_image=training_image,
         source_code=SourceCode(
@@ -166,12 +166,12 @@ def train_model():
             entry_script="train.py",
             requirements="requirements.txt",
         ),
-        base_job_name=f"{TRAINING_JOB_PREFIX}-{unique_id}"
+        base_job_name=f"{TRAINING_JOB_PREFIX}-{unique_id}",
     )
-    
+
     model_trainer.train()
     logger.info("Model Training Completed!")
-    
+
     return model_trainer, unique_id
 
 
@@ -180,22 +180,24 @@ def build_and_deploy(model_trainer, unique_id):
     from sagemaker.serve.spec.inference_spec import InferenceSpec
     from sagemaker.core import image_uris
     from sagemaker.core.helper.session_helper import Session
-    
+
     class SimpleInferenceSpec(InferenceSpec):
         def load(self, model_dir):
             import torch
+
             return torch.jit.load(f"{model_dir}/model.pth")
-        
+
         def invoke(self, input_object, model):
             import torch
+
             return model(torch.tensor(input_object)).tolist()
 
     schema_builder = create_schema_builder()
-    
+
     # Get the current region from a session
     session = Session()
     region = session.boto_region_name
-    
+
     # Get inference image for the current region
     inference_image = image_uris.retrieve(
         framework="pytorch",
@@ -203,9 +205,9 @@ def build_and_deploy(model_trainer, unique_id):
         version="1.13.1",
         py_version="py39",
         instance_type="ml.m5.xlarge",
-        image_scope="inference"
+        image_scope="inference",
     )
-    
+
     model_builder = ModelBuilder(
         model=model_trainer,
         schema_builder=schema_builder,
@@ -214,36 +216,32 @@ def build_and_deploy(model_trainer, unique_id):
         image_uri=inference_image,
         dependencies={"auto": False},
     )
-    
+
     core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}")
     logger.info(f"Model Successfully Created: {core_model.model_name}")
-    
+
     core_endpoint = model_builder.deploy(
-        endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}",
-        initial_instance_count=1
+        endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}", initial_instance_count=1
     )
     logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
-    
+
     return core_model, core_endpoint
 
 
 def make_prediction(core_endpoint):
     """Make prediction using the deployed endpoint - preserving exact logic from manual test"""
     test_data = [[0.1, 0.2, 0.3, 0.4]]
-    
-    result = core_endpoint.invoke(
-        body=json.dumps(test_data),
-        content_type="application/json"
-    )
 
-    prediction = json.loads(result.body.read().decode('utf-8'))
+    result = core_endpoint.invoke(body=json.dumps(test_data), content_type="application/json")
+
+    prediction = json.loads(result.body.read().decode("utf-8"))
     logger.info(f"Result of invoking endpoint: {prediction}")
 
 
 def cleanup_resources(core_model, core_endpoint):
     """Fully clean up model and endpoint creation - preserving exact logic from manual test"""
     core_endpoint_config = EndpointConfig.get(endpoint_config_name=core_endpoint.endpoint_name)
-   
+
     core_model.delete()
     core_endpoint.delete()
     core_endpoint_config.delete()

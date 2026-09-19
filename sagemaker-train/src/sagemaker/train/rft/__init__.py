@@ -42,7 +42,11 @@ from sagemaker.train.rft.headers import make_inference_headers, get_inference_he
 from sagemaker.train.rft.feedback import RolloutFeedbackClient
 from sagemaker.train.rft.models import RolloutMetadata, RolloutRequest, InferenceParams
 from sagemaker.train.rft.decorators import sagemaker_rft_handler
-from sagemaker.train.rft.context import set_rollout_context, clear_rollout_context, get_inference_params
+from sagemaker.train.rft.context import (
+    set_rollout_context,
+    clear_rollout_context,
+    get_inference_params,
+)
 
 __all__ = [
     "make_inference_headers",

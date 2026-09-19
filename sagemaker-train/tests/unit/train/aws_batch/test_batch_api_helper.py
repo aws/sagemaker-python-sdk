@@ -192,9 +192,7 @@ class TestTerminateServiceJob:
         result = _terminate_service_job(JOB_ID, REASON)
 
         assert result == {}
-        mock_client.terminate_service_job.assert_called_once_with(
-            jobId=JOB_ID, reason=REASON
-        )
+        mock_client.terminate_service_job.assert_called_once_with(jobId=JOB_ID, reason=REASON)
 
     @patch("sagemaker.train.aws_batch.batch_api_helper.get_batch_boto_client")
     def test_terminate_service_job_default_reason(self, mock_get_client):

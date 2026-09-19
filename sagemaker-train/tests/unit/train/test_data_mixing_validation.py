@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Validation tests for DataMixingConfig."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -46,7 +47,9 @@ class TestCustomerDataPercentRange:
     )
     def test_invalid_customer_data_percent_raises(self, invalid_percent):
         """Values outside [0, 100] must raise ValidationError."""
-        with pytest.raises(ValidationError, match="customer_data_percent must be between 0 and 100"):
+        with pytest.raises(
+            ValidationError, match="customer_data_percent must be between 0 and 100"
+        ):
             DataMixingConfig(customer_data_percent=invalid_percent)
 
 
@@ -136,7 +139,12 @@ class TestNovaSumInvariant:
             {"code": 60.0, "math": 60.0},  # sum = 120, but should pass
             {"code": 0.0},  # sum = 0, but should pass
             {},  # empty dict, sum = 0, but should pass
-            {"en-entertainment": 25.0, "code": 25.0, "math": 25.0, "en-scientific": 25.0},  # sum = 100
+            {
+                "en-entertainment": 25.0,
+                "code": 25.0,
+                "math": 25.0,
+                "en-scientific": 25.0,
+            },  # sum = 100
         ],
         ids=[
             "sum_50_bypassed",

@@ -87,18 +87,15 @@ def test_model_trainer_submit(batch_test_resource_manager, sagemaker_session):  
                 "evaluateOnExit": [
                     {
                         "action": "Retry",
-                        "onStatusReason": "Received status from SageMaker: AlgorithmError: *"
+                        "onStatusReason": "Received status from SageMaker: AlgorithmError: *",
                     },
-                    {
-                        "action": "EXIT",
-                        "onStatusReason": "*"
-                    }
-                ]
+                    {"action": "EXIT", "onStatusReason": "*"},
+                ],
             },
             priority=1,
             tags={"pysdk-integ-test-tag-key": "pysdk-integ-test-tag-value"},
             quota_share_name=batch_test_resource_manager.quota_share_name,
-            preemption_config={"preemptionRetriesBeforeTermination": 0}
+            preemption_config={"preemptionRetriesBeforeTermination": 0},
         )
     except botocore.exceptions.ClientError as e:
         print(e.response["ResponseMetadata"])

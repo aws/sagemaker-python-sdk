@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Recipe resolution with 3-level override precedence for Nova model training."""
+
 from __future__ import absolute_import
 
 import copy
@@ -81,6 +82,7 @@ def _load_user_recipe(recipe_path: str) -> Dict[str, Any]:
     if recipe_path.startswith("s3://"):
         try:
             import boto3
+
             parts = recipe_path.replace("s3://", "").split("/", 1)
             bucket, key = parts[0], parts[1]
             s3 = boto3.client("s3")
@@ -91,9 +93,7 @@ def _load_user_recipe(recipe_path: str) -> Dict[str, Any]:
                 content = yaml.safe_load(f)
             os.unlink(tmp.name)
             if not isinstance(content, dict):
-                raise ValueError(
-                    f"Recipe file at {recipe_path} did not parse as a YAML mapping."
-                )
+                raise ValueError(f"Recipe file at {recipe_path} did not parse as a YAML mapping.")
             return content
         except ImportError:
             raise ValueError(
@@ -112,9 +112,7 @@ def _load_user_recipe(recipe_path: str) -> Dict[str, Any]:
         with open(recipe_path, "r") as f:
             content = yaml.safe_load(f)
         if not isinstance(content, dict):
-            raise ValueError(
-                f"Recipe file at {recipe_path} did not parse as a YAML mapping."
-            )
+            raise ValueError(f"Recipe file at {recipe_path} did not parse as a YAML mapping.")
         return content
 
 
@@ -145,13 +143,9 @@ def _validate_value(
     # --- Required field presence check ---
     if spec.get("required", False):
         if not dotpath:
-            raise ValueError(
-                f"'{key}' is required but was not found in the resolved recipe."
-            )
+            raise ValueError(f"'{key}' is required but was not found in the resolved recipe.")
         if value is None:
-            raise ValueError(
-                f"'{key}' is required but was not found in the resolved recipe."
-            )
+            raise ValueError(f"'{key}' is required but was not found in the resolved recipe.")
 
     if value is None:
         return
@@ -377,7 +371,9 @@ class RecipeResolver:
         self._user_recipe_path = user_recipe_path
         self._overrides = copy.deepcopy(overrides) if overrides else {}
         self._protected_keys = protected_keys or set()
-        self._full_recipe_template = copy.deepcopy(full_recipe_template) if full_recipe_template else None
+        self._full_recipe_template = (
+            copy.deepcopy(full_recipe_template) if full_recipe_template else None
+        )
         self._compute = compute
         self._resolved: Optional[Dict[str, Any]] = None
 
@@ -404,15 +400,15 @@ class RecipeResolver:
             # For keys that appear as plain values (not placeholders) in the
             # full template, locate them by name so validation and protected-key
             # stripping still work.
-            extra_keys = (set(self._override_spec.keys()) | self._protected_keys) - set(key_path_map.keys())
+            extra_keys = (set(self._override_spec.keys()) | self._protected_keys) - set(
+                key_path_map.keys()
+            )
             if extra_keys:
                 extra_paths = _build_key_path_map(base_dict, extra_keys)
                 key_path_map.update(extra_paths)
         else:
             # Synthetic template built from spec keys only (legacy path)
-            base_dict, key_path_map = render_template(
-                self._recipe_template, self._override_spec
-            )
+            base_dict, key_path_map = render_template(self._recipe_template, self._override_spec)
 
         # Phase 2: Load user recipe if provided
         user_dict = {}
@@ -436,6 +432,7 @@ class RecipeResolver:
             # Build a map of recipe field names → dotpaths so users can override
             # using actual recipe field names (e.g. lora_plus_lr_ratio)
             all_field_paths = {}
+
             def _map_all_fields(d, prefix=""):
                 for k, v in d.items():
                     path = f"{prefix}.{k}" if prefix else k
@@ -443,6 +440,7 @@ class RecipeResolver:
                         _map_all_fields(v, path)
                     else:
                         all_field_paths[k] = path
+
             _map_all_fields(base_dict)
 
             def _collect_flat_keys(d, prefix=""):
@@ -555,13 +553,9 @@ class RecipeResolver:
             # Recurse into nested mappings so unknown nested keys are dropped
             # while known sibling keys are preserved.
             if isinstance(override_dict[key], dict) and isinstance(base_dict[key], dict):
-                self._drop_unknown_keys(
-                    override_dict[key], base_dict[key], source, dotpath
-                )
+                self._drop_unknown_keys(override_dict[key], base_dict[key], source, dotpath)
 
-    def _strip_protected_keys(
-        self, d: Dict[str, Any], key_path_map: Dict[str, str]
-    ) -> None:
+    def _strip_protected_keys(self, d: Dict[str, Any], key_path_map: Dict[str, str]) -> None:
         """Remove protected keys from a dict and log warnings."""
         for spec_key in self._protected_keys:
             dotpath = key_path_map.get(spec_key)
@@ -654,8 +648,7 @@ class RecipeResolver:
                 # Still check required even when not in key_path_map (synthetic template)
                 if spec_entry.get("required", False):
                     raise ValueError(
-                        f"'{spec_key}' is required but was not found in the "
-                        f"resolved recipe."
+                        f"'{spec_key}' is required but was not found in the " f"resolved recipe."
                     )
                 continue
 

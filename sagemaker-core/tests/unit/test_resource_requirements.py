@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.compute_resource_requirements.resource_requirements module."""
+
 from __future__ import absolute_import
 
 import pytest

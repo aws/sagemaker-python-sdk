@@ -22,15 +22,16 @@ def save_xgboost(save_path: Path, xgb_model: Any):
         save_path.mkdir(parents=True)
     xgb_model.save_model(str(save_path.joinpath("model.json")))
 
+
 def save_sklearn(model_path: str, model: object) -> None:
     """Save sklearn model using joblib serialization."""
     import joblib
     import os
     from pathlib import Path
-    
+
     # Ensure directory exists
     Path(model_path).mkdir(parents=True, exist_ok=True)
-    
+
     model_file = os.path.join(model_path, "model.joblib")
     joblib.dump(model, model_file)
 

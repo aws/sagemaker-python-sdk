@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Helper classes that interact with SageMaker Training service."""
+
 from __future__ import absolute_import
 
 import dataclasses
@@ -674,11 +675,10 @@ class _JobSettings:
         # and its version-matched JAR is on Spark's classpath before spark-submit
         if spark_config:
             install_cmd = (
-                "pip install --root-user-action=ignore"
-                " 'sagemaker-feature-store-pyspark>=2,<3'"
+                "pip install --root-user-action=ignore" " 'sagemaker-feature-store-pyspark>=2,<3'"
             )
             copy_jar_cmd = (
-                "python3 -c \""
+                'python3 -c "'
                 "import feature_store_pyspark, shutil, os, glob, re; "
                 "release_file = os.path.join(os.environ.get('SPARK_HOME', '/usr/lib/spark'), 'RELEASE'); "
                 "spark_ver = '3.5'; "
@@ -856,6 +856,7 @@ class _JobSettings:
         spark_version = DEFAULT_SPARK_VERSION
         try:
             import pyspark
+
             spark_version = ".".join(pyspark.__version__.split(".")[:2])
         except ImportError:
             pass
@@ -879,7 +880,9 @@ class _JobSettings:
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
-    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, verification_key: str):
+    def __init__(
+        self, job_name: str, s3_uri: str, sagemaker_session: Session, verification_key: str
+    ):
         """Initialize a _Job object.
 
         Args:
@@ -907,7 +910,9 @@ class _Job:
         """
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        verification_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
+        verification_key = describe_training_job_response["Environment"][
+            "REMOTE_FUNCTION_SECRET_KEY"
+        ]
 
         job = _Job(job_name, s3_uri, sagemaker_session, verification_key)
         job._last_describe_response = describe_training_job_response

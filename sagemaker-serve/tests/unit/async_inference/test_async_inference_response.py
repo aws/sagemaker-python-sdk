@@ -3,7 +3,11 @@ from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 from sagemaker.serve.async_inference.async_inference_response import AsyncInferenceResponse
 from sagemaker.serve.async_inference import WaiterConfig
-from sagemaker.core.exceptions import ObjectNotExistedError, UnexpectedClientError, AsyncInferenceModelError
+from sagemaker.core.exceptions import (
+    ObjectNotExistedError,
+    UnexpectedClientError,
+    AsyncInferenceModelError,
+)
 
 
 class TestAsyncInferenceResponse(unittest.TestCase):
@@ -25,7 +29,7 @@ class TestAsyncInferenceResponse(unittest.TestCase):
         mock_s3_response = {"Body": Mock()}
         self.mock_predictor.s3_client.get_object.return_value = mock_s3_response
         self.mock_predictor.predictor._handle_response.return_value = "result"
-        
+
         result = response.get_result()
         self.assertEqual(result, "result")
 
@@ -33,7 +37,7 @@ class TestAsyncInferenceResponse(unittest.TestCase):
         response = AsyncInferenceResponse(self.mock_predictor, self.output_path, self.failure_path)
         waiter_config = WaiterConfig(max_attempts=10, delay=5)
         self.mock_predictor._wait_for_output.return_value = "waiter_result"
-        
+
         result = response.get_result(waiter_config)
         self.assertEqual(result, "waiter_result")
 
@@ -46,7 +50,7 @@ class TestAsyncInferenceResponse(unittest.TestCase):
         response = AsyncInferenceResponse(self.mock_predictor, self.output_path, None)
         error = ClientError({"Error": {"Code": "NoSuchKey", "Message": "Not found"}}, "get_object")
         self.mock_predictor.s3_client.get_object.side_effect = error
-        
+
         with self.assertRaises(ObjectNotExistedError):
             response.get_result()
 
@@ -54,10 +58,10 @@ class TestAsyncInferenceResponse(unittest.TestCase):
         response = AsyncInferenceResponse(self.mock_predictor, self.output_path, self.failure_path)
         output_error = ClientError({"Error": {"Code": "NoSuchKey"}}, "get_object")
         failure_response = {"Body": Mock()}
-        
+
         self.mock_predictor.s3_client.get_object.side_effect = [output_error, failure_response]
         self.mock_predictor.predictor._handle_response.return_value = "error message"
-        
+
         with self.assertRaises(AsyncInferenceModelError):
             response.get_result()
 

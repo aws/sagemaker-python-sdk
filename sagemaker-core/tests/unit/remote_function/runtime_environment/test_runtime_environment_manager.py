@@ -495,9 +495,9 @@ class TestHelperFunctions:
         mock_process.wait.return_value = 0
         mock_popen.return_value = mock_process
         mock_log_error.return_value = ""
-        
+
         _run_shell_cmd(["echo", "test"])
-        
+
         mock_popen.assert_called_once()
 
     @patch(

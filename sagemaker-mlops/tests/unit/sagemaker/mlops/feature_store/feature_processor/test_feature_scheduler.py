@@ -194,7 +194,9 @@ def config_uploader():
     "sagemaker.mlops.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_runtime_scripts",
     return_value="some_s3_uri",
 )
-@patch("sagemaker.mlops.feature_store.feature_processor.feature_scheduler.RuntimeEnvironmentManager")
+@patch(
+    "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.RuntimeEnvironmentManager"
+)
 @patch(
     "sagemaker.mlops.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_callable"
 )
@@ -210,9 +212,7 @@ def config_uploader():
         pipeline_version_context_name="pipeline-version-context-name",
     ),
 )
-@patch(
-    "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.PipelineSession"
-)
+@patch("sagemaker.mlops.feature_store.feature_processor.feature_scheduler.PipelineSession")
 @patch("sagemaker.core.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.core.remote_function.job.expand_role", side_effect=lambda session, role: role)
 @patch("sagemaker.core.remote_function.job.get_execution_role", return_value=EXECUTION_ROLE_ARN)
@@ -310,7 +310,7 @@ def test_to_pipeline(
         [
             "pip install --root-user-action=ignore 'sagemaker-feature-store-pyspark>=2,<3'",
             (
-                "python3 -c \"import feature_store_pyspark, shutil, os, glob, re; "
+                'python3 -c "import feature_store_pyspark, shutil, os, glob, re; '
                 "release_file = os.path.join(os.environ.get('SPARK_HOME', '/usr/lib/spark'), 'RELEASE'); "
                 "spark_ver = '3.5'; "
                 "rf = open(release_file).read() if os.path.exists(release_file) else ''; "
@@ -830,9 +830,7 @@ def test_execute(validation):
 
 
 def test_validate_fg_lineage_resources_happy_case():
-    with patch.object(
-        FeatureGroup, "get", return_value=FEATURE_GROUP_MOCK
-    ) as fg_get_method:
+    with patch.object(FeatureGroup, "get", return_value=FEATURE_GROUP_MOCK) as fg_get_method:
         with patch.object(
             Context, "load", side_effect=[CONTEXT_MOCK_01, CONTEXT_MOCK_02, CONTEXT_MOCK_03]
         ) as context_load:
@@ -843,18 +841,18 @@ def test_validate_fg_lineage_resources_happy_case():
                 feature_group_name="some_fg",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             )
-    fg_get_method.assert_called_once_with(feature_group_name="some_fg", session=SAGEMAKER_SESSION_MOCK.boto_session)
+    fg_get_method.assert_called_once_with(
+        feature_group_name="some_fg", session=SAGEMAKER_SESSION_MOCK.boto_session
+    )
     creation_time_str = FEATURE_GROUP_MOCK.creation_time.strftime("%s")
     context_load.assert_has_calls(
         [
             call(
-                context_name=f'{"some_fg"}-{creation_time_str}'
-                f"-feature-group-pipeline",
+                context_name=f'{"some_fg"}-{creation_time_str}' f"-feature-group-pipeline",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             ),
             call(
-                context_name=f'{"some_fg"}-{creation_time_str}'
-                f"-feature-group-pipeline-version",
+                context_name=f'{"some_fg"}-{creation_time_str}' f"-feature-group-pipeline-version",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             ),
         ]

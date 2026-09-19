@@ -502,7 +502,6 @@ class TestTelemetryLogging(unittest.TestCase):
         self.assertEqual(url, expected_url)
         self.assertIn("x-createdBy=awslabs%2Fagent-plugins%2Fsagemaker-ai", url)
 
-
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
     def test_telemetry_emitter_with_resource_arn(
@@ -674,10 +673,13 @@ class TestTelemetryLogging(unittest.TestCase):
             mock_local_client.mock_create_model()
 
             info_calls = [
-                call for call in mock_logger_info.call_args_list
+                call
+                for call in mock_logger_info.call_args_list
                 if "telemetry" in str(call).lower() and "opt out" in str(call).lower()
             ]
-            self.assertEqual(len(info_calls), 1, "Telemetry opt-out message should be logged exactly once")
+            self.assertEqual(
+                len(info_calls), 1, "Telemetry opt-out message should be logged exactly once"
+            )
 
         # Reset the flag for other tests
         telemetry_module._telemetry_msg_shown = False
@@ -700,10 +702,13 @@ class TestTelemetryLogging(unittest.TestCase):
             mock_local_client.mock_create_model()
 
             info_calls = [
-                call for call in mock_logger_info.call_args_list
+                call
+                for call in mock_logger_info.call_args_list
                 if "telemetry" in str(call).lower() and "opt out" in str(call).lower()
             ]
-            self.assertEqual(len(info_calls), 0, "Telemetry opt-out message should not appear when opted out")
+            self.assertEqual(
+                len(info_calls), 0, "Telemetry opt-out message should not appear when opted out"
+            )
 
         # Reset the flag for other tests
         telemetry_module._telemetry_msg_shown = False

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utils module."""
+
 from __future__ import absolute_import
 
 import re
@@ -240,16 +241,11 @@ def _run_clone_command_silent(repo_url, dest_dir):
             logger.error(f"Error output:\n{e}")
             raise
 
+
 def _get_jumpstart_tags(model_id: str, hub_name: str):
     return [
-        {
-            "key": "sagemaker-sdk:jumpstart-model-id",
-            "value": model_id
-        },
-        {
-            "key": "sagemaker-sdk:jumpstart-hub-name",
-            "value": hub_name
-        }
+        {"key": "sagemaker-sdk:jumpstart-model-id", "value": model_id},
+        {"key": "sagemaker-sdk:jumpstart-hub-name", "value": hub_name},
     ]
 
 

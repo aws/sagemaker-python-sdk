@@ -18,7 +18,6 @@ from sagemaker.train.common_utils.finetune_utils import (
     extract_image_from_hyperpod_template,
 )
 
-
 SAMPLE_TEMPLATE_WITH_IMAGE = """\
 ---
 # Source: my-chart/templates/training-config.yaml
@@ -91,7 +90,9 @@ class TestExtractImageFromHyperpodTemplate:
         assert result is None
 
 
-_PATCH_GET_RECIPE = "sagemaker.train.common_utils.finetune_utils._get_recipe_entry_and_override_spec"
+_PATCH_GET_RECIPE = (
+    "sagemaker.train.common_utils.finetune_utils._get_recipe_entry_and_override_spec"
+)
 
 
 class TestGetHyperpodTrainingImage:
@@ -107,9 +108,7 @@ class TestGetHyperpodTrainingImage:
         mock_session = MagicMock()
         mock_body = Mock()
         mock_body.read.return_value = SAMPLE_TEMPLATE_WITH_IMAGE.encode("utf-8")
-        mock_session.boto_session.client.return_value.get_object.return_value = {
-            "Body": mock_body
-        }
+        mock_session.boto_session.client.return_value.get_object.return_value = {"Body": mock_body}
 
         result = get_hyperpod_training_image(
             model_name="nova-textgeneration-lite-v2",
@@ -156,7 +155,9 @@ class TestGetHyperpodTrainingImage:
         )
 
         mock_session = MagicMock()
-        mock_session.boto_session.client.return_value.get_object.side_effect = Exception("Access Denied")
+        mock_session.boto_session.client.return_value.get_object.side_effect = Exception(
+            "Access Denied"
+        )
 
         result = get_hyperpod_training_image(
             model_name="nova-textgeneration-lite-v2",
@@ -177,9 +178,7 @@ class TestGetHyperpodTrainingImage:
         mock_session = MagicMock()
         mock_body = Mock()
         mock_body.read.return_value = SAMPLE_TEMPLATE_NO_IMAGE.encode("utf-8")
-        mock_session.boto_session.client.return_value.get_object.return_value = {
-            "Body": mock_body
-        }
+        mock_session.boto_session.client.return_value.get_object.return_value = {"Body": mock_body}
 
         result = get_hyperpod_training_image(
             model_name="nova-textgeneration-lite-v2",
@@ -200,7 +199,12 @@ class TestTrainHyperpodRaisesWhenNoImage:
     @patch("sagemaker.train.base_trainer.get_training_image", return_value=None)
     @patch("sagemaker.train.base_trainer.subprocess")
     def test_raises_valueerror_when_image_is_none(
-        self, mock_subprocess, mock_get_smtj_image, mock_get_hp_image, mock_get_session, mock_validate
+        self,
+        mock_subprocess,
+        mock_get_smtj_image,
+        mock_get_hp_image,
+        mock_get_session,
+        mock_validate,
     ):
         """_train_hyperpod raises ValueError if training_image is None and cannot be resolved."""
         from sagemaker.train.sft_trainer import SFTTrainer
@@ -236,7 +240,8 @@ class TestTrainHyperpodRaisesWhenNoImage:
 
         # Verify subprocess (job submission) was never called for start-job
         start_job_calls = [
-            c for c in mock_subprocess.run.call_args_list
+            c
+            for c in mock_subprocess.run.call_args_list
             if c[0][0][0:2] == ["hyperpod", "start-job"]
         ]
         assert len(start_job_calls) == 0

@@ -1,4 +1,5 @@
 """Unit tests for sagemaker.serve.detector.pickle_dependencies module."""
+
 import unittest
 from unittest.mock import Mock, patch, mock_open, MagicMock
 from pathlib import Path
@@ -42,37 +43,37 @@ class TestBatched(unittest.TestCase):
 class TestGetAllInstalledPackages(unittest.TestCase):
     """Test cases for get_all_installed_packages function."""
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_all_installed_packages(self, mock_run):
         """Test getting all installed packages."""
         mock_packages = [
             {"name": "package1", "version": "1.0.0"},
-            {"name": "package2", "version": "2.0.0"}
+            {"name": "package2", "version": "2.0.0"},
         ]
         mock_run.return_value = Mock(stdout=json.dumps(mock_packages).encode())
-        
+
         result = get_all_installed_packages()
-        
+
         self.assertEqual(result, mock_packages)
         mock_run.assert_called_once()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_all_installed_packages_empty(self, mock_run):
         """Test getting installed packages when none exist."""
         mock_run.return_value = Mock(stdout=b"[]")
-        
+
         result = get_all_installed_packages()
-        
+
         self.assertEqual(result, [])
 
 
 # Note: The following functions are complex and involve subprocess calls,
 # file I/O, and sys.modules manipulation. They are better tested through
 # integration tests rather than unit tests to avoid flaky mocks that can hang.
-# 
+#
 # Functions not unit tested here (but covered by integration tests):
 # - get_all_files_for_installed_packages_pip
-# - get_all_files_for_installed_packages  
+# - get_all_files_for_installed_packages
 # - map_package_names_to_files
 # - get_currently_used_packages
 # - get_requirements_for_pkl_file

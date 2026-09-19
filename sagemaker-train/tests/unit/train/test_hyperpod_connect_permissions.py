@@ -19,6 +19,7 @@ up front. These tests confirm that wiring without hitting AWS — both at the
 trainer seam (patching the helper) and end-to-end (real helper + resolver,
 mocking only the boto IAM/STS clients).
 """
+
 from __future__ import absolute_import
 
 from types import SimpleNamespace
@@ -80,18 +81,19 @@ class TestTrainHyperPodVerifiesConnectPermissions:
     ):
         mock_get_session.return_value = MagicMock()
         # start-job output the parser expects.
-        mock_subprocess.run.return_value = SimpleNamespace(
-            stdout="NAME: my-job-123\n", stderr=""
-        )
+        mock_subprocess.run.return_value = SimpleNamespace(stdout="NAME: my-job-123\n", stderr="")
 
         trainer = _make_base_trainer()
         # Avoid Hub/image lookups by pre-setting the recipe + image.
-        with patch(
-            "sagemaker.train.common_utils.finetune_utils.get_training_image",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
-            return_value="fine-tuning/nova/test-recipe",
+        with (
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
+                return_value="fine-tuning/nova/test-recipe",
+            ),
         ):
             trainer._train_hyperpod(wait=False)
 
@@ -126,17 +128,18 @@ class TestTrainHyperPodVerifiesConnectPermissions:
         """A non-blocking verdict (None/False) still lets submission proceed."""
         mock_get_session.return_value = MagicMock()
         mock_verify.return_value = None  # caller perms unverifiable → warn-only
-        mock_subprocess.run.return_value = SimpleNamespace(
-            stdout="NAME: my-job-123\n", stderr=""
-        )
+        mock_subprocess.run.return_value = SimpleNamespace(stdout="NAME: my-job-123\n", stderr="")
 
         trainer = _make_base_trainer()
-        with patch(
-            "sagemaker.train.common_utils.finetune_utils.get_training_image",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
-            return_value="fine-tuning/nova/test-recipe",
+        with (
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
+                return_value="fine-tuning/nova/test-recipe",
+            ),
         ):
             job_name = trainer._train_hyperpod(wait=False)
 
@@ -172,11 +175,7 @@ class TestTrainHyperPodConnectPermissionsEndToEnd:
         }
         paginator = MagicMock()
         paginator.paginate.return_value = [
-            {
-                "EvaluationResults": [
-                    {"EvalActionName": a, "EvalDecision": d} for a, d in decisions
-                ]
-            }
+            {"EvaluationResults": [{"EvalActionName": a, "EvalDecision": d} for a, d in decisions]}
         ]
         mock_iam.get_paginator.return_value = paginator
         return mock_session
@@ -198,20 +197,20 @@ class TestTrainHyperPodConnectPermissionsEndToEnd:
             ]
         )
         mock_get_session.return_value = session
-        mock_subprocess.run.return_value = SimpleNamespace(
-            stdout="NAME: my-job-123\n", stderr=""
-        )
+        mock_subprocess.run.return_value = SimpleNamespace(stdout="NAME: my-job-123\n", stderr="")
 
         trainer = _make_base_trainer()
         trainer.sagemaker_session = session
-        with patch(
-            "sagemaker.train.common_utils.finetune_utils.get_training_image",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
-            return_value="fine-tuning/nova/test-recipe",
-        ), caplog.at_level(
-            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        with (
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
+                return_value="fine-tuning/nova/test-recipe",
+            ),
+            caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"),
         ):
             job_name = trainer._train_hyperpod(wait=False)
 
@@ -240,20 +239,20 @@ class TestTrainHyperPodConnectPermissionsEndToEnd:
             ]
         )
         mock_get_session.return_value = session
-        mock_subprocess.run.return_value = SimpleNamespace(
-            stdout="NAME: my-job-123\n", stderr=""
-        )
+        mock_subprocess.run.return_value = SimpleNamespace(stdout="NAME: my-job-123\n", stderr="")
 
         trainer = _make_base_trainer()
         trainer.sagemaker_session = session
-        with patch(
-            "sagemaker.train.common_utils.finetune_utils.get_training_image",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
-            return_value="fine-tuning/nova/test-recipe",
-        ), caplog.at_level(
-            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        with (
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
+                return_value="fine-tuning/nova/test-recipe",
+            ),
+            caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"),
         ):
             job_name = trainer._train_hyperpod(wait=False)
 

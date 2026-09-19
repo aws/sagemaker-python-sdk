@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for FeatureGroup batch_write_record, list_records, and update_record methods."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -240,9 +241,7 @@ class TestListRecords:
             "next_token": "token123",
         }
 
-        mock_feature_group.list_records(
-            max_results=10, include_soft_deleted_records=True
-        )
+        mock_feature_group.list_records(max_results=10, include_soft_deleted_records=True)
 
         mock_get_client.assert_called_once_with(
             session=None, region_name=None, service_name="sagemaker-featurestore-runtime"
@@ -275,9 +274,7 @@ class TestListRecords:
 
     @patch("sagemaker.core.resources.transform")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_list_records_does_not_use_self_next_token(
-        self, mock_get_client, mock_transform
-    ):
+    def test_list_records_does_not_use_self_next_token(self, mock_get_client, mock_transform):
         """Test that list_records does NOT pass self.next_token (from DescribeFeatureGroup) to ListRecords."""
         fg = FeatureGroup.model_construct(
             feature_group_name="test-feature-group",
@@ -300,9 +297,7 @@ class TestListRecords:
 
     @patch("sagemaker.core.resources.transform")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_list_records_accepts_next_token_parameter(
-        self, mock_get_client, mock_transform
-    ):
+    def test_list_records_accepts_next_token_parameter(self, mock_get_client, mock_transform):
         """Test that list_records accepts next_token as a pagination parameter."""
         fg = FeatureGroup.model_construct(
             feature_group_name="test-feature-group",

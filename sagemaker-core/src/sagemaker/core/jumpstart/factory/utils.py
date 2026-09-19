@@ -87,7 +87,6 @@ from sagemaker.serve.compute_resource_requirements.resource_requirements import 
 from sagemaker.core import resource_requirements
 from sagemaker.core.enums import EndpointType
 
-
 KwargsType = Union[
     JumpStartModelDeployKwargs,
     JumpStartModelInitKwargs,

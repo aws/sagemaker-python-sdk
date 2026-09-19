@@ -36,13 +36,13 @@ class TestAsyncPredictor(unittest.TestCase):
         mock_upload.return_value = "s3://bucket/input"
         mock_submit.return_value = {
             "OutputLocation": "s3://bucket/output",
-            "FailureLocation": "s3://bucket/failure"
+            "FailureLocation": "s3://bucket/failure",
         }
         mock_wait.return_value = "result"
-        
+
         async_predictor = AsyncPredictor(self.mock_predictor)
         result = async_predictor.predict(data="test_data")
-        
+
         self.assertEqual(result, "result")
         mock_upload.assert_called_once()
         mock_submit.assert_called_once()
@@ -52,12 +52,12 @@ class TestAsyncPredictor(unittest.TestCase):
     def test_predict_async_with_input_path(self, mock_submit):
         mock_submit.return_value = {
             "OutputLocation": "s3://bucket/output",
-            "FailureLocation": "s3://bucket/failure"
+            "FailureLocation": "s3://bucket/failure",
         }
-        
+
         async_predictor = AsyncPredictor(self.mock_predictor)
         response = async_predictor.predict_async(input_path="s3://bucket/input")
-        
+
         self.assertIsNotNone(response)
         self.assertEqual(response.output_path, "s3://bucket/output")
         self.assertEqual(response.failure_path, "s3://bucket/failure")
@@ -65,10 +65,9 @@ class TestAsyncPredictor(unittest.TestCase):
     def test_create_request_args(self):
         async_predictor = AsyncPredictor(self.mock_predictor)
         args = async_predictor._create_request_args(
-            input_path="s3://bucket/input",
-            inference_id="test-id"
+            input_path="s3://bucket/input", inference_id="test-id"
         )
-        
+
         self.assertEqual(args["InputLocation"], "s3://bucket/input")
         self.assertEqual(args["EndpointName"], "test-endpoint")
         self.assertEqual(args["InferenceId"], "test-id")
@@ -78,13 +77,13 @@ class TestAsyncPredictor(unittest.TestCase):
     def test_upload_data_to_s3(self, mock_parse):
         mock_parse.return_value = ("bucket", "key")
         self.mock_predictor.serializer.serialize.return_value = b"serialized_data"
-        
+
         async_predictor = AsyncPredictor(self.mock_predictor, name="test")
         async_predictor.sagemaker_session.default_bucket.return_value = "default-bucket"
         async_predictor.sagemaker_session.default_bucket_prefix = "prefix"
-        
+
         result = async_predictor._upload_data_to_s3("test_data", "s3://bucket/key")
-        
+
         self.assertEqual(result, "s3://bucket/key")
         async_predictor.s3_client.put_object.assert_called_once()
 

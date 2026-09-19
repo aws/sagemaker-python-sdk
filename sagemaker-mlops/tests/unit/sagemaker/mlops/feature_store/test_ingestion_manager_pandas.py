@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for ingestion_manager_pandas.py"""
+
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
@@ -30,11 +31,13 @@ class TestIngestionManagerPandas:
 
     @pytest.fixture
     def sample_dataframe(self):
-        return pd.DataFrame({
-            "id": [1, 2, 3],
-            "value": [1.1, 2.2, 3.3],
-            "name": ["a", "b", "c"],
-        })
+        return pd.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "value": [1.1, 2.2, 3.3],
+                "name": ["a", "b", "c"],
+            }
+        )
 
     @pytest.fixture
     def manager(self, feature_definitions):
@@ -106,10 +109,12 @@ class TestIngestionManagerRun:
 
     @pytest.fixture
     def sample_dataframe(self):
-        return pd.DataFrame({
-            "id": [1, 2, 3],
-            "value": [1.1, 2.2, 3.3],
-        })
+        return pd.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "value": [1.1, 2.2, 3.3],
+            }
+        )
 
     @patch.object(IngestionManagerPandas, "_run_single_process_single_thread")
     def test_run_single_thread_mode(self, mock_single, feature_definitions, sample_dataframe):
@@ -172,10 +177,12 @@ class TestIngestionManagerIngestRow:
         assert len(failed_rows) == 0
 
     def test_ingest_row_with_collection_type(self, collection_feature_definitions):
-        df = pd.DataFrame({
-            "id": [1],
-            "tags": [["tag1", "tag2"]],
-        })
+        df = pd.DataFrame(
+            {
+                "id": [1],
+                "tags": [["tag1", "tag2"]],
+            }
+        )
         mock_fg = MagicMock()
         failed_rows = []
 
@@ -192,7 +199,7 @@ class TestIngestionManagerIngestRow:
         mock_fg.put_record.assert_called_once()
         call_args = mock_fg.put_record.call_args
         record = call_args[1]["record"]
-        
+
         # Find the tags feature value
         tags_value = next(v for v in record if v.feature_name == "tags")
         assert tags_value.value_as_string_list == ["tag1", "tag2"]
@@ -258,7 +265,7 @@ class TestIngestionManagerIngestRow:
 
 class TestAsyncIngestionValidation:
     """Test async ingestion validation with max_processes=1.
-    
+
     Bug fix: Error message unclear when trying to use async ingestion with 1 process.
     """
 
@@ -270,12 +277,12 @@ class TestAsyncIngestionValidation:
             max_workers=1,
             max_processes=1,
         )
-        
+
         df = pd.DataFrame({"id": ["1", "2", "3"]})
-        
+
         with pytest.raises(ValueError) as exc_info:
             manager.run(data_frame=df, wait=False)
-        
+
         error_message = str(exc_info.value)
         assert "Async ingestion (wait=False)" in error_message
         assert "max_processes > 1 or max_workers > 1" in error_message
@@ -286,25 +293,28 @@ class TestAsyncIngestionValidation:
         """Test that wait=True with max_processes=1 and max_workers=1 works."""
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
-        
+
         manager = IngestionManagerPandas(
             feature_group_name="test-fg",
             feature_definitions={"id": {"FeatureType": "String", "CollectionType": None}},
             max_workers=1,
             max_processes=1,
         )
-        
+
         df = pd.DataFrame({"id": ["1", "2", "3"]})
-        
+
         # Should not raise validation error
         manager.run(data_frame=df, wait=True)
 
-    @pytest.mark.parametrize("max_workers,max_processes", [
-        (2, 1),  # Multiple workers, single process
-        (1, 2),  # Single worker, multiple processes
-        (2, 2),  # Multiple workers and processes
-    ])
-    @patch.object(IngestionManagerPandas, '_run_multi_process')
+    @pytest.mark.parametrize(
+        "max_workers,max_processes",
+        [
+            (2, 1),  # Multiple workers, single process
+            (1, 2),  # Single worker, multiple processes
+            (2, 2),  # Multiple workers and processes
+        ],
+    )
+    @patch.object(IngestionManagerPandas, "_run_multi_process")
     def test_async_with_parallelism_no_validation_error(self, mock_run, max_workers, max_processes):
         """Test that wait=False works with any parallelism configuration where max_workers > 1 OR max_processes > 1."""
         manager = IngestionManagerPandas(
@@ -313,12 +323,12 @@ class TestAsyncIngestionValidation:
             max_workers=max_workers,
             max_processes=max_processes,
         )
-        
+
         df = pd.DataFrame({"id": ["1", "2", "3"]})
-        
+
         # Should not raise validation error
         manager.run(data_frame=df, wait=False)
-        
+
         # Verify it called the multi-process method (positive assertion)
         mock_run.assert_called_once()
 
@@ -423,13 +433,9 @@ class TestIngestionManagerRegion:
             assert call[1]["region"] == "eu-west-1"
 
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
-    def test_batch_write_passes_region(
-        self, mock_fg_class, feature_definitions, sample_dataframe
-    ):
+    def test_batch_write_passes_region(self, mock_fg_class, feature_definitions, sample_dataframe):
         mock_fg = MagicMock()
-        mock_fg.batch_write_record.return_value = MagicMock(
-            unprocessed_entries=[], errors=[]
-        )
+        mock_fg.batch_write_record.return_value = MagicMock(unprocessed_entries=[], errors=[])
         mock_fg_class.return_value = mock_fg
 
         IngestionManagerPandas._ingest_batch_write(
@@ -449,9 +455,7 @@ class TestIngestionManagerRegion:
         self, mock_fg_class, feature_definitions, sample_dataframe
     ):
         mock_fg = MagicMock()
-        mock_fg.batch_write_record.return_value = MagicMock(
-            unprocessed_entries=[], errors=[]
-        )
+        mock_fg.batch_write_record.return_value = MagicMock(unprocessed_entries=[], errors=[])
         mock_fg_class.return_value = mock_fg
 
         manager = IngestionManagerPandas(

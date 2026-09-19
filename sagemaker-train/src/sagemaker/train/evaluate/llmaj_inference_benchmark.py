@@ -132,8 +132,7 @@ def convert_dataset_to_inspectai_format(dataset_content: str) -> str:
             prompt_text = record["query"]
         else:
             raise ValueError(
-                f"Line {line_number} has neither 'prompt' nor 'query' field: "
-                f"{line.strip()!r}"
+                f"Line {line_number} has neither 'prompt' nor 'query' field: " f"{line.strip()!r}"
             )
         converted_lines.append(json.dumps({"input": prompt_text, "target": ""}))
     return "\n".join(converted_lines) + "\n"

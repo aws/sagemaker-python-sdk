@@ -1,4 +1,5 @@
 """Unit tests for job_wait utilities."""
+
 import collections
 import json
 from unittest.mock import MagicMock, patch
@@ -22,10 +23,15 @@ from sagemaker.train.common_utils.job_wait import (
 
 class TestParseRegionFromArn:
     def test_standard_arn(self):
-        assert _parse_region_from_arn("arn:aws:sagemaker:us-west-2:123456789012:job/my-job") == "us-west-2"
+        assert (
+            _parse_region_from_arn("arn:aws:sagemaker:us-west-2:123456789012:job/my-job")
+            == "us-west-2"
+        )
 
     def test_other_region(self):
-        assert _parse_region_from_arn("arn:aws:sagemaker:eu-west-1:123456789012:job/j") == "eu-west-1"
+        assert (
+            _parse_region_from_arn("arn:aws:sagemaker:eu-west-1:123456789012:job/j") == "eu-west-1"
+        )
 
     def test_invalid_arn(self):
         assert _parse_region_from_arn("not-an-arn") is None
@@ -171,9 +177,7 @@ class TestCalculateJobProgress:
 class TestCreateLogStreamHandler:
     @patch("sagemaker.train.common_utils.job_wait.MultiLogStreamHandler", create=True)
     def test_creates_handler(self, mock_cls):
-        with patch(
-            "sagemaker.core.utils.logs.MultiLogStreamHandler", mock_cls
-        ):
+        with patch("sagemaker.core.utils.logs.MultiLogStreamHandler", mock_cls):
             handler = _create_log_stream_handler("/aws/sagemaker/FineTuningJob", "my-job")
             mock_cls.assert_called_once_with(
                 log_group_name="/aws/sagemaker/FineTuningJob",
@@ -196,9 +200,7 @@ class TestCreateLogStreamHandler:
 
     @patch("sagemaker.train.common_utils.job_wait.MultiLogStreamHandler", create=True)
     def test_custom_instance_count(self, mock_cls):
-        with patch(
-            "sagemaker.core.utils.logs.MultiLogStreamHandler", mock_cls
-        ):
+        with patch("sagemaker.core.utils.logs.MultiLogStreamHandler", mock_cls):
             _create_log_stream_handler("/group", "job", instance_count=4)
             mock_cls.assert_called_once_with(
                 log_group_name="/group",
@@ -247,8 +249,7 @@ class TestDrainLogEvents:
     def test_respects_maxlen(self):
         handler = MagicMock()
         handler.get_latest_log_events.return_value = [
-            ("s", {"message": f"line {i}\n", "timestamp": i})
-            for i in range(30)
+            ("s", {"message": f"line {i}\n", "timestamp": i}) for i in range(30)
         ]
         buf = collections.deque(maxlen=MAX_LOG_LINES)
         _drain_log_events(handler, buf)

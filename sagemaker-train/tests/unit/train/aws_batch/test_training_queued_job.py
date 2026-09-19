@@ -173,14 +173,20 @@ class TestTrainingQueuedJobWait:
 class TestTrainingQueuedJobGetModelTrainer:
     """Tests for TrainingQueuedJob.get_model_trainer method"""
 
-    @patch("sagemaker.train.aws_batch.training_queued_job._remove_system_tags_in_place_in_model_trainer_object")
-    @patch("sagemaker.train.aws_batch.training_queued_job._construct_model_trainer_from_training_job_name")
+    @patch(
+        "sagemaker.train.aws_batch.training_queued_job._remove_system_tags_in_place_in_model_trainer_object"
+    )
+    @patch(
+        "sagemaker.train.aws_batch.training_queued_job._construct_model_trainer_from_training_job_name"
+    )
     @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
-    def test_get_model_trainer_success(self, mock_describe_service_job, mock_construct_trainer, mock_remove_tags):
+    def test_get_model_trainer_success(
+        self, mock_describe_service_job, mock_construct_trainer, mock_remove_tags
+    ):
         """Test get_model_trainer returns ModelTrainer when training job created"""
         # Return a real dict (not a mock) so nested dict access works
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_SUCCEEDED
-        
+
         mock_trainer = Mock()
         mock_construct_trainer.return_value = mock_trainer
 

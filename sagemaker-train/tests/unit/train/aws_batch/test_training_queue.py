@@ -190,7 +190,6 @@ class TestTrainingQueueSubmit:
                 None,
             )
 
-
     @patch("sagemaker.train.aws_batch.training_queue._submit_service_job")
     def test_submit_with_quota_share_name(self, mock_submit_service_job):
         """Test submit with quota_share_name"""
@@ -344,6 +343,7 @@ class TestTrainingQueueMap:
         assert len(queued_jobs) == 2
         for call_args in mock_submit_service_job.call_args_list:
             assert call_args[0][8] == QUOTA_SHARE_NAME
+
 
 class TestTrainingQueueList:
     """Tests for TrainingQueue.list_jobs method"""

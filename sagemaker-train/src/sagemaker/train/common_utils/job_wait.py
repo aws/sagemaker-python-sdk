@@ -3,6 +3,7 @@
 Adapted from trainer_wait.py for the Job resource (used by MultiTurnRLTrainer).
 MLflow is optional — all mlflow imports are guarded.
 """
+
 from __future__ import annotations
 
 import collections
@@ -139,7 +140,9 @@ def _get_rollout_info(config: dict) -> Optional[Tuple[int, int]]:
     return completed, total
 
 
-def _build_description_with_progress(description: Optional[str], progress_info: Optional[dict]) -> Optional[str]:
+def _build_description_with_progress(
+    description: Optional[str], progress_info: Optional[dict]
+) -> Optional[str]:
     """Enrich description with training details from ProgressInfo.
 
     Appends max steps, batch size, and dataset size when available.
@@ -297,7 +300,9 @@ def _get_step_metrics(
                             )
                     if resp.status_code == 200:
                         for m in resp.json().get("metrics", []):
-                            step_data.setdefault(int(m["step"]), {})[metric_name] = float(m["value"])
+                            step_data.setdefault(int(m["step"]), {})[metric_name] = float(
+                                m["value"]
+                            )
                 except Exception:
                     pass
             if step_data:
@@ -340,7 +345,11 @@ def _calculate_job_progress(
     if max_epoch and total_steps:
         # Epoch-based progress
         current_epoch = progress_info.get("CurrentEpoch", 0)
-        progress_pct = max(0, ((current_epoch - 1) * total_steps + current_step - 1)) / (max_epoch * total_steps) * 100
+        progress_pct = (
+            max(0, ((current_epoch - 1) * total_steps + current_step - 1))
+            / (max_epoch * total_steps)
+            * 100
+        )
         progress_text = f"\n- Epoch {current_epoch}/{max_epoch}, Step {current_step}/{total_steps}"
     elif max_steps:
         # Step-only progress
@@ -362,9 +371,12 @@ def _calculate_job_progress(
     return progress_pct, progress_text
 
 
-def _get_mlflow_presigned_url(mlflow_arn: str, experiment_name: Optional[str] = None,
-                              experiment_id: Optional[str] = None,
-                              run_id: Optional[str] = None) -> Optional[str]:
+def _get_mlflow_presigned_url(
+    mlflow_arn: str,
+    experiment_name: Optional[str] = None,
+    experiment_id: Optional[str] = None,
+    run_id: Optional[str] = None,
+) -> Optional[str]:
     """Get presigned MLflow URL. Handles both mlflow-app and mlflow-tracking-server ARNs."""
     try:
         import boto3
@@ -527,6 +539,7 @@ def _wait_jupyter(
             """Create a presigned URL and init REST session."""
             try:
                 import requests
+
                 presigned = _get_mlflow_presigned_url(mlflow_arn, None)
                 if not presigned:
                     return
@@ -541,13 +554,19 @@ def _wait_jupyter(
         def get_cached_mlflow_url():
             now = time.time()
             # Refresh REST session every 240s
-            if mlflow_arn and ("session" not in rest_cache or (now - rest_cache.get("ts", 0)) > 240):
+            if mlflow_arn and (
+                "session" not in rest_cache or (now - rest_cache.get("ts", 0)) > 240
+            ):
                 _refresh_mlflow_session()
             # Refresh link URL every 30s so it stays fresh for clicking
-            if mlflow_arn and (mlflow_link_cache["url"] is None or (now - mlflow_link_cache["timestamp"]) > 30):
+            if mlflow_arn and (
+                mlflow_link_cache["url"] is None or (now - mlflow_link_cache["timestamp"]) > 30
+            ):
                 mlflow_link_cache["url"] = _get_mlflow_presigned_url(
-                    mlflow_arn, mlflow_experiment_name,
-                    experiment_id=mlflow_experiment_id, run_id=mlflow_run_id,
+                    mlflow_arn,
+                    mlflow_experiment_name,
+                    experiment_id=mlflow_experiment_id,
+                    run_id=mlflow_run_id,
                 )
                 mlflow_link_cache["timestamp"] = now
             return mlflow_link_cache["url"]
@@ -576,9 +595,7 @@ def _wait_jupyter(
             elapsed = time.time() - start_time
 
             should_render = (
-                status != last_status
-                or secondary_status != last_secondary
-                or iteration % 4 == 0
+                status != last_status or secondary_status != last_secondary or iteration % 4 == 0
             )
             if not should_render:
                 continue
@@ -610,8 +627,10 @@ def _wait_jupyter(
             links_row2 = []
             try:
                 from sagemaker.train.common_utils.metrics_visualizer import (
-                    _is_in_studio, _get_studio_base_url,
+                    _is_in_studio,
+                    _get_studio_base_url,
                 )
+
                 if _is_in_studio() and job_arn:
                     region = _parse_region_from_arn(job_arn)
                     if region:
@@ -647,8 +666,12 @@ def _wait_jupyter(
 
             status_table.add_row("Job Status", f"[bold][orange3]{status}[/][/]")
             if secondary_status:
-                status_table.add_row("Secondary Status", f"[bold yellow]{secondary_status}[/bold yellow]")
-            status_table.add_row("Elapsed Time", f"[bold bright_red]{elapsed:.1f}s[/bold bright_red]")
+                status_table.add_row(
+                    "Secondary Status", f"[bold yellow]{secondary_status}[/bold yellow]"
+                )
+            status_table.add_row(
+                "Elapsed Time", f"[bold bright_red]{elapsed:.1f}s[/bold bright_red]"
+            )
 
             failure_reason = job.failure_reason
             if failure_reason and not _is_unassigned_attribute(failure_reason):
@@ -668,7 +691,10 @@ def _wait_jupyter(
 
                 if progress_info:
                     training_progress_pct, training_progress_text = _calculate_job_progress(
-                        progress_info, metrics_util, mlflow_run_name, mlflow_run_id,
+                        progress_info,
+                        metrics_util,
+                        mlflow_run_name,
+                        mlflow_run_id,
                     )
 
             # Transitions
@@ -693,8 +719,16 @@ def _wait_jupyter(
 
                 for i, trans in enumerate(transitions):
                     duration, check = _calculate_transition_duration(trans)
-                    msg = trans.status_message if not _is_unassigned_attribute(trans.status_message) else ""
-                    if trans.status == "Training" and i == last_training_idx and training_progress_pct is not None:
+                    msg = (
+                        trans.status_message
+                        if not _is_unassigned_attribute(trans.status_message)
+                        else ""
+                    )
+                    if (
+                        trans.status == "Training"
+                        and i == last_training_idx
+                        and training_progress_pct is not None
+                    ):
                         bar = (
                             f"[green][{'█' * int(training_progress_pct / 5)}"
                             f"{'░' * (20 - int(training_progress_pct / 5))}][/green] "
@@ -716,7 +750,9 @@ def _wait_jupyter(
                 if metrics_fetch_needed:
                     with _suppress_info_logging():
                         cached_mtrl_rows = _get_step_metrics(
-                            metrics_util, mlflow_run_name, mlflow_run_id,
+                            metrics_util,
+                            mlflow_run_name,
+                            mlflow_run_id,
                             mlflow_arn=mlflow_arn,
                             _rest_cache=rest_cache,
                         )
@@ -726,8 +762,10 @@ def _wait_jupyter(
 
                     if cached_mtrl_rows:
                         metrics_table = Table(
-                            show_header=True, header_style="bold magenta",
-                            box=SIMPLE, padding=(0, 1),
+                            show_header=True,
+                            header_style="bold magenta",
+                            box=SIMPLE,
+                            padding=(0, 1),
                         )
                         metrics_table.add_column("Step", style="cyan", width=6, justify="right")
                         metric_keys = [k for k in cached_mtrl_rows[0] if k != "step"]
@@ -735,7 +773,9 @@ def _wait_jupyter(
                             parts = k.split("/")
                             col_name = "/".join(parts[-2:]) if len(parts) > 1 else parts[0]
                             col_name = col_name.replace("_", " ").title()
-                            metrics_table.add_column(col_name, style="white", width=14, justify="right")
+                            metrics_table.add_column(
+                                col_name, style="white", width=14, justify="right"
+                            )
                         for r in cached_mtrl_rows:
                             vals = []
                             for k in metric_keys:
@@ -755,7 +795,11 @@ def _wait_jupyter(
                 _drain_log_events(log_handler, log_buf)
             parts = [header_table, Text(""), status_table]
             if transitions_table:
-                parts += [Text(""), Text("Status Transitions", style="bold magenta"), transitions_table]
+                parts += [
+                    Text(""),
+                    Text("Status Transitions", style="bold magenta"),
+                    transitions_table,
+                ]
             rollout = _get_rollout_info(config)
             if rollout:
                 completed, total = rollout
@@ -765,7 +809,11 @@ def _wait_jupyter(
                     f"[green][{'█' * filled}{'░' * (20 - filled)}][/green] "
                     f"{rollout_pct:.1f}% ({completed}/{total})"
                 )
-                parts += [Text(""), Text("Rollouts", style="bold magenta"), Text.from_markup(rollout_bar)]
+                parts += [
+                    Text(""),
+                    Text("Rollouts", style="bold magenta"),
+                    Text.from_markup(rollout_bar),
+                ]
             if metrics_table:
                 parts += [Text(""), Text("Training Metrics", style="bold magenta"), metrics_table]
             if log_buf:
@@ -791,7 +839,9 @@ def _wait_jupyter(
             if status in TERMINAL_STATUSES:
                 return
 
-            if status == "Failed" or (failure_reason and not _is_unassigned_attribute(failure_reason)):
+            if status == "Failed" or (
+                failure_reason and not _is_unassigned_attribute(failure_reason)
+            ):
                 raise FailedStatusError(resource_type="Job", status=status, reason=failure_reason)
 
             if timeout and elapsed >= timeout:
@@ -926,7 +976,10 @@ def _wait_terminal(
                 progress_info = _get_progress_info(config)
             if progress_info:
                 progress_pct, progress_text = _calculate_job_progress(
-                    progress_info, metrics_util, mlflow_run_name, mlflow_run_id,
+                    progress_info,
+                    metrics_util,
+                    mlflow_run_name,
+                    mlflow_run_id,
                 )
 
         transitions = job.secondary_status_transitions
@@ -940,9 +993,17 @@ def _wait_terminal(
                     last_training_idx = i
             for i, trans in enumerate(transitions):
                 duration, check = _calculate_transition_duration(trans)
-                msg = trans.status_message if not _is_unassigned_attribute(trans.status_message) else ""
+                msg = (
+                    trans.status_message
+                    if not _is_unassigned_attribute(trans.status_message)
+                    else ""
+                )
                 step_msg = f"  {check} {trans.status}: {msg} ({duration})"
-                if trans.status == "Training" and i == last_training_idx and progress_pct is not None:
+                if (
+                    trans.status == "Training"
+                    and i == last_training_idx
+                    and progress_pct is not None
+                ):
                     step_msg += f" - {progress_pct:.1f}%{progress_text.replace(chr(10), ', ')}"
                 print(step_msg)
 
@@ -951,7 +1012,9 @@ def _wait_terminal(
             completed, total = rollout
             rollout_pct = completed / total * 100
             filled = int(rollout_pct / 5)
-            print(f"  Rollouts: [{'█' * filled}{'░' * (20 - filled)}] {rollout_pct:.1f}% ({completed}/{total})")
+            print(
+                f"  Rollouts: [{'█' * filled}{'░' * (20 - filled)}] {rollout_pct:.1f}% ({completed}/{total})"
+            )
 
         print(f"\nStatus: {status} - {secondary_status} (Elapsed: {elapsed:.1f}s)")
 
@@ -962,16 +1025,21 @@ def _wait_terminal(
             if status == "Completed" and mlflow_arn:
                 exp_id, run_id = _get_mlflow_output_details(config)
                 mlflow_url = _get_mlflow_presigned_url(
-                    mlflow_arn, _get_mlflow_experiment_name(config),
-                    experiment_id=exp_id, run_id=run_id,
+                    mlflow_arn,
+                    _get_mlflow_experiment_name(config),
+                    experiment_id=exp_id,
+                    run_id=run_id,
                 )
                 if mlflow_url:
                     print(f"\n✓ Job completed! View metrics in MLflow: {mlflow_url}")
                 if metrics_util or (mlflow_arn and mlflow_run_id):
                     try:
                         from sagemaker.train.agent_rft_job import AgentRFTJob
+
                         mtrl_rows = _get_step_metrics(
-                            metrics_util, mlflow_run_name, mlflow_run_id,
+                            metrics_util,
+                            mlflow_run_name,
+                            mlflow_run_id,
                             mlflow_arn=mlflow_arn,
                         )
                         if mtrl_rows:

@@ -1,4 +1,5 @@
 """Unit tests for FeatureGroupManager."""
+
 from unittest.mock import MagicMock, patch
 
 import botocore.exceptions
@@ -34,7 +35,6 @@ class TestS3UriToArn:
         uri = "s3://my-bucket/path"
         result = FeatureGroupManager._s3_uri_to_arn(uri, region="cn-north-1")
         assert result.startswith("arn:aws-cn:s3:::")
-
 
 
 class TestGetLakeFormationClient:
@@ -158,15 +158,14 @@ class TestRegisterS3WithLakeFormation:
         )
 
 
-
 class TestRevokeIamAllowedPrincipal:
     """Tests for _revoke_iam_allowed_principal method."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._revoke_iam_allowed_principal = FeatureGroupManager._revoke_iam_allowed_principal.__get__(
-            self.fg
+        self.fg._revoke_iam_allowed_principal = (
+            FeatureGroupManager._revoke_iam_allowed_principal.__get__(self.fg)
         )
         self.mock_client = MagicMock()
         self.fg._get_lake_formation_client = MagicMock(return_value=self.mock_client)
@@ -208,9 +207,7 @@ class TestRevokeIamAllowedPrincipal:
 
     def test_no_permissions_skips_revoke(self):
         """Test that empty list_permissions result skips revoke and returns True."""
-        self.mock_client.list_permissions.return_value = {
-            "PrincipalResourcePermissions": []
-        }
+        self.mock_client.list_permissions.return_value = {"PrincipalResourcePermissions": []}
 
         result = self.fg._revoke_iam_allowed_principal("test_database", "test_table")
 
@@ -247,9 +244,7 @@ class TestRevokeIamAllowedPrincipal:
 
     def test_passes_session_and_region_to_client(self):
         """Test session and region are passed to get_lake_formation_client."""
-        self.mock_client.list_permissions.return_value = {
-            "PrincipalResourcePermissions": []
-        }
+        self.mock_client.list_permissions.return_value = {"PrincipalResourcePermissions": []}
         mock_session = MagicMock()
 
         self.fg._revoke_iam_allowed_principal(
@@ -257,7 +252,6 @@ class TestRevokeIamAllowedPrincipal:
         )
 
         self.fg._get_lake_formation_client.assert_called_with(mock_session, "us-west-2")
-
 
 
 class TestGrantLakeFormationPermissions:
@@ -342,7 +336,6 @@ class TestGrantLakeFormationPermissions:
         )
 
         self.fg._get_lake_formation_client.assert_called_with(mock_session, "us-west-2")
-
 
 
 class TestEnableLakeFormationValidation:
@@ -440,7 +433,9 @@ class TestEnableLakeFormationValidation:
         mock_revoke.return_value = True
 
         # Call with wait_for_active=True
-        fg.enable_lake_formation(wait_for_active=True, hybrid_access_mode_enabled=False, acknowledge_risk=True)
+        fg.enable_lake_formation(
+            wait_for_active=True, hybrid_access_mode_enabled=False, acknowledge_risk=True
+        )
 
         # Verify wait_for_status was called with "Created"
         mock_wait.assert_called_once_with(target_status="Created")
@@ -478,13 +473,14 @@ class TestEnableLakeFormationValidation:
         mock_revoke.return_value = True
 
         # Call with wait_for_active=False (default)
-        fg.enable_lake_formation(wait_for_active=False, hybrid_access_mode_enabled=False, acknowledge_risk=True)
+        fg.enable_lake_formation(
+            wait_for_active=False, hybrid_access_mode_enabled=False, acknowledge_risk=True
+        )
 
         # Verify wait_for_status was NOT called
         mock_wait.assert_not_called()
         # Verify refresh was still called
         mock_refresh.assert_called_once()
-
 
     @pytest.mark.parametrize(
         "feature_group_name,role_arn,s3_uri,database_name,table_name",
@@ -611,7 +607,6 @@ class TestEnableLakeFormationValidation:
         mock_revoke.assert_called_once()
 
 
-
 class TestUnhandledExceptionPropagation:
     """Tests for proper propagation of unhandled boto3 exceptions."""
 
@@ -625,8 +620,8 @@ class TestUnhandledExceptionPropagation:
         """
         fg = MagicMock(spec=FeatureGroupManager)
         fg._s3_uri_to_arn = FeatureGroupManager._s3_uri_to_arn
-        fg._register_s3_with_lake_formation = FeatureGroupManager._register_s3_with_lake_formation.__get__(
-            fg
+        fg._register_s3_with_lake_formation = (
+            FeatureGroupManager._register_s3_with_lake_formation.__get__(fg)
         )
         mock_client = MagicMock()
         fg._get_lake_formation_client = MagicMock(return_value=mock_client)
@@ -660,7 +655,9 @@ class TestUnhandledExceptionPropagation:
 
         """
         fg = MagicMock(spec=FeatureGroupManager)
-        fg._revoke_iam_allowed_principal = FeatureGroupManager._revoke_iam_allowed_principal.__get__(fg)
+        fg._revoke_iam_allowed_principal = (
+            FeatureGroupManager._revoke_iam_allowed_principal.__get__(fg)
+        )
         mock_client = MagicMock()
         fg._get_lake_formation_client = MagicMock(return_value=mock_client)
 
@@ -728,10 +725,12 @@ class TestUnhandledExceptionPropagation:
         """
         fg = MagicMock(spec=FeatureGroupManager)
         fg._s3_uri_to_arn = FeatureGroupManager._s3_uri_to_arn
-        fg._register_s3_with_lake_formation = FeatureGroupManager._register_s3_with_lake_formation.__get__(
-            fg
+        fg._register_s3_with_lake_formation = (
+            FeatureGroupManager._register_s3_with_lake_formation.__get__(fg)
         )
-        fg._revoke_iam_allowed_principal = FeatureGroupManager._revoke_iam_allowed_principal.__get__(fg)
+        fg._revoke_iam_allowed_principal = (
+            FeatureGroupManager._revoke_iam_allowed_principal.__get__(fg)
+        )
         fg._grant_lake_formation_permissions = (
             FeatureGroupManager._grant_lake_formation_permissions.__get__(fg)
         )
@@ -760,7 +759,6 @@ class TestUnhandledExceptionPropagation:
             "arn:aws:iam::123456789012:role/TestRole", "db", "table"
         )
         assert result is True  # Should return True, not raise
-
 
 
 class TestCreateWithLakeFormation:
@@ -1066,7 +1064,8 @@ class TestCreateWithLakeFormation:
 
         # Test with lake_formation_config enabled=True but no role_arn
         with pytest.raises(
-            ValueError, match="lake_formation_config with enabled=True requires role_arn to be specified"
+            ValueError,
+            match="lake_formation_config with enabled=True requires role_arn to be specified",
         ):
             FeatureGroupManager.create(
                 feature_group_name=feature_group_name,
@@ -1078,13 +1077,30 @@ class TestCreateWithLakeFormation:
                 # role_arn not provided
             )
 
-
     @pytest.mark.parametrize(
         "feature_group_name,record_id_feature,event_time_feature,role_arn,s3_uri,database,table,use_slr",
         [
             ("test-fg", "record_id", "event_time", "TestRole", "path1", "db1", "table1", True),
-            ("my_feature_group", "id", "timestamp", "ExecutionRole", "data/features", "feature_db", "feature_table", False),
-            ("fg123", "identifier", "time", "MyRole123", "ml/features/v1", "analytics", "features_v1", True),
+            (
+                "my_feature_group",
+                "id",
+                "timestamp",
+                "ExecutionRole",
+                "data/features",
+                "feature_db",
+                "feature_table",
+                False,
+            ),
+            (
+                "fg123",
+                "identifier",
+                "time",
+                "MyRole123",
+                "ml/features/v1",
+                "analytics",
+                "features_v1",
+                True,
+            ),
         ],
     )
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -1181,7 +1197,6 @@ class TestCreateWithLakeFormation:
         # Verify the feature group was returned
         assert result == mock_fg
 
-
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
     def test_create_aborts_when_acknowledge_risk_is_false(self, mock_get_client):
         """Test that create() raises RuntimeError before creating FG when acknowledge_risk is False."""
@@ -1251,7 +1266,9 @@ class TestHybridAccessModeEnabled:
         mock_grant.return_value = True
         mock_revoke.return_value = True
 
-        result = self.fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
+        result = self.fg.enable_lake_formation(
+            hybrid_access_mode_enabled=False, acknowledge_risk=True
+        )
 
         mock_revoke.assert_called_once()
         assert result["hybrid_access_mode_enabled"] is False
@@ -1267,15 +1284,15 @@ class TestHybridAccessModeEnabled:
         mock_register.return_value = True
         mock_grant.return_value = True
 
-        result = self.fg.enable_lake_formation(hybrid_access_mode_enabled=True, acknowledge_risk=True)
+        result = self.fg.enable_lake_formation(
+            hybrid_access_mode_enabled=True, acknowledge_risk=True
+        )
 
         mock_revoke.assert_not_called()
         assert result["hybrid_access_mode_enabled"] is True
 
     @patch.object(FeatureGroupManager, "refresh")
-    def test_raises_error_when_user_declines_hybrid_access_prompt(
-        self, mock_refresh
-    ):
+    def test_raises_error_when_user_declines_hybrid_access_prompt(self, mock_refresh):
         """Test that RuntimeError is raised when user declines the hybrid access prompt."""
         with pytest.raises(RuntimeError, match="User chose not to proceed"):
             self.fg.enable_lake_formation(hybrid_access_mode_enabled=True, acknowledge_risk=False)
@@ -1404,9 +1421,10 @@ class TestGetLakeFormationServiceLinkedRoleArn:
     def test_uses_region_for_partition(self):
         """Test that region is used to determine partition."""
         account_id = "123456789012"
-        result = FeatureGroupManager._get_lake_formation_service_linked_role_arn(account_id, region="cn-north-1")
+        result = FeatureGroupManager._get_lake_formation_service_linked_role_arn(
+            account_id, region="cn-north-1"
+        )
         assert result.startswith("arn:aws-cn:iam::")
-
 
 
 class TestGenerateS3DenyStatements:
@@ -1415,7 +1433,9 @@ class TestGenerateS3DenyStatements:
     def setup_method(self):
         """Set up test fixtures."""
         self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._generate_s3_deny_statements = FeatureGroupManager._generate_s3_deny_statements.__get__(self.fg)
+        self.fg._generate_s3_deny_statements = (
+            FeatureGroupManager._generate_s3_deny_statements.__get__(self.fg)
+        )
 
     def test_returns_list_not_dict(self):
         """Test that the method returns a list, not a dict."""
@@ -1613,7 +1633,6 @@ class TestGenerateS3DenyStatements:
         assert list_action == "s3:ListBucket"
 
 
-
 class TestEnableLakeFormationServiceLinkedRoleInPolicy:
     """Tests for service-linked role ARN usage in Phase 4 deny policy generation."""
 
@@ -1652,7 +1671,9 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         mock_revoke.return_value = True
         mock_generate.return_value = []
 
-        fg.enable_lake_formation(use_service_linked_role=True, hybrid_access_mode_enabled=False, acknowledge_risk=True)
+        fg.enable_lake_formation(
+            use_service_linked_role=True, hybrid_access_mode_enabled=False, acknowledge_risk=True
+        )
 
         expected_slr_arn = "arn:aws:iam::123456789012:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
         mock_generate.assert_called_once()
@@ -1738,14 +1759,15 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         mock_revoke.return_value = True
         mock_generate.return_value = []
 
-        fg.enable_lake_formation(use_service_linked_role=True, hybrid_access_mode_enabled=False, acknowledge_risk=True)
+        fg.enable_lake_formation(
+            use_service_linked_role=True, hybrid_access_mode_enabled=False, acknowledge_risk=True
+        )
 
         expected_slr_arn = f"arn:aws:iam::{account_id}:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
         mock_generate.assert_called_once()
         call_kwargs = mock_generate.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
         assert account_id in call_kwargs["lake_formation_role_arn"]
-
 
 
 class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
@@ -1916,7 +1938,6 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         assert first_lf_role != second_lf_role
 
 
-
 class TestFeatureGroupManagerReturnType:
     """Tests to verify create() and get() return FeatureGroupManager instances."""
 
@@ -1944,7 +1965,9 @@ class TestFeatureGroupManagerReturnType:
             feature_group_name="test-fg",
             record_identifier_feature_name="record_id",
             event_time_feature_name="event_time",
-            feature_definitions=[FeatureDefinition(feature_name="record_id", feature_type="String")],
+            feature_definitions=[
+                FeatureDefinition(feature_name="record_id", feature_type="String")
+            ],
         )
 
         assert isinstance(result, FeatureGroupManager)
@@ -2104,7 +2127,9 @@ class TestEnableLakeFormationHappyPath:
         mock_grant.return_value = True
         mock_revoke.return_value = True
 
-        result = self.fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
+        result = self.fg.enable_lake_formation(
+            hybrid_access_mode_enabled=False, acknowledge_risk=True
+        )
 
         assert result == {
             "s3_location_registered": True,
@@ -2145,7 +2170,9 @@ class TestCreatePassesThroughSessionAndRegion:
             feature_group_name="test-fg",
             record_identifier_feature_name="record_id",
             event_time_feature_name="event_time",
-            feature_definitions=[FeatureDefinition(feature_name="record_id", feature_type="String")],
+            feature_definitions=[
+                FeatureDefinition(feature_name="record_id", feature_type="String")
+            ],
             offline_store_config=OfflineStoreConfig(
                 s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path")
             ),

@@ -18,6 +18,7 @@ This file provides backward compatibility by re-exporting the class from its new
 
 DEPRECATED: Import from sagemaker.core.inference_config instead.
 """
+
 from __future__ import absolute_import
 
 import warnings
@@ -33,7 +34,7 @@ warnings.warn(
     "  from sagemaker.core.inference_config import ServerlessInferenceConfig\n"
     "This compatibility shim will be removed in a future version.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
-__all__ = ['ServerlessInferenceConfig']
+__all__ = ["ServerlessInferenceConfig"]

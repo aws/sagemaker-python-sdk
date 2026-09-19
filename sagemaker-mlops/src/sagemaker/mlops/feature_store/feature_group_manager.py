@@ -35,7 +35,6 @@ from sagemaker.mlops.feature_store.feature_utils import (
     _ICEBERG_PERMISSIONS_ERROR_MESSAGE,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -111,10 +110,11 @@ class IcebergProperties(Base):
 
 class FeatureGroupManager(FeatureGroup):
     """FeatureGroup with extended management capabilities."""
-     # Inherit parent docstring and append our additions
+
+    # Inherit parent docstring and append our additions
     if FeatureGroup.__doc__ and __doc__:
         __doc__ = FeatureGroup.__doc__
-        
+
     # Attribute for Iceberg table properties (populated by get() when include_iceberg_properties=True)
     iceberg_properties: Optional[IcebergProperties] = None
 
@@ -138,10 +138,10 @@ class FeatureGroupManager(FeatureGroup):
         """
         if s3_uri.startswith("arn:"):
             return s3_uri
-        
+
         # Determine partition based on region
         partition = aws_partition(region) if region else "aws"
-        
+
         bucket, key = parse_s3_url(s3_uri)
         # Reconstruct as ARN - key may be empty string
         s3_path = f"{bucket}/{key}" if key else bucket
@@ -318,7 +318,9 @@ class FeatureGroupManager(FeatureGroup):
             },
             Permissions=["ALL"],
         )
-        logger.info(f"Disabled Lake Formation hybrid-access mode on table: {database_name}.{table_name}")
+        logger.info(
+            f"Disabled Lake Formation hybrid-access mode on table: {database_name}.{table_name}"
+        )
         return True
 
     def _grant_lake_formation_permissions(
@@ -373,7 +375,7 @@ class FeatureGroupManager(FeatureGroup):
                 )
                 return True
             raise
-    
+
     def _generate_s3_deny_statements(
         self,
         bucket_name: str,
@@ -414,9 +416,7 @@ class FeatureGroupManager(FeatureGroup):
                 "Principal": "*",
                 "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
                 "Resource": f"arn:{partition}:s3:::{bucket_name}/{s3_prefix}/*",
-                "Condition": {
-                    "StringNotEquals": {"aws:PrincipalArn": allowed_principals}
-                },
+                "Condition": {"StringNotEquals": {"aws:PrincipalArn": allowed_principals}},
             },
             {
                 "Sid": f"DenyFSListAccess_{sid_suffix}",
@@ -430,7 +430,6 @@ class FeatureGroupManager(FeatureGroup):
                 },
             },
         ]
-    
 
     @Base.add_validate_call
     def enable_lake_formation(
@@ -441,7 +440,7 @@ class FeatureGroupManager(FeatureGroup):
         region: Optional[str] = None,
         use_service_linked_role: bool = True,
         registration_role_arn: Optional[str] = None,
-        wait_for_active: bool = False
+        wait_for_active: bool = False,
     ) -> dict:
         """
         Enable Lake Formation governance for this Feature Group's offline store.
@@ -587,11 +586,10 @@ class FeatureGroupManager(FeatureGroup):
                     "Re-run with hybrid_access_mode_enabled=True to keep IAMAllowedPrincipal permissions."
                 )
 
-
         results = {
             "s3_location_registered": False,
             "lf_permissions_granted": False,
-            "hybrid_access_mode_enabled": True
+            "hybrid_access_mode_enabled": True,
         }
 
         # Execute Lake Formation setup with fail-fast behavior.
@@ -697,13 +695,12 @@ class FeatureGroupManager(FeatureGroup):
         else:
             lf_role_arn = str(registration_role_arn)
 
-    
         bucket_deny_policy = self._generate_s3_deny_statements(
             bucket_name=bucket_name,
             s3_prefix=s3_prefix,
             lake_formation_role_arn=lf_role_arn,
             feature_store_role_arn=role_arn_str,
-            region=region
+            region=region,
         )
 
         policy_json = json.dumps(bucket_deny_policy, indent=2)
@@ -799,9 +796,7 @@ class FeatureGroupManager(FeatureGroup):
             self.offline_store_config.table_format is None
             or str(self.offline_store_config.table_format) != "Iceberg"
         ):
-            raise ValueError(
-                "Cannot update Iceberg properties: table_format must be 'Iceberg'"
-            )
+            raise ValueError("Cannot update Iceberg properties: table_format must be 'Iceberg'")
 
         # Get database and table name from data_catalog_config
         data_catalog_config = self.offline_store_config.data_catalog_config
@@ -879,9 +874,7 @@ class FeatureGroupManager(FeatureGroup):
         """
         # Validate iceberg_properties has properties to update
         if iceberg_properties is None or not iceberg_properties.properties:
-            raise ValueError(
-                "iceberg_properties must contain at least one property to update"
-            )
+            raise ValueError("iceberg_properties must contain at least one property to update")
 
         invalid_keys = set(iceberg_properties.properties.keys()) - _ALLOWED_ICEBERG_PROPERTIES
         if invalid_keys:
@@ -890,7 +883,7 @@ class FeatureGroupManager(FeatureGroup):
                 f"Allowed properties are: {_ALLOWED_ICEBERG_PROPERTIES}"
             )
 
-         # Check for no duplicate keys
+        # Check for no duplicate keys
         keys = list(iceberg_properties.properties.keys())
         duplicates = {k for k, count in Counter(keys).items() if count > 1}
         if duplicates:
@@ -985,12 +978,9 @@ class FeatureGroupManager(FeatureGroup):
             result = feature_group._get_iceberg_properties(session=session, region=region)
             all_properties = result["properties"]
             allowed_properties = {
-                k: v for k, v in all_properties.items()
-                if k in _ALLOWED_ICEBERG_PROPERTIES
+                k: v for k, v in all_properties.items() if k in _ALLOWED_ICEBERG_PROPERTIES
             }
-            feature_group.iceberg_properties = IcebergProperties(
-                properties=allowed_properties
-            )
+            feature_group.iceberg_properties = IcebergProperties(properties=allowed_properties)
 
         return feature_group
 

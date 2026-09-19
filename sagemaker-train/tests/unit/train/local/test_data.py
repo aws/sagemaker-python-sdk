@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for local data module."""
+
 from __future__ import absolute_import
 
 import os
@@ -140,10 +141,10 @@ class TestLocalFileDataSource:
             file2 = os.path.join(tmpdir, "file2.txt")
             open(file1, "w").close()
             open(file2, "w").close()
-            
+
             data_source = LocalFileDataSource(tmpdir)
             file_list = data_source.get_file_list()
-            
+
             assert len(file_list) == 2
             assert file1 in file_list
             assert file2 in file_list
@@ -154,7 +155,7 @@ class TestLocalFileDataSource:
             try:
                 data_source = LocalFileDataSource(tmpfile.name)
                 file_list = data_source.get_file_list()
-                
+
                 assert len(file_list) == 1
                 assert file_list[0] == tmpfile.name
             finally:
@@ -179,27 +180,37 @@ class TestLocalFileDataSource:
 class TestS3DataSource:
     """Test S3DataSource class."""
 
-    @pytest.mark.skip(reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure")
+    @pytest.mark.skip(
+        reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure"
+    )
     def test_init_downloads_from_s3(self):
         """Test initialization downloads from S3."""
         pass
 
-    @pytest.mark.skip(reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure")
+    @pytest.mark.skip(
+        reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure"
+    )
     def test_init_applies_darwin_workaround(self):
         """Test applies Darwin workaround for Mac OS."""
         pass
 
-    @pytest.mark.skip(reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure")
+    @pytest.mark.skip(
+        reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure"
+    )
     def test_init_uses_custom_root_dir(self):
         """Test uses custom root directory."""
         pass
 
-    @pytest.mark.skip(reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure")
+    @pytest.mark.skip(
+        reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure"
+    )
     def test_get_file_list(self):
         """Test get_file_list delegates to LocalFileDataSource."""
         pass
 
-    @pytest.mark.skip(reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure")
+    @pytest.mark.skip(
+        reason="S3DataSource requires sagemaker.utils module which doesn't exist in modular structure"
+    )
     def test_get_root_dir(self):
         """Test get_root_dir delegates to LocalFileDataSource."""
         pass
@@ -213,11 +224,11 @@ class TestNoneSplitter:
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmpfile:
             tmpfile.write("test content")
             tmpfile.flush()
-            
+
             try:
                 splitter = NoneSplitter()
                 result = list(splitter.split(tmpfile.name))
-                
+
                 assert len(result) == 1
                 assert result[0] == "test content"
             finally:
@@ -228,11 +239,11 @@ class TestNoneSplitter:
         with tempfile.NamedTemporaryFile(mode="wb", delete=False) as tmpfile:
             tmpfile.write(b"\x00\x01\x02\x03")
             tmpfile.flush()
-            
+
             try:
                 splitter = NoneSplitter()
                 result = list(splitter.split(tmpfile.name))
-                
+
                 assert len(result) == 1
                 assert result[0] == b"\x00\x01\x02\x03"
             finally:
@@ -257,11 +268,11 @@ class TestLineSplitter:
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmpfile:
             tmpfile.write("line1\nline2\nline3")
             tmpfile.flush()
-            
+
             try:
                 splitter = LineSplitter()
                 result = list(splitter.split(tmpfile.name))
-                
+
                 assert len(result) == 3
                 assert result[0] == "line1\n"
                 assert result[1] == "line2\n"
@@ -273,7 +284,9 @@ class TestLineSplitter:
 class TestRecordIOSplitter:
     """Test RecordIOSplitter class."""
 
-    @pytest.mark.skip(reason="RecordIOSplitter requires sagemaker.amazon.common module which doesn't exist in modular structure")
+    @pytest.mark.skip(
+        reason="RecordIOSplitter requires sagemaker.amazon.common module which doesn't exist in modular structure"
+    )
     def test_split_returns_recordio_records(self):
         """Test split returns RecordIO records."""
         pass
@@ -286,10 +299,10 @@ class TestMultiRecordStrategy:
         """Test pad groups records within size limit."""
         splitter = MagicMock()
         splitter.split.return_value = ["a", "b", "c", "d"]
-        
+
         strategy = MultiRecordStrategy(splitter)
         result = list(strategy.pad("file.txt", size=0))  # size=0 means unlimited
-        
+
         assert len(result) == 1
         assert result[0] == "abcd"
 
@@ -297,10 +310,10 @@ class TestMultiRecordStrategy:
         """Test pad splits records when exceeding size."""
         splitter = MagicMock()
         splitter.split.return_value = ["a" * 500, "b" * 500, "c" * 500]
-        
+
         strategy = MultiRecordStrategy(splitter)
         result = list(strategy.pad("file.txt", size=0.001))  # Very small size
-        
+
         # Should split into multiple batches
         assert len(result) > 1
 
@@ -312,10 +325,10 @@ class TestSingleRecordStrategy:
         """Test pad returns individual records."""
         splitter = MagicMock()
         splitter.split.return_value = ["record1", "record2", "record3"]
-        
+
         strategy = SingleRecordStrategy(splitter)
         result = list(strategy.pad("file.txt", size=0))  # size=0 means unlimited
-        
+
         assert len(result) == 3
         assert result[0] == "record1"
         assert result[1] == "record2"
@@ -325,9 +338,9 @@ class TestSingleRecordStrategy:
         """Test pad raises error for record exceeding size."""
         splitter = MagicMock()
         splitter.split.return_value = ["a" * 10000000]  # Very large record
-        
+
         strategy = SingleRecordStrategy(splitter)
-        
+
         with pytest.raises(RuntimeError, match="Record is larger"):
             list(strategy.pad("file.txt", size=0.001))  # Very small size
 

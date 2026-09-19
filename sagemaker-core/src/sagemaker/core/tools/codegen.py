@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Generates the code for the service model."""
+
 from sagemaker.core.utils.utils import reformat_file_with_black
 from sagemaker.core.tools.shapes_codegen import ShapesCodeGen
 from sagemaker.core.tools.resources_codegen import ResourcesCodeGen

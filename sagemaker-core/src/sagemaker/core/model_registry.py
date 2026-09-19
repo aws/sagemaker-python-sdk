@@ -103,9 +103,9 @@ def get_model_package_args(
     if model_card is not None:
         original_req = {}
         if isinstance(model_card, ModelPackageModelCard):
-             original_req["ModelCardContent"] = model_card.model_card_content
+            original_req["ModelCardContent"] = model_card.model_card_content
         else:
-             original_req["ModelCardContent"] = model_card.content
+            original_req["ModelCardContent"] = model_card.content
         original_req["ModelCardStatus"] = model_card.model_card_status
         model_package_args["model_card"] = original_req
     return model_package_args

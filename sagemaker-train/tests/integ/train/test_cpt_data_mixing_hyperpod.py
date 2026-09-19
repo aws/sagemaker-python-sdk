@@ -25,6 +25,7 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_cpt_data_mixing_hyperpod.py -v -s
 """
+
 from __future__ import absolute_import
 
 import json
@@ -183,9 +184,10 @@ def test_cpt_trainer_nova_micro_with_data_mixing_hyperpod_dryrun(
         # Verify the job exists on the cluster via hyperpod get-job
         get_job_result = subprocess.run(
             ["hyperpod", "get-job", "--job-name", job_name],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
-        assert get_job_result.returncode == 0, (
-            f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}"
-        )
+        assert (
+            get_job_result.returncode == 0
+        ), f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}"
         logger.info(f"Verified job '{job_name}' exists on the cluster.")

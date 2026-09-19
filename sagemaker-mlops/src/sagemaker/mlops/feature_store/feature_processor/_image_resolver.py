@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Resolves SageMaker Spark container image URIs based on installed PySpark and Python versions."""
+
 from __future__ import absolute_import
 
 import sys

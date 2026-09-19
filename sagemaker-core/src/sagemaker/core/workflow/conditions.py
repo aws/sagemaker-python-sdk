@@ -15,6 +15,7 @@
 Ideally, some of these comparison conditions would be implemented as "partial classes",
 but use of functools.partial doesn't set correct metadata/type information.
 """
+
 from __future__ import absolute_import
 
 import abc

@@ -13,7 +13,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.mlops.feature_store.feature_processor.lineage._pipeline_trigger import PipelineTrigger
+from sagemaker.mlops.feature_store.feature_processor.lineage._pipeline_trigger import (
+    PipelineTrigger,
+)
 
 
 def test_pipeline_trigger():

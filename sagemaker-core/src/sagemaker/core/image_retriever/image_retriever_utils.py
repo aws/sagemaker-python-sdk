@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Functions for generating ECR image URIs for pre-built SageMaker Docker images."""
+
 from __future__ import absolute_import
 
 import json
@@ -186,7 +187,9 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
 
 def config_for_framework(framework):
     """Loads the JSON config for the given framework."""
-    fname = os.path.join(os.path.dirname(__file__), "..", "image_uri_config", "{}.json".format(framework))
+    fname = os.path.join(
+        os.path.dirname(__file__), "..", "image_uri_config", "{}.json".format(framework)
+    )
     with open(fname) as f:
         return json.load(f)
 

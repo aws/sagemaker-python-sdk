@@ -1,4 +1,5 @@
 """Unit tests for sagemaker.serve.utils.local_hardware module."""
+
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 from sagemaker.serve.utils.local_hardware import (
@@ -12,20 +13,25 @@ from sagemaker.serve.utils.local_hardware import (
 class TestGetRamUsageMb(unittest.TestCase):
     """Test cases for _get_ram_usage_mb function."""
 
-    @patch('psutil.virtual_memory')
+    @patch("psutil.virtual_memory")
     def test_get_ram_usage_mb(self, mock_virtual_memory):
         """Test RAM usage calculation."""
         # Mock virtual_memory to return a tuple where index 3 is used memory in bytes
         mock_virtual_memory.return_value = (
             16000000000,  # total
-            8000000000,   # available
-            50.0,         # percent
-            8000000000,   # used (index 3)
-            0, 0, 0, 0, 0, 0
+            8000000000,  # available
+            50.0,  # percent
+            8000000000,  # used (index 3)
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
         )
-        
+
         result = _get_ram_usage_mb()
-        
+
         # 8000000000 bytes / 1000000 = 8000 MB
         self.assertEqual(result, 8000.0)
         mock_virtual_memory.assert_called_once()
@@ -42,18 +48,14 @@ class TestHardwareLookup(unittest.TestCase):
             "NVIDIA V100",
             "NVIDIA K80",
             "NVIDIA T4",
-            "NVIDIA A10G"
+            "NVIDIA A10G",
         ]
         for gpu in expected_gpus:
             self.assertIn(gpu, hardware_lookup)
 
     def test_fallback_gpu_resource_mapping_has_common_instances(self):
         """Test that fallback mapping includes common instance types."""
-        common_instances = [
-            "ml.p3.2xlarge",
-            "ml.g4dn.xlarge",
-            "ml.g5.2xlarge"
-        ]
+        common_instances = ["ml.p3.2xlarge", "ml.g4dn.xlarge", "ml.g5.2xlarge"]
         for instance in common_instances:
             self.assertIn(instance, fallback_gpu_resource_mapping)
             self.assertIsInstance(fallback_gpu_resource_mapping[instance], int)
@@ -82,31 +84,31 @@ class TestGetGpuInfoFallback(unittest.TestCase):
 class TestCheckDiskSpace(unittest.TestCase):
     """Test cases for _check_disk_space function."""
 
-    @patch('shutil.disk_usage')
-    @patch('sagemaker.serve.utils.local_hardware.logger')
+    @patch("shutil.disk_usage")
+    @patch("sagemaker.serve.utils.local_hardware.logger")
     def test_check_disk_space_warning_threshold(self, mock_logger, mock_disk_usage):
         """Test disk space check triggers warning at 50% threshold."""
         from sagemaker.serve.utils.local_hardware import _check_disk_space
-        
+
         # Mock disk usage: (total, used, free)
         mock_disk_usage.return_value = (1000000000, 600000000, 400000000)
-        
+
         _check_disk_space("/some/path")
-        
+
         mock_logger.warning.assert_called_once()
         self.assertIn("percent of disk space used", mock_logger.warning.call_args[0][0])
 
-    @patch('shutil.disk_usage')
-    @patch('sagemaker.serve.utils.local_hardware.logger')
+    @patch("shutil.disk_usage")
+    @patch("sagemaker.serve.utils.local_hardware.logger")
     def test_check_disk_space_no_warning_below_threshold(self, mock_logger, mock_disk_usage):
         """Test disk space check doesn't warn below 50% threshold."""
         from sagemaker.serve.utils.local_hardware import _check_disk_space
-        
+
         # Mock disk usage: (total, used, free)
         mock_disk_usage.return_value = (1000000000, 400000000, 600000000)
-        
+
         _check_disk_space("/some/path")
-        
+
         mock_logger.warning.assert_not_called()
 
 

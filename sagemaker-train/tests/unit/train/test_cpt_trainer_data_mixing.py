@@ -19,14 +19,15 @@ from sagemaker.train.cpt_trainer import CPTTrainer
 from sagemaker.train.data_mixing_config import DataMixingConfig
 from sagemaker.core.training.configs import HyperPodCompute, Compute
 
-
 # Patch paths for CPTTrainer constructor dependencies
 _PATCH_RESOLVE_MODEL = "sagemaker.train.cpt_trainer._resolve_model_and_name"
 _PATCH_VALIDATE_GROUP = "sagemaker.train.cpt_trainer._validate_and_resolve_model_package_group"
 _PATCH_VALIDATE_EULA = "sagemaker.train.cpt_trainer._validate_eula_for_gated_model"
 _PATCH_RESOLVE_HP_CONTEXT = "sagemaker.train.cpt_trainer.resolve_hyperpod_datamix_context"
 _PATCH_VALIDATE_CATEGORIES = "sagemaker.train.cpt_trainer.validate_data_mixing_categories"
-_PATCH_BUILD_HP_FROM_CONTEXT = "sagemaker.train.cpt_trainer.build_hyperpod_datamix_recipe_from_context"
+_PATCH_BUILD_HP_FROM_CONTEXT = (
+    "sagemaker.train.cpt_trainer.build_hyperpod_datamix_recipe_from_context"
+)
 _PATCH_VALIDATE_DM_MODEL = "sagemaker.train.cpt_trainer.validate_data_mixing_model"
 _PATCH_TRAIN_HYPERPOD = "sagemaker.train.cpt_trainer.CPTTrainer._train_hyperpod"
 
@@ -36,7 +37,10 @@ class TestCPTTrainerDataMixingConstruction:
 
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_accepts_data_mixing_config(self, mock_resolve, mock_validate_group, mock_eula):
         """Test CPTTrainer accepts a DataMixingConfig instance."""
         config = DataMixingConfig(
@@ -57,7 +61,10 @@ class TestCPTTrainerDataMixingConstruction:
 
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_accepts_none_data_mixing_config(self, mock_resolve, mock_validate_group, mock_eula):
         """Test CPTTrainer constructor accepts None for data_mixing_config (no data mixing)."""
         compute = HyperPodCompute(
@@ -77,15 +84,30 @@ class TestCPTTrainerDataMixingTrain:
     """Tests for CPTTrainer.train() data mixing integration."""
 
     @patch(_PATCH_TRAIN_HYPERPOD, return_value="job-name")
-    @patch(_PATCH_BUILD_HP_FROM_CONTEXT, return_value=("fine-tuning/nova/nova_lite_2_0_datamix-abc", "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"))
+    @patch(
+        _PATCH_BUILD_HP_FROM_CONTEXT,
+        return_value=(
+            "fine-tuning/nova/nova_lite_2_0_datamix-abc",
+            "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest",
+        ),
+    )
     @patch(_PATCH_VALIDATE_CATEGORIES)
     @patch(_PATCH_RESOLVE_HP_CONTEXT)
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_train_includes_serialized_config_in_overrides(
-        self, mock_resolve, mock_validate_group, mock_eula,
-        mock_resolve_context, mock_validate_cats, mock_build_from_context, mock_train_hp
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_eula,
+        mock_resolve_context,
+        mock_validate_cats,
+        mock_build_from_context,
+        mock_train_hp,
     ):
         """Test train() generates a datamix recipe and overrides compute recipe path."""
         config = DataMixingConfig(
@@ -129,7 +151,10 @@ class TestCPTTrainerDataMixingTrain:
 
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_train_raises_valueerror_for_plain_compute(
         self, mock_resolve, mock_validate_group, mock_eula
     ):
@@ -162,7 +187,10 @@ class TestCPTTrainerDataMixingTrain:
 
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_train_raises_valueerror_for_none_compute(
         self, mock_resolve, mock_validate_group, mock_eula
     ):
@@ -220,7 +248,10 @@ class TestCPTTrainerDataMixingTrain:
     @patch(_PATCH_TRAIN_HYPERPOD, return_value="job-name")
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_train_without_data_mixing_config_omits_overrides(
         self, mock_resolve, mock_validate_group, mock_eula, mock_train_hp
     ):
@@ -267,17 +298,32 @@ class TestCPTTrainerDataMixingTrain:
 
 class TestCPTTrainerDataMixingOrchestration:
     @patch(_PATCH_TRAIN_HYPERPOD, return_value="job-name")
-    @patch(_PATCH_BUILD_HP_FROM_CONTEXT, return_value=("fine-tuning/nova/nova_lite_2_0_datamix-abc", "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"))
+    @patch(
+        _PATCH_BUILD_HP_FROM_CONTEXT,
+        return_value=(
+            "fine-tuning/nova/nova_lite_2_0_datamix-abc",
+            "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest",
+        ),
+    )
     @patch(_PATCH_VALIDATE_CATEGORIES)
     @patch(_PATCH_RESOLVE_HP_CONTEXT)
     @patch(_PATCH_VALIDATE_DM_MODEL)
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_orchestration_order_validate_model_resolve_validate_cats_build(
-        self, mock_resolve_model, mock_validate_group, mock_eula,
-        mock_validate_dm_model, mock_resolve_context, mock_validate_cats,
-        mock_build_from_context, mock_train_hp
+        self,
+        mock_resolve_model,
+        mock_validate_group,
+        mock_eula,
+        mock_validate_dm_model,
+        mock_resolve_context,
+        mock_validate_cats,
+        mock_build_from_context,
+        mock_train_hp,
     ):
         """Test full orchestration: validate_data_mixing_model → resolve → validate_categories → build in order."""
         config = DataMixingConfig(
@@ -297,11 +343,20 @@ class TestCPTTrainerDataMixingOrchestration:
         # Use a shared call tracker to verify ordering
         call_order = []
         mock_validate_dm_model.side_effect = lambda *a, **kw: call_order.append("validate_model")
-        mock_resolve_context.side_effect = lambda *a, **kw: (call_order.append("resolve"), mock_context)[1]
-        mock_validate_cats.side_effect = lambda *a, **kw: (call_order.append("validate_categories"), config)[1]
+        mock_resolve_context.side_effect = lambda *a, **kw: (
+            call_order.append("resolve"),
+            mock_context,
+        )[1]
+        mock_validate_cats.side_effect = lambda *a, **kw: (
+            call_order.append("validate_categories"),
+            config,
+        )[1]
         mock_build_from_context.side_effect = lambda *a, **kw: (
             call_order.append("build"),
-            ("fine-tuning/nova/nova_lite_2_0_datamix-abc", "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"),
+            (
+                "fine-tuning/nova/nova_lite_2_0_datamix-abc",
+                "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest",
+            ),
         )[1]
 
         trainer = CPTTrainer(
@@ -316,17 +371,32 @@ class TestCPTTrainerDataMixingOrchestration:
         assert call_order == ["validate_model", "resolve", "validate_categories", "build"]
 
     @patch(_PATCH_TRAIN_HYPERPOD, return_value="job-name")
-    @patch(_PATCH_BUILD_HP_FROM_CONTEXT, return_value=("fine-tuning/nova/nova_lite_2_0_datamix-abc", "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"))
+    @patch(
+        _PATCH_BUILD_HP_FROM_CONTEXT,
+        return_value=(
+            "fine-tuning/nova/nova_lite_2_0_datamix-abc",
+            "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest",
+        ),
+    )
     @patch(_PATCH_VALIDATE_CATEGORIES)
     @patch(_PATCH_RESOLVE_HP_CONTEXT)
     @patch(_PATCH_VALIDATE_DM_MODEL)
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_customization_technique_cpt_and_training_type_full_passed_to_resolve(
-        self, mock_resolve_model, mock_validate_group, mock_eula,
-        mock_validate_dm_model, mock_resolve_context, mock_validate_cats,
-        mock_build_from_context, mock_train_hp
+        self,
+        mock_resolve_model,
+        mock_validate_group,
+        mock_eula,
+        mock_validate_dm_model,
+        mock_resolve_context,
+        mock_validate_cats,
+        mock_build_from_context,
+        mock_train_hp,
     ):
         """Test customization_technique='CPT' and training_type='FULL' are passed to resolve."""
         config = DataMixingConfig(
@@ -358,17 +428,32 @@ class TestCPTTrainerDataMixingOrchestration:
         assert call_kwargs["training_type"] == "FULL"
 
     @patch(_PATCH_TRAIN_HYPERPOD, return_value="job-name")
-    @patch(_PATCH_BUILD_HP_FROM_CONTEXT, return_value=("fine-tuning/nova/nova_lite_2_0_datamix-abc", "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"))
+    @patch(
+        _PATCH_BUILD_HP_FROM_CONTEXT,
+        return_value=(
+            "fine-tuning/nova/nova_lite_2_0_datamix-abc",
+            "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest",
+        ),
+    )
     @patch(_PATCH_VALIDATE_CATEGORIES)
     @patch(_PATCH_RESOLVE_HP_CONTEXT)
     @patch(_PATCH_VALIDATE_DM_MODEL)
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_recipe_path_set_to_returned_relative_recipe_path(
-        self, mock_resolve_model, mock_validate_group, mock_eula,
-        mock_validate_dm_model, mock_resolve_context, mock_validate_cats,
-        mock_build_from_context, mock_train_hp
+        self,
+        mock_resolve_model,
+        mock_validate_group,
+        mock_eula,
+        mock_validate_dm_model,
+        mock_resolve_context,
+        mock_validate_cats,
+        mock_build_from_context,
+        mock_train_hp,
     ):
         """Test self._recipe_path is set to the relative_recipe_path returned by build."""
         config = DataMixingConfig(
@@ -397,17 +482,32 @@ class TestCPTTrainerDataMixingOrchestration:
         assert trainer._recipe_path == "fine-tuning/nova/nova_lite_2_0_datamix-abc"
 
     @patch(_PATCH_TRAIN_HYPERPOD, return_value="job-name")
-    @patch(_PATCH_BUILD_HP_FROM_CONTEXT, return_value=("fine-tuning/nova/nova_lite_2_0_datamix-abc", "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"))
+    @patch(
+        _PATCH_BUILD_HP_FROM_CONTEXT,
+        return_value=(
+            "fine-tuning/nova/nova_lite_2_0_datamix-abc",
+            "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest",
+        ),
+    )
     @patch(_PATCH_VALIDATE_CATEGORIES)
     @patch(_PATCH_RESOLVE_HP_CONTEXT)
     @patch(_PATCH_VALIDATE_DM_MODEL)
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_training_image_set_from_image_uri_when_not_already_set(
-        self, mock_resolve_model, mock_validate_group, mock_eula,
-        mock_validate_dm_model, mock_resolve_context, mock_validate_cats,
-        mock_build_from_context, mock_train_hp
+        self,
+        mock_resolve_model,
+        mock_validate_group,
+        mock_eula,
+        mock_validate_dm_model,
+        mock_resolve_context,
+        mock_validate_cats,
+        mock_build_from_context,
+        mock_train_hp,
     ):
         """Test self.training_image set from image_uri when not already set and not None."""
         config = DataMixingConfig(
@@ -434,20 +534,38 @@ class TestCPTTrainerDataMixingOrchestration:
         )
         trainer.train(wait=False)
 
-        assert trainer.training_image == "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"
+        assert (
+            trainer.training_image
+            == "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"
+        )
 
     @patch(_PATCH_TRAIN_HYPERPOD, return_value="job-name")
-    @patch(_PATCH_BUILD_HP_FROM_CONTEXT, return_value=("fine-tuning/nova/nova_lite_2_0_datamix-abc", "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest"))
+    @patch(
+        _PATCH_BUILD_HP_FROM_CONTEXT,
+        return_value=(
+            "fine-tuning/nova/nova_lite_2_0_datamix-abc",
+            "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-fine-tune-repo:SM-HP-CPT-latest",
+        ),
+    )
     @patch(_PATCH_VALIDATE_CATEGORIES)
     @patch(_PATCH_RESOLVE_HP_CONTEXT)
     @patch(_PATCH_VALIDATE_DM_MODEL)
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_training_image_not_overwritten_when_already_set(
-        self, mock_resolve_model, mock_validate_group, mock_eula,
-        mock_validate_dm_model, mock_resolve_context, mock_validate_cats,
-        mock_build_from_context, mock_train_hp
+        self,
+        mock_resolve_model,
+        mock_validate_group,
+        mock_eula,
+        mock_validate_dm_model,
+        mock_resolve_context,
+        mock_validate_cats,
+        mock_build_from_context,
+        mock_train_hp,
     ):
         """Test self.training_image is NOT overwritten when already set by the user."""
         config = DataMixingConfig(
@@ -479,17 +597,29 @@ class TestCPTTrainerDataMixingOrchestration:
         assert trainer.training_image == user_custom_image
 
     @patch(_PATCH_TRAIN_HYPERPOD, return_value="job-name")
-    @patch(_PATCH_BUILD_HP_FROM_CONTEXT, return_value=("fine-tuning/nova/nova_lite_2_0_datamix-abc", None))
+    @patch(
+        _PATCH_BUILD_HP_FROM_CONTEXT,
+        return_value=("fine-tuning/nova/nova_lite_2_0_datamix-abc", None),
+    )
     @patch(_PATCH_VALIDATE_CATEGORIES)
     @patch(_PATCH_RESOLVE_HP_CONTEXT)
     @patch(_PATCH_VALIDATE_DM_MODEL)
     @patch(_PATCH_VALIDATE_EULA, return_value=False)
     @patch(_PATCH_VALIDATE_GROUP, return_value="test-group")
-    @patch(_PATCH_RESOLVE_MODEL, return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"))
+    @patch(
+        _PATCH_RESOLVE_MODEL,
+        return_value=("nova-textgeneration-lite-v2", "nova-textgeneration-lite-v2"),
+    )
     def test_training_image_not_set_when_image_uri_is_none(
-        self, mock_resolve_model, mock_validate_group, mock_eula,
-        mock_validate_dm_model, mock_resolve_context, mock_validate_cats,
-        mock_build_from_context, mock_train_hp
+        self,
+        mock_resolve_model,
+        mock_validate_group,
+        mock_eula,
+        mock_validate_dm_model,
+        mock_resolve_context,
+        mock_validate_cats,
+        mock_build_from_context,
+        mock_train_hp,
     ):
         """Test self.training_image is NOT set when image_uri returned by build is None."""
         config = DataMixingConfig(

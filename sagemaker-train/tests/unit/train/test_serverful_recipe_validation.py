@@ -13,6 +13,7 @@ Covers:
 - additional_overrides in get_hyperpod_recipe_path
 - HyperPod path: resolved recipe is flattened and passed as additional_overrides
 """
+
 import json
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock, PropertyMock
@@ -21,10 +22,10 @@ import pytest
 
 from sagemaker.train.base_trainer import BaseTrainer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class _ConcreteTrainer(BaseTrainer):
     """Minimal concrete BaseTrainer for unit testing."""
@@ -67,52 +68,65 @@ def _run_serverful_with_replicas(trainer, replicas_enum=None):
     mock_session = MagicMock()
     mock_session.boto_session.client.return_value.download_file.return_value = None
 
-    with patch(
-        "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
-        return_value=mock_session,
-    ), patch(
-        "sagemaker.train.defaults.TrainDefaults.get_role", return_value="arn:aws:iam::1:role/x"
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
-        return_value="s3://bucket/recipe.yaml",
-    ), patch(
-        "sagemaker.train.base_trainer.get_recipe_s3_uri",
-        return_value="s3://bucket/recipe.yaml",
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils.get_training_image",
-        return_value="image:latest",
-    ), patch(
-        "sagemaker.train.base_trainer.get_training_image",
-        return_value="image:latest",
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
-    ), patch(
-        "sagemaker.train.base_trainer._validate_hyperparameter_values"
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
-        return_value={},
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
-        return_value=replicas_enum,
-    ), patch(
-        "sagemaker.train.base_trainer._get_smhp_replicas_enum",
-        return_value=replicas_enum,
-    ), patch(
-        "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
-        return_value=None,
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
-        side_effect=_capture_render,
-    ), patch(
-        "sagemaker.train.common_utils.recipe_utils.resolve_recipe",
-        return_value={"training_config": {}},
-    ), patch(
-        "sagemaker.train.base_trainer.flatten_resolved_recipe",
-        return_value={},
-    ), patch(
-        "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
-        return_value=mock_model_trainer,
-    ) as mock_from_recipe:
+    with (
+        patch(
+            "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+            return_value=mock_session,
+        ),
+        patch(
+            "sagemaker.train.defaults.TrainDefaults.get_role", return_value="arn:aws:iam::1:role/x"
+        ),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
+            return_value="s3://bucket/recipe.yaml",
+        ),
+        patch(
+            "sagemaker.train.base_trainer.get_recipe_s3_uri",
+            return_value="s3://bucket/recipe.yaml",
+        ),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils.get_training_image",
+            return_value="image:latest",
+        ),
+        patch(
+            "sagemaker.train.base_trainer.get_training_image",
+            return_value="image:latest",
+        ),
+        patch("sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"),
+        patch("sagemaker.train.base_trainer._validate_hyperparameter_values"),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
+            return_value={},
+        ),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
+            return_value=replicas_enum,
+        ),
+        patch(
+            "sagemaker.train.base_trainer._get_smhp_replicas_enum",
+            return_value=replicas_enum,
+        ),
+        patch(
+            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
+            return_value=None,
+        ),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
+            side_effect=_capture_render,
+        ),
+        patch(
+            "sagemaker.train.common_utils.recipe_utils.resolve_recipe",
+            return_value={"training_config": {}},
+        ),
+        patch(
+            "sagemaker.train.base_trainer.flatten_resolved_recipe",
+            return_value={},
+        ),
+        patch(
+            "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
+            return_value=mock_model_trainer,
+        ) as mock_from_recipe,
+    ):
         trainer.hyperparameters = MagicMock()
         trainer.hyperparameters.to_dict.return_value = {}
         trainer.hyperparameters._specs = {}
@@ -239,51 +253,62 @@ class TestReplicasEnumInjection:
         hp_mock._specs = {}
         hp_mock._user_set = None
 
-        with patch(
-            "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
-            return_value=mock_session,
-        ), patch(
-            "sagemaker.train.defaults.TrainDefaults.get_role", return_value="role"
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
-            return_value="s3://bucket/recipe.yaml",
-        ), patch(
-            "sagemaker.train.base_trainer.get_recipe_s3_uri",
-            return_value="s3://bucket/recipe.yaml",
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils.get_training_image",
-            return_value="image:latest",
-        ), patch(
-            "sagemaker.train.base_trainer.get_training_image",
-            return_value="image:latest",
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
-        ), patch(
-            "sagemaker.train.base_trainer._validate_hyperparameter_values"
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
-            return_value={},
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
-            return_value=[4, 8],
-        ), patch(
-            "sagemaker.train.base_trainer._get_smhp_replicas_enum",
-            return_value=[4, 8],
-        ), patch(
-            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
-            side_effect=lambda c, s: c,
-        ), patch(
-            "sagemaker.train.common_utils.recipe_utils.resolve_recipe",
-            return_value={"training_config": {}},
-        ), patch(
-            "sagemaker.train.base_trainer.flatten_resolved_recipe",
-            return_value={},
-        ), patch(
-            "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
-            return_value=mock_model_trainer,
+        with (
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+                return_value=mock_session,
+            ),
+            patch("sagemaker.train.defaults.TrainDefaults.get_role", return_value="role"),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
+                return_value="s3://bucket/recipe.yaml",
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_recipe_s3_uri",
+                return_value="s3://bucket/recipe.yaml",
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                return_value="image:latest",
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_training_image",
+                return_value="image:latest",
+            ),
+            patch("sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"),
+            patch("sagemaker.train.base_trainer._validate_hyperparameter_values"),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
+                return_value={},
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
+                return_value=[4, 8],
+            ),
+            patch(
+                "sagemaker.train.base_trainer._get_smhp_replicas_enum",
+                return_value=[4, 8],
+            ),
+            patch(
+                "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
+                side_effect=lambda c, s: c,
+            ),
+            patch(
+                "sagemaker.train.common_utils.recipe_utils.resolve_recipe",
+                return_value={"training_config": {}},
+            ),
+            patch(
+                "sagemaker.train.base_trainer.flatten_resolved_recipe",
+                return_value={},
+            ),
+            patch(
+                "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
+                return_value=mock_model_trainer,
+            ),
         ):
             trainer.hyperparameters = hp_mock
             trainer.train(wait=False)
@@ -371,8 +396,17 @@ class TestApplyRecipeToHyperparameters:
         hp_mock._specs = {"max_steps": {"type": "integer"}, "lr": {"type": "float"}}
         trainer.hyperparameters = hp_mock
 
-        with patch.object(trainer, "get_resolved_recipe", return_value={"training_config": {"max_steps": 50, "lr": 0.001}}), \
-             patch("sagemaker.train.base_trainer.flatten_resolved_recipe", return_value={"max_steps": "50", "lr": "0.001"}):
+        with (
+            patch.object(
+                trainer,
+                "get_resolved_recipe",
+                return_value={"training_config": {"max_steps": 50, "lr": 0.001}},
+            ),
+            patch(
+                "sagemaker.train.base_trainer.flatten_resolved_recipe",
+                return_value={"max_steps": "50", "lr": "0.001"},
+            ),
+        ):
             result = trainer._apply_recipe_to_hyperparameters({"existing_key": "val"})
 
         assert result["max_steps"] == "50"
@@ -415,46 +449,55 @@ class TestDisableOutputCompression:
         mock_model_trainer = MagicMock()
         mock_model_trainer._latest_training_job = MagicMock()
 
-        with patch(
-            "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
-            return_value=mock_session,
-        ), patch(
-            "sagemaker.train.defaults.TrainDefaults.get_role", return_value="role"
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
-            return_value="s3://bucket/recipe.yaml",
-        ), patch(
-            "sagemaker.train.base_trainer.get_recipe_s3_uri",
-            return_value="s3://bucket/recipe.yaml",
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils.get_training_image",
-            return_value="image:latest",
-        ), patch(
-            "sagemaker.train.base_trainer.get_training_image",
-            return_value="image:latest",
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
-        ), patch(
-            "sagemaker.train.base_trainer._validate_hyperparameter_values"
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
-            return_value={},
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer._get_smhp_replicas_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
-            side_effect=lambda c, s: c,
-        ), patch(
-            "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
-            return_value=mock_model_trainer,
-        ) as mock_from_recipe:
+        with (
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+                return_value=mock_session,
+            ),
+            patch("sagemaker.train.defaults.TrainDefaults.get_role", return_value="role"),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
+                return_value="s3://bucket/recipe.yaml",
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_recipe_s3_uri",
+                return_value="s3://bucket/recipe.yaml",
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                return_value="image:latest",
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_training_image",
+                return_value="image:latest",
+            ),
+            patch("sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"),
+            patch("sagemaker.train.base_trainer._validate_hyperparameter_values"),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
+                return_value={},
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer._get_smhp_replicas_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
+                side_effect=lambda c, s: c,
+            ),
+            patch(
+                "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
+                return_value=mock_model_trainer,
+            ) as mock_from_recipe,
+        ):
             trainer.hyperparameters = MagicMock()
             trainer.hyperparameters.to_dict.return_value = {}
             trainer.hyperparameters._specs = {}
@@ -475,46 +518,55 @@ class TestDisableOutputCompression:
         mock_model_trainer = MagicMock()
         mock_model_trainer._latest_training_job = MagicMock()
 
-        with patch(
-            "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
-            return_value=mock_session,
-        ), patch(
-            "sagemaker.train.defaults.TrainDefaults.get_role", return_value="role"
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
-            return_value="s3://bucket/recipe.yaml",
-        ), patch(
-            "sagemaker.train.base_trainer.get_recipe_s3_uri",
-            return_value="s3://bucket/recipe.yaml",
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils.get_training_image",
-            return_value="image:latest",
-        ), patch(
-            "sagemaker.train.base_trainer.get_training_image",
-            return_value="image:latest",
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
-        ), patch(
-            "sagemaker.train.base_trainer._validate_hyperparameter_values"
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
-            return_value={},
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer._get_smhp_replicas_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
-            side_effect=lambda c, s: c,
-        ), patch(
-            "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
-            return_value=mock_model_trainer,
-        ) as mock_from_recipe:
+        with (
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+                return_value=mock_session,
+            ),
+            patch("sagemaker.train.defaults.TrainDefaults.get_role", return_value="role"),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
+                return_value="s3://bucket/recipe.yaml",
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_recipe_s3_uri",
+                return_value="s3://bucket/recipe.yaml",
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                return_value="image:latest",
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_training_image",
+                return_value="image:latest",
+            ),
+            patch("sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"),
+            patch("sagemaker.train.base_trainer._validate_hyperparameter_values"),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
+                return_value={},
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer._get_smhp_replicas_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
+                side_effect=lambda c, s: c,
+            ),
+            patch(
+                "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
+                return_value=mock_model_trainer,
+            ) as mock_from_recipe,
+        ):
             trainer.hyperparameters = MagicMock()
             trainer.hyperparameters.to_dict.return_value = {}
             trainer.hyperparameters._specs = {}
@@ -523,7 +575,10 @@ class TestDisableOutputCompression:
 
         from_recipe_kwargs = mock_from_recipe.call_args.kwargs
         output_config = from_recipe_kwargs["output_data_config"]
-        assert not hasattr(output_config, 'compression_type') or output_config.compression_type != "NONE"
+        assert (
+            not hasattr(output_config, "compression_type")
+            or output_config.compression_type != "NONE"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -536,19 +591,24 @@ class TestHyperpodRecipeAdditionalOverrides:
 
     @patch("sagemaker.train.common_utils.finetune_utils._get_recipe_entry_and_override_spec")
     @patch("sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders")
-    def test_additional_overrides_update_existing_spec_entry(
-        self, mock_render, mock_get_recipe
-    ):
+    def test_additional_overrides_update_existing_spec_entry(self, mock_render, mock_get_recipe):
         from sagemaker.train.common_utils.finetune_utils import get_hyperpod_recipe_path
 
         mock_get_recipe.return_value = (
             {"Name": "recipe", "HpEksPayloadTemplateS3Uri": "s3://b/template.yaml"},
-            {"max_steps": {"default": 100, "type": "integer"}, "name": {"default": "", "type": "string"}},
+            {
+                "max_steps": {"default": 100, "type": "integer"},
+                "name": {"default": "", "type": "string"},
+            },
         )
 
         mock_session = MagicMock()
         mock_session.boto_session.client.return_value.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b"---\nrun:\n  name: {{ name }}\n  max_steps: {{ max_steps }}"))
+            "Body": MagicMock(
+                read=MagicMock(
+                    return_value=b"---\nrun:\n  name: {{ name }}\n  max_steps: {{ max_steps }}"
+                )
+            )
         }
 
         captured_spec = {}
@@ -560,15 +620,26 @@ class TestHyperpodRecipeAdditionalOverrides:
         mock_render.side_effect = capture_render
 
         import sys
+
         mock_hyperpod_cli = MagicMock()
         mock_hyperpod_cli.__file__ = "/fake/hyperpod_cli/__init__.py"
 
-        with patch("sagemaker.train.common_utils.finetune_utils._extract_recipe_from_helm_template", side_effect=lambda x: x), \
-             patch("builtins.open", MagicMock()), \
-             patch("sagemaker.train.common_utils.finetune_utils.os.path.join", return_value="/tmp/recipe"), \
-             patch("sagemaker.train.common_utils.finetune_utils.os.path.dirname", return_value="/pkg"), \
-             patch("sagemaker.train.common_utils.finetune_utils.os.makedirs"), \
-             patch.dict(sys.modules, {"hyperpod_cli": mock_hyperpod_cli}):
+        with (
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._extract_recipe_from_helm_template",
+                side_effect=lambda x: x,
+            ),
+            patch("builtins.open", MagicMock()),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.os.path.join",
+                return_value="/tmp/recipe",
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.os.path.dirname", return_value="/pkg"
+            ),
+            patch("sagemaker.train.common_utils.finetune_utils.os.makedirs"),
+            patch.dict(sys.modules, {"hyperpod_cli": mock_hyperpod_cli}),
+        ):
             try:
                 get_hyperpod_recipe_path(
                     model_name="nova-lite",
@@ -588,9 +659,7 @@ class TestHyperpodRecipeAdditionalOverrides:
 
     @patch("sagemaker.train.common_utils.finetune_utils._get_recipe_entry_and_override_spec")
     @patch("sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders")
-    def test_additional_overrides_creates_new_spec_entry(
-        self, mock_render, mock_get_recipe
-    ):
+    def test_additional_overrides_creates_new_spec_entry(self, mock_render, mock_get_recipe):
         from sagemaker.train.common_utils.finetune_utils import get_hyperpod_recipe_path
 
         mock_get_recipe.return_value = (
@@ -600,7 +669,9 @@ class TestHyperpodRecipeAdditionalOverrides:
 
         mock_session = MagicMock()
         mock_session.boto_session.client.return_value.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b"---\nrun:\n  custom_key: {{ custom_key }}"))
+            "Body": MagicMock(
+                read=MagicMock(return_value=b"---\nrun:\n  custom_key: {{ custom_key }}")
+            )
         }
 
         captured_spec = {}
@@ -612,15 +683,26 @@ class TestHyperpodRecipeAdditionalOverrides:
         mock_render.side_effect = capture_render
 
         import sys
+
         mock_hyperpod_cli = MagicMock()
         mock_hyperpod_cli.__file__ = "/fake/hyperpod_cli/__init__.py"
 
-        with patch("sagemaker.train.common_utils.finetune_utils._extract_recipe_from_helm_template", side_effect=lambda x: x), \
-             patch("builtins.open", MagicMock()), \
-             patch("sagemaker.train.common_utils.finetune_utils.os.path.join", return_value="/tmp/recipe"), \
-             patch("sagemaker.train.common_utils.finetune_utils.os.path.dirname", return_value="/pkg"), \
-             patch("sagemaker.train.common_utils.finetune_utils.os.makedirs"), \
-             patch.dict(sys.modules, {"hyperpod_cli": mock_hyperpod_cli}):
+        with (
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._extract_recipe_from_helm_template",
+                side_effect=lambda x: x,
+            ),
+            patch("builtins.open", MagicMock()),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.os.path.join",
+                return_value="/tmp/recipe",
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.os.path.dirname", return_value="/pkg"
+            ),
+            patch("sagemaker.train.common_utils.finetune_utils.os.makedirs"),
+            patch.dict(sys.modules, {"hyperpod_cli": mock_hyperpod_cli}),
+        ):
             try:
                 get_hyperpod_recipe_path(
                     model_name="nova-lite",
@@ -652,15 +734,18 @@ class TestHyperpodResolvesAndFlattensRecipe:
     @patch("sagemaker.train.base_trainer.get_hyperpod_recipe_path")
     @patch("sagemaker.train.base_trainer.flatten_resolved_recipe")
     def test_resolved_recipe_flattened_into_additional_overrides(
-        self, mock_flatten, mock_get_recipe_path, mock_get_session,
-        mock_validate, mock_verify, mock_subprocess
+        self,
+        mock_flatten,
+        mock_get_recipe_path,
+        mock_get_session,
+        mock_validate,
+        mock_verify,
+        mock_subprocess,
     ):
         from sagemaker.train.sft_trainer import SFTTrainer
 
         mock_get_session.return_value = MagicMock()
-        mock_subprocess.run.return_value = SimpleNamespace(
-            stdout="NAME: my-job-456\n", stderr=""
-        )
+        mock_subprocess.run.return_value = SimpleNamespace(stdout="NAME: my-job-456\n", stderr="")
         mock_flatten.return_value = {"max_steps": "100", "lr": "0.001"}
         mock_get_recipe_path.return_value = "recipes/nova-lite-sft"
 
@@ -688,7 +773,11 @@ class TestHyperpodResolvesAndFlattensRecipe:
         trainer.mlflow_run_name = None
         trainer.model_source = None
 
-        with patch.object(trainer, "get_resolved_recipe", return_value={"training_config": {"max_steps": 100, "lr": 0.001}}):
+        with patch.object(
+            trainer,
+            "get_resolved_recipe",
+            return_value={"training_config": {"max_steps": 100, "lr": 0.001}},
+        ):
             with patch(
                 "sagemaker.train.common_utils.finetune_utils.get_training_image",
                 return_value=None,

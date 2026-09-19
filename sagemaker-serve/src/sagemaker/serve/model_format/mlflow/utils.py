@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Holds the util functions used for MLflow model format"""
+
 from __future__ import absolute_import
 
 from pathlib import Path
@@ -210,7 +211,7 @@ def _get_deployment_flavor(flavor_metadata: Optional[Dict[str, Any]]) -> str:
 
 
 def _get_python_version_from_parsed_mlflow_model_file(
-    parsed_metadata: Dict[str, Any]
+    parsed_metadata: Dict[str, Any],
 ) -> Optional[str]:
     """Checks the python version of a given parsed MLflow model file.
 
@@ -254,9 +255,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
 
-            validate_path_within_directory(
-                local_file_path, dst_path, source_description=key
-            )
+            validate_path_within_directory(local_file_path, dst_path, source_description=key)
 
             if not key.endswith("/"):
                 local_file_dir = os.path.dirname(local_file_path)
@@ -448,5 +447,5 @@ def _move_contents(src_dir: Union[str, Path], dest_dir: Union[str, Path]) -> Non
     for item in _src_dir.iterdir():
         _dest_path = _dest_dir / item.name
         shutil.move(str(item), str(_dest_path))
-    
+
     _src_dir.rmdir()

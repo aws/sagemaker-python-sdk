@@ -18,6 +18,7 @@ the existing V3 pattern established by SourceCode and OutputDataConfig.
 
 See: https://github.com/aws/sagemaker-python-sdk/issues/5524
 """
+
 from __future__ import absolute_import
 
 import pytest
@@ -35,7 +36,6 @@ from sagemaker.train.configs import (
 )
 from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE
 
-
 DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest"
 DEFAULT_BUCKET = "sagemaker-us-west-2-000000000000"
 DEFAULT_ROLE = "arn:aws:iam::000000000000:role/test-role"
@@ -50,8 +50,13 @@ DEFAULT_OUTPUT = OutputDataConfig(
 
 @pytest.fixture(scope="module", autouse=True)
 def modules_session():
-    with patch("sagemaker.train.Session", spec=Session) as session_mock, \
-         patch("sagemaker.train.defaults.resolve_and_validate_role", side_effect=lambda provided_role, **kwargs: provided_role or DEFAULT_ROLE):
+    with (
+        patch("sagemaker.train.Session", spec=Session) as session_mock,
+        patch(
+            "sagemaker.train.defaults.resolve_and_validate_role",
+            side_effect=lambda provided_role, **kwargs: provided_role or DEFAULT_ROLE,
+        ),
+    ):
         session_instance = session_mock.return_value
         session_instance.default_bucket.return_value = DEFAULT_BUCKET
         session_instance.get_caller_identity_arn.return_value = DEFAULT_ROLE
@@ -141,7 +146,9 @@ class TestModelTrainerRealValuesStillWork:
             stopping_condition=DEFAULT_STOPPING,
             output_data_config=DEFAULT_OUTPUT,
         )
-        assert trainer.algorithm_name == "arn:aws:sagemaker:us-west-2:000000000000:algorithm/my-algo"
+        assert (
+            trainer.algorithm_name == "arn:aws:sagemaker:us-west-2:000000000000:algorithm/my-algo"
+        )
 
     def test_training_input_mode_accepts_real_string(self):
         """ModelTrainer.training_input_mode should still accept a plain string."""

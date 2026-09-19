@@ -28,7 +28,6 @@ from sagemaker.core.resources import Model, Endpoint
 from sagemaker.core.utils.utils import logger
 from sagemaker.core.common_utils import _is_s3_uri
 
-
 # SageMaker serve imports
 from sagemaker.serve.local_resources import LocalEndpoint
 from sagemaker.serve.mode.function_pointers import Mode
@@ -893,7 +892,7 @@ class _ModelBuilderServers(object):
 
         if self.mode in LOCAL_MODES:
             # Prepare DJL resources for local deployment
-            (self.js_model_config, self.prepared_for_djl) = prepare_djl_js_resources(
+            self.js_model_config, self.prepared_for_djl = prepare_djl_js_resources(
                 model_path=self.model_path,
                 js_id=self.model,
                 dependencies=self.dependencies,
@@ -1060,9 +1059,7 @@ class _ModelBuilderServers(object):
         # Without this propagation, sources declared in the spec are dropped
         # from the CreateModel call and the container fails to find the
         # referenced artifacts at runtime.
-        additional_model_data_sources = getattr(
-            init_kwargs, "additional_model_data_sources", None
-        )
+        additional_model_data_sources = getattr(init_kwargs, "additional_model_data_sources", None)
         if isinstance(additional_model_data_sources, list) and additional_model_data_sources:
             accept_eula = getattr(self, "accept_eula", None)
             prepared_sources = []

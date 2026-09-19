@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for _utils module."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -68,7 +69,7 @@ class TestRepackModelStep:
     @pytest.fixture
     def temp_entry_point(self):
         """Create a temporary entry point file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write("# Test entry point\n")
             temp_path = f.name
         yield temp_path
@@ -81,9 +82,9 @@ class TestRepackModelStep:
 
     def test_init_with_display_name_and_description(self, mock_session, temp_entry_point):
         """Test _RepackModelStep initialization with display name and description."""
-        with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-            with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
                     mock_retrieve.return_value = "sklearn-image:latest"
                     mock_trainer_instance = Mock()
                     mock_trainer_instance.train = Mock(return_value=Mock())
@@ -103,15 +104,17 @@ class TestRepackModelStep:
                     # Verify super().__init__ was called with display_name and description
                     mock_super.assert_called_once()
                     call_kwargs = mock_super.call_args[1]
-                    assert call_kwargs['display_name'] == "Repack Display"
-                    assert call_kwargs['description'] == "Repack Description"
+                    assert call_kwargs["display_name"] == "Repack Display"
+                    assert call_kwargs["description"] == "Repack Description"
 
     def test_init_with_source_dir(self, mock_session, temp_entry_point):
         """Test _RepackModelStep initialization with source_dir."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-                with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                    with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+            with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+                with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                    with patch(
+                        "sagemaker.mlops.workflow._utils.TrainingStep.__init__"
+                    ) as mock_super:
                         mock_retrieve.return_value = "sklearn-image:latest"
                         mock_trainer_instance = Mock()
                         mock_trainer_instance.train = Mock(return_value=Mock())
@@ -131,9 +134,9 @@ class TestRepackModelStep:
 
     def test_init_with_requirements(self, mock_session, temp_entry_point):
         """Test _RepackModelStep initialization with requirements."""
-        with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-            with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
                     mock_retrieve.return_value = "sklearn-image:latest"
                     mock_trainer_instance = Mock()
                     mock_trainer_instance.train = Mock(return_value=Mock())
@@ -153,9 +156,9 @@ class TestRepackModelStep:
 
     def test_init_with_networking(self, mock_session, temp_entry_point):
         """Test _RepackModelStep initialization with networking config."""
-        with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-            with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
                     mock_retrieve.return_value = "sklearn-image:latest"
                     mock_trainer_instance = Mock()
                     mock_trainer_instance.train = Mock(return_value=Mock())
@@ -175,13 +178,13 @@ class TestRepackModelStep:
                     # Verify ModelTrainer was called with networking config
                     mock_trainer.assert_called_once()
                     call_kwargs = mock_trainer.call_args[1]
-                    assert call_kwargs['networking'] is not None
+                    assert call_kwargs["networking"] is not None
 
     def test_init_with_custom_instance_type(self, mock_session, temp_entry_point):
         """Test _RepackModelStep initialization with custom instance type."""
-        with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-            with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
                     mock_retrieve.return_value = "sklearn-image:latest"
                     mock_trainer_instance = Mock()
                     mock_trainer_instance.train = Mock(return_value=Mock())
@@ -200,13 +203,13 @@ class TestRepackModelStep:
                     # Verify image_uris.retrieve was called with custom instance type
                     mock_retrieve.assert_called_once()
                     call_kwargs = mock_retrieve.call_args[1]
-                    assert call_kwargs['instance_type'] == "ml.p3.2xlarge"
+                    assert call_kwargs["instance_type"] == "ml.p3.2xlarge"
 
     def test_init_with_depends_on(self, mock_session, temp_entry_point):
         """Test _RepackModelStep initialization with depends_on."""
-        with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-            with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
                     mock_retrieve.return_value = "sklearn-image:latest"
                     mock_trainer_instance = Mock()
                     mock_trainer_instance.train = Mock(return_value=Mock())
@@ -225,13 +228,13 @@ class TestRepackModelStep:
                     # Verify super().__init__ was called with depends_on
                     mock_super.assert_called_once()
                     call_kwargs = mock_super.call_args[1]
-                    assert call_kwargs['depends_on'] == ["step1", "step2"]
+                    assert call_kwargs["depends_on"] == ["step1", "step2"]
 
     def test_init_with_retry_policies(self, mock_session, temp_entry_point):
         """Test _RepackModelStep initialization with retry_policies."""
-        with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-            with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
                     mock_retrieve.return_value = "sklearn-image:latest"
                     mock_trainer_instance = Mock()
                     mock_trainer_instance.train = Mock(return_value=Mock())
@@ -239,6 +242,7 @@ class TestRepackModelStep:
                     mock_super.return_value = None
 
                     from sagemaker.mlops.workflow.retry import RetryPolicy
+
                     retry_policy = RetryPolicy(max_attempts=3)
 
                     step = _RepackModelStep(
@@ -253,13 +257,13 @@ class TestRepackModelStep:
                     # Verify super().__init__ was called with retry_policies
                     mock_super.assert_called_once()
                     call_kwargs = mock_super.call_args[1]
-                    assert call_kwargs['retry_policies'] == [retry_policy]
+                    assert call_kwargs["retry_policies"] == [retry_policy]
 
     def test_establish_source_dir_creates_temp_dir(self, mock_session, temp_entry_point):
         """Test _establish_source_dir creates temporary directory."""
-        with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-            with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
                     mock_retrieve.return_value = "sklearn-image:latest"
                     mock_trainer_instance = Mock()
                     mock_trainer_instance.train = Mock(return_value=Mock())
@@ -281,9 +285,11 @@ class TestRepackModelStep:
     def test_inject_repack_script_local_source_dir(self, mock_session, temp_entry_point):
         """Test _inject_repack_script_and_launcher with local source_dir."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-                with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                    with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+            with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+                with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                    with patch(
+                        "sagemaker.mlops.workflow._utils.TrainingStep.__init__"
+                    ) as mock_super:
                         mock_retrieve.return_value = "sklearn-image:latest"
                         mock_trainer_instance = Mock()
                         mock_trainer_instance.train = Mock(return_value=Mock())
@@ -307,16 +313,16 @@ class TestRepackModelStep:
                         assert os.path.exists(launcher_path)
 
                         # Verify launcher content
-                        with open(launcher_path, 'r') as f:
+                        with open(launcher_path, "r") as f:
                             content = f.read()
                             assert "#!/bin/bash" in content
                             assert "python _repack_model.py" in content
 
     def test_properties_returns_parent_properties(self, mock_session, temp_entry_point):
         """Test properties returns parent class properties."""
-        with patch('sagemaker.mlops.workflow._utils.image_uris.retrieve') as mock_retrieve:
-            with patch('sagemaker.train.ModelTrainer') as mock_trainer:
-                with patch('sagemaker.mlops.workflow._utils.TrainingStep.__init__') as mock_super:
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
                     mock_retrieve.return_value = "sklearn-image:latest"
                     mock_trainer_instance = Mock()
                     mock_trainer_instance.train = Mock(return_value=Mock())

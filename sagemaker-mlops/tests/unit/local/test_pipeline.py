@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for local pipeline executor."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -52,7 +53,7 @@ def test_local_pipeline_executor_init(mock_execution, mock_session):
 def test_evaluate_parameter(mock_execution, mock_session):
     param = ParameterString(name="test-param", default_value="test-value")
     mock_execution.pipeline_parameters = {"test-param": "test-value"}
-    
+
     with patch("sagemaker.mlops.local.pipeline.PipelineGraph"):
         executor = LocalPipelineExecutor(mock_execution, mock_session)
         result = executor.evaluate_pipeline_variable(param, "test-step")

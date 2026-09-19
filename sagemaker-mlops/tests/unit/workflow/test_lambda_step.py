@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow lambda_step."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -21,11 +22,7 @@ from sagemaker.mlops.workflow.steps import StepTypeEnum
 
 
 def test_lambda_step_init():
-    step = LambdaStep(
-        name="lambda-step",
-        lambda_func=Mock(),
-        inputs={"key": "value"}
-    )
+    step = LambdaStep(name="lambda-step", lambda_func=Mock(), inputs={"key": "value"})
     assert step.name == "lambda-step"
     assert step.step_type == StepTypeEnum.LAMBDA
 

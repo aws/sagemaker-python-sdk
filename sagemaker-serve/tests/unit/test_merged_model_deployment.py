@@ -33,7 +33,7 @@ class TestFetchPeftMergedModel:
         mock_mp.inference_specification.containers = [mock_container]
         mock_mp.model_package_arn = "arn:aws:sagemaker:us-west-2:123:model-package/test/1"
 
-        with patch.object(ModelBuilder, '__post_init__', lambda self: None):
+        with patch.object(ModelBuilder, "__post_init__", lambda self: None):
             mb = ModelBuilder.__new__(ModelBuilder)
             # Use a real ModelPackage instance as mb.model so isinstance works on all Python versions
             # but override _fetch_model_package to return our mock with the test attributes
@@ -94,7 +94,7 @@ class TestResolveModelArtifactUriMerged:
         mock_container.base_model.recipe_name = "mtrl-gpt-oss-20b-lora"
         mock_mp.inference_specification.containers = [mock_container]
 
-        with patch.object(ModelBuilder, '__post_init__', lambda self: None):
+        with patch.object(ModelBuilder, "__post_init__", lambda self: None):
             mb = ModelBuilder.__new__(ModelBuilder)
             real_mp = ModelPackage.__new__(ModelPackage)
             mb.model = real_mp

@@ -101,6 +101,8 @@ def get_user_agent_extra_suffix() -> str:
     # Add created_by metadata if attribution has been set
     created_by = os.environ.get(_CREATED_BY_ENV_VAR)
     if created_by:
-        suffix = "{} md/{}#{}".format(suffix, "createdBy", sanitize_user_agent_string_component(created_by))
+        suffix = "{} md/{}#{}".format(
+            suffix, "createdBy", sanitize_user_agent_string_component(created_by)
+        )
 
     return suffix

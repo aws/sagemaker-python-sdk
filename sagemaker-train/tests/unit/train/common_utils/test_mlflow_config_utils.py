@@ -8,7 +8,6 @@ import pytest
 
 from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
 
-
 DEFAULT_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
 
 

@@ -1,4 +1,5 @@
 """Unit tests for sagemaker.serve.utils.hardware_detector module."""
+
 import unittest
 from unittest.mock import Mock, patch
 from sagemaker.serve.utils.hardware_detector import (
@@ -48,56 +49,50 @@ class TestConstants(unittest.TestCase):
 class TestGetGpuInfoFallback(unittest.TestCase):
     """Test cases for _get_gpu_info_fallback function."""
 
-    @patch('sagemaker.serve.utils.hardware_detector.instance_types_gpu_info')
+    @patch("sagemaker.serve.utils.hardware_detector.instance_types_gpu_info")
     def test_get_gpu_info_fallback_valid_instance(self, mock_gpu_info):
         """Test fallback GPU info for valid instance type."""
         from sagemaker.serve.utils.hardware_detector import _get_gpu_info_fallback
-        
+
         mock_gpu_info.retrieve.return_value = {
-            "ml.p3.2xlarge": {
-                "Count": 1,
-                "TotalGpuMemoryInMiB": 16384
-            }
+            "ml.p3.2xlarge": {"Count": 1, "TotalGpuMemoryInMiB": 16384}
         }
-        
+
         result = _get_gpu_info_fallback("ml.p3.2xlarge", "us-west-2")
-        
+
         self.assertEqual(result, (1, 16384))
         mock_gpu_info.retrieve.assert_called_once_with("us-west-2")
 
-    @patch('sagemaker.serve.utils.hardware_detector.instance_types_gpu_info')
+    @patch("sagemaker.serve.utils.hardware_detector.instance_types_gpu_info")
     def test_get_gpu_info_fallback_invalid_instance(self, mock_gpu_info):
         """Test fallback GPU info raises error for invalid instance."""
         from sagemaker.serve.utils.hardware_detector import _get_gpu_info_fallback
-        
+
         mock_gpu_info.retrieve.return_value = {}
-        
+
         with self.assertRaises(ValueError) as context:
             _get_gpu_info_fallback("ml.invalid.instance", "us-west-2")
-        
+
         self.assertIn("not GPU enabled", str(context.exception))
 
-    @patch('sagemaker.serve.utils.hardware_detector.instance_types_gpu_info')
+    @patch("sagemaker.serve.utils.hardware_detector.instance_types_gpu_info")
     def test_get_gpu_info_fallback_multi_gpu(self, mock_gpu_info):
         """Test fallback GPU info for multi-GPU instance."""
         from sagemaker.serve.utils.hardware_detector import _get_gpu_info_fallback
-        
+
         mock_gpu_info.retrieve.return_value = {
-            "ml.p3.8xlarge": {
-                "Count": 4,
-                "TotalGpuMemoryInMiB": 65536
-            }
+            "ml.p3.8xlarge": {"Count": 4, "TotalGpuMemoryInMiB": 65536}
         }
-        
+
         result = _get_gpu_info_fallback("ml.p3.8xlarge", "us-east-1")
-        
+
         self.assertEqual(result, (4, 65536))
 
 
 # Note: _total_inference_model_size_mib requires the 'accelerate' package
 # which is an optional dependency. This function is better tested through
 # integration tests with the full HuggingFace extras installed.
-# 
+#
 # Function not unit tested here (requires accelerate package):
 # - _total_inference_model_size_mib
 

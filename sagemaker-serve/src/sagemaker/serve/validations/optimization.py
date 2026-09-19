@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Holds the validation logic used for the .optimize() function. INTERNAL only"""
+
 from __future__ import absolute_import
 
 import textwrap

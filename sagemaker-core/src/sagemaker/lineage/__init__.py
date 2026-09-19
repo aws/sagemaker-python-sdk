@@ -18,6 +18,7 @@ This module provides backward compatibility for code using the old
 
 DEPRECATED: This module is deprecated. Use `sagemaker.core.lineage` instead.
 """
+
 from __future__ import absolute_import
 
 import warnings

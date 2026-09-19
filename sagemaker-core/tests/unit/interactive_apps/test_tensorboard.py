@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests related to TensorBoardApp"""
+
 from __future__ import absolute_import
 
 import json
@@ -21,7 +22,6 @@ import botocore
 import pytest
 
 from sagemaker.core.interactive_apps.tensorboard import TensorBoardApp
-
 
 TEST_DOMAIN = "testdomain"
 TEST_USER_PROFILE = "testuser"

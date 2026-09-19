@@ -15,6 +15,7 @@
 Provides a unified interface for building and deploying ML models across different
 model servers and deployment modes.
 """
+
 from __future__ import absolute_import, annotations
 
 import json
@@ -169,7 +170,6 @@ from sagemaker.serve.model_reuse import (
 )
 from sagemaker.core.training.utils import resolve_nova_checkpoint_uri
 from sagemaker.train.common_utils.model_aliases import normalize_model_name
-
 
 _LOWEST_MMS_VERSION = "1.2"
 SCRIPT_PARAM_NAME = "sagemaker_program"
@@ -1183,7 +1183,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         materialized["DeploymentArgs"]["InstanceType"] = instance_type
         # The unnamed-config identifier is its instance type; keep it in sync. A real profile name
         # (e.g. "Default") is left untouched.
-        if not materialized.get("IsDefault") and materialized["DeploymentConfigName"] == old_instance:
+        if (
+            not materialized.get("IsDefault")
+            and materialized["DeploymentConfigName"] == old_instance
+        ):
             materialized["DeploymentConfigName"] = instance_type
         return materialized
 
@@ -1276,10 +1279,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         hub_document = self._fetch_hub_document_for_custom_model()
         model_package = self._fetch_model_package()
         container = model_package.inference_specification.containers[0]
-        recipe_name = getattr(container.base_model, 'recipe_name', None) or ''
+        recipe_name = getattr(container.base_model, "recipe_name", None) or ""
 
         if not self.s3_upload_path:
             from sagemaker.serve.utils.model_package_utils import get_s3_uri_from_inference_spec
+
             s3_uri = get_s3_uri_from_inference_spec(model_package.inference_specification)
             if s3_uri:
                 self.s3_upload_path = s3_uri
@@ -1429,28 +1433,96 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     #   sorted by context length. Source: AGISageMakerInference ALLOWLISTED_CONFIGURATIONS.
     _NOVA_HOSTING_CONFIGS = {
         "nova-textgeneration-micro": [
-            {"InstanceType": "ml.g5.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}, "Tiers": [(4000, 12), (8000, 6)]},
-            {"InstanceType": "ml.g5.24xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
-            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}, "Tiers": [(4000, 12), (8000, 6)]},
-            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
-            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "12"}, "Tiers": [(8000, 12)]},
-            {"InstanceType": "ml.g6e.xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
-            {"InstanceType": "ml.g6e.2xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
-            {"InstanceType": "ml.g6e.4xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}, "Tiers": [(8000, 4)]},
-            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}, "Tiers": [(16000, 128), (64000, 32), (128000, 8)]},
+            {
+                "InstanceType": "ml.g5.12xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"},
+                "Tiers": [(4000, 12), (8000, 6)],
+            },
+            {
+                "InstanceType": "ml.g5.24xlarge",
+                "Profile": "Default",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"},
+                "Tiers": [(8000, 8)],
+            },
+            {
+                "InstanceType": "ml.g6.12xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"},
+                "Tiers": [(4000, 12), (8000, 6)],
+            },
+            {
+                "InstanceType": "ml.g6.24xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"},
+                "Tiers": [(8000, 8)],
+            },
+            {
+                "InstanceType": "ml.g6.48xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "12"},
+                "Tiers": [(8000, 12)],
+            },
+            {
+                "InstanceType": "ml.g6e.xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"},
+                "Tiers": [(8000, 2)],
+            },
+            {
+                "InstanceType": "ml.g6e.2xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"},
+                "Tiers": [(8000, 2)],
+            },
+            {
+                "InstanceType": "ml.g6e.4xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"},
+                "Tiers": [(8000, 4)],
+            },
+            {
+                "InstanceType": "ml.p5.48xlarge",
+                "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"},
+                "Tiers": [(16000, 128), (64000, 32), (128000, 8)],
+            },
         ],
         "nova-textgeneration-lite": [
-            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
-            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}, "Tiers": [(8000, 4)]},
-            {"InstanceType": "ml.g6.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(4000, 16), (8000, 8)]},
-            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}, "Tiers": [(16000, 128), (60000, 8)]},
+            {
+                "InstanceType": "ml.g6.12xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"},
+                "Tiers": [(8000, 2)],
+            },
+            {
+                "InstanceType": "ml.g6.24xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"},
+                "Tiers": [(8000, 4)],
+            },
+            {
+                "InstanceType": "ml.g6.48xlarge",
+                "Profile": "Default",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"},
+                "Tiers": [(4000, 16), (8000, 8)],
+            },
+            {
+                "InstanceType": "ml.p5.48xlarge",
+                "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"},
+                "Tiers": [(16000, 128), (60000, 8)],
+            },
         ],
         "nova-textgeneration-pro": [
-            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "24000", "MAX_CONCURRENCY": "1"}, "Tiers": [(8000, 8), (16000, 2), (24000, 1)]},
+            {
+                "InstanceType": "ml.p5.48xlarge",
+                "Profile": "Default",
+                "Environment": {"CONTEXT_LENGTH": "24000", "MAX_CONCURRENCY": "1"},
+                "Tiers": [(8000, 8), (16000, 2), (24000, 1)],
+            },
         ],
         "nova-textgeneration-lite-v2": [
-            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
-            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "256000", "MAX_CONCURRENCY": "2"}, "Tiers": [(16000, 128), (64000, 32), (128000, 8), (256000, 2)]},
+            {
+                "InstanceType": "ml.g6.48xlarge",
+                "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"},
+                "Tiers": [(8000, 8)],
+            },
+            {
+                "InstanceType": "ml.p5.48xlarge",
+                "Profile": "Default",
+                "Environment": {"CONTEXT_LENGTH": "256000", "MAX_CONCURRENCY": "2"},
+                "Tiers": [(16000, 128), (64000, 32), (128000, 8), (256000, 2)],
+            },
         ],
     }
 
@@ -1495,12 +1567,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 if base_model:
                     recipe_name = getattr(base_model, "recipe_name", None) or ""
                     hub_content_name = getattr(base_model, "hub_content_name", None) or ""
-                    if (
-                        isinstance(recipe_name, str)
-                        and "nova" in recipe_name.lower()
-                    ) or (
-                        isinstance(hub_content_name, str)
-                        and "nova" in hub_content_name.lower()
+                    if (isinstance(recipe_name, str) and "nova" in recipe_name.lower()) or (
+                        isinstance(hub_content_name, str) and "nova" in hub_content_name.lower()
                     ):
                         return True
 
@@ -1538,9 +1606,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ValueError: If ``instance_type`` is provided but no entry matches it.
         """
         if instance_type:
-            config = next(
-                (c for c in configs if c.get("InstanceType") == instance_type), None
-            )
+            config = next((c for c in configs if c.get("InstanceType") == instance_type), None)
             if not config:
                 supported = [c.get("InstanceType") for c in configs]
                 raise ValueError(
@@ -1595,9 +1661,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             # fallback supply the escrow image URI.
             return None
 
-        resolved_instance_type = config.get("InstanceType") or config.get(
-            "DefaultInstanceType"
-        )
+        resolved_instance_type = config.get("InstanceType") or config.get("DefaultInstanceType")
 
         return {
             "image_uri": image_uri,
@@ -1613,15 +1677,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         hardcoded ``_NOVA_HOSTING_CONFIGS``, matching Rhinestone's
         getNovaHostingConfigs(), when the hub document does not provide one.
         """
-        hub_config = self._get_nova_hosting_config_from_hub_document(
-            instance_type=instance_type
-        )
+        hub_config = self._get_nova_hosting_config_from_hub_document(instance_type=instance_type)
         if hub_config:
             return hub_config
 
         model_package = self._fetch_model_package()
         if model_package:
-            hub_content_name = model_package.inference_specification.containers[0].base_model.hub_content_name
+            hub_content_name = model_package.inference_specification.containers[
+                0
+            ].base_model.hub_content_name
         else:
             # No model package (e.g. SMTJ trainer): resolve from base_model_name
             base_model_name = self._base_model_name()
@@ -1644,9 +1708,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         image_uri = f"{escrow_account}.dkr.ecr.{region}.amazonaws.com/nova-inference-repo:SM-Inference-latest"
 
-        config = self._select_nova_hosting_config_entry(
-            configs, instance_type, hub_content_name
-        )
+        config = self._select_nova_hosting_config_entry(configs, instance_type, hub_content_name)
 
         return {
             "image_uri": image_uri,
@@ -1687,9 +1749,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return
 
         instance_type = self.instance_type
-        instance_config = next(
-            (c for c in configs if c["InstanceType"] == instance_type), None
-        )
+        instance_config = next((c for c in configs if c["InstanceType"] == instance_type), None)
         if not instance_config:
             return
 
@@ -2024,9 +2084,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         model_artifact_uri = None
         if self.model_path and self.model_path.startswith("s3://"):
             model_artifact_uri = self.model_path
-        elif isinstance(self.s3_model_data_url, str) and self.s3_model_data_url.startswith(
-            "s3://"
-        ):
+        elif isinstance(self.s3_model_data_url, str) and self.s3_model_data_url.startswith("s3://"):
             model_artifact_uri = self.s3_model_data_url
 
         has_source_code = bool(
@@ -2284,10 +2342,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     hasattr(self.model._latest_training_job, "model_package_config")
                     and self.model._latest_training_job.model_package_config != Unassigned
                     and hasattr(
-                        self.model._latest_training_job.model_package_config, "source_model_package_arn"
+                        self.model._latest_training_job.model_package_config,
+                        "source_model_package_arn",
                     )
                 ):
-                    arn = self.model._latest_training_job.model_package_config.source_model_package_arn
+                    arn = (
+                        self.model._latest_training_job.model_package_config.source_model_package_arn
+                    )
                     if not isinstance(arn, Unassigned):
                         return arn
 
@@ -2405,6 +2466,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return None
 
         from sagemaker.serve.model_reuse import normalize_tag_value, find_sagemaker_model_arn_by_tag
+
         tag_value = normalize_tag_value(source_id)
         sagemaker_client = self.sagemaker_session.sagemaker_client
 
@@ -3075,9 +3137,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Nova 1P images require network isolation on the Model resource
         enable_network_isolation = self._enable_network_isolation
         resolved_image_uri = (
-            container_def["Image"]
-            if isinstance(container_def, dict)
-            else container_def[0]["Image"]
+            container_def["Image"] if isinstance(container_def, dict) else container_def[0]["Image"]
         )
         if (
             not enable_network_isolation
@@ -3211,12 +3271,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "This functionality is only supported for Model Customization use cases"
             )
         from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
+
         model_package = self._fetch_model_package()
         if is_restricted_model_package(model_package):
             return set()
-        recipe_name = (
-            model_package.inference_specification.containers[0].base_model.recipe_name
-        )
+        recipe_name = model_package.inference_specification.containers[0].base_model.recipe_name
         endpoint_names = set()
         logger.error(f"recipe_name: {recipe_name}")
         for inference_component in InferenceComponent.get_all():
@@ -3243,11 +3302,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             suffix = "/checkpoints/hf/"
         elif isinstance(self.model, (AgentRFTJob, ModelPackage)):
             try:
-                s3_uri = (
-                    model_package.inference_specification.containers[
-                        0
-                    ].model_data_source.s3_data_source.s3_uri
-                )
+                s3_uri = model_package.inference_specification.containers[
+                    0
+                ].model_data_source.s3_data_source.s3_uri
             except (AttributeError, IndexError, TypeError):
                 s3_uri = None
             suffix = (
@@ -3284,9 +3341,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if model_package is None or self._is_nova_model():
             return
 
-        if inference_config is None and getattr(
-            self, "_cached_compute_requirements", None
-        ) is None:
+        if inference_config is None and getattr(self, "_cached_compute_requirements", None) is None:
             self._fetch_and_cache_recipe_config()
             if getattr(self, "_cached_compute_requirements", None) is None:
                 raise ValueError(
@@ -3324,7 +3379,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # Validate BaseTrainer has a completed training job before proceeding
         if isinstance(self.model, BaseTrainer):
-            if not hasattr(self.model, "_latest_training_job") or self.model._latest_training_job is None:
+            if (
+                not hasattr(self.model, "_latest_training_job")
+                or self.model._latest_training_job is None
+            ):
                 raise ValueError(
                     "The trainer passed to ModelBuilder does not have a completed training job. "
                     "Either call trainer.train() first, or manually set "
@@ -3342,6 +3400,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             # Restricted model packages: artifacts are resolved by the service
             from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
+
             if is_restricted_model_package(model_package):
                 model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
                 container_kwargs = {"model_package_name": self._fetch_model_package_arn()}
@@ -3418,9 +3477,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 source_id = self._resolve_model_source_id()
                 if source_id:
                     source_tag = build_source_tag(source_id)
-                    nova_tags.append(
-                        {"key": source_tag["key"], "value": source_tag["value"]}
-                    )
+                    nova_tags.append({"key": source_tag["key"], "value": source_tag["value"]})
                 self.built_model = Model.create(
                     execution_role_arn=self.role_arn,
                     model_name=model_name,
@@ -3472,6 +3529,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             else:
                 # Non-LORA: Model points at training output
                 from sagemaker.serve.utils.model_package_utils import get_s3_uri_from_inference_spec
+
                 s3_uri = get_s3_uri_from_inference_spec(model_package.inference_specification)
                 if not s3_uri:
                     raise ValueError(
@@ -3615,7 +3673,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     elif model_task in OMNI_TASKS:
                         self.built_model = self._build_for_vllm_omni()
                         return self.built_model
-                    elif model_task in ["sentence-similarity", "feature-extraction", "text-ranking"]:
+                    elif model_task in [
+                        "sentence-similarity",
+                        "feature-extraction",
+                        "text-ranking",
+                    ]:
                         self.built_model = self._build_for_tei()
                         return self.built_model
                     else:
@@ -4913,17 +4975,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             # Match on the config's full offered set (its instance plus any SupportedInstanceTypes),
             # so a config is selectable by any instance it offers, not only its default.
             matches = [
-                c
-                for c in raw_configs
-                if instance_type in self._raw_config_offered_instances(c)
+                c for c in raw_configs if instance_type in self._raw_config_offered_instances(c)
             ]
             if not matches:
                 available = sorted(
-                    {
-                        inst
-                        for c in raw_configs
-                        for inst in self._raw_config_offered_instances(c)
-                    }
+                    {inst for c in raw_configs for inst in self._raw_config_offered_instances(c)}
                 )
                 raise ValueError(
                     f"No deployment config published for instance type '{instance_type}'. "
@@ -5054,9 +5110,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.list_deployment_configs"
     )
-    def list_deployment_configs(
-        self, instance_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def list_deployment_configs(self, instance_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """List the deployment configs available for the model in the current region.
 
         One API for both model types, returning a compatible dict shape so callers can iterate
@@ -5516,8 +5570,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if performance_target is None:
             raise ValueError(
-                "performance_target is required. "
-                "Use 'throughput', 'ttft-ms', or 'cost'."
+                "performance_target is required. " "Use 'throughput', 'ttft-ms', or 'cost'."
             )
 
         if workload is None:
@@ -5601,9 +5654,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if job is None:
             return _RecommendationsView()
         rows = list(job.recommendations or [])
-        return _RecommendationsView(
-            _RecommendationView(row, index=i) for i, row in enumerate(rows)
-        )
+        return _RecommendationsView(_RecommendationView(row, index=i) for i, row in enumerate(rows))
 
     @classmethod
     def from_recommendation_job(
@@ -5690,10 +5741,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "ExecutionRoleArn on the new Model."
             )
 
-        rows = (self._recommendation_job.recommendations or [])
+        rows = self._recommendation_job.recommendations or []
         if not rows:
             self._recommendation_job.refresh()
-            rows = (self._recommendation_job.recommendations or [])
+            rows = self._recommendation_job.recommendations or []
         if not rows:
             status = self._recommendation_job.ai_recommendation_job_status
             failure_reason = getattr(self._recommendation_job, "failure_reason", None)
@@ -5708,18 +5759,28 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             rec = recommendation_row
         elif recommendation_spec_name is not None:
             matches = [
-                row for row in rows
-                if getattr(getattr(row, "model_details", None), "inference_specification_name", None)
+                row
+                for row in rows
+                if getattr(
+                    getattr(row, "model_details", None), "inference_specification_name", None
+                )
                 == recommendation_spec_name
             ]
             if not matches:
-                available = sorted({
-                    name for name in (
-                        getattr(getattr(row, "model_details", None), "inference_specification_name", None)
-                        for row in rows
-                    )
-                    if name
-                })
+                available = sorted(
+                    {
+                        name
+                        for name in (
+                            getattr(
+                                getattr(row, "model_details", None),
+                                "inference_specification_name",
+                                None,
+                            )
+                            for row in rows
+                        )
+                        if name
+                    }
+                )
                 raise ValueError(
                     f"No recommendation row matches recommendation_spec_name="
                     f"{recommendation_spec_name!r}. "
@@ -5745,7 +5806,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         model_details = getattr(rec, "model_details", None)
         deployment_config = getattr(rec, "deployment_configuration", None)
 
-        model_package_arn = getattr(model_details, "model_package_arn", None) if model_details else None
+        model_package_arn = (
+            getattr(model_details, "model_package_arn", None) if model_details else None
+        )
         if not model_package_arn:
             raise ValueError(
                 "Recommendation has no ModelPackageArn; cannot deploy. "
@@ -5790,9 +5853,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         suffix = _uuid.uuid4().hex[:8]
         ts = int(_time.time())
         resolved_model_name = model_name or f"sm-rec-model-{ts}-{suffix}"
-        resolved_endpoint_config_name = (
-            endpoint_config_name or f"sm-rec-config-{ts}-{suffix}"
-        )
+        resolved_endpoint_config_name = endpoint_config_name or f"sm-rec-config-{ts}-{suffix}"
         resolved_endpoint_name = endpoint_name or f"sm-rec-endpoint-{ts}-{suffix}"
 
         # Deploy directly from the recommendation's ModelPackage. Optimized
@@ -5813,8 +5874,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             session=boto_session,
         )
 
-        rec_instance_type = getattr(deployment_config, "instance_type", None) if deployment_config else None
-        rec_instance_count = getattr(deployment_config, "instance_count", None) if deployment_config else None
+        rec_instance_type = (
+            getattr(deployment_config, "instance_type", None) if deployment_config else None
+        )
+        rec_instance_count = (
+            getattr(deployment_config, "instance_count", None) if deployment_config else None
+        )
         rec_copy_count = (
             getattr(deployment_config, "copy_count_per_instance", None)
             if deployment_config
@@ -6057,9 +6122,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # (create vs. in-place update in _deploy_for_ic). The endpoint-return
         # reuse gate must not intercept them, or an intended IC create/update
         # would be silently skipped.
-        is_inference_component_deploy = isinstance(
-            inference_config, ResourceRequirements
-        ) or bool(getattr(self, "_deployables", None))
+        is_inference_component_deploy = isinstance(inference_config, ResourceRequirements) or bool(
+            getattr(self, "_deployables", None)
+        )
 
         if reuse_resources and is_inference_component_deploy:
             logger.warning(
@@ -6074,9 +6139,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # build() does not look for or cache an endpoint.
         if reuse_resources and not is_inference_component_deploy:
             requested_instance_type = instance_type or self.instance_type
-            reusable_endpoint = self._find_reusable_endpoint(
-                instance_type=requested_instance_type
-            )
+            reusable_endpoint = self._find_reusable_endpoint(instance_type=requested_instance_type)
             if reusable_endpoint:
                 if endpoint_name and endpoint_name != reusable_endpoint:
                     logger.warning(
@@ -6317,6 +6380,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Restricted model packages deploy model-on-variant, but only when an
         # inference component was not explicitly requested.
         from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
+
         if not is_ic_deploy and is_restricted_model_package(model_package):
             if not endpoint_name:
                 endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
@@ -6340,9 +6404,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # Package-backed Nova models with explicit requirements continue through
         # the single-IC path without generic LoRA or recipe preparation.
-        peft_type = (
-            self._fetch_peft() if model_package is not None and not is_nova else None
-        )
+        peft_type = self._fetch_peft() if model_package is not None and not is_nova else None
         base_model_recipe_name = None
         if peft_type == "LORA":
             container = model_package.inference_specification.containers[0]
@@ -6522,14 +6584,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 from sagemaker.core.resources import Action, Association, Artifact
                 from sagemaker.core.shapes import ActionSource, MetadataProperties
 
-                ic_name = (
-                    inference_component_name
-                    if not peft_type == "LORA"
-                    else adapter_ic_name
-                )
-                inference_component = InferenceComponent.get(
-                    inference_component_name=ic_name
-                )
+                ic_name = inference_component_name if not peft_type == "LORA" else adapter_ic_name
+                inference_component = InferenceComponent.get(inference_component_name=ic_name)
 
                 action = Action.create(
                     source=ActionSource(
@@ -6567,9 +6623,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 container = model_package.inference_specification.containers[0]
                 if getattr(container, "is_checkpoint", None) is False:
                     return None
-                recipe_name = getattr(
-                    getattr(container, "base_model", None), "recipe_name", ""
-                ) or ""
+                recipe_name = (
+                    getattr(getattr(container, "base_model", None), "recipe_name", "") or ""
+                )
                 if "lora" in recipe_name.lower():
                     return "LORA"
             return None

@@ -24,16 +24,17 @@ This module provides utility functions for:
 
 Example:
     Basic usage as a mixin class::
-    
+
         class MyModelBuilder(ModelBuilderUtils):
             def __init__(self):
                 self.model = "huggingface-model-id"
                 self.instance_type = "ml.g5.xlarge"
-                
+
             def build(self):
                 self._auto_detect_image_uri()
                 return self.image_uri
 """
+
 from __future__ import absolute_import, annotations
 
 # Standard library imports
@@ -999,7 +1000,9 @@ class _ModelBuilderUtils:
                         logger.warning(
                             "Could not initialize HF schema builder for task %r "
                             "(%s: %s); falling back to the JumpStart-supplied schema.",
-                            model_task, type(e).__name__, e,
+                            model_task,
+                            type(e).__name__,
+                            e,
                         )
 
             huggingface_model_id = self.model

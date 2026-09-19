@@ -6,6 +6,7 @@
 #
 #     http://aws.amazon.com/apache2.0/
 """Unit tests for Workload."""
+
 from __future__ import absolute_import
 
 import json

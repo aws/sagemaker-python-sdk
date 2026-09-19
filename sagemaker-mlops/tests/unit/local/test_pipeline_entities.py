@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for local pipeline entities."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -96,7 +97,7 @@ class TestLocalPipeline:
         # Make pipeline.steps iterable and parameters empty
         mock_pipeline.steps = []
         mock_pipeline.parameters = []
-        
+
         with patch("sagemaker.mlops.local.pipeline.LocalPipelineExecutor") as mock_executor:
             mock_execution_result = Mock()
             mock_executor_instance = Mock()
@@ -124,13 +125,13 @@ class TestLocalPipelineExecution:
     def mock_pipeline_with_params(self):
         pipeline = Mock()
         pipeline.name = "test-pipeline"
-        
+
         param1 = Mock()
         param1.name = "param1"
         param1.default_value = "default1"
         param1.parameter_type = Mock()
         param1.parameter_type.python_type = str
-        
+
         pipeline.parameters = [param1]
         return pipeline
 
@@ -239,15 +240,16 @@ class TestLocalPipelineExecution:
         """Test update_step_properties updates step properties."""
         with patch("sagemaker.mlops.workflow.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
-            
+
             # Create a proper Step mock
             from sagemaker.mlops.workflow.steps import Step
+
             mock_step = Mock(spec=Step)
             mock_step.name = "test-step"
             mock_step.step_type = StepTypeEnum.TRAINING
             mock_step.description = "Test step"
             mock_step.display_name = "Test Display"
-            
+
             mock_dag.step_map = {"test-step": mock_step}
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
@@ -261,21 +263,25 @@ class TestLocalPipelineExecution:
             execution.update_step_properties("test-step", properties)
 
             assert execution.step_execution["test-step"].properties == properties
-            assert execution.step_execution["test-step"].status == _LocalExecutionStatus.SUCCEEDED.value
+            assert (
+                execution.step_execution["test-step"].status
+                == _LocalExecutionStatus.SUCCEEDED.value
+            )
 
     def test_update_step_failure(self, mock_pipeline, mock_local_session):
         """Test update_step_failure marks step as failed and raises exception."""
         with patch("sagemaker.mlops.workflow.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
-            
+
             # Create a proper Step mock
             from sagemaker.mlops.workflow.steps import Step
+
             mock_step = Mock(spec=Step)
             mock_step.name = "test-step"
             mock_step.step_type = StepTypeEnum.TRAINING
             mock_step.description = "Test step"
             mock_step.display_name = "Test Display"
-            
+
             mock_dag.step_map = {"test-step": mock_step}
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
@@ -289,22 +295,25 @@ class TestLocalPipelineExecution:
             with pytest.raises(StepExecutionException):
                 execution.update_step_failure("test-step", "Test failure")
 
-            assert execution.step_execution["test-step"].status == _LocalExecutionStatus.FAILED.value
+            assert (
+                execution.step_execution["test-step"].status == _LocalExecutionStatus.FAILED.value
+            )
             assert execution.step_execution["test-step"].failure_reason == "Test failure"
 
     def test_mark_step_executing(self, mock_pipeline, mock_local_session):
         """Test mark_step_executing updates step status."""
         with patch("sagemaker.mlops.workflow.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
-            
+
             # Create a proper Step mock
             from sagemaker.mlops.workflow.steps import Step
+
             mock_step = Mock(spec=Step)
             mock_step.name = "test-step"
             mock_step.step_type = StepTypeEnum.TRAINING
             mock_step.description = "Test step"
             mock_step.display_name = "Test Display"
-            
+
             mock_dag.step_map = {"test-step": mock_step}
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
@@ -316,10 +325,15 @@ class TestLocalPipelineExecution:
 
             execution.mark_step_executing("test-step")
 
-            assert execution.step_execution["test-step"].status == _LocalExecutionStatus.EXECUTING.value
+            assert (
+                execution.step_execution["test-step"].status
+                == _LocalExecutionStatus.EXECUTING.value
+            )
             assert execution.step_execution["test-step"].start_time is not None
 
-    def test_initialize_parameters_with_defaults(self, mock_pipeline_with_params, mock_local_session):
+    def test_initialize_parameters_with_defaults(
+        self, mock_pipeline_with_params, mock_local_session
+    ):
         """Test parameter initialization uses defaults when no overrides."""
         with patch("sagemaker.mlops.workflow.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
@@ -334,7 +348,9 @@ class TestLocalPipelineExecution:
 
             assert execution.pipeline_parameters == {"param1": "default1"}
 
-    def test_initialize_parameters_with_overrides(self, mock_pipeline_with_params, mock_local_session):
+    def test_initialize_parameters_with_overrides(
+        self, mock_pipeline_with_params, mock_local_session
+    ):
         """Test parameter initialization with overrides."""
         with patch("sagemaker.mlops.workflow.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
@@ -350,7 +366,9 @@ class TestLocalPipelineExecution:
 
             assert execution.pipeline_parameters == {"param1": "override1"}
 
-    def test_initialize_parameters_unknown_parameter(self, mock_pipeline_with_params, mock_local_session):
+    def test_initialize_parameters_unknown_parameter(
+        self, mock_pipeline_with_params, mock_local_session
+    ):
         """Test parameter initialization raises error for unknown parameter."""
         with patch("sagemaker.mlops.workflow.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
@@ -384,7 +402,9 @@ class TestLocalPipelineExecution:
 
             assert "Unexpected type" in str(exc_info.value)
 
-    def test_initialize_parameters_empty_string(self, mock_pipeline_with_params, mock_local_session):
+    def test_initialize_parameters_empty_string(
+        self, mock_pipeline_with_params, mock_local_session
+    ):
         """Test parameter initialization raises error for empty string."""
         with patch("sagemaker.mlops.workflow.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
@@ -405,13 +425,13 @@ class TestLocalPipelineExecution:
         """Test parameter initialization raises error for missing required parameter."""
         pipeline = Mock()
         pipeline.name = "test-pipeline"
-        
+
         param1 = Mock()
         param1.name = "param1"
         param1.default_value = None  # No default
         param1.parameter_type = Mock()
         param1.parameter_type.python_type = str
-        
+
         pipeline.parameters = [param1]
 
         with patch("sagemaker.mlops.workflow.pipeline.PipelineGraph") as mock_graph:

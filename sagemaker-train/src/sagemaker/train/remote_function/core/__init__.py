@@ -15,6 +15,7 @@ DEPRECATED: This module has been moved to sagemaker.core.remote_function.core
 
 This is a backward compatibility shim.
 """
+
 from __future__ import absolute_import
 
 import warnings
@@ -23,5 +24,5 @@ warnings.warn(
     "sagemaker.train.remote_function.core has been moved to sagemaker.core.remote_function.core. "
     "Please update your imports. This shim will be removed in a future version.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )

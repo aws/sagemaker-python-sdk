@@ -15,6 +15,7 @@
 Wraps each row to replace the default repr without owning the data;
 attribute access forwards to the underlying shape transparently.
 """
+
 from __future__ import absolute_import
 
 from collections import defaultdict

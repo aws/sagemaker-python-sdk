@@ -11,13 +11,13 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for _resolve_trainer_defaults agent_config dict parsing."""
+
 from __future__ import absolute_import
 
 import pytest
 from unittest.mock import MagicMock
 
 from sagemaker.train.evaluate.multi_turn_rl_evaluator import MultiTurnRLEvaluator
-
 
 AGENT_ARN = "arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/test-agent-aBcDeFgHiJ"
 LAMBDA_ARN = "arn:aws:lambda:us-west-2:123456789012:function:my-agent"
@@ -70,17 +70,13 @@ class TestResolveTrainerAgentConfig:
 
     def test_flat_dict_fallback_agent_runtime_arn(self):
         """Test that flat AgentRuntimeArn key still works as a fallback."""
-        evaluator = _make_evaluator_with_trainer(
-            {"AgentRuntimeArn": AGENT_ARN}
-        )
+        evaluator = _make_evaluator_with_trainer({"AgentRuntimeArn": AGENT_ARN})
         MultiTurnRLEvaluator._resolve_trainer_defaults(evaluator)
         assert evaluator.agent_config == AGENT_ARN
 
     def test_flat_dict_fallback_lambda_arn(self):
         """Test that flat LambdaArn key still works as a fallback."""
-        evaluator = _make_evaluator_with_trainer(
-            {"LambdaArn": LAMBDA_ARN}
-        )
+        evaluator = _make_evaluator_with_trainer({"LambdaArn": LAMBDA_ARN})
         MultiTurnRLEvaluator._resolve_trainer_defaults(evaluator)
         assert evaluator.agent_config == LAMBDA_ARN
 

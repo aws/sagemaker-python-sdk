@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.helper.session_helper module."""
+
 from __future__ import absolute_import
 
 import json
@@ -667,9 +668,7 @@ class TestDownloadDataPathTraversal:
         session.s3_client = mock_s3_client
 
         with pytest.raises(ValueError, match="Path traversal detected"):
-            session.download_data(
-                path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
-            )
+            session.download_data(path=str(tmp_path), bucket="test-bucket", key_prefix="data/")
 
         mock_s3_client.download_file.assert_not_called()
 
@@ -688,9 +687,7 @@ class TestDownloadDataPathTraversal:
         session.s3_client = mock_s3_client
 
         with pytest.raises(ValueError, match="Path traversal detected"):
-            session.download_data(
-                path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
-            )
+            session.download_data(path=str(tmp_path), bucket="test-bucket", key_prefix="data/")
 
     def test_path_traversal_overwrite_aws_credentials(
         self, mock_boto_session, mock_sagemaker_client, tmp_path
@@ -707,9 +704,7 @@ class TestDownloadDataPathTraversal:
         session.s3_client = mock_s3_client
 
         with pytest.raises(ValueError, match="Path traversal detected"):
-            session.download_data(
-                path=str(tmp_path), bucket="shared-bucket", key_prefix="data/"
-            )
+            session.download_data(path=str(tmp_path), bucket="shared-bucket", key_prefix="data/")
 
         mock_s3_client.download_file.assert_not_called()
 
@@ -726,9 +721,7 @@ class TestDownloadDataPathTraversal:
         session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
         session.s3_client = mock_s3_client
 
-        result = session.download_data(
-            path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
-        )
+        result = session.download_data(path=str(tmp_path), bucket="test-bucket", key_prefix="data/")
 
         assert len(result) == 2
         assert mock_s3_client.download_file.call_count == 2
@@ -1453,7 +1446,9 @@ class TestBucketCheckWithPrefix:
             Bucket="test-bucket", Prefix="sample-prefix", ExpectedBucketOwner="123456789012"
         )
 
-    def test_expected_bucket_owner_check_without_prefix(self, mock_boto_session, mock_sagemaker_client):
+    def test_expected_bucket_owner_check_without_prefix(
+        self, mock_boto_session, mock_sagemaker_client
+    ):
         """Test expected bucket owner check uses head_bucket without prefix."""
         session = Session(
             boto_session=mock_boto_session,
@@ -1625,9 +1620,7 @@ class TestUploadStringAsFileBodySpotCheck:
                 key="some/key",
             )
 
-        mock_s3_object.put.assert_called_once_with(
-            Body="data", ExpectedBucketOwner="111111111111"
-        )
+        mock_s3_object.put.assert_called_once_with(Body="data", ExpectedBucketOwner="111111111111")
 
     def test_to_non_default_bucket_omits_expected_owner(
         self, mock_boto_session, mock_sagemaker_client
@@ -1738,9 +1731,7 @@ class TestDownloadDataSpotCheck:
         self, mock_boto_session, mock_sagemaker_client, tmp_path
     ):
         mock_s3_client = Mock()
-        mock_s3_client.list_objects_v2.return_value = {
-            "Contents": [{"Key": "p/f.txt", "Size": 1}]
-        }
+        mock_s3_client.list_objects_v2.return_value = {"Contents": [{"Key": "p/f.txt", "Size": 1}]}
 
         session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
         session._default_bucket = "sagemaker-us-west-2-111111111111"
@@ -1759,18 +1750,15 @@ class TestDownloadDataSpotCheck:
             Prefix="p/f.txt",
             ExpectedBucketOwner="111111111111",
         )
-        assert (
-            mock_s3_client.download_file.call_args[1]["ExtraArgs"]
-            == {"ExpectedBucketOwner": "111111111111"}
-        )
+        assert mock_s3_client.download_file.call_args[1]["ExtraArgs"] == {
+            "ExpectedBucketOwner": "111111111111"
+        }
 
     def test_download_from_non_default_bucket_omits_expected_owner(
         self, mock_boto_session, mock_sagemaker_client, tmp_path
     ):
         mock_s3_client = Mock()
-        mock_s3_client.list_objects_v2.return_value = {
-            "Contents": [{"Key": "p/f.txt", "Size": 1}]
-        }
+        mock_s3_client.list_objects_v2.return_value = {"Contents": [{"Key": "p/f.txt", "Size": 1}]}
 
         session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
         session._default_bucket = "sagemaker-us-west-2-111111111111"

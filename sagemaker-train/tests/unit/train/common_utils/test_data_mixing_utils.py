@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for data mixing utility functions."""
+
 from __future__ import absolute_import
 
 import os
@@ -400,11 +401,14 @@ class TestResolveHyperPodDatamixContext:
         """Patch _get_hub_content_metadata and get_sagemaker_hub_name."""
         from unittest.mock import patch
 
-        with patch(
-            "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata"
-        ) as mock_get_hub, patch(
-            "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name"
-        ) as mock_hub_name:
+        with (
+            patch(
+                "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata"
+            ) as mock_get_hub,
+            patch(
+                "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name"
+            ) as mock_hub_name,
+        ):
             mock_hub_name.return_value = "SageMakerPublicHub"
             mock_get_hub.return_value = self.MOCK_HUB_METADATA
             yield mock_get_hub, mock_hub_name
@@ -900,7 +904,11 @@ class TestBuildHyperPodDatamixRecipeFromContext:
         config = self._make_validated_config()
 
         # Remove hyperpod_cli from sys.modules if present, and make import fail
-        original_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+        original_import = (
+            __builtins__["__import__"]
+            if isinstance(__builtins__, dict)
+            else __builtins__.__import__
+        )
 
         def mock_import(name, *args, **kwargs):
             if name == "hyperpod_cli":
@@ -1052,6 +1060,7 @@ class TestBuildHyperPodDatamixRecipeFromContext:
 
         def capture_write(path, mode="r", **kwargs):
             from io import StringIO as SIO
+
             if mode == "w":
                 sio = SIO()
                 sio.name = path

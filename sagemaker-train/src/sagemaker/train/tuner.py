@@ -563,9 +563,7 @@ class HyperparameterTuner(object):
                             fpath = os.path.join(root, f)
                             arcname = os.path.relpath(fpath, source_code.source_dir)
                             tar.add(fpath, arcname=arcname)
-                s3_client = session.boto_session.client(
-                    "s3", region_name=session.boto_region_name
-                )
+                s3_client = session.boto_session.client("s3", region_name=session.boto_region_name)
                 s3_client.upload_file(tar_path, bucket, s3_key)
                 model_trainer.hyperparameters["sagemaker_submit_directory"] = (
                     f"s3://{bucket}/{s3_key}"
@@ -1474,9 +1472,7 @@ class HyperparameterTuner(object):
 
         # Pass through the full OutputDataConfig from ModelTrainer so that
         # kms_key_id, compression_type, and any other fields are preserved.
-        output_config = model_trainer.output_data_config or OutputDataConfig(
-            s3_output_path=None
-        )
+        output_config = model_trainer.output_data_config or OutputDataConfig(s3_output_path=None)
 
         # Build resource config
         resource_config = ResourceConfig(

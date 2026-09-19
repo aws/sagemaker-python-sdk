@@ -45,15 +45,21 @@ def _build_fg_mock(response=None):
         osc = response["OfflineStoreConfig"]
         fg_mock.offline_store_config = Mock()
         fg_mock.offline_store_config.s3_storage_config = Mock()
-        fg_mock.offline_store_config.s3_storage_config.resolved_output_s3_uri = (
-            osc["S3StorageConfig"]["ResolvedOutputS3Uri"]
-        )
+        fg_mock.offline_store_config.s3_storage_config.resolved_output_s3_uri = osc[
+            "S3StorageConfig"
+        ]["ResolvedOutputS3Uri"]
         fg_mock.offline_store_config.table_format = osc.get("TableFormat", None)
         if "DataCatalogConfig" in osc:
             fg_mock.offline_store_config.data_catalog_config = Mock()
-            fg_mock.offline_store_config.data_catalog_config.catalog = osc["DataCatalogConfig"]["Catalog"]
-            fg_mock.offline_store_config.data_catalog_config.database = osc["DataCatalogConfig"]["Database"]
-            fg_mock.offline_store_config.data_catalog_config.table_name = osc["DataCatalogConfig"]["TableName"]
+            fg_mock.offline_store_config.data_catalog_config.catalog = osc["DataCatalogConfig"][
+                "Catalog"
+            ]
+            fg_mock.offline_store_config.data_catalog_config.database = osc["DataCatalogConfig"][
+                "Database"
+            ]
+            fg_mock.offline_store_config.data_catalog_config.table_name = osc["DataCatalogConfig"][
+                "TableName"
+            ]
     else:
         fg_mock.offline_store_config = None
 
@@ -199,7 +205,9 @@ def test_load_from_feature_group_with_arn(
 
     input_loader.load_from_feature_group(fg_data_source)
 
-    mock_fg_get.assert_called_with(feature_group_name=fg_name, session=sagemaker_session.boto_session)
+    mock_fg_get.assert_called_with(
+        feature_group_name=fg_name, session=sagemaker_session.boto_session
+    )
     mock_load_from_date_partitioned_s3.assert_called_with(
         ParquetDataSource(tdh.INPUT_FEATURE_GROUP_RESOLVED_OUTPUT_S3_URI),
         "start",
@@ -231,7 +239,9 @@ def test_load_from_feature_group_with_default_table_format(
     fg_data_source = FeatureGroupDataSource(name=fg_name)
     input_loader.load_from_feature_group(fg_data_source)
 
-    mock_fg_get.assert_called_with(feature_group_name=fg_name, session=sagemaker_session.boto_session)
+    mock_fg_get.assert_called_with(
+        feature_group_name=fg_name, session=sagemaker_session.boto_session
+    )
     spark_session.read.parquet.assert_called_with(
         tdh.INPUT_FEATURE_GROUP_RESOLVED_OUTPUT_S3_URI.replace("s3:", "s3a:")
     )
@@ -251,9 +261,7 @@ def test_load_from_feature_group_with_iceberg_table_format(
 
     fg_name = tdh.INPUT_FEATURE_GROUP_NAME
     fg_data_source = FeatureGroupDataSource(name=fg_name)
-    with patch.object(
-        FeatureGroup, "get", return_value=iceberg_fg_mock
-    ) as mock_get:
+    with patch.object(FeatureGroup, "get", return_value=iceberg_fg_mock) as mock_get:
         mock_input_loader.load_from_feature_group(fg_data_source)
 
         mock_get.assert_called_with(feature_group_name=fg_name, session=mocked_session.boto_session)

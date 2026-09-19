@@ -20,7 +20,6 @@ from botocore.exceptions import ClientError
 from sagemaker.core.training.configs import HyperPodCompute
 from sagemaker.train.common_utils.constants import AUTH_ERROR_CODES
 
-
 logger = logging.getLogger(__name__)
 
 GLOBAL_STEP_REGEX = r"global_step[=:]\s*([\d.]+)"
@@ -234,8 +233,7 @@ def parse_metrics_from_logs(
         import pandas
     except ImportError:
         raise ImportError(
-            "pandas is required for metric extraction. "
-            "Install it with: pip install pandas\n"
+            "pandas is required for metric extraction. " "Install it with: pip install pandas\n"
         )
 
     technique = customization_technique.upper()

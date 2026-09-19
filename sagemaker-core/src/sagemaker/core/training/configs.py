@@ -125,10 +125,11 @@ class SourceCode(BaseConfig):
         ".ipynb_checkpoints",
     ]
 
+
 class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
-    Provides the configuration for the output data location of the training job 
+    Provides the configuration for the output data location of the training job
     (will not be carried over to any model repository or deployment).
 
     Parameters:
@@ -379,6 +380,7 @@ class CheckpointConfig(shapes.CheckpointConfig):
 
     s3_uri: Optional[StrPipeVar] = None
     local_path: Optional[StrPipeVar] = "/opt/ml/checkpoints"
+
 
 # Backward-compatible alias
 TrainingJobCompute = Compute

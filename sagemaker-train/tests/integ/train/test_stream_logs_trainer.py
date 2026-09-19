@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests for trainer stream_logs()"""
+
 from __future__ import annotations
 
 import logging
@@ -32,12 +33,10 @@ MTRL_JOB_NAME = "mock-oss-test-mtrl-20260729120959"
 SERVERFUL_JOB_NAME = "pytorch-training-260729-1927-002-95b83cb6"
 
 
-
 @pytest.fixture(scope="module")
 def sagemaker_session():
     boto_session = boto3.Session(region_name=REGION)
     return Session(boto_session=boto_session)
-
 
 
 class TestMTRLStreamLogs:
@@ -52,9 +51,9 @@ class TestMTRLStreamLogs:
         job.stream_logs(poll=2)
         elapsed = time.time() - start
 
-        assert elapsed < 30, (
-            f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
-        )
+        assert (
+            elapsed < 30
+        ), f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
         print(f"✓ AgentRFTJob.stream_logs() completed in {elapsed:.1f}s")
 
     def test_stream_logs_with_start_time(self, sagemaker_session):
@@ -62,7 +61,7 @@ class TestMTRLStreamLogs:
         job = AgentRFTJob.get(MTRL_JOB_NAME, session=sagemaker_session.boto_session)
 
         # Use a timestamp from when the job was running (extracted from job name)
-        
+
         job_start = datetime(2026, 7, 29, 12, 9, 59, tzinfo=timezone.utc)
         start_time_ms = int(job_start.timestamp() * 1000)
 
@@ -72,7 +71,6 @@ class TestMTRLStreamLogs:
 
         assert elapsed < 30
         print(f"✓ stream_logs(start_time=job_start) completed in {elapsed:.1f}s")
-
 
 
 class TestServerfulSMTJStreamLogs:
@@ -95,11 +93,10 @@ class TestServerfulSMTJStreamLogs:
         trainer.stream_logs(poll=2)
         elapsed = time.time() - start
 
-        assert elapsed < 30, (
-            f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
-        )
+        assert (
+            elapsed < 30
+        ), f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
         print(f"✓ Serverful SMTJ stream_logs() completed in {elapsed:.1f}s")
-
 
 
 class TestStreamLogsValidation:

@@ -17,7 +17,6 @@ import pytest
 from sagemaker.core import image_uris
 from . import expected_uris
 
-
 ALGO_NAMES = [
     "blazingtext.json",
     "factorization-machines.json",

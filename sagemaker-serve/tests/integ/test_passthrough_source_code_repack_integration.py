@@ -16,6 +16,7 @@ Covers the fix where an image_uri build with a model artifact and custom
 source_code repacks the code into the artifact (instead of silently dropping
 it). This calls build() only (no deploy) so it runs in seconds.
 """
+
 from __future__ import absolute_import
 
 import io

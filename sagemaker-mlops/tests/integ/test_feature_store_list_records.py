@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Integration tests for ListRecords via list_records()."""
+
 import time
 
 import pytest
@@ -162,8 +163,6 @@ class TestListRecordsIntegration:
         assert page1 is not None
 
         if page1.next_token:
-            page2 = feature_group.list_records(
-                next_token=page1.next_token, max_results=3
-            )
+            page2 = feature_group.list_records(next_token=page1.next_token, max_results=3)
             assert page2 is not None
             assert page1.record_identifiers != page2.record_identifiers

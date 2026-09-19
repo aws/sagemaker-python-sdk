@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module imports all JumpStart artifact functions from the respective sub-module."""
+
 from sagemaker.core.jumpstart.artifacts.resource_names import (  # noqa: F401
     _retrieve_resource_name_base,
 )

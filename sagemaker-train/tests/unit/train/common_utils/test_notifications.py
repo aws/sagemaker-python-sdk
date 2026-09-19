@@ -46,12 +46,16 @@ class TestRuleNaming:
         """Same topic + same events + same prefix = same rule (idempotent)."""
         arn = "arn:aws:sns:us-east-1:123456789012:my-topic"
         events = ["Completed", "Failed"]
-        assert _get_rule_name(arn, events, "my-prefix-") == _get_rule_name(arn, events, "my-prefix-")
+        assert _get_rule_name(arn, events, "my-prefix-") == _get_rule_name(
+            arn, events, "my-prefix-"
+        )
 
     def test_event_order_does_not_matter(self):
         """Events are sorted internally, so order doesn't affect the hash."""
         arn = "arn:aws:sns:us-east-1:123456789012:my-topic"
-        assert _get_rule_name(arn, ["Failed", "Completed"]) == _get_rule_name(arn, ["Completed", "Failed"])
+        assert _get_rule_name(arn, ["Failed", "Completed"]) == _get_rule_name(
+            arn, ["Completed", "Failed"]
+        )
 
     def test_prefix_present(self):
         """Rule name starts with the SDK prefix."""
@@ -85,6 +89,7 @@ class TestBuildEventPattern:
 
     def test_basic_pattern(self):
         import json
+
         pattern = json.loads(_build_event_pattern(["Completed", "Failed"]))
 
         assert pattern["source"] == ["aws.sagemaker"]
@@ -94,6 +99,7 @@ class TestBuildEventPattern:
 
     def test_with_job_name_prefix(self):
         import json
+
         pattern = json.loads(_build_event_pattern(["Completed"], job_name_prefix="my-team-"))
 
         assert pattern["detail"]["TrainingJobName"] == [{"prefix": "my-team-"}]
@@ -118,7 +124,9 @@ class TestEnableNotifications:
             events_client if svc == "events" else sns_client
         )
 
-        events_client.put_rule.return_value = {"RuleArn": "arn:aws:events:us-east-1:123456789012:rule/sm-pysdk-notif-abc"}
+        events_client.put_rule.return_value = {
+            "RuleArn": "arn:aws:events:us-east-1:123456789012:rule/sm-pysdk-notif-abc"
+        }
         events_client.put_targets.return_value = {"FailedEntryCount": 0}
         events_client.list_rules.return_value = {"Rules": []}
 
@@ -152,6 +160,7 @@ class TestEnableNotifications:
 
         call_kwargs = events_client.put_rule.call_args[1]
         import json
+
         pattern = json.loads(call_kwargs["EventPattern"])
         assert pattern["detail"]["TrainingJobStatus"] == ["Completed"]
         assert pattern["detail"]["TrainingJobName"] == [{"prefix": "ealynnh-"}]
@@ -165,9 +174,7 @@ class TestDeleteNotificationRules:
         events_client = MagicMock()
         session.boto_session.client.return_value = events_client
 
-        events_client.list_targets_by_rule.return_value = {
-            "Targets": [{"Id": "target-1"}]
-        }
+        events_client.list_targets_by_rule.return_value = {"Targets": [{"Id": "target-1"}]}
 
         deleted = delete_notification_rule(
             sagemaker_session=session,
@@ -186,6 +193,7 @@ class TestBaseTrainerNotifications:
 
         class _StubTrainer(BaseTrainer):
             _customization_technique = "SFT"
+
             def train(self, *args, **kwargs):
                 pass
 
@@ -197,12 +205,15 @@ class TestBaseTrainerNotifications:
 
     def test_hyperpod_raises_not_implemented(self):
         from sagemaker.core.training.configs import HyperPodCompute
+
         trainer = self._make_trainer(
             compute=HyperPodCompute(cluster_name="c", instance_type="ml.p5.48xlarge")
         )
 
         with pytest.raises(NotImplementedError, match="not supported for HyperPod"):
-            trainer._setup_notifications({"sns_topic_arn": "arn:aws:sns:us-east-1:123456789012:topic"})
+            trainer._setup_notifications(
+                {"sns_topic_arn": "arn:aws:sns:us-east-1:123456789012:topic"}
+            )
 
     def test_missing_sns_arn_raises(self):
         trainer = self._make_trainer()
@@ -227,10 +238,20 @@ class TestListNotificationRules:
 
         paginator = MagicMock()
         paginator.paginate.return_value = [
-            {"Rules": [
-                {"Name": "sm-pysdk-job-notif-aaa", "Arn": "arn:aws:events:us-east-1:123456789012:rule/sm-pysdk-job-notif-aaa", "State": "ENABLED"},
-                {"Name": "sm-pysdk-job-notif-bbb", "Arn": "arn:aws:events:us-east-1:123456789012:rule/sm-pysdk-job-notif-bbb", "State": "ENABLED"},
-            ]}
+            {
+                "Rules": [
+                    {
+                        "Name": "sm-pysdk-job-notif-aaa",
+                        "Arn": "arn:aws:events:us-east-1:123456789012:rule/sm-pysdk-job-notif-aaa",
+                        "State": "ENABLED",
+                    },
+                    {
+                        "Name": "sm-pysdk-job-notif-bbb",
+                        "Arn": "arn:aws:events:us-east-1:123456789012:rule/sm-pysdk-job-notif-bbb",
+                        "State": "ENABLED",
+                    },
+                ]
+            }
         ]
         events_client.get_paginator.return_value = paginator
 
@@ -238,4 +259,6 @@ class TestListNotificationRules:
 
         assert len(rules) == 2
         assert rules[0]["name"] == "sm-pysdk-job-notif-aaa"
-        assert rules[0]["arn"] == "arn:aws:events:us-east-1:123456789012:rule/sm-pysdk-job-notif-aaa"
+        assert (
+            rules[0]["arn"] == "arn:aws:events:us-east-1:123456789012:rule/sm-pysdk-job-notif-aaa"
+        )

@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for list_records function."""
+
 import pytest
 from unittest.mock import Mock, patch
 
@@ -36,13 +37,18 @@ class TestListRecords:
         mock_fg.list_records.return_value = mock_response
 
         list_records(
-            "test-fg", max_results=1, next_token="prev-token",
-            include_soft_deleted_records=True, region="us-west-2"
+            "test-fg",
+            max_results=1,
+            next_token="prev-token",
+            include_soft_deleted_records=True,
+            region="us-west-2",
         )
 
         mock_fg.list_records.assert_called_once_with(
-            max_results=1, next_token="prev-token",
-            include_soft_deleted_records=True, region="us-west-2"
+            max_results=1,
+            next_token="prev-token",
+            include_soft_deleted_records=True,
+            region="us-west-2",
         )
 
     @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")

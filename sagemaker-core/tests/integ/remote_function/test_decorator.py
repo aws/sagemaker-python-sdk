@@ -579,7 +579,9 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
 #     reason="SageMaker Spark image only available for Python 3.9 and 3.12",
 # )
 @pytest.mark.spark_py312
-def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type, spark_pre_execution_commands):
+def test_decorator_with_spark_job(
+    sagemaker_session, cpu_instance_type, spark_pre_execution_commands
+):
     @remote(
         role=ROLE,
         instance_type=cpu_instance_type,
@@ -605,9 +607,7 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type, spark_pr
         # deserialization to fail in the Spark container (no pytest installed).
         app_name = spark.conf.get("spark.app.name")
         if app_name != "remote-spark-test":
-            raise RuntimeError(
-                f"Expected spark.app.name='remote-spark-test', got '{app_name}'"
-            )
+            raise RuntimeError(f"Expected spark.app.name='remote-spark-test', got '{app_name}'")
 
     test_spark_transform()
 

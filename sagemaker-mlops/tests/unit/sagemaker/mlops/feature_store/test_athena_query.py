@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for athena_query.py"""
+
 import os
 import pytest
 from unittest.mock import Mock, patch, MagicMock
@@ -82,7 +83,9 @@ class TestAthenaQuery:
     @patch("sagemaker.mlops.feature_store.athena_query.download_athena_query_result")
     @patch("pandas.read_csv")
     @patch("os.path.join")
-    def test_as_dataframe_success(self, mock_join, mock_read_csv, mock_download, mock_get, athena_query):
+    def test_as_dataframe_success(
+        self, mock_join, mock_read_csv, mock_download, mock_get, athena_query
+    ):
         athena_query._current_query_execution_id = "query-123"
         athena_query._result_bucket = "bucket"
         athena_query._result_file_prefix = "prefix"

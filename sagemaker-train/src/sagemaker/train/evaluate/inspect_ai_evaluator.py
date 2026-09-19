@@ -312,7 +312,11 @@ class InspectAIEvaluator(BaseEvaluator):
         if hasattr(model, "_latest_job") and model._latest_job is not None:
             source_mp_arn = getattr(model._latest_job, "output_model_package_arn", None)
         # Standard trainers (SFT, DPO, RLVR, RLAIF) use _latest_training_job
-        if not source_mp_arn and hasattr(model, "_latest_training_job") and model._latest_training_job is not None:
+        if (
+            not source_mp_arn
+            and hasattr(model, "_latest_training_job")
+            and model._latest_training_job is not None
+        ):
             arn = getattr(model._latest_training_job, "output_model_package_arn", None)
             # Filter out Unassigned sentinels from sagemaker-core
             if arn is not None and not isinstance(arn, Unassigned):
@@ -321,11 +325,11 @@ class InspectAIEvaluator(BaseEvaluator):
         if not source_mp_arn:
             # Check if trainer has a resolved checkpoint path from model_artifacts
             checkpoint_uri = None
-            training_job = getattr(model, '_latest_training_job', None)
+            training_job = getattr(model, "_latest_training_job", None)
             if training_job:
-                artifacts = getattr(training_job, 'model_artifacts', None)
+                artifacts = getattr(training_job, "model_artifacts", None)
                 if artifacts and not isinstance(artifacts, Unassigned):
-                    s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                    s3_path = getattr(artifacts, "s3_model_artifacts", None)
                     if s3_path and isinstance(s3_path, str):
                         checkpoint_uri = s3_path
             if checkpoint_uri:
@@ -336,7 +340,7 @@ class InspectAIEvaluator(BaseEvaluator):
 
                 # Auto-derive inference image if not explicitly provided
                 if not values.get("inference_image_uri"):
-                    model_name = getattr(model, '_model_name', None) or ""
+                    model_name = getattr(model, "_model_name", None) or ""
                     region = None
                     session = values.get("sagemaker_session")
                     if session and hasattr(session, "boto_session"):
@@ -376,9 +380,7 @@ class InspectAIEvaluator(BaseEvaluator):
             session = values.get("sagemaker_session")
             from sagemaker.core.resources import ModelPackage as _MP
 
-            boto_session = (
-                session.boto_session if hasattr(session, "boto_session") else session
-            )
+            boto_session = session.boto_session if hasattr(session, "boto_session") else session
             region = boto_session.region_name if boto_session else None
 
             mp = _MP.get(
@@ -388,10 +390,7 @@ class InspectAIEvaluator(BaseEvaluator):
             )
 
             # Extract model data URL and image URI from inference specification
-            if (
-                mp.inference_specification
-                and mp.inference_specification.containers
-            ):
+            if mp.inference_specification and mp.inference_specification.containers:
                 container = mp.inference_specification.containers[0]
 
                 # Resolve model S3 URI: try model_data_url first, then model_data_source
@@ -438,8 +437,7 @@ class InspectAIEvaluator(BaseEvaluator):
                 )
         except Exception as e:
             _logger.warning(
-                "Failed to resolve trainer model artifacts: %s. "
-                "Falling back to bedrock mode.",
+                "Failed to resolve trainer model artifacts: %s. " "Falling back to bedrock mode.",
                 e,
             )
 
@@ -751,7 +749,9 @@ class InspectAIEvaluator(BaseEvaluator):
 
         # Upload config to S3 (skip in dry_run)
         if dry_run:
-            config_s3_prefix = f"s3://{self.s3_output_path.rstrip('/')}/inspectai-config/dry-run-placeholder"
+            config_s3_prefix = (
+                f"s3://{self.s3_output_path.rstrip('/')}/inspectai-config/dry-run-placeholder"
+            )
             _logger.info("Dry-run: skipping config upload to S3.")
         else:
             config_s3_prefix = self._upload_yaml_config(yaml_config, region)

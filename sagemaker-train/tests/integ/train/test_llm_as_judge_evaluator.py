@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests for LLMAsJudgeEvaluator"""
+
 from __future__ import absolute_import
 
 import json
@@ -23,10 +24,7 @@ from sagemaker.train.evaluate import (
 )
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(levelname)s - %(name)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Test timeout configuration (in seconds)
@@ -52,8 +50,8 @@ CUSTOM_METRIC_DICT = {
         ),
         "ratingScale": [
             {"definition": "Good", "value": {"floatValue": 1}},
-            {"definition": "Poor", "value": {"floatValue": 0}}
-        ]
+            {"definition": "Poor", "value": {"floatValue": 0}},
+        ],
     }
 }
 
@@ -94,7 +92,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
     def test_llm_as_judge_evaluation_full_flow(self):
         """
         Test complete LLM-as-Judge evaluation flow with custom and built-in metrics.
-        
+
         This test mirrors the flow from llm_as_judge_demo.ipynb and covers:
         1. Creating LLMAsJudgeEvaluator with custom and built-in metrics
         2. Starting evaluation
@@ -103,12 +101,12 @@ class TestLLMAsJudgeEvaluatorIntegration:
         5. Viewing results with pagination
         6. Retrieving execution by ARN
         7. Listing all evaluations
-        
+
         Test configuration values are taken directly from the notebook example.
         """
         # Step 1: Create LLMAsJudgeEvaluator
         logger.info("Creating LLMAsJudgeEvaluator with custom and built-in metrics")
-        
+
         # Create evaluator (matching notebook configuration)
         evaluator = LLMAsJudgeEvaluator(
             model=TEST_CONFIG["model_package_arn"],
@@ -121,7 +119,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
             region=TEST_CONFIG["region"],
         )
-        
+
         # Verify evaluator was created
         assert evaluator is not None
         assert evaluator.model == TEST_CONFIG["model_package_arn"]
@@ -130,59 +128,61 @@ class TestLLMAsJudgeEvaluatorIntegration:
         assert evaluator.builtin_metrics == TEST_CONFIG["builtin_metrics"]
         assert evaluator.custom_metrics == TEST_CONFIG["custom_metrics_json"]
         assert evaluator.evaluate_base_model == TEST_CONFIG["evaluate_base_model"]
-        
+
         logger.info(f"Created evaluator with judge model: {evaluator.evaluator_model}")
-        
+
         # Step 2: Start evaluation
         logger.info("Starting evaluation execution")
         execution = evaluator.evaluate()
-        
+
         # Verify execution was created
         assert execution is not None
         assert execution.arn is not None
         assert execution.name is not None
         assert execution.eval_type is not None
-        
+
         logger.info(f"Pipeline Execution ARN: {execution.arn}")
         logger.info(f"Initial Status: {execution.status.overall_status}")
-        
+
         # Step 3: Monitor execution
         logger.info("Refreshing execution status")
         execution.refresh()
-        
+
         # Verify status was updated
         assert execution.status.overall_status is not None
-        
+
         # Log step details if available
         if execution.status.step_details:
             logger.info("Step Details:")
             for step in execution.status.step_details:
                 logger.info(f"  {step.name}: {step.status}")
-        
+
         # Step 4: Wait for completion
-        logger.info(f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)")
-        
+        logger.info(
+            f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)"
+        )
+
         try:
             execution.wait(target_status="Succeeded", poll=30, timeout=EVALUATION_TIMEOUT_SECONDS)
             logger.info(f"Final Status: {execution.status.overall_status}")
-            
+
             # Verify completion
             assert execution.status.overall_status == "Succeeded"
-            
+
             # Step 5: View results with pagination
             logger.info("Displaying results (limit=5)")
             execution.show_results(limit=5, offset=0, show_explanations=False)
-            
+
             # Verify S3 output path is set
             assert execution.s3_output_path is not None
             logger.info(f"Results stored at: {execution.s3_output_path}")
-            
+
         except Exception as e:
             logger.error(f"Evaluation failed or timed out: {e}")
             logger.error(f"Final status: {execution.status.overall_status}")
             if execution.status.failure_reason:
                 logger.error(f"Failure reason: {execution.status.failure_reason}")
-            
+
             # Log step failures
             if execution.status.step_details:
                 for step in execution.status.step_details:
@@ -190,32 +190,31 @@ class TestLLMAsJudgeEvaluatorIntegration:
                         logger.error(f"Failed step: {step.name}")
                         if step.failure_reason:
                             logger.error(f"  Reason: {step.failure_reason}")
-            
+
             # Re-raise to fail the test
             raise
-        
+
         # Step 6: Retrieve execution by ARN
         logger.info("Retrieving execution by ARN")
         retrieved_execution = EvaluationPipelineExecution.get(
-            arn=execution.arn,
-            region=TEST_CONFIG["region"]
+            arn=execution.arn, region=TEST_CONFIG["region"]
         )
-        
+
         # Verify retrieved execution matches
         assert retrieved_execution.arn == execution.arn
-        
+
         logger.info(f"Retrieved execution status: {retrieved_execution.status.overall_status}")
-        
+
         # Step 7: List all LLM-as-Judge evaluations
         logger.info("Listing all LLM-as-Judge evaluations")
         all_executions_iter = LLMAsJudgeEvaluator.get_all(region=TEST_CONFIG["region"])
         all_executions = list(all_executions_iter)
-        
+
         if all_executions:
             # Verify our execution is in the list
             execution_arns = [exec.arn for exec in all_executions]
             assert execution.arn in execution_arns
-        
+
         logger.info("Integration test completed successfully")
 
     def test_llm_as_judge_evaluator_validation(self):
@@ -229,7 +228,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
                 dataset=TEST_CONFIG["dataset_s3_uri"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
                 mlflow_resource_arn="invalid-arn",
-            )        
+            )
         logger.info("Validation tests passed")
 
     def test_llm_as_judge_builtin_metrics_prefix_handling(self):
@@ -243,8 +242,11 @@ class TestLLMAsJudgeEvaluatorIntegration:
             mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             builtin_metrics=["Builtin.Correctness", "Builtin.Helpfulness"],
         )
-        assert evaluator_with_prefix.builtin_metrics == ["Builtin.Correctness", "Builtin.Helpfulness"]
-        
+        assert evaluator_with_prefix.builtin_metrics == [
+            "Builtin.Correctness",
+            "Builtin.Helpfulness",
+        ]
+
         # Test without prefix
         evaluator_without_prefix = LLMAsJudgeEvaluator(
             model=TEST_CONFIG["model_package_arn"],
@@ -255,7 +257,5 @@ class TestLLMAsJudgeEvaluatorIntegration:
             builtin_metrics=["Correctness", "Helpfulness"],
         )
         assert evaluator_without_prefix.builtin_metrics == ["Correctness", "Helpfulness"]
-        
+
         logger.info("Built-in metrics prefix handling tests passed")
-
-

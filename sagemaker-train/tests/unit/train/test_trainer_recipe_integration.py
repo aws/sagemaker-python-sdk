@@ -3,13 +3,13 @@
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License.
 """Integration tests for get_resolved_recipe() on all trainer types."""
+
 import os
 import tempfile
 
 import pytest
 import yaml
 from unittest.mock import patch, MagicMock, Mock
-
 
 # --- Fixtures ---
 
@@ -50,11 +50,22 @@ class TestSFTTrainerRecipeIntegration:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_sft_with_recipe_and_overrides(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        recipe_file, mock_hyperparams
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        recipe_file,
+        mock_hyperparams,
     ):
         """SFTTrainer with recipe + overrides returns merged result."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
@@ -78,11 +89,16 @@ class TestSFTTrainerRecipeIntegration:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_sft_no_recipe_no_overrides_raises(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams
+        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula, mock_hyperparams
     ):
         """SFTTrainer with no recipe/overrides raises ValueError."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
@@ -99,19 +115,31 @@ class TestSFTTrainerRecipeIntegration:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_sft_direct_hyperparameter_assignment_resolves(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
     ):
         """SFTTrainer with direct hyperparameter assignment resolves recipe."""
         from sagemaker.train.common import FineTuningOptions
 
-        hp = FineTuningOptions({
-            "learning_rate": {"default": 1e-5, "type": "float", "min": 1e-7, "max": 1.0},
-            "num_epochs": {"default": 3, "type": "integer", "min": 1, "max": 100},
-            "batch_size": {"default": 1, "type": "integer", "min": 1, "max": 64},
-        })
+        hp = FineTuningOptions(
+            {
+                "learning_rate": {"default": 1e-5, "type": "float", "min": 1e-7, "max": 1.0},
+                "num_epochs": {"default": 3, "type": "integer", "min": 1, "max": 100},
+                "batch_size": {"default": 1, "type": "integer", "min": 1, "max": 64},
+            }
+        )
         mock_get_options.return_value = (hp, "model-arn", False)
 
         from sagemaker.train.sft_trainer import SFTTrainer
@@ -134,20 +162,32 @@ class TestSFTTrainerRecipeIntegration:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_sft_overrides_plus_direct_hyperparameter_assignment(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
     ):
         """SFTTrainer with overrides AND direct hyperparameter assignment merges both."""
         from sagemaker.train.common import FineTuningOptions
 
-        hp = FineTuningOptions({
-            "learning_rate": {"default": 1e-5, "type": "float", "min": 1e-7, "max": 1.0},
-            "num_epochs": {"default": 3, "type": "integer", "min": 1, "max": 100},
-            "max_steps": {"default": 100, "type": "integer", "min": 1, "max": 10000},
-            "save_steps": {"default": 50, "type": "integer", "min": 1, "max": 10000},
-        })
+        hp = FineTuningOptions(
+            {
+                "learning_rate": {"default": 1e-5, "type": "float", "min": 1e-7, "max": 1.0},
+                "num_epochs": {"default": 3, "type": "integer", "min": 1, "max": 100},
+                "max_steps": {"default": 100, "type": "integer", "min": 1, "max": 10000},
+                "save_steps": {"default": 50, "type": "integer", "min": 1, "max": 10000},
+            }
+        )
         mock_get_options.return_value = (hp, "model-arn", False)
 
         from sagemaker.train.sft_trainer import SFTTrainer
@@ -180,11 +220,22 @@ class TestRLVRTrainerRecipeIntegration:
 
     @patch("sagemaker.train.rlvr_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.rlvr_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.rlvr_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_rlvr_with_recipe_and_overrides(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        recipe_file, mock_hyperparams
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        recipe_file,
+        mock_hyperparams,
     ):
         """RLVRTrainer with recipe + overrides returns merged result."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
@@ -208,11 +259,16 @@ class TestRLVRTrainerRecipeIntegration:
 
     @patch("sagemaker.train.rlvr_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.rlvr_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.rlvr_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_rlvr_no_recipe_no_overrides_raises(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams
+        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula, mock_hyperparams
     ):
         """RLVRTrainer with no recipe/overrides raises ValueError."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
@@ -236,11 +292,22 @@ class TestDPOTrainerRecipeIntegration:
 
     @patch("sagemaker.train.dpo_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.dpo_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.dpo_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_dpo_with_recipe_and_overrides(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        recipe_file, mock_hyperparams
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        recipe_file,
+        mock_hyperparams,
     ):
         """DPOTrainer with recipe + overrides returns merged result."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
@@ -264,11 +331,16 @@ class TestDPOTrainerRecipeIntegration:
 
     @patch("sagemaker.train.dpo_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.dpo_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.dpo_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_dpo_no_recipe_no_overrides_raises(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams
+        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula, mock_hyperparams
     ):
         """DPOTrainer with no recipe/overrides raises ValueError."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
@@ -309,15 +381,20 @@ class TestBenchMarkEvaluatorRecipeIntegration:
         # Mock the model resolution that happens in the validator
         mock_model_info = MagicMock()
         mock_model_info.base_model_name = "nova-pro-v2"
-        mock_model_info.base_model_arn = "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-pro-v2/1.0"
+        mock_model_info.base_model_arn = (
+            "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-pro-v2/1.0"
+        )
         mock_model_info.source_model_package_arn = None
 
-        with patch(
-            "sagemaker.train.common_utils.model_resolution._resolve_base_model",
-            return_value=mock_model_info,
-        ), patch(
-            "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
-            return_value=None,
+        with (
+            patch(
+                "sagemaker.train.common_utils.model_resolution._resolve_base_model",
+                return_value=mock_model_info,
+            ),
+            patch(
+                "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
+                return_value=None,
+            ),
         ):
             from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator, _Benchmark
 
@@ -336,7 +413,7 @@ class TestBenchMarkEvaluatorRecipeIntegration:
                 "max_new_tokens": {"default": 1024, "type": "integer", "min": 1, "max": 8192},
                 "temperature": {"default": 1.0, "type": "float", "min": 0.0, "max": 2.0},
             }
-            object.__setattr__(evaluator, '_hyperparameters', mock_hp)
+            object.__setattr__(evaluator, "_hyperparameters", mock_hp)
 
             resolved = evaluator.get_resolved_recipe()
 
@@ -352,15 +429,20 @@ class TestBenchMarkEvaluatorRecipeIntegration:
 
         mock_model_info = MagicMock()
         mock_model_info.base_model_name = "nova-pro-v2"
-        mock_model_info.base_model_arn = "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-pro-v2/1.0"
+        mock_model_info.base_model_arn = (
+            "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-pro-v2/1.0"
+        )
         mock_model_info.source_model_package_arn = None
 
-        with patch(
-            "sagemaker.train.common_utils.model_resolution._resolve_base_model",
-            return_value=mock_model_info,
-        ), patch(
-            "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
-            return_value=None,
+        with (
+            patch(
+                "sagemaker.train.common_utils.model_resolution._resolve_base_model",
+                return_value=mock_model_info,
+            ),
+            patch(
+                "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
+                return_value=None,
+            ),
         ):
             from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator, _Benchmark
 
@@ -411,30 +493,43 @@ class TestModelTrainerRecipeIntegration:
         base_recipe_cfg = OmegaConf.create(recipe_content)
 
         # The merged recipe returned when get_resolved_recipe calls _load_base_recipe
-        merged_recipe_cfg = OmegaConf.create({
-            "trainer": {"num_nodes": 1},
-            "model": {"name": "test-model", "hidden_size": 768},
-            "run": {"results_dir": "/opt/ml/output", "name": "test-run"},
-        })
+        merged_recipe_cfg = OmegaConf.create(
+            {
+                "trainer": {"num_nodes": 1},
+                "model": {"name": "test-model", "hidden_size": 768},
+                "run": {"results_dir": "/opt/ml/output", "name": "test-run"},
+            }
+        )
 
         recipe_overrides = {"run": {"results_dir": "/opt/ml/output"}}
         compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
 
-        with patch("sagemaker.train.model_trainer._determine_device_type", return_value="gpu"), \
-             patch("sagemaker.train.model_trainer._load_base_recipe", return_value=base_recipe_cfg), \
-             patch("sagemaker.train.model_trainer._is_nova_recipe", return_value=False), \
-             patch("sagemaker.train.model_trainer._is_llmft_recipe", return_value=False), \
-             patch("sagemaker.train.model_trainer._get_args_from_recipe", return_value=(
-                 {
-                     "source_code": SourceCode(source_dir=source_dir),
-                     "training_image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/test:latest",
-                     "compute": Compute(instance_type="ml.p5.48xlarge", instance_count=1),
-                     "hyperparameters": {"config-path": ".", "config-name": "recipe.yaml"},
-                 },
-                 recipe_tmp_dir,
-             )), \
-             patch("sagemaker.train.model_trainer.TrainDefaults.get_sagemaker_session", return_value=mock_session), \
-             patch("sagemaker.train.model_trainer.TrainDefaults.get_role", return_value="arn:aws:iam::123456789012:role/SageMakerRole"):
+        with (
+            patch("sagemaker.train.model_trainer._determine_device_type", return_value="gpu"),
+            patch("sagemaker.train.model_trainer._load_base_recipe", return_value=base_recipe_cfg),
+            patch("sagemaker.train.model_trainer._is_nova_recipe", return_value=False),
+            patch("sagemaker.train.model_trainer._is_llmft_recipe", return_value=False),
+            patch(
+                "sagemaker.train.model_trainer._get_args_from_recipe",
+                return_value=(
+                    {
+                        "source_code": SourceCode(source_dir=source_dir),
+                        "training_image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/test:latest",
+                        "compute": Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                        "hyperparameters": {"config-path": ".", "config-name": "recipe.yaml"},
+                    },
+                    recipe_tmp_dir,
+                ),
+            ),
+            patch(
+                "sagemaker.train.model_trainer.TrainDefaults.get_sagemaker_session",
+                return_value=mock_session,
+            ),
+            patch(
+                "sagemaker.train.model_trainer.TrainDefaults.get_role",
+                return_value="arn:aws:iam::123456789012:role/SageMakerRole",
+            ),
+        ):
 
             model_trainer = ModelTrainer.from_recipe(
                 training_recipe=str(recipe_path),
@@ -511,18 +606,28 @@ class TestFullRecipeTemplateResolution:
             "batch_size": {"default": 32, "type": "integer", "min": 1, "max": 64},
         }
         mock_hp._full_recipe_template = full_recipe_template
-        mock_hp.to_dict = MagicMock(return_value={
-            "learning_rate": "0.0001", "num_epochs": "10", "batch_size": "32"
-        })
+        mock_hp.to_dict = MagicMock(
+            return_value={"learning_rate": "0.0001", "num_epochs": "10", "batch_size": "32"}
+        )
         return mock_hp
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_override_non_spec_keys_with_full_template(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams_with_full_template
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        mock_hyperparams_with_full_template,
     ):
         """Overriding keys like sequence_length that are in full template but not in spec."""
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
@@ -554,11 +659,22 @@ class TestFullRecipeTemplateResolution:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_full_template_with_recipe_file_and_overrides(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams_with_full_template, tmp_path
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        mock_hyperparams_with_full_template,
+        tmp_path,
     ):
         """3-level merge with full template: full_template < recipe file < overrides."""
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
@@ -593,11 +709,21 @@ class TestFullRecipeTemplateResolution:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_non_spec_keys_flow_into_train_hyperparameters(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams_with_full_template
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        mock_hyperparams_with_full_template,
     ):
         """Non-spec keys from full template are included in final training hyperparameters."""
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
@@ -614,16 +740,20 @@ class TestFullRecipeTemplateResolution:
         # For serverless (ie compute=None): Non-spec keys that aren't overridden don't flow to hyperparams
         trainer.compute = MagicMock()
 
-        with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
-             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
-             patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input, \
-             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]), \
-             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
+        with (
+            patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
+            patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
+            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
+            patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
+            patch(
+                "sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()
+            ),
+            patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"),
+            patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]),
+        ):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -645,11 +775,21 @@ class TestFullRecipeTemplateResolution:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_serverless_non_spec_keys_dont_flow_into_train_hyperparameters(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams_with_full_template
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        mock_hyperparams_with_full_template,
     ):
         """Non-spec keys from full template are included in final training hyperparameters."""
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
@@ -663,16 +803,20 @@ class TestFullRecipeTemplateResolution:
             overrides={"training_config": {"sequence_length": 8191}},
         )
 
-        with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
-             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
-             patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input, \
-             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]), \
-             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
+        with (
+            patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
+            patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
+            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
+            patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
+            patch(
+                "sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()
+            ),
+            patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"),
+            patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]),
+        ):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -693,11 +837,21 @@ class TestFullRecipeTemplateResolution:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_nested_keys_flow_into_train_hyperparameters(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams_with_full_template
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        mock_hyperparams_with_full_template,
     ):
         """Nested recipe keys (lr_scheduler.warmup_steps) are flattened into final hyperparameters."""
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
@@ -714,16 +868,20 @@ class TestFullRecipeTemplateResolution:
         # For serverless (ie compute=None): Non-spec keys that aren't overridden don't flow to hyperparams
         trainer.compute = MagicMock()
 
-        with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
-             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
-             patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input, \
-             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]), \
-             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
+        with (
+            patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
+            patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
+            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
+            patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
+            patch(
+                "sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()
+            ),
+            patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"),
+            patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]),
+        ):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -745,10 +903,20 @@ class TestFullRecipeTemplateResolution:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_deeply_nested_peft_keys_flow_into_hyperparameters(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
     ):
         """Deeply nested keys (peft.lora_tuning.alpha) flatten into hyperparameters."""
         mock_hp = MagicMock()
@@ -763,7 +931,7 @@ class TestFullRecipeTemplateResolution:
                     "lora_tuning": {
                         "alpha": 64,
                         "rank": 16,
-                    }
+                    },
                 },
             }
         }
@@ -781,17 +949,21 @@ class TestFullRecipeTemplateResolution:
 
         # For serverless (ie compute=None): Non-spec keys that aren't overridden don't flow to hyperparams
         trainer.compute = MagicMock()
-        
-        with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
-             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
-             patch("sagemaker.train.sft_trainer._create_input_data_config"), \
-             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]), \
-             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
+
+        with (
+            patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
+            patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
+            patch("sagemaker.train.sft_trainer._create_input_data_config"),
+            patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
+            patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
+            patch(
+                "sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()
+            ),
+            patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"),
+            patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]),
+        ):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -813,11 +985,21 @@ class TestFullRecipeTemplateResolution:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_no_dicts_or_lists_in_final_hyperparameters(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams_with_full_template
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        mock_hyperparams_with_full_template,
     ):
         """Final hyperparameters contain only string values — no dicts or lists leak through."""
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
@@ -831,16 +1013,20 @@ class TestFullRecipeTemplateResolution:
             overrides={"training_config": {"learning_rate": 5e-6}},
         )
 
-        with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
-             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
-             patch("sagemaker.train.sft_trainer._create_input_data_config"), \
-             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]), \
-             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
+        with (
+            patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
+            patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
+            patch("sagemaker.train.sft_trainer._create_input_data_config"),
+            patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
+            patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
+            patch(
+                "sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()
+            ),
+            patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"),
+            patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]),
+        ):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -855,17 +1041,27 @@ class TestFullRecipeTemplateResolution:
 
             # Every value must be a string
             for k, v in final_hp.items():
-                assert isinstance(v, str), (
-                    f"Hyperparameter '{k}' has type {type(v).__name__}, expected str. Value: {v}"
-                )
+                assert isinstance(
+                    v, str
+                ), f"Hyperparameter '{k}' has type {type(v).__name__}, expected str. Value: {v}"
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_spec_validation_still_applies_with_full_template(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams_with_full_template
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        mock_hyperparams_with_full_template,
     ):
         """Spec validation still rejects out-of-range values for spec keys."""
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
@@ -890,11 +1086,22 @@ class TestSFTTrainerRecipeFlowsIntoTrain:
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_sft_train_applies_recipe_overrides_to_hyperparameters(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        recipe_file, mock_hyperparams
+        self,
+        mock_resolve,
+        mock_validate_group,
+        mock_get_options,
+        mock_eula,
+        recipe_file,
+        mock_hyperparams,
     ):
         """SFTTrainer.train() applies resolved recipe values to final_hyperparameters."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
@@ -910,16 +1117,20 @@ class TestSFTTrainerRecipeFlowsIntoTrain:
         )
 
         # Mock TrainingJob.create to capture what hyperparameters are sent
-        with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
-             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
-             patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input, \
-             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]), \
-             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
+        with (
+            patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
+            patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
+            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
+            patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
+            patch(
+                "sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()
+            ),
+            patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"),
+            patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]),
+        ):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -936,16 +1147,25 @@ class TestSFTTrainerRecipeFlowsIntoTrain:
 
             # Recipe file had learning_rate: 2e-5, overrides had num_epochs: 7
             # Hub default was learning_rate: "1e-5", num_epochs: "3"
-            assert final_hp["learning_rate"] == "2e-05", f"Expected recipe value, got {final_hp['learning_rate']}"
-            assert final_hp["num_epochs"] == "7", f"Expected override value, got {final_hp['num_epochs']}"
+            assert (
+                final_hp["learning_rate"] == "2e-05"
+            ), f"Expected recipe value, got {final_hp['learning_rate']}"
+            assert (
+                final_hp["num_epochs"] == "7"
+            ), f"Expected override value, got {final_hp['num_epochs']}"
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
-    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.sft_trainer._validate_and_resolve_model_package_group",
+        return_value="my-group",
+    )
+    @patch(
+        "sagemaker.train.sft_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     def test_sft_train_without_recipe_uses_hyperparameters_unchanged(
-        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
-        mock_hyperparams
+        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula, mock_hyperparams
     ):
         """SFTTrainer.train() without recipe/overrides uses hyperparameters.to_dict() as-is."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
@@ -958,16 +1178,20 @@ class TestSFTTrainerRecipeFlowsIntoTrain:
             training_dataset="s3://bucket/train.jsonl",
         )
 
-        with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
-             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
-             patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input, \
-             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]), \
-             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()), \
-             patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
-             patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
+        with (
+            patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj,
+            patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults,
+            patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input,
+            patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]),
+            patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()),
+            patch(
+                "sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()
+            ),
+            patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None),
+            patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"),
+            patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]),
+        ):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -1007,15 +1231,20 @@ class TestBenchMarkEvaluatorRecipeFlowsIntoEvaluate:
 
         mock_model_info = MagicMock()
         mock_model_info.base_model_name = "nova-pro-v2"
-        mock_model_info.base_model_arn = "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-pro-v2/1.0"
+        mock_model_info.base_model_arn = (
+            "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-pro-v2/1.0"
+        )
         mock_model_info.source_model_package_arn = None
 
-        with patch(
-            "sagemaker.train.common_utils.model_resolution._resolve_base_model",
-            return_value=mock_model_info,
-        ), patch(
-            "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
-            return_value=None,
+        with (
+            patch(
+                "sagemaker.train.common_utils.model_resolution._resolve_base_model",
+                return_value=mock_model_info,
+            ),
+            patch(
+                "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
+                return_value=None,
+            ),
         ):
             from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator, _Benchmark
 
@@ -1035,13 +1264,17 @@ class TestBenchMarkEvaluatorRecipeFlowsIntoEvaluate:
                 "temperature": {"default": 1, "type": "integer", "min": 0, "max": 2},
             }
             mock_hp.to_dict.return_value = {"max_new_tokens": "1024", "temperature": "1"}
-            object.__setattr__(evaluator, '_hyperparameters', mock_hp)
+            object.__setattr__(evaluator, "_hyperparameters", mock_hp)
 
             # _get_effective_hyperparameters should return resolved recipe values
             effective = evaluator._get_effective_hyperparameters()
 
-            assert effective["max_new_tokens"] == 4096, f"Override should win, got {effective['max_new_tokens']}"
-            assert effective["temperature"] == 0, f"Recipe value should be used, got {effective['temperature']}"
+            assert (
+                effective["max_new_tokens"] == 4096
+            ), f"Override should win, got {effective['max_new_tokens']}"
+            assert (
+                effective["temperature"] == 0
+            ), f"Recipe value should be used, got {effective['temperature']}"
 
     def test_effective_hyperparameters_without_recipe_uses_to_dict(self, tmp_path):
         """_get_effective_hyperparameters falls back to hyperparameters.to_dict() without recipe."""
@@ -1050,15 +1283,20 @@ class TestBenchMarkEvaluatorRecipeFlowsIntoEvaluate:
 
         mock_model_info = MagicMock()
         mock_model_info.base_model_name = "nova-pro-v2"
-        mock_model_info.base_model_arn = "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-pro-v2/1.0"
+        mock_model_info.base_model_arn = (
+            "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-pro-v2/1.0"
+        )
         mock_model_info.source_model_package_arn = None
 
-        with patch(
-            "sagemaker.train.common_utils.model_resolution._resolve_base_model",
-            return_value=mock_model_info,
-        ), patch(
-            "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
-            return_value=None,
+        with (
+            patch(
+                "sagemaker.train.common_utils.model_resolution._resolve_base_model",
+                return_value=mock_model_info,
+            ),
+            patch(
+                "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
+                return_value=None,
+            ),
         ):
             from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator, _Benchmark
 
@@ -1072,7 +1310,7 @@ class TestBenchMarkEvaluatorRecipeFlowsIntoEvaluate:
             mock_hp = MagicMock()
             mock_hp._specs = {}
             mock_hp.to_dict.return_value = {"max_new_tokens": "1024", "temperature": "1"}
-            object.__setattr__(evaluator, '_hyperparameters', mock_hp)
+            object.__setattr__(evaluator, "_hyperparameters", mock_hp)
 
             effective = evaluator._get_effective_hyperparameters()
 
@@ -1086,24 +1324,44 @@ class TestBenchMarkEvaluatorRecipeFlowsIntoEvaluate:
 class TestMultiTurnRLTrainerRecipeIntegration:
     """Tests for MultiTurnRLTrainer recipe/overrides support."""
 
-    @patch("sagemaker.train.multi_turn_rl_trainer._validate_eula_for_gated_model", return_value=False)
+    @patch(
+        "sagemaker.train.multi_turn_rl_trainer._validate_eula_for_gated_model", return_value=False
+    )
     @patch("sagemaker.train.multi_turn_rl_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.multi_turn_rl_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.multi_turn_rl_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     @patch("sagemaker.train.multi_turn_rl_trainer._validate_s3_path_exists")
-    @patch("sagemaker.train.multi_turn_rl_trainer._get_default_s3_output_path", return_value="s3://bucket/output/")
+    @patch(
+        "sagemaker.train.multi_turn_rl_trainer._get_default_s3_output_path",
+        return_value="s3://bucket/output/",
+    )
     def test_mtrl_trainer_with_recipe_and_overrides(
-        self, mock_s3_default, mock_s3_validate, mock_resolve, mock_get_options, mock_eula,
-        recipe_file, mock_hyperparams
+        self,
+        mock_s3_default,
+        mock_s3_validate,
+        mock_resolve,
+        mock_get_options,
+        mock_eula,
+        recipe_file,
+        mock_hyperparams,
     ):
         """MultiTurnRLTrainer with recipe + overrides returns merged result via get_resolved_recipe()."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
 
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
-        with patch.object(MultiTurnRLTrainer, '_validate_agent_config'), \
-             patch.object(MultiTurnRLTrainer, '_validate_networking'), \
-             patch.object(MultiTurnRLTrainer, '_resolve_model_package_group', return_value="my-group"), \
-             patch.object(MultiTurnRLTrainer, '_resolve_intermediate_checkpoint_mpg', return_value=None):
+        with (
+            patch.object(MultiTurnRLTrainer, "_validate_agent_config"),
+            patch.object(MultiTurnRLTrainer, "_validate_networking"),
+            patch.object(
+                MultiTurnRLTrainer, "_resolve_model_package_group", return_value="my-group"
+            ),
+            patch.object(
+                MultiTurnRLTrainer, "_resolve_intermediate_checkpoint_mpg", return_value=None
+            ),
+        ):
 
             trainer = MultiTurnRLTrainer(
                 model="nova-lite-v2",
@@ -1121,24 +1379,43 @@ class TestMultiTurnRLTrainerRecipeIntegration:
             assert resolved["training_config"]["learning_rate"] == 2e-5
             assert resolved["training_config"]["batch_size"] == 8
 
-    @patch("sagemaker.train.multi_turn_rl_trainer._validate_eula_for_gated_model", return_value=False)
+    @patch(
+        "sagemaker.train.multi_turn_rl_trainer._validate_eula_for_gated_model", return_value=False
+    )
     @patch("sagemaker.train.multi_turn_rl_trainer._get_fine_tuning_options_and_model_arn")
-    @patch("sagemaker.train.multi_turn_rl_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    @patch(
+        "sagemaker.train.multi_turn_rl_trainer._resolve_model_and_name",
+        return_value=("model_obj", "nova-lite-v2"),
+    )
     @patch("sagemaker.train.multi_turn_rl_trainer._validate_s3_path_exists")
-    @patch("sagemaker.train.multi_turn_rl_trainer._get_default_s3_output_path", return_value="s3://bucket/output/")
+    @patch(
+        "sagemaker.train.multi_turn_rl_trainer._get_default_s3_output_path",
+        return_value="s3://bucket/output/",
+    )
     def test_mtrl_trainer_no_recipe_no_overrides_raises(
-        self, mock_s3_default, mock_s3_validate, mock_resolve, mock_get_options, mock_eula,
-        mock_hyperparams
+        self,
+        mock_s3_default,
+        mock_s3_validate,
+        mock_resolve,
+        mock_get_options,
+        mock_eula,
+        mock_hyperparams,
     ):
         """MultiTurnRLTrainer with no recipe/overrides raises ValueError."""
         mock_get_options.return_value = (mock_hyperparams, "model-arn", False)
 
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
-        with patch.object(MultiTurnRLTrainer, '_validate_agent_config'), \
-             patch.object(MultiTurnRLTrainer, '_validate_networking'), \
-             patch.object(MultiTurnRLTrainer, '_resolve_model_package_group', return_value="my-group"), \
-             patch.object(MultiTurnRLTrainer, '_resolve_intermediate_checkpoint_mpg', return_value=None):
+        with (
+            patch.object(MultiTurnRLTrainer, "_validate_agent_config"),
+            patch.object(MultiTurnRLTrainer, "_validate_networking"),
+            patch.object(
+                MultiTurnRLTrainer, "_resolve_model_package_group", return_value="my-group"
+            ),
+            patch.object(
+                MultiTurnRLTrainer, "_resolve_intermediate_checkpoint_mpg", return_value=None
+            ),
+        ):
 
             trainer = MultiTurnRLTrainer(
                 model="nova-lite-v2",
@@ -1172,16 +1449,21 @@ class TestMultiTurnRLEvaluatorRecipeIntegration:
 
         mock_model_info = MagicMock()
         mock_model_info.base_model_name = "nova-lite-v2"
-        mock_model_info.base_model_arn = "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-lite-v2/1.0"
+        mock_model_info.base_model_arn = (
+            "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-lite-v2/1.0"
+        )
         mock_model_info.source_model_package_arn = None
         mock_model_info.model_type = MagicMock()
 
-        with patch(
-            "sagemaker.train.common_utils.model_resolution._resolve_base_model",
-            return_value=mock_model_info,
-        ), patch(
-            "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
-            return_value=None,
+        with (
+            patch(
+                "sagemaker.train.common_utils.model_resolution._resolve_base_model",
+                return_value=mock_model_info,
+            ),
+            patch(
+                "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
+                return_value=None,
+            ),
         ):
             from sagemaker.train.evaluate.multi_turn_rl_evaluator import MultiTurnRLEvaluator
 
@@ -1201,7 +1483,7 @@ class TestMultiTurnRLEvaluatorRecipeIntegration:
                 "sampling_temperature": {"default": 1, "type": "integer", "min": 0, "max": 2},
             }
             mock_hp.to_dict.return_value = {"max_tokens": "1024", "sampling_temperature": "1"}
-            object.__setattr__(evaluator, '_hyperparameters', mock_hp)
+            object.__setattr__(evaluator, "_hyperparameters", mock_hp)
 
             resolved = evaluator.get_resolved_recipe()
 
@@ -1215,16 +1497,21 @@ class TestMultiTurnRLEvaluatorRecipeIntegration:
 
         mock_model_info = MagicMock()
         mock_model_info.base_model_name = "nova-lite-v2"
-        mock_model_info.base_model_arn = "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-lite-v2/1.0"
+        mock_model_info.base_model_arn = (
+            "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/nova-lite-v2/1.0"
+        )
         mock_model_info.source_model_package_arn = None
         mock_model_info.model_type = MagicMock()
 
-        with patch(
-            "sagemaker.train.common_utils.model_resolution._resolve_base_model",
-            return_value=mock_model_info,
-        ), patch(
-            "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
-            return_value=None,
+        with (
+            patch(
+                "sagemaker.train.common_utils.model_resolution._resolve_base_model",
+                return_value=mock_model_info,
+            ),
+            patch(
+                "sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn",
+                return_value=None,
+            ),
         ):
             from sagemaker.train.evaluate.multi_turn_rl_evaluator import MultiTurnRLEvaluator
 

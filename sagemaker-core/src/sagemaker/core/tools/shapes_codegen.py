@@ -15,6 +15,7 @@
 To run the script be sure to set the PYTHONPATH
 export PYTHONPATH=<sagemaker-code-gen repo directory>:$PYTHONPATH
 """
+
 import os
 
 from sagemaker.core.utils.code_injection.codec import pascal_to_snake

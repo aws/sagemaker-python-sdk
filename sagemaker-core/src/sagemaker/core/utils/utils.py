@@ -369,9 +369,7 @@ class SageMakerClient(metaclass=SingletonMeta):
         self.session = session
         self.region_name = region_name
 
-        self.sagemaker_client = session.client(
-            "sagemaker", region_name, config=self.config
-        )
+        self.sagemaker_client = session.client("sagemaker", region_name, config=self.config)
         self.sagemaker_runtime_client = session.client(
             "sagemaker-runtime", region_name, config=self.config
         )

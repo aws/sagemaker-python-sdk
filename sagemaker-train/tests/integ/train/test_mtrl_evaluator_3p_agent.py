@@ -20,6 +20,7 @@ fronted by a Lambda adapter).
 The test creates (or reuses) a Lambda forwarder that bridges RFT rollout
 requests to an external agent endpoint.
 """
+
 from __future__ import absolute_import
 
 import io
@@ -141,6 +142,7 @@ def handler(event, context):
     except Exception as exc:
         return _handle_agent_error(exc)
 '''
+
 
 # Test configuration for 3P agent evaluation.
 def _get_3p_test_config():

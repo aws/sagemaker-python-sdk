@@ -19,6 +19,7 @@ import json
 
 class CustomizationTechnique(str, Enum):
     """Customization technique for dataset."""
+
     SFT = "sft"
     DPO = "dpo"
     RLVR = "rlvr"
@@ -26,6 +27,7 @@ class CustomizationTechnique(str, Enum):
 
 class DataSetMethod(Enum):
     """Enum for DataSet method types."""
+
     UPLOADED = "uploaded"
     GENERATED = "generated"
 
@@ -52,7 +54,7 @@ class DataSetList(Sequence):
 
 class DataSetHubContentDocument:
     """Hub content document for dataset."""
-    
+
     def __init__(
         self,
         dataset_type: Optional[str] = "AGENT_GENERATED",
@@ -76,7 +78,7 @@ class DataSetHubContentDocument:
         self.conversation_checkpoint_id = conversation_checkpoint_id
         self.dependencies = dependencies or []
         self.content_metadata = content_metadata
-    
+
     def to_json(self) -> str:
         """Convert to JSON string."""
         content = {"DatasetType": self.dataset_type}
@@ -103,5 +105,6 @@ class DataSetHubContentDocument:
 def _get_default_s3_prefix(name: str) -> str:
     """Get default S3 prefix in format datasets/{name}/{current_date_time}.jsonl."""
     from datetime import datetime
+
     current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"datasets/{name}/{current_datetime}.jsonl"

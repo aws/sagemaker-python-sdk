@@ -14,6 +14,7 @@
 
 DEPRECATED: Use `sagemaker.core.lineage.artifact` instead.
 """
+
 from __future__ import absolute_import
 
 import warnings

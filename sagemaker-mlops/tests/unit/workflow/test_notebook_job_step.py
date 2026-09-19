@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow notebook_job_step."""
+
 from __future__ import absolute_import
 
 import os
@@ -58,6 +59,7 @@ def temp_script():
 def test_notebook_job_step_module_exists():
     """Test NotebookJobStep module can be imported"""
     from sagemaker.mlops.workflow import notebook_job_step
+
     assert notebook_job_step is not None
 
 
@@ -70,7 +72,7 @@ def test_init_with_minimal_params(mock_uploader, mock_context, temp_notebook, mo
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     assert step.input_notebook == temp_notebook
     assert step.kernel_name == "python3"
@@ -80,7 +82,9 @@ def test_init_with_minimal_params(mock_uploader, mock_context, temp_notebook, mo
 
 @patch("sagemaker.mlops.workflow.notebook_job_step.load_step_compilation_context")
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
-def test_init_with_all_params(mock_uploader, mock_context, temp_notebook, temp_script, mock_session):
+def test_init_with_all_params(
+    mock_uploader, mock_context, temp_notebook, temp_script, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
     step = NotebookJobStep(
         name="test-step",
@@ -105,7 +109,7 @@ def test_init_with_all_params(mock_uploader, mock_context, temp_notebook, temp_s
         max_retry_attempts=3,
         max_runtime_in_seconds=3600,
         tags={"key": "value"},
-        additional_dependencies=[]
+        additional_dependencies=[],
     )
     assert step.name == "test-step"
     assert step.display_name == "Test Step"
@@ -113,7 +117,9 @@ def test_init_with_all_params(mock_uploader, mock_context, temp_notebook, temp_s
 
 @patch("sagemaker.mlops.workflow.notebook_job_step.load_step_compilation_context")
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
-def test_validate_invalid_notebook_job_name(mock_uploader, mock_context, temp_notebook, mock_session):
+def test_validate_invalid_notebook_job_name(
+    mock_uploader, mock_context, temp_notebook, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
     step = NotebookJobStep(
         notebook_job_name="123-invalid",
@@ -121,7 +127,7 @@ def test_validate_invalid_notebook_job_name(mock_uploader, mock_context, temp_no
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with pytest.raises(ValueError, match="Notebook Job Name.*is not valid"):
         step.arguments
@@ -135,7 +141,7 @@ def test_validate_missing_notebook(mock_context, mock_session):
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with pytest.raises(ValueError, match="input notebook.*is not a valid file"):
         step.arguments
@@ -151,7 +157,7 @@ def test_validate_invalid_init_script(mock_uploader, mock_context, temp_notebook
         kernel_name="python3",
         initialization_script="/nonexistent/script.sh",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with pytest.raises(ValueError, match="initialization script.*is not a valid file"):
         step.arguments
@@ -159,7 +165,9 @@ def test_validate_invalid_init_script(mock_uploader, mock_context, temp_notebook
 
 @patch("sagemaker.mlops.workflow.notebook_job_step.load_step_compilation_context")
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
-def test_validate_invalid_additional_dependencies(mock_uploader, mock_context, temp_notebook, mock_session):
+def test_validate_invalid_additional_dependencies(
+    mock_uploader, mock_context, temp_notebook, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
     step = NotebookJobStep(
         input_notebook=temp_notebook,
@@ -167,7 +175,7 @@ def test_validate_invalid_additional_dependencies(mock_uploader, mock_context, t
         kernel_name="python3",
         additional_dependencies=["/nonexistent/path"],
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with pytest.raises(ValueError, match="path.*does not exist"):
         step.arguments
@@ -182,7 +190,7 @@ def test_validate_invalid_image_uri(mock_uploader, mock_context, temp_notebook, 
         image_uri="123456789.dkr.ecr.us-east-1.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with pytest.raises(ValueError, match="image uri.*should be hosted in same region"):
         step.arguments
@@ -197,7 +205,7 @@ def test_validate_missing_kernel_name(mock_uploader, mock_context, temp_notebook
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with pytest.raises(ValueError, match="kernel name is required"):
         step.arguments
@@ -213,7 +221,7 @@ def test_properties(mock_uploader, mock_context, temp_notebook, mock_session):
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     props = step.properties
     assert hasattr(props, "ComputingJobName")
@@ -233,7 +241,7 @@ def test_depends_on_setter_raises_error(mock_uploader, mock_context, temp_notebo
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with pytest.raises(ValueError, match="Cannot set depends_on"):
         step.depends_on = []
@@ -249,7 +257,7 @@ def test_arguments_generation(mock_uploader, mock_context, temp_notebook, mock_s
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     args = step.arguments
     assert "TrainingJobName" in args
@@ -273,7 +281,7 @@ def test_prepare_tags(mock_uploader, mock_context, temp_notebook, mock_session):
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
         s3_root_uri="s3://test-bucket/root",
-        tags={"custom": "tag"}
+        tags={"custom": "tag"},
     )
     step.arguments
     tags = step._prepare_tags()
@@ -291,7 +299,7 @@ def test_prepare_env_variables(mock_uploader, mock_context, temp_notebook, mock_
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
         s3_root_uri="s3://test-bucket/root",
-        environment_variables={"CUSTOM": "value"}
+        environment_variables={"CUSTOM": "value"},
     )
     step.arguments
     envs = step._prepare_env_variables()
@@ -309,7 +317,7 @@ def test_get_job_name_prefix(mock_uploader, mock_context, temp_notebook, mock_se
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     result = step._get_job_name_prefix("test_job@name#123")
     assert result == "test-job-name-123"
@@ -324,7 +332,7 @@ def test_to_request(mock_uploader, mock_context, temp_notebook, mock_session):
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     request = step.to_request()
     assert isinstance(request, dict)
@@ -339,7 +347,7 @@ def test_init_derives_name_from_notebook(mock_uploader, mock_context, temp_noteb
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     assert step.name is not None
     assert step.notebook_job_name is not None
@@ -349,14 +357,19 @@ def test_init_derives_name_from_notebook(mock_uploader, mock_context, temp_noteb
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
 @patch("sagemaker.mlops.workflow.notebook_job_step.resolve_value_from_config")
 @patch("sagemaker.mlops.workflow.notebook_job_step.get_execution_role")
-def test_resolve_defaults_no_role(mock_get_role, mock_resolve, mock_uploader, mock_context, temp_notebook, mock_session):
+def test_resolve_defaults_no_role(
+    mock_get_role, mock_resolve, mock_uploader, mock_context, temp_notebook, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
-    mock_resolve.side_effect = lambda direct_input, config_path, sagemaker_session, default_value=None: direct_input or default_value
+    mock_resolve.side_effect = (
+        lambda direct_input, config_path, sagemaker_session, default_value=None: direct_input
+        or default_value
+    )
     mock_get_role.return_value = "arn:aws:iam::123456789:role/DefaultRole"
     step = NotebookJobStep(
         input_notebook=temp_notebook,
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
-        kernel_name="python3"
+        kernel_name="python3",
     )
     step.arguments
     mock_get_role.assert_called_once()
@@ -366,20 +379,24 @@ def test_resolve_defaults_no_role(mock_get_role, mock_resolve, mock_uploader, mo
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
 @patch("sagemaker.mlops.workflow.notebook_job_step.resolve_value_from_config")
 @patch("sagemaker.mlops.workflow.notebook_job_step.expand_role")
-def test_resolve_defaults_with_role(mock_expand, mock_resolve, mock_uploader, mock_context, temp_notebook, mock_session):
+def test_resolve_defaults_with_role(
+    mock_expand, mock_resolve, mock_uploader, mock_context, temp_notebook, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
+
     def resolve_side_effect(direct_input, config_path, sagemaker_session, default_value=None):
         if config_path == NOTEBOOK_JOB_ROLE_ARN:
             return "role-from-config"
         if config_path == NOTEBOOK_JOB_S3_ROOT_URI:
             return "s3://test-bucket/root"
         return direct_input or default_value
+
     mock_resolve.side_effect = resolve_side_effect
     mock_expand.return_value = "arn:aws:iam::123456789:role/ExpandedRole"
     step = NotebookJobStep(
         input_notebook=temp_notebook,
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
-        kernel_name="python3"
+        kernel_name="python3",
     )
     step.arguments
     mock_expand.assert_called_once()
@@ -387,7 +404,9 @@ def test_resolve_defaults_with_role(mock_expand, mock_resolve, mock_uploader, mo
 
 @patch("sagemaker.mlops.workflow.notebook_job_step.load_step_compilation_context")
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
-def test_prepare_env_with_init_script(mock_uploader, mock_context, temp_notebook, temp_script, mock_session):
+def test_prepare_env_with_init_script(
+    mock_uploader, mock_context, temp_notebook, temp_script, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
     step = NotebookJobStep(
         input_notebook=temp_notebook,
@@ -395,7 +414,7 @@ def test_prepare_env_with_init_script(mock_uploader, mock_context, temp_notebook
         kernel_name="python3",
         initialization_script=temp_script,
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     step.arguments
     envs = step._prepare_env_variables()
@@ -404,7 +423,9 @@ def test_prepare_env_with_init_script(mock_uploader, mock_context, temp_notebook
 
 @patch("sagemaker.mlops.workflow.notebook_job_step.load_step_compilation_context")
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
-def test_arguments_with_init_script(mock_uploader, mock_context, temp_notebook, temp_script, mock_session):
+def test_arguments_with_init_script(
+    mock_uploader, mock_context, temp_notebook, temp_script, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
     step = NotebookJobStep(
         input_notebook=temp_notebook,
@@ -412,7 +433,7 @@ def test_arguments_with_init_script(mock_uploader, mock_context, temp_notebook, 
         kernel_name="python3",
         initialization_script=temp_script,
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     args = step.arguments
     mock_uploader.upload.assert_called_once()
@@ -421,15 +442,19 @@ def test_arguments_with_init_script(mock_uploader, mock_context, temp_notebook, 
 @pytest.fixture
 def temp_dir():
     import tempfile
+
     temp_path = tempfile.mkdtemp()
     yield temp_path
     import shutil
+
     shutil.rmtree(temp_path)
 
 
 @patch("sagemaker.mlops.workflow.notebook_job_step.load_step_compilation_context")
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
-def test_arguments_with_additional_dependencies(mock_uploader, mock_context, temp_notebook, temp_dir, mock_session):
+def test_arguments_with_additional_dependencies(
+    mock_uploader, mock_context, temp_notebook, temp_dir, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
     step = NotebookJobStep(
         input_notebook=temp_notebook,
@@ -437,7 +462,7 @@ def test_arguments_with_additional_dependencies(mock_uploader, mock_context, tem
         kernel_name="python3",
         additional_dependencies=[temp_dir],
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     args = step.arguments
     mock_uploader.upload.assert_called_once()
@@ -453,7 +478,7 @@ def test_arguments_with_s3_kms_key(mock_uploader, mock_context, temp_notebook, m
         kernel_name="python3",
         s3_kms_key="kms-key-123",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     args = step.arguments
     assert args["OutputDataConfig"]["KmsKeyId"] == "kms-key-123"
@@ -469,7 +494,7 @@ def test_arguments_with_volume_kms_key(mock_uploader, mock_context, temp_noteboo
         kernel_name="python3",
         volume_kms_key="vol-kms-key-123",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     args = step.arguments
     assert args["ResourceConfig"]["VolumeKmsKeyId"] == "vol-kms-key-123"
@@ -478,7 +503,9 @@ def test_arguments_with_volume_kms_key(mock_uploader, mock_context, temp_noteboo
 @patch("sagemaker.mlops.workflow.notebook_job_step.load_step_compilation_context")
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
 @patch("sagemaker.mlops.workflow.notebook_job_step.vpc_utils")
-def test_arguments_with_vpc_config(mock_vpc, mock_uploader, mock_context, temp_notebook, mock_session):
+def test_arguments_with_vpc_config(
+    mock_vpc, mock_uploader, mock_context, temp_notebook, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
     mock_vpc.to_dict.return_value = {"Subnets": ["subnet-123"], "SecurityGroupIds": ["sg-123"]}
     mock_vpc.sanitize.return_value = {"Subnets": ["subnet-123"], "SecurityGroupIds": ["sg-123"]}
@@ -489,7 +516,7 @@ def test_arguments_with_vpc_config(mock_vpc, mock_uploader, mock_context, temp_n
         subnets=["subnet-123"],
         security_group_ids=["sg-123"],
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     args = step.arguments
     assert "VpcConfig" in args
@@ -505,7 +532,7 @@ def test_arguments_with_parameters(mock_uploader, mock_context, temp_notebook, m
         kernel_name="python3",
         parameters={"param1": "value1"},
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     args = step.arguments
     assert "HyperParameters" in args
@@ -521,7 +548,7 @@ def test_arguments_without_context(mock_uploader, mock_context, temp_notebook, m
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with pytest.raises(AttributeError):
         step.arguments
@@ -531,20 +558,22 @@ def test_arguments_without_context(mock_uploader, mock_context, temp_notebook, m
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
 def test_upload_job_files_with_file(mock_uploader, mock_tmpdir, temp_notebook, mock_session):
     import tempfile
+
     temp_folder = tempfile.mkdtemp()
     mock_tmpdir.return_value.__enter__ = Mock(return_value=temp_folder)
     mock_tmpdir.return_value.__exit__ = Mock(return_value=False)
-    
+
     step = NotebookJobStep(
         input_notebook=temp_notebook,
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     step._upload_job_files("s3://bucket/path", [temp_notebook], None, mock_session)
     mock_uploader.upload.assert_called_once()
     import shutil
+
     shutil.rmtree(temp_folder)
 
 
@@ -552,35 +581,39 @@ def test_upload_job_files_with_file(mock_uploader, mock_tmpdir, temp_notebook, m
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
 def test_upload_job_files_with_dir(mock_uploader, mock_tmpdir, temp_dir, mock_session):
     import tempfile
+
     temp_folder = tempfile.mkdtemp()
     mock_tmpdir.return_value.__enter__ = Mock(return_value=temp_folder)
     mock_tmpdir.return_value.__exit__ = Mock(return_value=False)
-    
+
     step = NotebookJobStep(
         input_notebook=temp_dir + "/test.ipynb",
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     with open(temp_dir + "/test.ipynb", "w") as f:
         f.write('{"cells":[]}')
     step._upload_job_files("s3://bucket/path", [temp_dir], None, mock_session)
     mock_uploader.upload.assert_called_once()
     import shutil
+
     shutil.rmtree(temp_folder)
 
 
 @patch("sagemaker.mlops.workflow.notebook_job_step.load_step_compilation_context")
 @patch("sagemaker.mlops.workflow.notebook_job_step.S3Uploader")
-def test_arguments_with_container_arguments(mock_uploader, mock_context, temp_notebook, mock_session):
+def test_arguments_with_container_arguments(
+    mock_uploader, mock_context, temp_notebook, mock_session
+):
     mock_context.return_value = Mock(sagemaker_session=mock_session, pipeline_name="test-pipeline")
     step = NotebookJobStep(
         input_notebook=temp_notebook,
         image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/image:latest",
         kernel_name="python3",
         role="arn:aws:iam::123456789:role/TestRole",
-        s3_root_uri="s3://test-bucket/root"
+        s3_root_uri="s3://test-bucket/root",
     )
     step._scheduler_container_arguments = ["arg1", "arg2"]
     args = step.arguments

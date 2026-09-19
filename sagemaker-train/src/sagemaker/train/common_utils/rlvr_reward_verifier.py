@@ -24,12 +24,12 @@ from pydantic import BaseModel, ValidationError
 
 from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 
-
 logger = logging.getLogger(__name__)
 
 LAMBDA_ARN_REGEX = re.compile(
     r"^arn:aws[a-zA-Z-]*:lambda:[a-z0-9-]+:\d{12}:function:[A-Za-z0-9-_]+$"
 )
+
 
 class RewardMetric(BaseModel):
     """A single metric or reward entry from a reward function output."""
@@ -98,6 +98,7 @@ def _unwrap_response(payload: Any, is_nova: bool) -> Any:
 
     # body is already parsed (e.g., local handler returned dict directly)
     return body
+
 
 def verify_reward_function(
     reward_function: str,
@@ -316,7 +317,7 @@ def verify_reward_function(
                         json.dumps(payload, indent=2) if isinstance(payload, dict) else str(payload)
                     )
                     logger.info(f"Result:\n{result_str}")
-                    
+
                     results.append(
                         {
                             "sample_index": 0,

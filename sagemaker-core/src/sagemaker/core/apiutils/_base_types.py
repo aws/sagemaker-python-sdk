@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Provides utilities for custom boto type objects."""
+
 from __future__ import absolute_import
 
 from sagemaker.core.apiutils import _boto_functions, _utils
@@ -238,8 +239,6 @@ class Record(ApiObject):
             return self.with_boto(api_method(**request))
 
         if boto_method in self._PIPELINE_CAPTURABLE_METHODS:
-            return self.sagemaker_session._intercept_create_request(
-                api_kwargs, submit, boto_method
-            )
+            return self.sagemaker_session._intercept_create_request(api_kwargs, submit, boto_method)
 
         return submit(api_kwargs)

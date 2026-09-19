@@ -18,6 +18,7 @@ This file provides backward compatibility by re-exporting the class from its new
 
 DEPRECATED: Import from sagemaker.core.inference_config instead.
 """
+
 from __future__ import absolute_import
 
 import warnings

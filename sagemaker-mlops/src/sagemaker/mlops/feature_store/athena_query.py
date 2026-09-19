@@ -16,6 +16,7 @@ from sagemaker.mlops.feature_store.feature_utils import (
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry import Feature, _telemetry_emitter
 
+
 @dataclass
 class AthenaQuery:
     """Class to manage querying of feature store data with AWS Athena.
@@ -112,4 +113,3 @@ class AthenaQuery:
         )
         kwargs.pop("delimiter", None)
         return pd.read_csv(output_file, delimiter=",", **kwargs)
-

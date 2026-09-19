@@ -16,6 +16,7 @@ DEPRECATED: This module has been moved to sagemaker.core.training.configs
 This is a backward compatibility shim. Please update your imports to:
     from sagemaker.core.training.configs import ...
 """
+
 from __future__ import absolute_import
 
 import warnings
@@ -27,5 +28,5 @@ warnings.warn(
     "sagemaker.train.configs has been moved to sagemaker.core.training.configs. "
     "Please update your imports. This shim will be removed in a future version.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )

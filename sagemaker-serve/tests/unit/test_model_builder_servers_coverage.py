@@ -500,7 +500,6 @@ class TestBuildForJumpStart(unittest.TestCase):
         self.assertEqual(builder.model_server, ModelServer.MMS)
         mock_create.assert_called_once()
 
-
     @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
     @patch("sagemaker.serve.model_builder.ModelBuilder._create_model")
     @patch("sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode")

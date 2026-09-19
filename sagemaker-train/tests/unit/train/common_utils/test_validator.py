@@ -7,7 +7,9 @@ from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 class TestValidateHyperpodCompute:
     """Test cases for HyperPod compute validation."""
 
-    def _make_compute(self, cluster_name="test-cluster", instance_type="ml.p5.48xlarge", node_count=4):
+    def _make_compute(
+        self, cluster_name="test-cluster", instance_type="ml.p5.48xlarge", node_count=4
+    ):
         """Helper to create a mock HyperPodCompute object."""
         compute = Mock()
         compute.cluster_name = cluster_name
@@ -43,7 +45,9 @@ class TestValidateHyperpodCompute:
         compute = self._make_compute()
         session = self._make_session()
         mock_sm_client = Mock()
-        mock_sm_client.describe_cluster.side_effect = Exception("AccessDenied: User is not authorized")
+        mock_sm_client.describe_cluster.side_effect = Exception(
+            "AccessDenied: User is not authorized"
+        )
         session.boto_session.client.return_value = mock_sm_client
 
         with pytest.raises(PermissionError, match="sagemaker:DescribeCluster required"):
@@ -95,7 +99,9 @@ class TestValidateHyperpodCompute:
         }
         session.boto_session.client.return_value = mock_sm_client
 
-        with pytest.raises(ValueError, match="Instance type 'ml.p5.48xlarge' not available") as exc_info:
+        with pytest.raises(
+            ValueError, match="Instance type 'ml.p5.48xlarge' not available"
+        ) as exc_info:
             validate_hyperpod_compute(compute, session, is_nova=False)
 
         assert "ml.g5.12xlarge" in str(exc_info.value)
@@ -120,7 +126,9 @@ class TestValidateHyperpodCompute:
         }
         session.boto_session.client.return_value = mock_sm_client
 
-        with pytest.raises(ValueError, match="Instance type 'ml.p5.48xlarge' not available") as exc_info:
+        with pytest.raises(
+            ValueError, match="Instance type 'ml.p5.48xlarge' not available"
+        ) as exc_info:
             validate_hyperpod_compute(compute, session, is_nova=True)
 
         assert "restricted instance groups" in str(exc_info.value)
@@ -473,7 +481,9 @@ class TestValidateHyperpodCompute:
     # --- Error message contains cluster name ---
 
     def test_error_message_includes_cluster_name_for_missing_type(self):
-        compute = self._make_compute(cluster_name="my-training-cluster", instance_type="ml.p5e.48xlarge")
+        compute = self._make_compute(
+            cluster_name="my-training-cluster", instance_type="ml.p5e.48xlarge"
+        )
         session = self._make_session()
         mock_sm_client = Mock()
         mock_sm_client.describe_cluster.return_value = {
@@ -493,7 +503,9 @@ class TestValidateHyperpodCompute:
             validate_hyperpod_compute(compute, session)
 
     def test_error_message_includes_cluster_name_for_insufficient_capacity(self):
-        compute = self._make_compute(cluster_name="my-training-cluster", instance_type="ml.p5.48xlarge", node_count=16)
+        compute = self._make_compute(
+            cluster_name="my-training-cluster", instance_type="ml.p5.48xlarge", node_count=16
+        )
         session = self._make_session()
         mock_sm_client = Mock()
         mock_sm_client.describe_cluster.return_value = {

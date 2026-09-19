@@ -16,7 +16,6 @@ import os
 import json
 import pytest
 
-
 # Get the path relative to this file's location
 # conftest.py is in sagemaker-core/tests/unit/image_uris/
 # config files are in sagemaker-core/src/sagemaker/core/image_uri_config/

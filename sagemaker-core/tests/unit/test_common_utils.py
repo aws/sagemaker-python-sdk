@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.common_utils module."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -2481,7 +2482,6 @@ class TestNestedSetDict:
         assert d["a"]["b"]["c"] == "value"
 
 
-
 class TestValidateSourceDirectory:
     """Test _validate_source_directory function."""
 
@@ -2788,9 +2788,7 @@ class TestDownloadFileSpotCheck:
 
         mock_session._get_account_id_if_default_bucket.return_value = "111111111111"
 
-        download_file(
-            "sagemaker-us-west-2-111111111111", "k", str(tmp_path / "f"), mock_session
-        )
+        download_file("sagemaker-us-west-2-111111111111", "k", str(tmp_path / "f"), mock_session)
 
         mock_session._get_account_id_if_default_bucket.assert_called_once_with(
             "sagemaker-us-west-2-111111111111"
@@ -2815,9 +2813,7 @@ class TestDownloadFileSpotCheck:
 
         download_file("cross-account-bucket", "k", str(tmp_path / "f"), mock_session)
 
-        mock_bucket.download_file.assert_called_once_with(
-            "k", str(tmp_path / "f"), ExtraArgs=None
-        )
+        mock_bucket.download_file.assert_called_once_with("k", str(tmp_path / "f"), ExtraArgs=None)
 
 
 class TestSaveModelSpotCheck:

@@ -1,4 +1,5 @@
 """Unit tests for Iceberg properties in FeatureGroupManager."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -45,10 +46,12 @@ class TestIcebergPropertiesConfig:
     def test_mix_valid_and_invalid_keys_raises_error(self):
         """Test that a mix of valid and invalid keys raises ValueError."""
         with pytest.raises(ValueError, match="Invalid iceberg properties"):
-            IcebergProperties(properties={
-                "write.target-file-size-bytes": "536870912",
-                "invalid.key": "value",
-            })
+            IcebergProperties(
+                properties={
+                    "write.target-file-size-bytes": "536870912",
+                    "invalid.key": "value",
+                }
+            )
 
     def test_error_message_contains_invalid_key_names(self):
         """Test that the error message includes the invalid key names."""
@@ -64,7 +67,9 @@ class TestIcebergPropertiesConfig:
             "write.target-file-size-bytes",
         ]
         object.__setattr__(config, "properties", mock_props)
-        with pytest.raises(ValueError, match="Invalid duplicate properties:.*write.target-file-size-bytes"):
+        with pytest.raises(
+            ValueError, match="Invalid duplicate properties:.*write.target-file-size-bytes"
+        ):
             config.validate_property_keys()
 
     def test_no_duplicate_keys_passes(self):
@@ -81,7 +86,9 @@ class TestValidateTableOwnership:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._validate_table_ownership = FeatureGroupManager._validate_table_ownership.__get__(self.fg)
+        self.fg._validate_table_ownership = FeatureGroupManager._validate_table_ownership.__get__(
+            self.fg
+        )
         self.fg.feature_group_name = "test-fg"
         self.fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(s3_uri="s3://my-bucket/feature-store"),
@@ -143,7 +150,9 @@ class TestGetIcebergProperties:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._get_iceberg_properties = FeatureGroupManager._get_iceberg_properties.__get__(self.fg)
+        self.fg._get_iceberg_properties = FeatureGroupManager._get_iceberg_properties.__get__(
+            self.fg
+        )
         self.fg.feature_group_name = "test-fg"
         self.fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(s3_uri="s3://test-bucket/path"),
@@ -216,7 +225,9 @@ class TestGetIcebergProperties:
 
         self.fg._get_iceberg_properties(session=mock_session, region="eu-west-1")
 
-        mock_load_catalog.assert_called_once_with("glue", **{"type": "glue", "client.region": "eu-west-1"})
+        mock_load_catalog.assert_called_once_with(
+            "glue", **{"type": "glue", "client.region": "eu-west-1"}
+        )
 
     @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
     def test_uses_session_region_when_region_not_provided(self, mock_load_catalog):
@@ -232,7 +243,9 @@ class TestGetIcebergProperties:
 
         self.fg._get_iceberg_properties(session=mock_session)
 
-        mock_load_catalog.assert_called_once_with("glue", **{"type": "glue", "client.region": "ap-southeast-1"})
+        mock_load_catalog.assert_called_once_with(
+            "glue", **{"type": "glue", "client.region": "ap-southeast-1"}
+        )
 
     @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
     def test_raises_runtime_error_on_client_error(self, mock_load_catalog):
@@ -254,7 +267,9 @@ class TestUpdateIcebergProperties:
     def setup_method(self):
         """Set up test fixtures."""
         self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._update_iceberg_properties = FeatureGroupManager._update_iceberg_properties.__get__(self.fg)
+        self.fg._update_iceberg_properties = FeatureGroupManager._update_iceberg_properties.__get__(
+            self.fg
+        )
         self.fg.feature_group_name = "test-fg"
 
     def test_raises_error_when_iceberg_properties_is_none(self):
@@ -346,7 +361,9 @@ class TestUpdateIcebergProperties:
         mock_props.__bool__ = lambda self: True
         object.__setattr__(props, "properties", mock_props)
 
-        with pytest.raises(ValueError, match="Invalid duplicate properties:.*write.target-file-size-bytes"):
+        with pytest.raises(
+            ValueError, match="Invalid duplicate properties:.*write.target-file-size-bytes"
+        ):
             self.fg._update_iceberg_properties(iceberg_properties=props)
 
     def test_logs_before_after_property_changes(self, caplog):
@@ -367,7 +384,9 @@ class TestUpdateIcebergProperties:
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
 
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
+        with caplog.at_level(
+            logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"
+        ):
             self.fg._update_iceberg_properties(iceberg_properties=props)
 
         assert "test-fg" in caplog.text
@@ -457,7 +476,9 @@ class TestCreateWithIcebergProperties:
                 record_identifier_feature_name="record_id",
                 event_time_feature_name="event_time",
                 feature_definitions=feature_definitions,
-                iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "value"}),
+                iceberg_properties=IcebergProperties(
+                    properties={"write.target-file-size-bytes": "value"}
+                ),
             )
 
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -481,7 +502,9 @@ class TestCreateWithIcebergProperties:
                 offline_store_config=OfflineStoreConfig(
                     s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path"),
                 ),
-                iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "value"}),
+                iceberg_properties=IcebergProperties(
+                    properties={"write.target-file-size-bytes": "value"}
+                ),
             )
 
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -506,7 +529,9 @@ class TestCreateWithIcebergProperties:
                     s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path"),
                     table_format="Glue",
                 ),
-                iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "value"}),
+                iceberg_properties=IcebergProperties(
+                    properties={"write.target-file-size-bytes": "value"}
+                ),
             )
 
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -682,7 +707,9 @@ class TestUpdateWithIcebergProperties:
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_no_iceberg_operations_when_none(self, mock_get_client, mock_refresh, mock_update_iceberg):
+    def test_no_iceberg_operations_when_none(
+        self, mock_get_client, mock_refresh, mock_update_iceberg
+    ):
         """Test no iceberg operations when iceberg_properties is None."""
         mock_client = MagicMock()
         mock_client.update_feature_group.return_value = {}
@@ -696,7 +723,9 @@ class TestUpdateWithIcebergProperties:
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_no_iceberg_operations_when_properties_empty(self, mock_get_client, mock_refresh, mock_update_iceberg):
+    def test_no_iceberg_operations_when_properties_empty(
+        self, mock_get_client, mock_refresh, mock_update_iceberg
+    ):
         """Test no iceberg operations when iceberg_properties.properties is None."""
         mock_client = MagicMock()
         mock_client.update_feature_group.return_value = {}
@@ -710,7 +739,9 @@ class TestUpdateWithIcebergProperties:
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_iceberg_update_called_with_properties(self, mock_get_client, mock_refresh, mock_update_iceberg):
+    def test_iceberg_update_called_with_properties(
+        self, mock_get_client, mock_refresh, mock_update_iceberg
+    ):
         """Test _update_iceberg_properties called when properties provided."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
@@ -737,7 +768,9 @@ class TestUpdateWithIcebergProperties:
 
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_skips_parent_update_when_only_iceberg_properties(self, mock_get_client, mock_update_iceberg):
+    def test_skips_parent_update_when_only_iceberg_properties(
+        self, mock_get_client, mock_update_iceberg
+    ):
         """Test that super().update() is not called when only iceberg_properties are passed."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
@@ -762,7 +795,9 @@ class TestUpdateWithIcebergProperties:
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_parent_update_receives_only_standard_params(self, mock_get_client, mock_refresh, mock_update_iceberg):
+    def test_parent_update_receives_only_standard_params(
+        self, mock_get_client, mock_refresh, mock_update_iceberg
+    ):
         """Test that iceberg_properties is not passed to the parent update()."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
@@ -780,7 +815,9 @@ class TestUpdateWithIcebergProperties:
         )
         fg.update(
             feature_additions=[],
-            iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}),
+            iceberg_properties=IcebergProperties(
+                properties={"write.target-file-size-bytes": "val"}
+            ),
         )
 
         # Verify the SageMaker API call does NOT contain iceberg_properties
@@ -791,7 +828,9 @@ class TestUpdateWithIcebergProperties:
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_update_logs_and_reraises_when_iceberg_update_fails(self, mock_get_client, mock_refresh, mock_update_iceberg):
+    def test_update_logs_and_reraises_when_iceberg_update_fails(
+        self, mock_get_client, mock_refresh, mock_update_iceberg
+    ):
         """Test that update logs error and re-raises when iceberg update fails after FG update."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
@@ -812,7 +851,9 @@ class TestUpdateWithIcebergProperties:
         iceberg_props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
 
         with pytest.raises(RuntimeError, match="Iceberg catalog error"):
-            fg.update(feature_additions=[], iceberg_properties=iceberg_props, session=None, region=None)
+            fg.update(
+                feature_additions=[], iceberg_properties=iceberg_props, session=None, region=None
+            )
 
         # Parent update was called successfully before iceberg update failed
         mock_client.update_feature_group.assert_called_once()
@@ -829,7 +870,11 @@ class TestUpdateWithIcebergProperties:
         fg.offline_store_config = None
 
         with pytest.raises(ValueError, match="iceberg_properties requires offline_store_config"):
-            fg.update(iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}))
+            fg.update(
+                iceberg_properties=IcebergProperties(
+                    properties={"write.target-file-size-bytes": "val"}
+                )
+            )
 
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -845,7 +890,11 @@ class TestUpdateWithIcebergProperties:
         object.__setattr__(fg, "offline_store_config", Unassigned())
 
         with pytest.raises(ValueError, match="iceberg_properties requires offline_store_config"):
-            fg.update(iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}))
+            fg.update(
+                iceberg_properties=IcebergProperties(
+                    properties={"write.target-file-size-bytes": "val"}
+                )
+            )
 
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -864,7 +913,11 @@ class TestUpdateWithIcebergProperties:
         )
 
         with pytest.raises(ValueError, match="table_format to be 'Iceberg'"):
-            fg.update(iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}))
+            fg.update(
+                iceberg_properties=IcebergProperties(
+                    properties={"write.target-file-size-bytes": "val"}
+                )
+            )
 
 
 class TestGetWithIcebergProperties:
@@ -962,7 +1015,9 @@ class TestGetWithIcebergProperties:
 
     @patch.object(FeatureGroupManager, "_get_iceberg_properties")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    def test_passes_session_and_region_to_get_iceberg_properties(self, mock_get_client, mock_get_iceberg):
+    def test_passes_session_and_region_to_get_iceberg_properties(
+        self, mock_get_client, mock_get_iceberg
+    ):
         """Test that session and region kwargs are forwarded to _get_iceberg_properties."""
         mock_client = MagicMock()
         mock_client.describe_feature_group.return_value = {
@@ -1002,7 +1057,9 @@ class TestGetIcebergPropertiesAccessDenied:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._get_iceberg_properties = FeatureGroupManager._get_iceberg_properties.__get__(self.fg)
+        self.fg._get_iceberg_properties = FeatureGroupManager._get_iceberg_properties.__get__(
+            self.fg
+        )
         self.fg.feature_group_name = "test-fg"
         self.fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(s3_uri="s3://test-bucket/path"),
@@ -1014,6 +1071,7 @@ class TestGetIcebergPropertiesAccessDenied:
 
     def _make_client_error(self, code):
         from botocore.exceptions import ClientError
+
         return ClientError({"Error": {"Code": code, "Message": "denied"}}, "GetTable")
 
     @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
@@ -1056,11 +1114,14 @@ class TestUpdateIcebergPropertiesAccessDenied:
 
     def setup_method(self):
         self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._update_iceberg_properties = FeatureGroupManager._update_iceberg_properties.__get__(self.fg)
+        self.fg._update_iceberg_properties = FeatureGroupManager._update_iceberg_properties.__get__(
+            self.fg
+        )
         self.fg.feature_group_name = "test-fg"
 
     def _make_client_error(self, code):
         from botocore.exceptions import ClientError
+
         return ClientError({"Error": {"Code": code, "Message": "denied"}}, "UpdateTable")
 
     def _setup_get_result(self):
@@ -1078,7 +1139,9 @@ class TestUpdateIcebergPropertiesAccessDenied:
     def test_access_denied_raises_permission_error_with_combined_message(self):
         """Test PermissionError with combined LF/IAM message on AccessDenied."""
         mock_table = self._setup_get_result()
-        mock_table.transaction().__enter__().set_properties.side_effect = self._make_client_error("AccessDeniedException")
+        mock_table.transaction().__enter__().set_properties.side_effect = self._make_client_error(
+            "AccessDeniedException"
+        )
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
         with pytest.raises(PermissionError, match="Lake Formation governance") as exc_info:
@@ -1090,7 +1153,9 @@ class TestUpdateIcebergPropertiesAccessDenied:
     def test_non_access_denied_client_error_raises_runtime_error(self):
         """Test RuntimeError for non-AccessDenied ClientError."""
         mock_table = self._setup_get_result()
-        mock_table.transaction().__enter__().set_properties.side_effect = self._make_client_error("InternalServiceException")
+        mock_table.transaction().__enter__().set_properties.side_effect = self._make_client_error(
+            "InternalServiceException"
+        )
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
         with pytest.raises(RuntimeError, match="Failed to update Iceberg properties"):

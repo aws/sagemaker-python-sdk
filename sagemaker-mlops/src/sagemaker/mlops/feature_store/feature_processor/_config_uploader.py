@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains classes for preparing and uploading configs for a scheduled feature processor."""
+
 from __future__ import absolute_import
 from typing import Callable, Dict, Optional, Tuple, List, Union
 
@@ -56,7 +57,7 @@ class ConfigUploader:
         self, func: Callable, s3_base_uri: str, sagemaker_session: Session
     ) -> Tuple[List[Channel], Dict, str]:
         """Prepares input channels for SageMaker Pipeline Step.
-        
+
         Returns:
             Tuple of (List[Channel], spark_dependency_paths dict, public_key_pem str)
         """
@@ -137,11 +138,15 @@ class ConfigUploader:
                 )
             )
 
-        return channels, {
-            SPARK_JAR_FILES_PATH: submit_jars_s3_paths,
-            SPARK_PY_FILES_PATH: submit_py_files_s3_paths,
-            SPARK_FILES_PATH: submit_files_s3_path,
-        }, public_key_pem
+        return (
+            channels,
+            {
+                SPARK_JAR_FILES_PATH: submit_jars_s3_paths,
+                SPARK_PY_FILES_PATH: submit_py_files_s3_paths,
+                SPARK_FILES_PATH: submit_files_s3_path,
+            },
+            public_key_pem,
+        )
 
     def _prepare_and_upload_callable(
         self, func: Callable, s3_base_uri: str, sagemaker_session: Session

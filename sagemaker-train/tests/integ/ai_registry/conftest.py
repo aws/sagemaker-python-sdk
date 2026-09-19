@@ -49,7 +49,7 @@ def sample_jsonl_file():
 {"prompt": "What is ML?", "completion": "ML is machine learning."}
 {"prompt": "What is DL?", "completion": "DL is deep learning."}
 """
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
         f.write(content)
         f.flush()  # Ensure content is written to disk
         yield f.name
@@ -59,11 +59,13 @@ def sample_jsonl_file():
 @pytest.fixture
 def sample_lambda_py_file():
     """Create a raw Python Lambda file with a non-default filename to test handler derivation."""
-    code = '''import json
+    code = """import json
 def lambda_handler(event, context):
     return {"statusCode": 200, "body": json.dumps({"score": 0.9})}
-'''
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', prefix='my_custom_evaluator_', delete=False) as f:
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".py", prefix="my_custom_evaluator_", delete=False
+    ) as f:
         f.write(code)
         f.flush()
         os.fsync(f.fileno())
@@ -75,13 +77,13 @@ def lambda_handler(event, context):
 @pytest.fixture
 def sample_lambda_code():
     """Create sample Lambda function code as zip."""
-    code = '''import json
+    code = """import json
 def lambda_handler(event, context):
     return {"statusCode": 200, "body": json.dumps({"score": 0.8})}
-'''
-    with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as zip_f:
-        with zipfile.ZipFile(zip_f.name, 'w') as zf:
-            zf.writestr('lambda_function.py', code)
+"""
+    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as zip_f:
+        with zipfile.ZipFile(zip_f.name, "w") as zf:
+            zf.writestr("lambda_function.py", code)
         yield zip_f.name
     os.unlink(zip_f.name)
 
@@ -90,7 +92,7 @@ def lambda_handler(event, context):
 def sample_prompt_file():
     """Create sample prompt file."""
     content = "Evaluate the response: {response}"
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
         f.write(content)
         yield f.name
     os.unlink(f.name)
@@ -101,13 +103,15 @@ def sample_hub_content_document():
     """Create sample hub content document."""
     from sagemaker.ai_registry.dataset_utils import DataSetHubContentDocument
     from sagemaker.ai_registry.air_constants import (
-        DATASET_DEFAULT_TYPE, DATASET_DEFAULT_CONVERSATION_ID, DATASET_DEFAULT_CHECKPOINT_ID
+        DATASET_DEFAULT_TYPE,
+        DATASET_DEFAULT_CONVERSATION_ID,
+        DATASET_DEFAULT_CHECKPOINT_ID,
     )
-    
+
     document = DataSetHubContentDocument(
         dataset_s3_bucket=_get_default_bucket(),
         dataset_s3_prefix="test",
-        dataset_context_s3_uri="\"\"",
+        dataset_context_s3_uri='""',
         dataset_type=DATASET_DEFAULT_TYPE,
         dataset_role_arn=TrainDefaults.get_role(),
         conversation_id=DATASET_DEFAULT_CONVERSATION_ID,

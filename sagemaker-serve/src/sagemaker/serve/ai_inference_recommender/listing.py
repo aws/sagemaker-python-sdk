@@ -23,6 +23,7 @@ hand: ``max_results`` caps the matches returned, and ``max_scan`` caps how many
 candidates are described — so a rarely-matching filter cannot fan out across the
 whole account.
 """
+
 from __future__ import absolute_import
 
 import logging

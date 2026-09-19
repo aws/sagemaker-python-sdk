@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests for ModelBuilder model customization deployment."""
+
 from __future__ import absolute_import
 
 import os
@@ -25,7 +26,6 @@ from unittest.mock import patch
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from datetime import datetime, timezone, timedelta
-
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,10 @@ class TestModelCustomizationFromTrainingJob:
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
         model_builder.accept_eula = True
-        model = model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}", region=AWS_REGION)
+        model = model_builder.build(
+            model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}",
+            region=AWS_REGION,
+        )
 
         assert model is not None
         assert model.model_arn is not None
@@ -129,9 +132,7 @@ class TestModelCustomizationFromTrainingJob:
         endpoint = None
         base_ic = None
         adapter_ic = None
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         first_builder = ModelBuilder(
             model=training_job,
             instance_type="ml.g5.4xlarge",
@@ -148,9 +149,7 @@ class TestModelCustomizationFromTrainingJob:
                 try:
                     endpoint = first_builder.deploy(
                         endpoint_name=endpoint_name,
-                        inference_component_name=(
-                            adapter_ic_name if peft_type == "LORA" else None
-                        ),
+                        inference_component_name=(adapter_ic_name if peft_type == "LORA" else None),
                     )
                 except (FailedStatusError, ClientError) as error:
                     message = str(error)
@@ -158,9 +157,7 @@ class TestModelCustomizationFromTrainingJob:
                         "InsufficientInstanceCapacity" in message
                         or "ResourceLimitExceeded" in message
                     ):
-                        pytest.xfail(
-                            "Environmental capacity or quota limit prevented deployment"
-                        )
+                        pytest.xfail("Environmental capacity or quota limit prevented deployment")
                     raise
 
             assert model.model_name == model_name
@@ -169,17 +166,13 @@ class TestModelCustomizationFromTrainingJob:
 
             sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
             model_tags = sm_client.list_tags(ResourceArn=model.model_arn).get("Tags", [])
-            endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get(
-                "Tags", []
-            )
+            endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
             assert any(
-                tag["Key"] == MODEL_SOURCE_TAG_KEY
-                and tag["Value"] == source_identity
+                tag["Key"] == MODEL_SOURCE_TAG_KEY and tag["Value"] == source_identity
                 for tag in model_tags
             )
             assert any(
-                tag["Key"] == MODEL_SOURCE_TAG_KEY
-                and tag["Value"] == source_identity
+                tag["Key"] == MODEL_SOURCE_TAG_KEY and tag["Value"] == source_identity
                 for tag in endpoint_tags
             )
 
@@ -237,9 +230,7 @@ class TestModelCustomizationFromTrainingJob:
                         ),
                     ),
                 ):
-                    reused_model = second_builder.build(
-                        region=AWS_REGION, reuse_resources=True
-                    )
+                    reused_model = second_builder.build(region=AWS_REGION, reuse_resources=True)
                     reused_endpoint = second_builder.deploy(
                         endpoint_name=endpoint_name, reuse_resources=True
                     )
@@ -250,9 +241,7 @@ class TestModelCustomizationFromTrainingJob:
             assert reused_endpoint.endpoint_arn == endpoint.endpoint_arn
 
             time.sleep(10)
-            invoke_ic_name = (
-                adapter_ic_name if peft_type == "LORA" else base_ic_name
-            )
+            invoke_ic_name = adapter_ic_name if peft_type == "LORA" else base_ic_name
             invoke_response = reused_endpoint.invoke(
                 body=json.dumps(
                     {
@@ -268,14 +257,10 @@ class TestModelCustomizationFromTrainingJob:
             assert response_body is not None
             if isinstance(response_body, list):
                 assert response_body
-                assert (
-                    "generated_text" in response_body[0]
-                    or "generation" in response_body[0]
-                )
+                assert "generated_text" in response_body[0] or "generation" in response_body[0]
             elif isinstance(response_body, dict):
                 assert any(
-                    key in response_body
-                    for key in ("generated_text", "generation", "outputs")
+                    key in response_body for key in ("generated_text", "generation", "outputs")
                 )
         finally:
             for component, name in (
@@ -303,9 +288,7 @@ class TestModelCustomizationFromTrainingJob:
                     logger.warning("Failed to clean up endpoint %s: %s", endpoint_name, error)
 
             try:
-                EndpointConfig.get(
-                    endpoint_config_name=endpoint_name, region=AWS_REGION
-                ).delete()
+                EndpointConfig.get(endpoint_config_name=endpoint_name, region=AWS_REGION).delete()
             except Exception as error:
                 logger.warning(
                     "Failed to clean up endpoint configuration %s: %s",
@@ -342,7 +325,9 @@ class TestModelCustomizationFromModelPackage:
         assert model is not None
         assert model.model_arn is not None
 
-    def test_deploy_from_model_package(self, model_package_arn, cleanup_endpoints, sagemaker_session):
+    def test_deploy_from_model_package(
+        self, model_package_arn, cleanup_endpoints, sagemaker_session
+    ):
         """Test deploying model from model package."""
 
         model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
@@ -410,15 +395,13 @@ class TestTrainerIntegration:
     def test_sft_trainer_build(self, training_job_name, sagemaker_session):
         """Test building model from SFTTrainer."""
 
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
         trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_dataset="s3://dummy/data.jsonl",
             accept_eula=True,
-            model_package_group="test-group"
+            model_package_group="test-group",
         )
         trainer._latest_training_job = training_job
 
@@ -432,17 +415,17 @@ class TestTrainerIntegration:
         """Test building model from DPOTrainer."""
         from unittest.mock import patch
 
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
-        with patch('sagemaker.train.common_utils.finetune_utils._get_fine_tuning_options_and_model_arn',
-                   return_value=(None, None)):
+        with patch(
+            "sagemaker.train.common_utils.finetune_utils._get_fine_tuning_options_and_model_arn",
+            return_value=(None, None),
+        ):
             trainer = DPOTrainer(
                 model="meta-textgeneration-llama-3-2-1b-instruct",
                 training_dataset="s3://dummy/data.jsonl",
                 accept_eula=True,
-                model_package_group="test-group"
+                model_package_group="test-group",
             )
         trainer._latest_training_job = training_job
 
@@ -475,7 +458,7 @@ class TestModelCustomizationDeployment:
             "training_job_name": training_job_name,
             "region": AWS_REGION,
             "bucket": "models-sdk-testing-pdx",
-            "role_arn": get_execution_role()
+            "role_arn": get_execution_role(),
         }
 
     @pytest.fixture(scope="class")
@@ -489,30 +472,28 @@ class TestModelCustomizationDeployment:
     @pytest.fixture(scope="class")
     def s3_client(self, setup_config):
         """Create S3 client."""
-        return boto3.client('s3', region_name=setup_config["region"])
+        return boto3.client("s3", region_name=setup_config["region"])
 
     @pytest.fixture(scope="class")
     def bedrock_client(self, setup_config):
         """Create Bedrock client. Eagerly cleans up test import jobs older than 24h."""
 
-        client = boto3.client('bedrock', region_name=setup_config["region"])
+        client = boto3.client("bedrock", region_name=setup_config["region"])
 
         try:
             cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             jobs = client.list_model_import_jobs()
-            for job in jobs.get('modelImportJobSummaries', []):
-                if not job['jobName'].startswith('test-bedrock-'):
+            for job in jobs.get("modelImportJobSummaries", []):
+                if not job["jobName"].startswith("test-bedrock-"):
                     continue
-                created = job.get('creationTime') or job.get('lastModifiedTime')
+                created = job.get("creationTime") or job.get("lastModifiedTime")
                 if created and created < cutoff:
                     try:
-                        status = job.get('status')
-                        if status in ('InProgress', 'Pending'):
-                            client.stop_model_import_job(jobIdentifier=job['jobArn'])
-                        elif status == 'Completed' and job.get('importedModelArn'):
-                            client.delete_imported_model(
-                                modelIdentifier=job['importedModelArn']
-                            )
+                        status = job.get("status")
+                        if status in ("InProgress", "Pending"):
+                            client.stop_model_import_job(jobIdentifier=job["jobArn"])
+                        elif status == "Completed" and job.get("importedModelArn"):
+                            client.delete_imported_model(modelIdentifier=job["importedModelArn"])
                     except Exception as e:
                         logger.warning(f"Eager cleanup failed for {job['jobName']}: {e}")
         except Exception as e:
@@ -524,13 +505,8 @@ class TestModelCustomizationDeployment:
     def bedrock_runtime(self, setup_config):
         """Create Bedrock runtime client."""
         # Adding config based on: https://docs.aws.amazon.com/bedrock/latest/userguide/invoke-imported-model.html#handle-model-not-ready-exception
-        config = Config(
-            retries={
-                'total_max_attempts': 10,
-                'mode': 'standard'
-            }
-        )
-        return boto3.client('bedrock-runtime', region_name=setup_config["region"], config=config)
+        config = Config(retries={"total_max_attempts": 10, "mode": "standard"})
+        return boto3.client("bedrock-runtime", region_name=setup_config["region"], config=config)
 
     @pytest.fixture(scope="class")
     def deployed_model_arn(self, training_job, bedrock_client, s3_client, setup_config):
@@ -542,30 +518,29 @@ class TestModelCustomizationDeployment:
 
         try:
             deployment_result = bedrock_builder.deploy(
-                job_name=job_name,
-                imported_model_name=job_name,
-                role_arn=setup_config["role_arn"]
+                job_name=job_name, imported_model_name=job_name, role_arn=setup_config["role_arn"]
             )
 
-            job_arn = deployment_result['jobArn']
+            job_arn = deployment_result["jobArn"]
 
             # Wait for completion (max 1 hour wait)
             max_wait = 60 * 60  # 60 minutes
             start = time.time()
             while time.time() - start < max_wait:
                 response = bedrock_client.get_model_import_job(jobIdentifier=job_arn)
-                status = response['status']
-                if status in ['Completed', 'Failed']:
+                status = response["status"]
+                if status in ["Completed", "Failed"]:
                     break
                 time.sleep(30)
             else:
                 pytest.fail(f"Model import job timed out after {max_wait}s")
 
-            if status == 'Failed':
+            if status == "Failed":
                 pytest.fail(
-                    f"Model import job failed: {response.get('failureMessage', 'unknown reason')}")
+                    f"Model import job failed: {response.get('failureMessage', 'unknown reason')}"
+                )
 
-            model_arn = response['importedModelArn']
+            model_arn = response["importedModelArn"]
 
             yield model_arn
 
@@ -578,33 +553,40 @@ class TestModelCustomizationDeployment:
                 logger.warning(f"Failed to delete imported model {model_arn}: {e}")
 
         except Exception as e:
-            pytest.fail(
-                f"Bedrock deployment failed with error: {str(e)}.")
+            pytest.fail(f"Bedrock deployment failed with error: {str(e)}.")
 
     def _setup_model_files(self, training_job, s3_client, setup_config):
         """Setup required model files for Bedrock deployment."""
         # Get S3 model artifacts path from training job
         try:
             # Try to access model artifacts from training job
-            if hasattr(training_job, 'model_artifacts') and hasattr(training_job.model_artifacts, 's3_model_artifacts'):
+            if hasattr(training_job, "model_artifacts") and hasattr(
+                training_job.model_artifacts, "s3_model_artifacts"
+            ):
                 base_s3_path = training_job.model_artifacts.s3_model_artifacts
-            elif hasattr(training_job, 'output_model_package_arn'):
+            elif hasattr(training_job, "output_model_package_arn"):
                 # If training job has model package ARN, get artifacts from model package
-                model_package = ModelPackage.get(training_job.output_model_package_arn, region=AWS_REGION)
-                if hasattr(model_package,
-                           'inference_specification') and model_package.inference_specification.containers:
+                model_package = ModelPackage.get(
+                    training_job.output_model_package_arn, region=AWS_REGION
+                )
+                if (
+                    hasattr(model_package, "inference_specification")
+                    and model_package.inference_specification.containers
+                ):
                     container = model_package.inference_specification.containers[0]
-                    if hasattr(container, 'model_data_source') and container.model_data_source:
+                    if hasattr(container, "model_data_source") and container.model_data_source:
                         # Access s3_uri from the s3_data_source attribute
-                        if hasattr(container.model_data_source,
-                                   's3_data_source') and container.model_data_source.s3_data_source:
+                        if (
+                            hasattr(container.model_data_source, "s3_data_source")
+                            and container.model_data_source.s3_data_source
+                        ):
                             base_s3_path = container.model_data_source.s3_data_source.s3_uri
                         else:
                             # Fallback to model_data_url if available
-                            base_s3_path = getattr(container, 'model_data_url', None)
+                            base_s3_path = getattr(container, "model_data_url", None)
                     else:
                         # Fallback to model_data_url if available
-                        base_s3_path = getattr(container, 'model_data_url', None)
+                        base_s3_path = getattr(container, "model_data_url", None)
                 else:
                     raise AttributeError("Cannot find model artifacts in model package")
             else:
@@ -615,10 +597,11 @@ class TestModelCustomizationDeployment:
 
         except Exception as e:
             pytest.fail(
-                f"Failed to get model artifacts path: {str(e)}. This might be due to sagemaker-core integration changes.")
+                f"Failed to get model artifacts path: {str(e)}. This might be due to sagemaker-core integration changes."
+            )
 
         bucket = setup_config["bucket"]
-        
+
         # Create bucket if it doesn't exist
         try:
             s3_client.head_bucket(Bucket=bucket)
@@ -626,16 +609,21 @@ class TestModelCustomizationDeployment:
             try:
                 s3_client.create_bucket(
                     Bucket=bucket,
-                    CreateBucketConfiguration={'LocationConstraint': setup_config["region"]}
+                    CreateBucketConfiguration={"LocationConstraint": setup_config["region"]},
                 )
             except Exception:
                 pass
 
         # Copy files from hf_merged to root
-        hf_merged_prefix = base_s3_path.replace(f's3://{bucket}/', '') + 'checkpoints/hf_merged/'
-        root_prefix = base_s3_path.replace(f's3://{bucket}/', '') + '/'
+        hf_merged_prefix = base_s3_path.replace(f"s3://{bucket}/", "") + "checkpoints/hf_merged/"
+        root_prefix = base_s3_path.replace(f"s3://{bucket}/", "") + "/"
 
-        files_to_copy = ['config.json', 'tokenizer.json', 'tokenizer_config.json', 'model.safetensors']
+        files_to_copy = [
+            "config.json",
+            "tokenizer.json",
+            "tokenizer_config.json",
+            "model.safetensors",
+        ]
 
         for file in files_to_copy:
             try:
@@ -644,22 +632,22 @@ class TestModelCustomizationDeployment:
                 try:
                     s3_client.copy_object(
                         Bucket=bucket,
-                        CopySource={'Bucket': bucket, 'Key': hf_merged_prefix + file},
-                        Key=root_prefix + file
+                        CopySource={"Bucket": bucket, "Key": hf_merged_prefix + file},
+                        Key=root_prefix + file,
                     )
                 except Exception as e:
                     print(f"Warning: Could not copy {file}: {str(e)}")
 
         # Create added_tokens.json if missing
         try:
-            s3_client.head_object(Bucket=bucket, Key=root_prefix + 'added_tokens.json')
+            s3_client.head_object(Bucket=bucket, Key=root_prefix + "added_tokens.json")
         except Exception:
             try:
                 s3_client.put_object(
                     Bucket=bucket,
-                    Key=root_prefix + 'added_tokens.json',
+                    Key=root_prefix + "added_tokens.json",
                     Body=json.dumps({}),
-                    ContentType='application/json'
+                    ContentType="application/json",
                 )
             except Exception as e:
                 print(f"Warning: Could not create added_tokens.json: {str(e)}")
@@ -669,9 +657,8 @@ class TestModelCustomizationDeployment:
         assert training_job is not None
         assert training_job.training_job_status == "Completed"
         # Check for model artifacts in different possible locations due to sagemaker-core changes
-        has_artifacts = (
-                hasattr(training_job, 'model_artifacts') or
-                hasattr(training_job, 'output_model_package_arn')
+        has_artifacts = hasattr(training_job, "model_artifacts") or hasattr(
+            training_job, "output_model_package_arn"
         )
         assert has_artifacts, "Training job should have model artifacts or model package ARN"
 
@@ -683,13 +670,17 @@ class TestModelCustomizationDeployment:
             assert bedrock_builder.model == training_job
 
             # Test that the builder can fetch model package if needed
-            if hasattr(bedrock_builder, 'model_package'):
+            if hasattr(bedrock_builder, "model_package"):
                 # This tests the new sagemaker-core integration
-                assert bedrock_builder.model_package is not None or bedrock_builder.model_package is None
+                assert (
+                    bedrock_builder.model_package is not None
+                    or bedrock_builder.model_package is None
+                )
 
         except Exception as e:
             pytest.fail(
-                f"BedrockModelBuilder creation failed: {str(e)}. This might be due to sagemaker-core integration issues.")
+                f"BedrockModelBuilder creation failed: {str(e)}. This might be due to sagemaker-core integration issues."
+            )
 
     @pytest.mark.slow
     @pytest.mark.import_model
@@ -720,15 +711,17 @@ class TestModelCustomizationDeployment:
             try:
                 response = bedrock_runtime.invoke_model(
                     modelId=deployed_model_arn,
-                    body=json.dumps({
-                        "prompt": "What is the capital of France?",
-                        "max_gen_len": 100,
-                        "temperature": 0.7,
-                        "top_p": 0.9
-                    })
+                    body=json.dumps(
+                        {
+                            "prompt": "What is the capital of France?",
+                            "max_gen_len": 100,
+                            "temperature": 0.7,
+                            "top_p": 0.9,
+                        }
+                    ),
                 )
 
-                result = json.loads(response['body'].read().decode())
+                result = json.loads(response["body"].read().decode())
 
                 # Validate response structure
                 assert "generation" in result, "Response missing 'generation' field"
@@ -744,11 +737,7 @@ class TestModelCustomizationDeployment:
                     )
                     time.sleep(base_delay)
                 else:
-                    pytest.fail(
-                        f"Invoke failed after {max_retries} attempts. "
-                        f"Last error: {e}"
-                    )
-
+                    pytest.fail(f"Invoke failed after {max_retries} attempts. " f"Last error: {e}")
 
     @pytest.fixture(scope="class", autouse=True)
     def cleanup_import_jobs(self, bedrock_client):
@@ -756,16 +745,16 @@ class TestModelCustomizationDeployment:
         yield
         try:
             jobs = bedrock_client.list_model_import_jobs()
-            for job in jobs.get('modelImportJobSummaries', []):
-                if job['jobName'].startswith('test-bedrock-'):
+            for job in jobs.get("modelImportJobSummaries", []):
+                if job["jobName"].startswith("test-bedrock-"):
                     try:
                         # Stop in-progress jobs
-                        if job.get('status') in ('InProgress', 'Pending'):
-                            bedrock_client.stop_model_import_job(jobIdentifier=job['jobArn'])
+                        if job.get("status") in ("InProgress", "Pending"):
+                            bedrock_client.stop_model_import_job(jobIdentifier=job["jobArn"])
                         # Delete completed imported models
-                        elif job.get('status') == 'Completed' and job.get('importedModelArn'):
+                        elif job.get("status") == "Completed" and job.get("importedModelArn"):
                             bedrock_client.delete_imported_model(
-                                modelIdentifier=job['importedModelArn']
+                                modelIdentifier=job["importedModelArn"]
                             )
                     except Exception as e:
                         logger.warning(f"Cleanup failed for job {job['jobName']}: {e}")
@@ -781,12 +770,14 @@ def test_model_customization_workflow(training_job_name):
     config = {
         "training_job_name": training_job_name,
         "region": "us-west-2",
-        "bucket": "open-models-testing-pdx"
+        "bucket": "open-models-testing-pdx",
     }
 
     try:
-        s3_client = boto3.client('s3', region_name=config["region"])
-        training_job = TrainingJob.get(training_job_name=config["training_job_name"], region=config["region"])
+        s3_client = boto3.client("s3", region_name=config["region"])
+        training_job = TrainingJob.get(
+            training_job_name=config["training_job_name"], region=config["region"]
+        )
 
         test_class = TestModelCustomizationDeployment()
         test_class.test_training_job_exists(training_job)
@@ -799,6 +790,3 @@ def test_model_customization_workflow(training_job_name):
         print("2. Model artifacts access patterns")
         print("3. BedrockModelBuilder initialization with new sagemaker-core objects")
         raise
-
-
-

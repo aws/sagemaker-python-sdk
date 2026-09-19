@@ -19,7 +19,7 @@ import pytest
 from sagemaker.ai_registry.dataset_utils import (
     CustomizationTechnique,
     DataSetMethod,
-    DataSetHubContentDocument
+    DataSetHubContentDocument,
 )
 
 
@@ -48,7 +48,7 @@ class TestDataSetHubContentDocument:
     def test_create_minimal_document(self):
         """Test creating document with minimal parameters."""
         doc = DataSetHubContentDocument()
-        
+
         assert doc.dataset_type == "AGENT_GENERATED"
         assert doc.dataset_role_arn is None
         assert doc.dependencies == []
@@ -64,15 +64,17 @@ class TestDataSetHubContentDocument:
             specification_arn="arn:aws:sagemaker:us-west-2:123456789012:specification/test",
             conversation_id="conv-123",
             conversation_checkpoint_id="checkpoint-456",
-            dependencies=["dep1", "dep2"]
+            dependencies=["dep1", "dep2"],
         )
-        
+
         assert doc.dataset_type == "CUSTOMER_PROVIDED"
         assert doc.dataset_role_arn == "arn:aws:iam::123456789012:role/TestRole"
         assert doc.dataset_s3_bucket == "test-bucket"
         assert doc.dataset_s3_prefix == "datasets/test"
         assert doc.dataset_context_s3_uri == "s3://test-bucket/context"
-        assert doc.specification_arn == "arn:aws:sagemaker:us-west-2:123456789012:specification/test"
+        assert (
+            doc.specification_arn == "arn:aws:sagemaker:us-west-2:123456789012:specification/test"
+        )
         assert doc.conversation_id == "conv-123"
         assert doc.conversation_checkpoint_id == "checkpoint-456"
         assert doc.dependencies == ["dep1", "dep2"]
@@ -82,7 +84,7 @@ class TestDataSetHubContentDocument:
         doc = DataSetHubContentDocument()
         json_str = doc.to_json()
         parsed = json.loads(json_str)
-        
+
         assert parsed["DatasetType"] == "AGENT_GENERATED"
         assert parsed["Dependencies"] == []
         assert "DatasetRoleArn" not in parsed
@@ -98,25 +100,34 @@ class TestDataSetHubContentDocument:
             specification_arn="arn:aws:sagemaker:us-west-2:123456789012:specification/test",
             conversation_id="conv-123",
             conversation_checkpoint_id="checkpoint-456",
-            dependencies=["dep1", "dep2"]
+            dependencies=["dep1", "dep2"],
         )
-        
+
         json_str = doc.to_json()
         parsed = json.loads(json_str)
-        
+
         expected_keys = {
-            "DatasetType", "DatasetRoleArn", "DatasetS3Bucket", "DatasetS3Prefix",
-            "DatasetContextS3Uri", "SpecificationArn", "ConversationId",
-            "ConversationCheckpointId", "Dependencies"
+            "DatasetType",
+            "DatasetRoleArn",
+            "DatasetS3Bucket",
+            "DatasetS3Prefix",
+            "DatasetContextS3Uri",
+            "SpecificationArn",
+            "ConversationId",
+            "ConversationCheckpointId",
+            "Dependencies",
         }
-        
+
         assert set(parsed.keys()) == expected_keys
         assert parsed["DatasetType"] == "CUSTOMER_PROVIDED"
         assert parsed["DatasetRoleArn"] == "arn:aws:iam::123456789012:role/TestRole"
         assert parsed["DatasetS3Bucket"] == "test-bucket"
         assert parsed["DatasetS3Prefix"] == "datasets/test"
         assert parsed["DatasetContextS3Uri"] == "s3://test-bucket/context"
-        assert parsed["SpecificationArn"] == "arn:aws:sagemaker:us-west-2:123456789012:specification/test"
+        assert (
+            parsed["SpecificationArn"]
+            == "arn:aws:sagemaker:us-west-2:123456789012:specification/test"
+        )
         assert parsed["ConversationId"] == "conv-123"
         assert parsed["ConversationCheckpointId"] == "checkpoint-456"
         assert parsed["Dependencies"] == ["dep1", "dep2"]
@@ -124,24 +135,26 @@ class TestDataSetHubContentDocument:
     def test_to_json_partial(self):
         """Test JSON serialization with some parameters."""
         doc = DataSetHubContentDocument(
-            dataset_type="CUSTOMER_PROVIDED",
-            dataset_s3_bucket="test-bucket",
-            dependencies=["dep1"]
+            dataset_type="CUSTOMER_PROVIDED", dataset_s3_bucket="test-bucket", dependencies=["dep1"]
         )
-        
+
         json_str = doc.to_json()
         parsed = json.loads(json_str)
-        
+
         assert parsed["DatasetType"] == "CUSTOMER_PROVIDED"
         assert parsed["DatasetS3Bucket"] == "test-bucket"
         assert parsed["Dependencies"] == ["dep1"]
-        
+
         # These should not be present since they were None
         excluded_keys = {
-            "DatasetRoleArn", "DatasetS3Prefix", "DatasetContextS3Uri",
-            "SpecificationArn", "ConversationId", "ConversationCheckpointId"
+            "DatasetRoleArn",
+            "DatasetS3Prefix",
+            "DatasetContextS3Uri",
+            "SpecificationArn",
+            "ConversationId",
+            "ConversationCheckpointId",
         }
-        
+
         for key in excluded_keys:
             assert key not in parsed
 
@@ -150,7 +163,7 @@ class TestDataSetHubContentDocument:
         doc = DataSetHubContentDocument(dependencies=[])
         json_str = doc.to_json()
         parsed = json.loads(json_str)
-        
+
         assert parsed["Dependencies"] == []
 
     def test_to_json_none_dependencies(self):
@@ -158,15 +171,13 @@ class TestDataSetHubContentDocument:
         doc = DataSetHubContentDocument(dependencies=None)
         json_str = doc.to_json()
         parsed = json.loads(json_str)
-        
+
         assert parsed["Dependencies"] == []
 
     def test_to_json_with_content_metadata(self):
         """Test JSON serialization includes ContentMetadata when provided."""
         metadata = {
-            "SourceFeatureGroups": [
-                "arn:aws:sagemaker:us-west-2:123456789012:feature-group/my-fg"
-            ],
+            "SourceFeatureGroups": ["arn:aws:sagemaker:us-west-2:123456789012:feature-group/my-fg"],
             "ExtractionMethod": "FeatureStoreDatasetBuilder",
             "AthenaQueryExecutionId": "abc-123",
         }

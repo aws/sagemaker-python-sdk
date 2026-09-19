@@ -7,6 +7,7 @@
 #     http://aws.amazon.com/apache2.0/
 """Unit tests for ModelBuilder.from_recommendation_job
 and the new recommendation_job / recommendation_spec_name kwargs on deploy()."""
+
 from __future__ import absolute_import
 
 from types import SimpleNamespace

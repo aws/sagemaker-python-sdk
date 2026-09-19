@@ -24,6 +24,7 @@ Run under pytest (the integ marker keeps it out of the unit run)::
 
 Requires AWS credentials with iam:GetRole (read-only).
 """
+
 from __future__ import absolute_import
 
 import logging
@@ -70,9 +71,6 @@ def _no_autorole_created(role_type_name: str) -> bool:
 pytestmark = pytest.mark.skipif(
     not _credentials_available(), reason="AWS credentials not available"
 )
-
-
-
 
 
 if __name__ == "__main__":

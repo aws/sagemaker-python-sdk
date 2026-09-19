@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """SageMaker GenAI inference benchmarking and recommendation."""
+
 from __future__ import absolute_import
 
 from sagemaker.serve.ai_inference_recommender._constants import (
@@ -42,7 +43,6 @@ from sagemaker.serve.ai_inference_recommender.workload import Workload
 from sagemaker.serve.ai_inference_recommender._model_builder_methods import (
     start_benchmark,
 )
-
 
 __all__ = [
     "BenchmarkComparison",

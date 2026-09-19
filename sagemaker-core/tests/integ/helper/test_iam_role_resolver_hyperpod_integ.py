@@ -34,6 +34,7 @@ and cleanup). It is intentionally self-cleaning: the role and policies it create
 are deleted in a ``finally`` block even if an assertion fails midway. To inspect
 the artifacts instead of deleting them, set ``KEEP_HYPERPOD_ROLE=1``.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -95,9 +96,7 @@ def _delete_role_and_policies(iam_client, role_name: str) -> None:
             iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
             # A managed policy can only be deleted once all non-default versions
             # are removed, so prune them before deleting the policy.
-            versions = iam_client.list_policy_versions(PolicyArn=policy_arn).get(
-                "Versions", []
-            )
+            versions = iam_client.list_policy_versions(PolicyArn=policy_arn).get("Versions", [])
             for version in versions:
                 if not version["IsDefaultVersion"]:
                     iam_client.delete_policy_version(
@@ -136,9 +135,7 @@ def run_end_to_end() -> None:
     try:
         # --- Deterministic creation path: explicitly create the role + policies
         # via the opt-in IamRoleResolver against a unique role name.
-        role_arn = creator.create_execution_role(
-            role_type=ROLE_TYPE, role_name=unique_role_name
-        )
+        role_arn = creator.create_execution_role(role_type=ROLE_TYPE, role_name=unique_role_name)
         assert role_arn.startswith("arn:"), f"unexpected ARN: {role_arn}"
         logger.info("Created and provisioned test role: %s", role_arn)
 
@@ -177,9 +174,9 @@ def run_end_to_end() -> None:
         decisions = {r["EvalActionName"]: r["EvalDecision"] for r in results}
         assert decisions.get("s3:GetObject") == "allowed", "job runtime perm not allowed"
         for connect_action in HYPERPOD_CLI_CONNECT_ACTIONS:
-            assert decisions.get(connect_action) != "allowed", (
-                f"{connect_action} must NOT be granted by the job execution role"
-            )
+            assert (
+                decisions.get(connect_action) != "allowed"
+            ), f"{connect_action} must NOT be granted by the job execution role"
         logger.info("OK: job role has runtime perms and excludes CLI connect perms")
 
         # --- Verify 4: idempotency — re-provisioning does not error or duplicate.
@@ -205,9 +202,6 @@ def run_end_to_end() -> None:
         else:
             _delete_role_and_policies(iam_client, unique_role_name)
             _delete_role_and_policies(iam_client, ROLE_NAME)
-
-
-
 
 
 if __name__ == "__main__":

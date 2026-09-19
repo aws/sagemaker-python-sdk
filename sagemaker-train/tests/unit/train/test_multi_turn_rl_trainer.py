@@ -1,4 +1,5 @@
 """Unit tests for MultiTurnRLTrainer."""
+
 import json
 from unittest.mock import MagicMock, patch, PropertyMock
 
@@ -21,7 +22,6 @@ from sagemaker.train.multi_turn_rl_trainer import (
     _list_all_mtrl_models,
 )
 
-
 BEDROCK_AGENT_ARN = "arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/AGENTID123"
 LAMBDA_ARN = "arn:aws:lambda:us-west-2:123456789012:function:my-adapter"
 MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/test-model"
@@ -29,7 +29,9 @@ MPG_ARN = "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/my-group
 MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
 S3_OUTPUT = "s3://my-bucket/output/"
 S3_DATA = "s3://my-bucket/data/prompts.jsonl"
-DATASET_ARN = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/SageMakerPublicHub/Dataset/my-ds"
+DATASET_ARN = (
+    "arn:aws:sagemaker:us-west-2:123456789012:hub-content/SageMakerPublicHub/Dataset/my-ds"
+)
 
 
 class TestARNPatterns:
@@ -105,10 +107,15 @@ class TestJobConfigDocument:
         """Create a trainer with mocked internals for config doc testing."""
         trainer = object.__new__(MultiTurnRLTrainer)
         trainer.agent_env = agent_config
-        trainer.bedrock_agentcore_qualifier = overrides.get("bedrock_agentcore_qualifier", "DEFAULT")
+        trainer.bedrock_agentcore_qualifier = overrides.get(
+            "bedrock_agentcore_qualifier", "DEFAULT"
+        )
         trainer.s3_output_path = S3_OUTPUT
         trainer.output_model_package_group = MPG_ARN
-        trainer.intermediate_checkpoint_model_package_group = overrides.get("intermediate_checkpoint_model_package_group", "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/default-ckpt-mpg")
+        trainer.intermediate_checkpoint_model_package_group = overrides.get(
+            "intermediate_checkpoint_model_package_group",
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/default-ckpt-mpg",
+        )
         trainer.mlflow_app_arn = MLFLOW_ARN
         trainer.mlflow_experiment_name = overrides.get("mlflow_experiment_name")
         trainer.mlflow_run_name = overrides.get("mlflow_run_name")
@@ -125,51 +132,39 @@ class TestJobConfigDocument:
 
     def test_bedrock_agent_config(self):
         trainer = self._make_trainer()
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         agent = doc["AgentConfig"]
         assert agent["BedrockAgentCoreConfig"]["AgentRuntimeArn"] == BEDROCK_AGENT_ARN
         assert agent["BedrockAgentCoreConfig"]["Qualifier"] == "DEFAULT"
 
     def test_bedrock_agent_with_qualifier(self):
         trainer = self._make_trainer(bedrock_agentcore_qualifier="CUSTOM")
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         agent = doc["AgentConfig"]
         assert agent["BedrockAgentCoreConfig"]["AgentRuntimeArn"] == BEDROCK_AGENT_ARN
         assert agent["BedrockAgentCoreConfig"]["Qualifier"] == "CUSTOM"
 
     def test_lambda_agent_config(self):
         trainer = self._make_trainer(agent_config=LAMBDA_ARN)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert doc["AgentConfig"]["CustomAgentLambdaConfig"]["LambdaArn"] == LAMBDA_ARN
 
     def test_adapter_agent_config(self):
         adapter = CustomAgentLambda(lambda_arn=LAMBDA_ARN)
         trainer = self._make_trainer(agent_config=adapter)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert doc["AgentConfig"]["CustomAgentLambdaConfig"]["LambdaArn"] == LAMBDA_ARN
 
     def test_s3_input_data(self):
         trainer = self._make_trainer()
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         channel = doc["InputDataConfig"][0]
         assert channel["ChannelName"] == "train"
         assert channel["DataSource"]["S3DataSource"]["S3Uri"] == S3_DATA
 
     def test_dataset_arn_input_data(self):
         trainer = self._make_trainer(training_dataset=DATASET_ARN)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         channel = doc["InputDataConfig"][0]
         assert channel["DataSource"]["DatasetSource"]["DatasetArn"] == DATASET_ARN
 
@@ -177,31 +172,23 @@ class TestJobConfigDocument:
         ds = MagicMock(spec=DataSet)
         ds.arn = DATASET_ARN
         trainer = self._make_trainer(training_dataset=ds)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert doc["InputDataConfig"][0]["DataSource"]["DatasetSource"]["DatasetArn"] == DATASET_ARN
 
     def test_output_data_config(self):
         trainer = self._make_trainer()
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert doc["OutputDataConfig"]["S3OutputPath"] == S3_OUTPUT
         assert "KmsKeyId" not in doc["OutputDataConfig"]
 
     def test_output_data_config_with_kms(self):
         trainer = self._make_trainer(kms_key_arn="arn:kms:key")
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert doc["OutputDataConfig"]["KmsKeyArn"] == "arn:kms:key"
 
     def test_training_config(self):
         trainer = self._make_trainer(hyperparameters={"lr": "0.001"})
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         tc = doc["TrainingConfig"]
         assert tc["BaseModelArn"] == MODEL_ARN
         assert tc["AcceptEula"] is True
@@ -209,21 +196,15 @@ class TestJobConfigDocument:
         assert tc["MlflowConfig"]["MlflowResourceArn"] == MLFLOW_ARN
 
     def test_mlflow_optional_fields(self):
-        trainer = self._make_trainer(
-            mlflow_experiment_name="exp1", mlflow_run_name="run1"
-        )
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        trainer = self._make_trainer(mlflow_experiment_name="exp1", mlflow_run_name="run1")
+        doc = json.loads(trainer._build_job_config_document())
         mlflow = doc["TrainingConfig"]["MlflowConfig"]
         assert mlflow["MlflowExperimentName"] == "exp1"
         assert mlflow["MlflowRunName"] == "run1"
 
     def test_mlflow_optional_fields_omitted(self):
         trainer = self._make_trainer()
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         mlflow = doc["TrainingConfig"]["MlflowConfig"]
         assert "MlflowExperimentName" not in mlflow
         assert "MlflowRunName" not in mlflow
@@ -233,9 +214,7 @@ class TestJobConfigDocument:
         app.arn = MLFLOW_ARN
         trainer = self._make_trainer()
         trainer.mlflow_app_arn = app
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert doc["TrainingConfig"]["MlflowConfig"]["MlflowResourceArn"] == MLFLOW_ARN
 
     def test_vpc_config_included(self):
@@ -243,33 +222,25 @@ class TestJobConfigDocument:
         vpc.security_group_ids = ["sg-123"]
         vpc.subnets = ["subnet-456"]
         trainer = self._make_trainer(networking=vpc)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert doc["VpcConfig"]["SecurityGroupIds"] == ["sg-123"]
         assert doc["VpcConfig"]["Subnets"] == ["subnet-456"]
 
     def test_vpc_config_omitted(self):
         trainer = self._make_trainer()
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert "VpcConfig" not in doc
 
     def test_source_model_package_arn_from_model_package(self):
         mock_mp = MagicMock(spec=ModelPackage)
         mock_mp.model_package_arn = "arn:src:pkg"
         trainer = self._make_trainer(model=mock_mp)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert doc["ModelPackageConfig"]["InputModelPackageArn"] == "arn:src:pkg"
 
     def test_source_model_package_arn_absent_for_string_model(self):
         trainer = self._make_trainer(model="some-model-id")
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert "InputModelPackageArn" not in doc["ModelPackageConfig"]
 
     def test_intermediate_checkpoint_mpg_included(self):
@@ -293,9 +264,7 @@ class TestJobConfigDocument:
     def test_validation_dataset_s3(self):
         val_s3 = "s3://my-bucket/val/data.jsonl"
         trainer = self._make_trainer(validation_dataset=val_s3)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         channels = doc["InputDataConfig"]
         assert len(channels) == 2
         assert channels[0]["ChannelName"] == "train"
@@ -304,9 +273,7 @@ class TestJobConfigDocument:
 
     def test_validation_dataset_arn(self):
         trainer = self._make_trainer(validation_dataset=DATASET_ARN)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         channels = doc["InputDataConfig"]
         assert len(channels) == 2
         assert channels[1]["ChannelName"] == "validation"
@@ -316,18 +283,14 @@ class TestJobConfigDocument:
         ds = MagicMock(spec=DataSet)
         ds.arn = DATASET_ARN
         trainer = self._make_trainer(validation_dataset=ds)
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         channels = doc["InputDataConfig"]
         assert len(channels) == 2
         assert channels[1]["DataSource"]["DatasetSource"]["DatasetArn"] == DATASET_ARN
 
     def test_no_validation_dataset(self):
         trainer = self._make_trainer()
-        doc = json.loads(
-            trainer._build_job_config_document()
-        )
+        doc = json.loads(trainer._build_job_config_document())
         assert len(doc["InputDataConfig"]) == 1
 
 
@@ -340,7 +303,9 @@ class TestMlflowConfigNone:
         trainer.bedrock_agentcore_qualifier = "DEFAULT"
         trainer.s3_output_path = S3_OUTPUT
         trainer.output_model_package_group = MPG_ARN
-        trainer.intermediate_checkpoint_model_package_group = "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/default-ckpt-mpg"
+        trainer.intermediate_checkpoint_model_package_group = (
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/default-ckpt-mpg"
+        )
         trainer.mlflow_app_arn = overrides.get("mlflow_app_arn")
         trainer.mlflow_experiment_name = overrides.get("mlflow_experiment_name")
         trainer.mlflow_run_name = overrides.get("mlflow_run_name")
@@ -363,7 +328,10 @@ class TestMlflowConfigNone:
         result = trainer._build_mlflow_config()
         assert result is None
 
-    @patch("sagemaker.train.multi_turn_rl_trainer._resolve_mlflow_resource_arn", return_value=MLFLOW_ARN)
+    @patch(
+        "sagemaker.train.multi_turn_rl_trainer._resolve_mlflow_resource_arn",
+        return_value=MLFLOW_ARN,
+    )
     @patch("sagemaker.train.multi_turn_rl_trainer.TrainDefaults")
     def test_mlflow_config_resolved_from_prod(self, mock_defaults, mock_resolve):
         trainer = self._make_trainer()
@@ -378,8 +346,13 @@ class TestMlflowConfigNone:
     def test_mlflow_config_omitted_from_training_config(self):
         trainer = self._make_trainer()
         trainer.mlflow_app_arn = None
-        with patch("sagemaker.train.multi_turn_rl_trainer._resolve_mlflow_resource_arn", return_value=None), \
-             patch("sagemaker.train.multi_turn_rl_trainer.TrainDefaults"):
+        with (
+            patch(
+                "sagemaker.train.multi_turn_rl_trainer._resolve_mlflow_resource_arn",
+                return_value=None,
+            ),
+            patch("sagemaker.train.multi_turn_rl_trainer.TrainDefaults"),
+        ):
             doc = json.loads(trainer._build_job_config_document())
         assert "MlflowConfig" not in doc["TrainingConfig"]
 
@@ -423,6 +396,7 @@ class TestResolveModelPackageGroup:
 
     def test_mpg_object_returns_arn(self):
         from sagemaker.core.resources import ModelPackageGroup as MPG
+
         mock_mpg = MagicMock(spec=MPG)
         mock_mpg.model_package_group_arn = MPG_ARN
 
@@ -447,7 +421,9 @@ class TestResolveModelPackageGroup:
     def test_none_auto_creates_on_miss(self, mock_get, mock_create):
         mock_get.side_effect = Exception("does not exist")
         mock_mpg = MagicMock()
-        mock_mpg.model_package_group_arn = "arn:aws:sagemaker:us-west-2:123:model-package-group/test-model-mtrl-mpg"
+        mock_mpg.model_package_group_arn = (
+            "arn:aws:sagemaker:us-west-2:123:model-package-group/test-model-mtrl-mpg"
+        )
         mock_create.return_value = mock_mpg
 
         trainer = self._make_trainer()
@@ -458,7 +434,9 @@ class TestResolveModelPackageGroup:
     @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
     def test_none_reuses_existing(self, mock_get):
         mock_mpg = MagicMock()
-        mock_mpg.model_package_group_arn = "arn:aws:sagemaker:us-west-2:123:model-package-group/test-model-mtrl-mpg"
+        mock_mpg.model_package_group_arn = (
+            "arn:aws:sagemaker:us-west-2:123:model-package-group/test-model-mtrl-mpg"
+        )
         mock_get.return_value = mock_mpg
 
         trainer = self._make_trainer()
@@ -475,13 +453,14 @@ class TestResolveModelPackageGroup:
         with pytest.raises(ValueError, match="Failed to create"):
             trainer._resolve_model_package_group("test-model", None, self._mock_session())
 
-
     @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.create")
     @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
     def test_nova_model_creates_restricted_mpg(self, mock_get, mock_create):
         mock_get.side_effect = Exception("does not exist")
         mock_mpg = MagicMock()
-        mock_mpg.model_package_group_arn = "arn:aws:sagemaker:us-west-2:123:model-package-group/amazon-nova-pro-mtrl-mpg"
+        mock_mpg.model_package_group_arn = (
+            "arn:aws:sagemaker:us-west-2:123:model-package-group/amazon-nova-pro-mtrl-mpg"
+        )
         mock_create.return_value = mock_mpg
 
         trainer = self._make_trainer()
@@ -517,9 +496,7 @@ class TestResolveAgentRuntimeArn:
 
         result = _resolve_agent_runtime_arn("myRuntime-aBcDeFgHiJ")
         assert result == BEDROCK_AGENT_ARN
-        mock_client.get_agent_runtime.assert_called_once_with(
-            agentRuntimeId="myRuntime-aBcDeFgHiJ"
-        )
+        mock_client.get_agent_runtime.assert_called_once_with(agentRuntimeId="myRuntime-aBcDeFgHiJ")
 
     @patch("sagemaker.train.multi_turn_rl_trainer.boto3.Session")
     def test_raises_on_missing_arn(self, mock_session_cls):
@@ -592,6 +569,7 @@ class TestListHubModelsByRecipe:
         }
 
         from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
         result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="MTRL")
         assert result == ["model-with-mtrl"]
         mock_client.describe_hub_content.assert_not_called()
@@ -613,6 +591,7 @@ class TestListHubModelsByRecipe:
         }
 
         from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
         result = _list_hub_models_by_recipe(recipe_type="Evaluation", technique="MTRLEvaluation")
         assert result == ["model-eval"]
 
@@ -642,6 +621,7 @@ class TestListHubModelsByRecipe:
         ]
 
         from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
         result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="MTRL")
         assert result == ["model-a", "model-b"]
         assert mock_client.list_hub_contents.call_count == 2
@@ -658,11 +638,13 @@ class TestListHubModelsByRecipe:
         }
 
         from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
         result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="MTRL")
         assert result == []
 
     def test_invalid_recipe_type_raises(self):
         from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
         with pytest.raises(ValueError, match="recipe_type must be"):
             _list_hub_models_by_recipe(recipe_type="Invalid", technique="MTRL")
 
@@ -688,6 +670,7 @@ class TestListHubModelsByRecipe:
         }
 
         from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
         result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="CPT")
         assert result == ["model-cpt-bare", "model-cpt-suffixed"]
 
@@ -708,6 +691,7 @@ class TestListHubModelsByRecipe:
         }
 
         from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
         result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="rl")
         assert result == []
 
@@ -748,15 +732,23 @@ class TestListAgentRuntimes:
         mock_client.list_agent_runtimes.side_effect = [
             {
                 "agentRuntimes": [
-                    {"agentRuntimeArn": "arn1", "agentRuntimeId": "a-aBcDeFgHiJ",
-                     "agentRuntimeName": "a", "status": "READY"},
+                    {
+                        "agentRuntimeArn": "arn1",
+                        "agentRuntimeId": "a-aBcDeFgHiJ",
+                        "agentRuntimeName": "a",
+                        "status": "READY",
+                    },
                 ],
                 "nextToken": "tok",
             },
             {
                 "agentRuntimes": [
-                    {"agentRuntimeArn": "arn2", "agentRuntimeId": "b-aBcDeFgHiJ",
-                     "agentRuntimeName": "b", "status": "READY"},
+                    {
+                        "agentRuntimeArn": "arn2",
+                        "agentRuntimeId": "b-aBcDeFgHiJ",
+                        "agentRuntimeName": "b",
+                        "status": "READY",
+                    },
                 ],
             },
         ]
@@ -776,7 +768,9 @@ class TestDryRun:
         trainer.bedrock_agentcore_qualifier = "DEFAULT"
         trainer.s3_output_path = S3_OUTPUT
         trainer.output_model_package_group = MPG_ARN
-        trainer.intermediate_checkpoint_model_package_group = "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/ckpt-mpg"
+        trainer.intermediate_checkpoint_model_package_group = (
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/ckpt-mpg"
+        )
         trainer.mlflow_app_arn = None  # Force MLflow resolution
         trainer.mlflow_experiment_name = None
         trainer.mlflow_run_name = None
@@ -821,7 +815,9 @@ class TestDryRun:
     @patch("sagemaker.train.multi_turn_rl_trainer._resolve_mlflow_resource_arn")
     @patch("sagemaker.train.multi_turn_rl_trainer.Job")
     @patch("sagemaker.train.multi_turn_rl_trainer.TrainDefaults.get_role")
-    def test_dry_run_passes_flag_to_mlflow_resolver(self, mock_get_role, mock_job_cls, mock_resolve_mlflow):
+    def test_dry_run_passes_flag_to_mlflow_resolver(
+        self, mock_get_role, mock_job_cls, mock_resolve_mlflow
+    ):
         """dry_run=True is forwarded to _resolve_mlflow_resource_arn."""
         mock_resolve_mlflow.return_value = None
         mock_get_role.return_value = "arn:aws:iam::123456789012:role/TestRole"

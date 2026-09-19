@@ -15,6 +15,7 @@
 These classes assist with suggesting baselines and creating monitoring schedules for
 data captured by SageMaker Endpoints.
 """
+
 from __future__ import print_function, absolute_import
 
 import copy

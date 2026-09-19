@@ -78,26 +78,20 @@ class TestResolveExperimentId:
             MagicMock(status_code=404),
         ]
 
-        result = _resolve_experiment_id(
-            "https://app.mlflow.aws/auth?authToken=tok", "nonexistent"
-        )
+        result = _resolve_experiment_id("https://app.mlflow.aws/auth?authToken=tok", "nonexistent")
         assert result is None
 
     @patch("requests.Session")
     def test_connection_error(self, mock_session_cls):
         mock_session_cls.side_effect = Exception("network error")
-        result = _resolve_experiment_id(
-            "https://app.mlflow.aws/auth?authToken=tok", "exp"
-        )
+        result = _resolve_experiment_id("https://app.mlflow.aws/auth?authToken=tok", "exp")
         assert result is None
 
 
 class TestBuildMlflowDeepLinkByName:
     """Tests for _build_mlflow_deep_link_by_name."""
 
-    @patch(
-        "sagemaker.train.common_utils.mlflow_url_utils._resolve_experiment_id"
-    )
+    @patch("sagemaker.train.common_utils.mlflow_url_utils._resolve_experiment_id")
     def test_with_resolved_id(self, mock_resolve):
         mock_resolve.return_value = "23"
         url = "https://app.mlflow.aws/auth?authToken=tok123"
@@ -105,9 +99,7 @@ class TestBuildMlflowDeepLinkByName:
         assert result.endswith("#/experiments/23?workspace=default")
         assert "authToken=tok123" in result
 
-    @patch(
-        "sagemaker.train.common_utils.mlflow_url_utils._resolve_experiment_id"
-    )
+    @patch("sagemaker.train.common_utils.mlflow_url_utils._resolve_experiment_id")
     def test_fallback_to_search_filter(self, mock_resolve):
         mock_resolve.return_value = None
         url = "https://app.mlflow.aws/auth?authToken=tok123"
@@ -121,9 +113,7 @@ class TestBuildMlflowDeepLinkByName:
 class TestGetPresignedMlflowExperimentUrl:
     """Tests for get_presigned_mlflow_experiment_url."""
 
-    @patch(
-        "sagemaker.train.common_utils.mlflow_url_utils._resolve_experiment_id"
-    )
+    @patch("sagemaker.train.common_utils.mlflow_url_utils._resolve_experiment_id")
     @patch("sagemaker.core.utils.utils.SageMakerClient")
     def test_with_experiment_name(self, mock_sm_class, mock_resolve):
         mock_client = MagicMock()

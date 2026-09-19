@@ -16,6 +16,7 @@ These guard against the parser-confusion vulnerability where the "is this an ECR
 classifier and the "which host do I docker login to?" extractor disagreed, allowing a crafted
 image URI to leak the ECR authorization token to an attacker-controlled host.
 """
+
 from __future__ import absolute_import
 
 import unittest

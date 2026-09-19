@@ -40,7 +40,9 @@ class BatchTestResourceManager:
             response = self.batch_client.create_service_environment(
                 serviceEnvironmentName=service_environment_name,
                 serviceEnvironmentType="SAGEMAKER_TRAINING",
-                capacityLimits=[{"maxCapacity": 10, "capacityUnit": BatchTestResourceManager.CAPACITY_UNIT}],
+                capacityLimits=[
+                    {"maxCapacity": 10, "capacityUnit": BatchTestResourceManager.CAPACITY_UNIT}
+                ],
             )
             print(f"Service environment {service_environment_name} created successfully.")
             return response
@@ -118,7 +120,9 @@ class BatchTestResourceManager:
             response = self.batch_client.create_quota_share(
                 quotaShareName=quota_share_name,
                 jobQueue=queue_name,
-                capacityLimits=[{"maxCapacity": 10, "capacityUnit": BatchTestResourceManager.CAPACITY_UNIT}],
+                capacityLimits=[
+                    {"maxCapacity": 10, "capacityUnit": BatchTestResourceManager.CAPACITY_UNIT}
+                ],
                 resourceSharingConfiguration={"strategy": "RESERVE"},
                 preemptionConfiguration={"inSharePreemption": "DISABLED"},
                 state="ENABLED",
@@ -130,7 +134,9 @@ class BatchTestResourceManager:
                 print("Resource already exists. Fetching existing resource.")
                 desc_jq = self.batch_client.describe_job_queues(jobQueues=[queue_name])
                 jq_arn = desc_jq["jobQueues"][0]["jobQueueArn"]
-                return self.batch_client.describe_quota_share(quotaShareArn=f"{jq_arn}/quota-share/{quota_share_name}")
+                return self.batch_client.describe_quota_share(
+                    quotaShareArn=f"{jq_arn}/quota-share/{quota_share_name}"
+                )
             else:
                 print(f"Error creating quota share: {e}")
                 raise
@@ -138,12 +144,16 @@ class BatchTestResourceManager:
     def _update_quota_share_state(self, quota_share_arn, state):
         print(f"Updating quota share {quota_share_arn} to state {state}")
         try:
-            response = self.batch_client.update_quota_share(quotaShareArn=quota_share_arn, state=state)
+            response = self.batch_client.update_quota_share(
+                quotaShareArn=quota_share_arn, state=state
+            )
             return response
         except Exception as e:
             print(f"Error updating quota share: {e}")
 
-    def _wait_for_quota_share_state(self, quota_share_arn, expected_status, expected_state, timeout=300):
+    def _wait_for_quota_share_state(
+        self, quota_share_arn, expected_status, expected_state, timeout=300
+    ):
         print(f"Waiting for quota share to be {expected_status}...")
         start = time.time()
         while time.time() - start < timeout:
@@ -188,9 +198,7 @@ class BatchTestResourceManager:
         print(f"Waiting for queue {job_queue_name} to be {expected_status}...")
         start = time.time()
         while time.time() - start < timeout:
-            describe_jq_response = self.batch_client.describe_job_queues(
-                jobQueues=[job_queue_name]
-            )
+            describe_jq_response = self.batch_client.describe_job_queues(jobQueues=[job_queue_name])
             if describe_jq_response["jobQueues"]:
                 jq = describe_jq_response["jobQueues"][0]
 
@@ -207,10 +215,16 @@ class BatchTestResourceManager:
                 return
 
             time.sleep(5)
-        raise TimeoutError(f"Queue {job_queue_name} did not reach {expected_state} within {timeout}s")
+        raise TimeoutError(
+            f"Queue {job_queue_name} did not reach {expected_state} within {timeout}s"
+        )
 
-    def _wait_for_service_environment_state(self, service_environment_name, expected_status, expected_state, timeout=300):
-        print(f"Waiting for service environment {service_environment_name} to be {expected_status}...")
+    def _wait_for_service_environment_state(
+        self, service_environment_name, expected_status, expected_state, timeout=300
+    ):
+        print(
+            f"Waiting for service environment {service_environment_name} to be {expected_status}..."
+        )
         start = time.time()
         while time.time() - start < timeout:
             describe_response = self.batch_client.describe_service_environments(
@@ -223,7 +237,9 @@ class BatchTestResourceManager:
                 status = se["status"]
 
                 if status == expected_status and state == expected_state:
-                    print(f"Service environment {service_environment_name} is now {expected_state}.")
+                    print(
+                        f"Service environment {service_environment_name} is now {expected_state}."
+                    )
                     return
                 if status == "INVALID":
                     raise ValueError(f"Something went wrong!")
@@ -232,7 +248,9 @@ class BatchTestResourceManager:
                 return
 
             time.sleep(5)
-        raise TimeoutError(f"Service environment {service_environment_name} did not reach {expected_state} within {timeout}s")
+        raise TimeoutError(
+            f"Service environment {service_environment_name} did not reach {expected_state} within {timeout}s"
+        )
 
     def _delete_service_environment(self, service_environment_name: str):
         print(f"Setting ServiceEnvironment {service_environment_name} to DISABLED")
@@ -283,8 +301,11 @@ class BatchTestResourceManager:
         service_environment = self._create_or_get_service_environment(self.service_environment_name)
         scheduling_policy = self._create_or_get_scheduling_policy(self.scheduling_policy_name)
 
-        queue = self._create_or_get_queue(self.queue_name, service_environment["serviceEnvironmentArn"],
-                                          scheduling_policy.get("arn"))
+        queue = self._create_or_get_queue(
+            self.queue_name,
+            service_environment["serviceEnvironmentArn"],
+            scheduling_policy.get("arn"),
+        )
         self._wait_for_queue_state(self.queue_name, "VALID", "ENABLED")
 
         quota_share = self._create_or_get_quota_share(self.quota_share_name, self.queue_name)

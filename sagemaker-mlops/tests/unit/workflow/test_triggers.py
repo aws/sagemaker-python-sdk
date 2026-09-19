@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow triggers."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -20,19 +21,13 @@ from sagemaker.mlops.workflow.triggers import PipelineSchedule
 
 
 def test_pipeline_schedule_init():
-    schedule = PipelineSchedule(
-        name="test-schedule",
-        at="rate(1 hour)"
-    )
+    schedule = PipelineSchedule(name="test-schedule", at="rate(1 hour)")
     assert schedule.name == "test-schedule"
     assert schedule.at == "rate(1 hour)"
 
 
 def test_pipeline_schedule_with_cron():
-    schedule = PipelineSchedule(
-        name="test-schedule",
-        at="cron(0 12 * * ? *)"
-    )
+    schedule = PipelineSchedule(name="test-schedule", at="cron(0 12 * * ? *)")
     assert "cron" in schedule.at
 
 

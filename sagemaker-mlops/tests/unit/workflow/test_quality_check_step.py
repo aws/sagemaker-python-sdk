@@ -11,21 +11,22 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow quality_check_step."""
+
 from __future__ import absolute_import
 
 import pytest
 from unittest.mock import Mock
 
 from sagemaker.mlops.workflow.quality_check_step import (
-    DataQualityCheckConfig, ModelQualityCheckConfig
+    DataQualityCheckConfig,
+    ModelQualityCheckConfig,
 )
 from sagemaker.mlops.workflow.steps import StepTypeEnum
 
 
 def test_data_quality_check_config_init():
     config = DataQualityCheckConfig(
-        baseline_dataset="s3://bucket/data.csv",
-        dataset_format={"csv": {"header": True}}
+        baseline_dataset="s3://bucket/data.csv", dataset_format={"csv": {"header": True}}
     )
     assert config.baseline_dataset == "s3://bucket/data.csv"
     assert config.dataset_format == {"csv": {"header": True}}
@@ -35,6 +36,6 @@ def test_model_quality_check_config_init():
     config = ModelQualityCheckConfig(
         baseline_dataset="s3://bucket/data.csv",
         dataset_format={"csv": {"header": True}},
-        problem_type="BinaryClassification"
+        problem_type="BinaryClassification",
     )
     assert config.problem_type == "BinaryClassification"

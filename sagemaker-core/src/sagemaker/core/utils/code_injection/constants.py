@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Constants used in the code_injection modules."""
+
 from enum import Enum
 
 BASIC_TYPES = ["string", "boolean", "integer", "long", "double", "timestamp", "float"]

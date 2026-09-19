@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests for RLVR trainer"""
+
 from __future__ import absolute_import
 
 import time
@@ -51,6 +52,7 @@ def lambda_arn(account_id, region):
     """Return the Lambda ARN for the OSS reward function."""
     return f"arn:aws:lambda:{region}:{account_id}:function:{LAMBDA_OSS_REWARD_FUNCTION_NAME}"
 
+
 # TODO: Add test cleanup to remove evaluator versions older than 24h
 @pytest.fixture(scope="module")
 def evaluator(sagemaker_session, lambda_arn):
@@ -76,11 +78,12 @@ def lambda_arn(region, account_id):
     """Construct the Lambda function ARN from account and region."""
     return f"arn:aws:lambda:{region}:{account_id}:function:{LAMBDA_OSS_REWARD_FUNCTION_NAME}"
 
+
 @pytest.mark.gpu_intensive
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
-    
+
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
@@ -94,28 +97,28 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     )
 
     rlvr_trainer.hyperparameters.preset_reward_function = "prime_code"
-    
+
     # Create training job
     training_job = rlvr_trainer.train(wait=False)
     logger.info(f"Training job submitted: {training_job.training_job_arn}")
-    
+
     # Manual wait loop to avoid resource_config issue
     max_wait_time = 3600  # 1 hour timeout
-    poll_interval = 30    # Check every 30 seconds
+    poll_interval = 30  # Check every 30 seconds
     start_time = time.time()
-    
+
     while time.time() - start_time < max_wait_time:
         training_job.refresh()
         status = training_job.training_job_status
-        
+
         if status in ["Completed", "Failed", "Stopped"]:
             break
-            
+
         time.sleep(poll_interval)
-    
+
     # Verify job completed successfully
     assert training_job.training_job_status == "Completed"
-    assert hasattr(training_job, 'output_model_package_arn')
+    assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
 
 
@@ -123,7 +126,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
 def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     """Test RLVR trainer with custom reward function."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
-    
+
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
@@ -136,27 +139,27 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
         accept_eula=True,
         base_job_name=f"rlvr-rf-integ-{unique_id}",
     )
-    
+
     training_job = rlvr_trainer.train(wait=False)
     logger.info(f"Training job submitted: {training_job.training_job_arn}")
-    
+
     # Manual wait loop
     max_wait_time = 3600
     poll_interval = 30
     start_time = time.time()
-    
+
     while time.time() - start_time < max_wait_time:
         training_job.refresh()
         status = training_job.training_job_status
-        
+
         if status in ["Completed", "Failed", "Stopped"]:
             break
-            
+
         time.sleep(poll_interval)
-    
+
     # Verify job completed successfully
     assert training_job.training_job_status == "Completed"
-    assert hasattr(training_job, 'output_model_package_arn')
+    assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
 
 
@@ -166,11 +169,7 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test RLVR training workflow with Nova model."""
     # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)
 
-    overrides={
-        "training_config": {
-            "lambda_concurrency_limit": 64
-        }
-    }
+    overrides = {"training_config": {"lambda_concurrency_limit": 64}}
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     rlvr_trainer = RLVRTrainer(
         model="nova-textgeneration-lite-v2",
@@ -194,24 +193,24 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
 
     training_job = rlvr_trainer.train(wait=False)
     logger.info(f"Training job submitted: {training_job.training_job_arn}")
-    
+
     # Manual wait loop
     max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
     poll_interval = 30
     start_time = time.time()
-    
+
     while time.time() - start_time < max_wait_time:
         training_job.refresh()
         status = training_job.training_job_status
-        
+
         if status in ["Completed", "Failed", "Stopped"]:
             break
-            
+
         time.sleep(poll_interval)
-    
+
     # Verify job completed successfully
     assert training_job.training_job_status == "Completed"
-    assert hasattr(training_job, 'output_model_package_arn')
+    assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
 
 
@@ -252,7 +251,7 @@ def test_rlvr_trainer_with_lambda_arn_auto_creates_evaluator(sagemaker_session, 
 
     # Verify job completed successfully
     assert training_job.training_job_status == "Completed"
-    assert hasattr(training_job, 'output_model_package_arn')
+    assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
 
 
@@ -290,7 +289,7 @@ def test_rlvr_trainer_with_evaluator_object(sagemaker_session, evaluator):
         time.sleep(poll_interval)
     # Verify job completed successfully
     assert training_job.training_job_status == "Completed"
-    assert hasattr(training_job, 'output_model_package_arn')
+    assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
 
 
@@ -352,7 +351,7 @@ def test_rlvr_trainer_nemotron_with_kl_and_recipe(sagemaker_session):
         time.sleep(poll_interval)
 
     assert training_job.training_job_status == "Completed"
-    assert hasattr(training_job, 'output_model_package_arn')
+    assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
 
 
@@ -392,6 +391,5 @@ def test_rlvr_trainer_lora_with_sequence_length(sagemaker_session):
         time.sleep(poll_interval)
 
     assert training_job.training_job_status == "Completed"
-    assert hasattr(training_job, 'output_model_package_arn')
+    assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
-

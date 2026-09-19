@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for Nova manifest/checkpoint helpers in training/utils.py."""
+
 import io
 import json
 import tarfile
@@ -35,9 +36,10 @@ def test_build_nova_manifest_s3_uri():
 
 
 def test_build_nova_manifest_s3_uri_strips_trailing_slash():
-    assert build_nova_manifest_s3_uri(
-        "s3://bucket/output//", "my-job"
-    ) == "s3://bucket/output/my-job/output/output/manifest.json"
+    assert (
+        build_nova_manifest_s3_uri("s3://bucket/output//", "my-job")
+        == "s3://bucket/output/my-job/output/output/manifest.json"
+    )
 
 
 def test_build_nova_hyperpod_manifest_s3_uri():
@@ -124,9 +126,9 @@ def test_resolve_checkpoint_uri_from_hyperpod_layout():
         if Key != hyperpod_key:
             raise no_such_key()
         body = Mock()
-        body.read.return_value = json.dumps(
-            {"checkpoint_s3_bucket": CHECKPOINT_URI}
-        ).encode("utf-8")
+        body.read.return_value = json.dumps({"checkpoint_s3_bucket": CHECKPOINT_URI}).encode(
+            "utf-8"
+        )
         return {"Body": body}
 
     client.get_object.side_effect = get_object
@@ -147,9 +149,9 @@ def test_resolve_checkpoint_uri_from_serverless_layout():
         if Key != serverless_key:
             raise no_such_key()
         body = Mock()
-        body.read.return_value = json.dumps(
-            {"checkpoint_s3_bucket": CHECKPOINT_URI}
-        ).encode("utf-8")
+        body.read.return_value = json.dumps({"checkpoint_s3_bucket": CHECKPOINT_URI}).encode(
+            "utf-8"
+        )
         return {"Body": body}
 
     client.get_object.side_effect = get_object

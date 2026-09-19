@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains logic for setting defaults in ModelTrainer."""
+
 from __future__ import absolute_import
 
 from typing import Optional, Dict, Any, Union, List
@@ -78,9 +79,7 @@ class TrainDefaults:
         ``RoleValidationError`` is raised explaining what to grant or how to create
         a dedicated role via ``IamRoleResolver().create_execution_role``.
         """
-        sagemaker_session = TrainDefaults.get_sagemaker_session(
-            sagemaker_session=sagemaker_session
-        )
+        sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
         resolved = resolve_and_validate_role(
             provided_role=role,
             role_type="training",
@@ -107,9 +106,7 @@ class TrainDefaults:
         :func:`~sagemaker.core.helper.iam_role_resolver.verify_hyperpod_connect_permissions`
         (``True``/``False``/``None``); it never raises on a missing permission.
         """
-        sagemaker_session = TrainDefaults.get_sagemaker_session(
-            sagemaker_session=sagemaker_session
-        )
+        sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
         return verify_hyperpod_connect_permissions(
             sagemaker_session=sagemaker_session, cluster_name=cluster_name
         )

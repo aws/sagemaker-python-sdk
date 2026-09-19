@@ -20,6 +20,7 @@ Tests cover:
 - sourcedir.tar.gz upload and sagemaker_submit_directory hyperparameter
 - getattr fallback for static_hyperparameters
 """
+
 from __future__ import absolute_import
 
 import json
@@ -42,10 +43,10 @@ from sagemaker.core.shapes import (
 )
 from sagemaker.core.utils.utils import Unassigned
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _create_channel(name, uri="s3://bucket/data"):
     return Channel(
@@ -113,6 +114,7 @@ def _hp_ranges():
 # _prepare_model_trainer_for_tuning – guard logic
 # ---------------------------------------------------------------------------
 
+
 class TestPrepareModelTrainerForTuning:
     """Tests for the guard clauses in _prepare_model_trainer_for_tuning."""
 
@@ -158,6 +160,7 @@ class TestPrepareModelTrainerForTuning:
 # The method does real file I/O (writes JSON, copies driver files, creates
 # tarballs) so these tests use real temp directories via tmp_path.
 # ---------------------------------------------------------------------------
+
 
 class TestBuildDriverAndCodeChannels:
     """Tests for _build_driver_and_code_channels."""
@@ -307,6 +310,7 @@ class TestBuildDriverAndCodeChannels:
 # _build_training_job_definition – _tuner_channels inclusion
 # ---------------------------------------------------------------------------
 
+
 class TestBuildTrainingJobDefinitionTunerChannels:
     """Tests for _tuner_channels being picked up by _build_training_job_definition."""
 
@@ -389,6 +393,7 @@ class TestBuildTrainingJobDefinitionTunerChannels:
 # Environment and VPC passthrough in _build_training_job_definition
 # ---------------------------------------------------------------------------
 
+
 class TestBuildTrainingJobDefinitionPassthrough:
     """Tests for environment and VPC config passthrough."""
 
@@ -420,9 +425,7 @@ class TestBuildTrainingJobDefinitionPassthrough:
         )
 
         definition = tuner._build_training_job_definition(inputs=None)
-        assert definition.environment == {}, (
-            "Empty dict environment should be passed through as-is"
-        )
+        assert definition.environment == {}, "Empty dict environment should be passed through as-is"
 
     def test_skips_environment_when_none(self):
         """Should not set environment when model_trainer.environment is None.
@@ -439,9 +442,9 @@ class TestBuildTrainingJobDefinitionPassthrough:
         )
 
         definition = tuner._build_training_job_definition(inputs=None)
-        assert _is_unassigned(definition.environment), (
-            "Environment should be Unassigned when model_trainer.environment is None"
-        )
+        assert _is_unassigned(
+            definition.environment
+        ), "Environment should be Unassigned when model_trainer.environment is None"
 
     def test_skips_environment_when_not_dict(self):
         """Should not set environment when it's not a dict (e.g. MagicMock).
@@ -458,9 +461,9 @@ class TestBuildTrainingJobDefinitionPassthrough:
         )
 
         definition = tuner._build_training_job_definition(inputs=None)
-        assert _is_unassigned(definition.environment), (
-            "Environment should be Unassigned when model_trainer.environment is not a dict"
-        )
+        assert _is_unassigned(
+            definition.environment
+        ), "Environment should be Unassigned when model_trainer.environment is not a dict"
 
     def test_passes_vpc_config(self):
         """Should set definition.vpc_config from model_trainer.networking._to_vpc_config()."""
@@ -538,6 +541,7 @@ class TestBuildTrainingJobDefinitionPassthrough:
 # ---------------------------------------------------------------------------
 # static_hyperparameters getattr fallback
 # ---------------------------------------------------------------------------
+
 
 class TestStaticHyperparametersGetattr:
     """Test that _build_training_job_definition uses getattr for static_hyperparameters."""

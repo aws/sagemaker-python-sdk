@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for custom_file_filter module."""
+
 from __future__ import absolute_import
 
 import os
@@ -64,8 +65,10 @@ class TestResolveCustomFileFilterFromConfigFile:
 
     def test_returns_direct_input_when_provided_as_callable(self):
         """Test returns direct input when callable is provided."""
+
         def custom_filter(path, names):
             return []
+
         result = resolve_custom_file_filter_from_config_file(direct_input=custom_filter)
         assert result is custom_filter
 
@@ -102,7 +105,7 @@ class TestCopyWorkdir:
         """Set up test fixtures."""
         self.temp_src = tempfile.mkdtemp()
         self.temp_dst = tempfile.mkdtemp()
-        
+
         # Create test files
         with open(os.path.join(self.temp_src, "test.py"), "w") as f:
             f.write("print('test')")
@@ -124,9 +127,9 @@ class TestCopyWorkdir:
         """Test copy_workdir without filter copies only Python files."""
         mock_getcwd.return_value = self.temp_src
         dst = os.path.join(self.temp_dst, "output")
-        
+
         copy_workdir(dst)
-        
+
         assert os.path.exists(os.path.join(dst, "test.py"))
         assert not os.path.exists(os.path.join(dst, "test.txt"))
         assert not os.path.exists(os.path.join(dst, "__pycache__"))
@@ -136,12 +139,12 @@ class TestCopyWorkdir:
         """Test copy_workdir with callable filter."""
         mock_getcwd.return_value = self.temp_src
         dst = os.path.join(self.temp_dst, "output")
-        
+
         def custom_filter(path, names):
             return ["test.txt"]
-        
+
         copy_workdir(dst, custom_file_filter=custom_filter)
-        
+
         assert os.path.exists(os.path.join(dst, "test.py"))
         assert not os.path.exists(os.path.join(dst, "test.txt"))
 
@@ -150,9 +153,9 @@ class TestCopyWorkdir:
         filter_obj = CustomFileFilter(ignore_name_patterns=["*.py"])
         filter_obj._workdir = self.temp_src
         dst = os.path.join(self.temp_dst, "output")
-        
+
         copy_workdir(dst, custom_file_filter=filter_obj)
-        
+
         assert not os.path.exists(os.path.join(dst, "test.py"))
         assert os.path.exists(os.path.join(dst, "test.txt"))
 
@@ -161,9 +164,9 @@ class TestCopyWorkdir:
         filter_obj = CustomFileFilter(ignore_name_patterns=["*.txt", "__pycache__"])
         filter_obj._workdir = self.temp_src
         dst = os.path.join(self.temp_dst, "output")
-        
+
         copy_workdir(dst, custom_file_filter=filter_obj)
-        
+
         assert os.path.exists(os.path.join(dst, "test.py"))
         assert not os.path.exists(os.path.join(dst, "test.txt"))
         assert not os.path.exists(os.path.join(dst, "__pycache__"))

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests for recipe override feature (get_resolved_recipe)."""
+
 from __future__ import absolute_import
 
 import logging
@@ -37,7 +38,9 @@ def setup_aws_data_path():
         os.path.dirname(__file__), "..", "..", "..", "sagemaker-core", "sample"
     )
     # Resolve relative to repo root
-    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    repo_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    )
     sample_path = os.path.join(repo_root, "sagemaker-core", "sample")
     if os.path.isdir(sample_path):
         os.environ["AWS_DATA_PATH"] = sample_path
@@ -61,9 +64,7 @@ class TestSFTTrainerRecipeOverrideInteg:
                 }
             }
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -139,9 +140,7 @@ class TestSFTTrainerRecipeOverrideInteg:
                 "batch_size": 4,
             }
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -258,9 +257,9 @@ class TestSFTTrainerFullRecipeOverrideInteg:
         assert resolved["training_config"]["training_args"]["learning_rate"] == 3e-5
         # Full recipe template keys are present (not just spec keys)
         training_config = resolved.get("training_config", {})
-        assert len(training_config) > 3, (
-            f"Expected more keys from full recipe template, got only: {list(training_config.keys())}"
-        )
+        assert (
+            len(training_config) > 3
+        ), f"Expected more keys from full recipe template, got only: {list(training_config.keys())}"
 
     def test_sft_full_recipe_with_recipe_file_and_overrides(self):
         """Test 3-level merge: full_template < recipe file < overrides with non-spec keys."""
@@ -273,9 +272,7 @@ class TestSFTTrainerFullRecipeOverrideInteg:
                 }
             }
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -371,9 +368,7 @@ class TestSFTTrainerNestedRecipeOverrideInteg:
                 }
             }
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -420,9 +415,7 @@ class TestBenchMarkEvaluatorRecipeOverrideInteg:
                 "top_p": 0.9,
             }
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -488,7 +481,9 @@ class TestSFTTrainerValidationFailuresInteg:
             },
         )
 
-        with pytest.raises(ValueError, match="save_steps.*must be less than or equal to.*max_steps"):
+        with pytest.raises(
+            ValueError, match="save_steps.*must be less than or equal to.*max_steps"
+        ):
             sft_trainer.get_resolved_recipe()
 
     def test_sft_rejects_learning_rate_above_maximum(self):
@@ -725,9 +720,7 @@ class TestSFTTrainerValidationFailuresInteg:
                 }
             }
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -756,9 +749,7 @@ class TestSFTTrainerValidationFailuresInteg:
                 }
             }
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -840,9 +831,7 @@ class TestSFTTrainerValidationFailuresInteg:
 
     def test_sft_invalid_yaml_content_raises(self):
         """Test that a YAML file with non-dict content raises ValueError."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("- just\n- a\n- list\n")
             recipe_path = f.name
 
@@ -884,9 +873,7 @@ class TestModelTrainerRecipeOverrideInteg:
                 "sequence_length": 4096,
             },
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -939,9 +926,7 @@ class TestModelTrainerRecipeOverrideInteg:
                 "num_epochs": 3,
             },
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -979,9 +964,7 @@ class TestModelTrainerRecipeOverrideInteg:
             },
             "training_config": {"learning_rate": 1e-5},
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(recipe_content, f)
             recipe_path = f.name
 
@@ -1065,7 +1048,9 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
             result_hp = rlvr_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
 
             # Simulate serverful path (compute set): full recipe applied
-            rlvr_trainer.compute = TrainingJobCompute(instance_type="ml.p5.48xlarge", instance_count=1)
+            rlvr_trainer.compute = TrainingJobCompute(
+                instance_type="ml.p5.48xlarge", instance_count=1
+            )
             full_hp = rlvr_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
             rlvr_trainer.compute = None  # reset
 
@@ -1074,16 +1059,21 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
             logger.info(f"Full recipe HP keys: {len(full_hp)}")
 
             # Keys the user explicitly provided
-            expected_override_keys = {"learning_rate", "max_epochs", "train_val_split_ratio", "temperature"}
+            expected_override_keys = {
+                "learning_rate",
+                "max_epochs",
+                "train_val_split_ratio",
+                "temperature",
+            }
             expected_recipe_keys = {"max_prompt_length"}
             expected_direct_hp_keys = {"use_kl_loss", "kl_loss_coef"}
             all_user_keys = expected_override_keys | expected_recipe_keys | expected_direct_hp_keys
 
             # All user-provided keys must be present in the user-override result
             for key in all_user_keys:
-                assert key in result_hp, (
-                    f"User-provided key '{key}' missing from serverless (compute=None) result"
-                )
+                assert (
+                    key in result_hp
+                ), f"User-provided key '{key}' missing from serverless (compute=None) result"
 
             # Dynamically compute recipe keys NOT in the override spec by fetching
             # the full resolved recipe and subtracting the spec keys + user-provided keys.
@@ -1094,16 +1084,20 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
             override_spec_keys = set(rlvr_trainer.hyperparameters._specs.keys())
             recipe_internal_keys_not_in_spec = all_recipe_keys - override_spec_keys - all_user_keys
 
-            logger.info(f"All recipe keys from Hub ({len(all_recipe_keys)}): {sorted(all_recipe_keys)}")
-            logger.info(f"Override spec keys ({len(override_spec_keys)}): {sorted(override_spec_keys)}")
+            logger.info(
+                f"All recipe keys from Hub ({len(all_recipe_keys)}): {sorted(all_recipe_keys)}"
+            )
+            logger.info(
+                f"Override spec keys ({len(override_spec_keys)}): {sorted(override_spec_keys)}"
+            )
             logger.info(
                 f"Recipe internal keys NOT in spec ({len(recipe_internal_keys_not_in_spec)}): "
                 f"{sorted(recipe_internal_keys_not_in_spec)}"
             )
 
-            assert len(recipe_internal_keys_not_in_spec) > 0, (
-                "Expected recipe template to have keys beyond the override spec, but found none."
-            )
+            assert (
+                len(recipe_internal_keys_not_in_spec) > 0
+            ), "Expected recipe template to have keys beyond the override spec, but found none."
 
             # These internal recipe keys must NOT appear in the serverless result
             leaked_keys = recipe_internal_keys_not_in_spec & set(result_hp.keys())
@@ -1177,15 +1171,15 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
         all_user_keys = expected_override_keys | expected_direct_hp_keys
 
         for key in all_user_keys:
-            assert key in result_hp, (
-                f"User-provided key '{key}' missing from serverless (compute=None) result"
-            )
+            assert (
+                key in result_hp
+            ), f"User-provided key '{key}' missing from serverless (compute=None) result"
 
         # Full recipe should have more keys than the user-override-only result
         full_only_keys = set(full_hp.keys()) - set(result_hp.keys())
-        assert len(full_only_keys) > 0, (
-            "Full recipe should contain additional keys beyond the user-override-only result."
-        )
+        assert (
+            len(full_only_keys) > 0
+        ), "Full recipe should contain additional keys beyond the user-override-only result."
         logger.info(
             f"Nova SFT — Keys excluded from serverless path: "
             f"{len(full_only_keys)} keys — {sorted(list(full_only_keys))}"
@@ -1200,16 +1194,20 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
         override_spec_keys = set(sft_trainer.hyperparameters._specs.keys())
         recipe_internal_keys_not_in_spec = all_recipe_keys - override_spec_keys - all_user_keys
 
-        logger.info(f"Nova SFT — All recipe keys from Hub ({len(all_recipe_keys)}): {sorted(all_recipe_keys)}")
-        logger.info(f"Nova SFT — Override spec keys ({len(override_spec_keys)}): {sorted(override_spec_keys)}")
+        logger.info(
+            f"Nova SFT — All recipe keys from Hub ({len(all_recipe_keys)}): {sorted(all_recipe_keys)}"
+        )
+        logger.info(
+            f"Nova SFT — Override spec keys ({len(override_spec_keys)}): {sorted(override_spec_keys)}"
+        )
         logger.info(
             f"Nova SFT — Recipe internal keys NOT in spec ({len(recipe_internal_keys_not_in_spec)}): "
             f"{sorted(recipe_internal_keys_not_in_spec)}"
         )
 
-        assert len(recipe_internal_keys_not_in_spec) > 0, (
-            "Expected Nova recipe template to have keys beyond the override spec, but found none."
-        )
+        assert (
+            len(recipe_internal_keys_not_in_spec) > 0
+        ), "Expected Nova recipe template to have keys beyond the override spec, but found none."
 
         # These internal recipe keys must NOT appear in the serverless result
         leaked_keys = recipe_internal_keys_not_in_spec & set(result_hp.keys())

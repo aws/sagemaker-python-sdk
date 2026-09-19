@@ -8,9 +8,13 @@ class TestServerlessInferenceConfig(unittest.TestCase):
             warnings.simplefilter("always")
             # Force reimport to trigger warning
             import sys
-            if 'sagemaker.serve.serverless.serverless_inference_config' in sys.modules:
-                del sys.modules['sagemaker.serve.serverless.serverless_inference_config']
-            from sagemaker.serve.serverless.serverless_inference_config import ServerlessInferenceConfig
+
+            if "sagemaker.serve.serverless.serverless_inference_config" in sys.modules:
+                del sys.modules["sagemaker.serve.serverless.serverless_inference_config"]
+            from sagemaker.serve.serverless.serverless_inference_config import (
+                ServerlessInferenceConfig,
+            )
+
             self.assertGreaterEqual(len(w), 1)
             # Check if any warning is a DeprecationWarning
             has_deprecation = any(issubclass(warning.category, DeprecationWarning) for warning in w)

@@ -1,4 +1,5 @@
 """Unit tests for sagemaker.serve.utils.lineage_utils module."""
+
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 from sagemaker.serve.utils.lineage_utils import _get_mlflow_model_path_type
@@ -38,7 +39,7 @@ class TestGetMlflowModelPathType(unittest.TestCase):
         result = _get_mlflow_model_path_type(s3_path)
         self.assertEqual(result, MLFLOW_S3_PATH)
 
-    @patch('os.path.exists')
+    @patch("os.path.exists")
     def test_local_path_pattern(self, mock_exists):
         """Test local path pattern detection."""
         mock_exists.return_value = True
@@ -47,7 +48,7 @@ class TestGetMlflowModelPathType(unittest.TestCase):
         self.assertEqual(result, MLFLOW_LOCAL_PATH)
         mock_exists.assert_called_once_with(local_path)
 
-    @patch('os.path.exists')
+    @patch("os.path.exists")
     def test_invalid_path_raises_error(self, mock_exists):
         """Test that invalid path raises ValueError."""
         mock_exists.return_value = False

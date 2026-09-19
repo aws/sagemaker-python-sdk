@@ -3,7 +3,6 @@
 from sagemaker.core.utils.utils import enable_textual_rich_console_and_traceback
 from sagemaker.core.deprecations import register_removed_module_finder
 
-
 enable_textual_rich_console_and_traceback()
 
 # Install the meta-path finder that gives actionable migration guidance for v2
