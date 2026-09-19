@@ -516,10 +516,9 @@ class TestHostingContainerPart1:
         mock_kill.assert_called_once_with(12345)
         mock_process.terminate.assert_called_once()
 
-    @patch("platform.system")
-    def test_hosting_container_down_windows(self, mock_platform):
+    @patch("sagemaker.core.local.image.os.name", "nt")
+    def test_hosting_container_down_windows(self):
         """Test _HostingContainer down method on Windows"""
-        mock_platform.return_value = "Windows"
         mock_process = Mock()
 
         container = _HostingContainer(["docker", "compose", "up"])
