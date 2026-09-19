@@ -136,7 +136,7 @@ class TestModelBuilderV3Build(unittest.TestCase):
 
         with patch.object(builder, "_create_session_with_region") as mock_create_session:
             mock_create_session.return_value = self.mock_session
-            result = builder.build(region="us-west-2")
+            builder.build(region="us-west-2")
 
         self.assertEqual(builder.region, "us-west-2")
         mock_create_session.assert_called_once()
@@ -354,7 +354,7 @@ class TestModelBuilderV3Deploy(unittest.TestCase):
         )
         builder.built_model = Mock(spec=Model)
 
-        result = builder.deploy(wait=False)
+        builder.deploy(wait=False)
 
         # Verify endpoint name was generated
         self.assertIsNotNone(builder.endpoint_name)
@@ -824,7 +824,7 @@ class TestModelBuilderV3EndToEnd(unittest.TestCase):
         )
         builder.built_model = None  # Initialize attribute
         with patch.object(builder, "built_model", mock_model):
-            result = builder.build()
+            builder.build()
             self.assertEqual(builder.mode, Mode.SAGEMAKER_ENDPOINT)
 
         # Test LOCAL_CONTAINER mode
@@ -837,7 +837,7 @@ class TestModelBuilderV3EndToEnd(unittest.TestCase):
         )
         builder2.built_model = None  # Initialize attribute
         with patch.object(builder2, "built_model", mock_model):
-            result2 = builder2.build()
+            builder2.build()
             self.assertEqual(builder2.mode, Mode.LOCAL_CONTAINER)
 
 

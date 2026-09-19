@@ -94,7 +94,7 @@ class TestDeployPassesInferenceConfig(unittest.TestCase):
         # Verify other parameters were also passed
         assert call_kwargs["endpoint_name"] == "test-endpoint"
         assert call_kwargs["initial_instance_count"] == 1
-        assert call_kwargs["wait"] == True
+        assert call_kwargs["wait"] is True
 
         # Verify the result is the mock endpoint
         assert result == mock_endpoint
@@ -133,7 +133,7 @@ class TestDeployPassesInferenceConfig(unittest.TestCase):
         builder.built_model = Mock()
 
         # Execute: Call deploy() WITHOUT inference_config
-        result = builder.deploy(endpoint_name="test-endpoint", initial_instance_count=1)
+        builder.deploy(endpoint_name="test-endpoint", initial_instance_count=1)
 
         # Verify: _deploy_model_customization was called with inference_config=None
         assert mock_deploy_model_customization.called
@@ -183,7 +183,7 @@ class TestDeployPassesInferenceConfig(unittest.TestCase):
 
         # Execute: Call deploy() with ServerlessInferenceConfig
         # This should NOT pass it to _deploy_model_customization
-        result = builder.deploy(endpoint_name="test-endpoint", inference_config=serverless_config)
+        builder.deploy(endpoint_name="test-endpoint", inference_config=serverless_config)
 
         # Verify: _deploy_model_customization was called with inference_config=None
         # because ServerlessInferenceConfig is not ResourceRequirements

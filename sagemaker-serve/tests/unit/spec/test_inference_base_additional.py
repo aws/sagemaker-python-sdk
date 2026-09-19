@@ -111,7 +111,7 @@ class TestCustomOrchestrator:
             mock_client = Mock()
             mock_session.return_value.client.return_value = mock_client
 
-            client = orchestrator.client
+            orchestrator.client
 
             # Verify it's requesting sagemaker-runtime client
             mock_session.return_value.client.assert_called_with("sagemaker-runtime")
@@ -251,7 +251,7 @@ class TestOrchestratorComparison:
                 return (data, context)
 
         sync_orch = SyncOrch()
-        async_orch = AsyncOrch()
+        AsyncOrch()
 
         # Both should accept same parameters
         sync_result = sync_orch.handle("data", "context")

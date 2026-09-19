@@ -267,7 +267,7 @@ class LocalContainerMode(
                 ecr_uri = self._ecr_registry_host(image)
                 login_command = ["docker", "login", "-u", username, "-p", password, ecr_uri]
 
-                result = subprocess.run(login_command, check=True, capture_output=True, text=True)
+                subprocess.run(login_command, check=True, capture_output=True, text=True)
                 logger.info("Successfully authenticated with ECR")
 
             except subprocess.CalledProcessError as e:

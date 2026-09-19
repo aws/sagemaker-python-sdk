@@ -83,7 +83,7 @@ class SimpleModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.linear = nn.Linear(4, 2)
-    
+
     def forward(self, x):
         return torch.softmax(self.linear(x), dim=1)
 
@@ -91,13 +91,13 @@ def train():
     model = SimpleModel()
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     criterion = nn.CrossEntropyLoss()
-    
+
     # Synthetic data
     X = torch.randn(100, 4)
     y = torch.randint(0, 2, (100,))
     dataset = TensorDataset(X, y)
     dataloader = DataLoader(dataset, batch_size=32)
-    
+
     # Train for 1 epoch
     model.train()
     for batch_x, batch_y in dataloader:
@@ -106,15 +106,15 @@ def train():
         loss = criterion(outputs, batch_y)
         loss.backward()
         optimizer.step()
-    
+
     # Save model for TorchServe
     model.eval()
     traced_model = torch.jit.trace(model, torch.randn(1, 4))
-    
+
     model_dir = os.environ.get('SM_MODEL_DIR', '/opt/ml/model')
     os.makedirs(model_dir, exist_ok=True)
     torch.jit.save(traced_model, os.path.join(model_dir, 'model.pth'))
-    
+
     print("Training completed and model saved!")
 
 if __name__ == "__main__":

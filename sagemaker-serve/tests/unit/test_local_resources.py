@@ -346,7 +346,7 @@ class TestLocalEndpointCreate(unittest.TestCase):
         mock_in_process_obj = Mock()
         mock_model = Mock()
 
-        endpoint = LocalEndpoint.create(
+        LocalEndpoint.create(
             endpoint_name="test-endpoint",
             local_model=mock_model,
             in_process_mode=True,
@@ -397,7 +397,7 @@ class TestLocalEndpointGet(unittest.TestCase):
             "EndpointConfigName": "test-config",
         }
 
-        endpoint = LocalEndpoint.get("test-endpoint")
+        LocalEndpoint.get("test-endpoint")
 
         mock_local_session_class.assert_called()
 

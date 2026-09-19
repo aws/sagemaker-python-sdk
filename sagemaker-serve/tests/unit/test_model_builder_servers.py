@@ -65,7 +65,7 @@ class TestModelBuilderServersValidation(unittest.TestCase):
         mock_builder.inference_spec = None
         mock_builder._build_for_torchserve = Mock(return_value=Mock())
 
-        result = _ModelBuilderServers._build_for_model_server(mock_builder)
+        _ModelBuilderServers._build_for_model_server(mock_builder)
 
         mock_builder._build_for_torchserve.assert_called_once()
 
@@ -80,7 +80,7 @@ class TestModelBuilderServersValidation(unittest.TestCase):
         mock_builder.inference_spec = Mock()  # Has inference spec
         mock_builder._build_for_torchserve = Mock(return_value=Mock())
 
-        result = _ModelBuilderServers._build_for_model_server(mock_builder)
+        _ModelBuilderServers._build_for_model_server(mock_builder)
 
         mock_builder._build_for_torchserve.assert_called_once()
 
@@ -186,7 +186,7 @@ class TestModelBuilderServersRouting(unittest.TestCase):
         self.mock_builder._build_for_smd.assert_called_once()
 
 
-class TestModelBuilderServersConstants(unittest.TestCase):
+class TestModelBuilderServersConstants_a(unittest.TestCase):
     """Test constants defined in model_builder_servers module."""
 
     def test_script_param_name_constant(self):
@@ -377,7 +377,7 @@ class TestModelBuilderServersEdgeCases(unittest.TestCase):
         mock_builder.inference_spec = Mock()
         mock_builder._build_for_djl = Mock(return_value=Mock())
 
-        result = _ModelBuilderServers._build_for_model_server(mock_builder)
+        _ModelBuilderServers._build_for_model_server(mock_builder)
 
         mock_builder._build_for_djl.assert_called_once()
 
@@ -393,7 +393,7 @@ class TestModelBuilderServersEdgeCases(unittest.TestCase):
         mock_builder.inference_spec = Mock()
         mock_builder._build_for_triton = Mock(return_value=Mock())
 
-        result = _ModelBuilderServers._build_for_model_server(mock_builder)
+        _ModelBuilderServers._build_for_model_server(mock_builder)
 
         mock_builder._build_for_triton.assert_called_once()
 
@@ -507,7 +507,7 @@ class TestModelBuilderServersParameterValidation(unittest.TestCase):
         self.assertIn("Missing required parameter", str(context.exception))
 
 
-class TestModelBuilderServersConstants(unittest.TestCase):
+class TestModelBuilderServersConstants_b(unittest.TestCase):
     """Test that constants are properly defined."""
 
     def test_all_constants_are_strings(self):

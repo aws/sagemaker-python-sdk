@@ -101,7 +101,7 @@ def test_basic_build():
             model="gpt2",  # Simple JumpStart model
             schema_builder=schema_builder,
             # Use HuggingFace DLC for text generation
-            image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+            image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",  # noqa: E501
             # role_arn="arn:aws:iam::593793038179:role/SageMakerExecutionRole",
             compute=compute,
             sagemaker_session=sagemaker_session,
@@ -202,7 +202,7 @@ def test_build_with_vpc():
         model_builder = ModelBuilder(
             model="gpt2",
             schema_builder=schema_builder,
-            image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+            image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",  # noqa: E501
             network=network,  # Add VPC config
             sagemaker_session=sagemaker_session,
         )
@@ -241,7 +241,7 @@ def test_build_with_custom_role():
         model_builder = ModelBuilder(
             model="gpt2",
             schema_builder=schema_builder,
-            image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",
+            image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04",  # noqa: E501
             role_arn=f"arn:aws:iam::{AWS_ACCOUNT_ID}:role/SageMakerExecutionRole",  # Custom role
             sagemaker_session=sagemaker_session,
         )
@@ -305,7 +305,7 @@ def main():
     # Set up AWS session
     print("\n=== AWS SESSION SETUP ===")
     try:
-        boto_session = setup_aws_session()
+        setup_aws_session()
         print("✅ AWS session configured successfully")
     except Exception as e:
         print(f"❌ Failed to set up AWS session: {e}")

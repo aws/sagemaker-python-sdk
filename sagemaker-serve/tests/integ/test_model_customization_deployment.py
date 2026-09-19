@@ -27,8 +27,6 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from datetime import datetime, timezone, timedelta
 
-logger = logging.getLogger(__name__)
-
 from sagemaker.core.helper.session_helper import Session, get_execution_role
 from sagemaker.core.resources import (
     Endpoint,
@@ -42,6 +40,8 @@ from sagemaker.serve import ModelBuilder
 from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 from sagemaker.serve.model_reuse import MODEL_SOURCE_TAG_KEY
 from sagemaker.train import SFTTrainer, DPOTrainer
+
+logger = logging.getLogger(__name__)
 
 # This test relies on resources in a specific region
 AWS_REGION = "us-west-2"
@@ -504,7 +504,7 @@ class TestModelCustomizationDeployment:
     @pytest.fixture(scope="class")
     def bedrock_runtime(self, setup_config):
         """Create Bedrock runtime client."""
-        # Adding config based on: https://docs.aws.amazon.com/bedrock/latest/userguide/invoke-imported-model.html#handle-model-not-ready-exception
+        # Adding config based on: https://docs.aws.amazon.com/bedrock/latest/userguide/invoke-imported-model.html#handle-model-not-ready-exception  # noqa: E501
         config = Config(retries={"total_max_attempts": 10, "mode": "standard"})
         return boto3.client("bedrock-runtime", region_name=setup_config["region"], config=config)
 
@@ -597,7 +597,8 @@ class TestModelCustomizationDeployment:
 
         except Exception as e:
             pytest.fail(
-                f"Failed to get model artifacts path: {str(e)}. This might be due to sagemaker-core integration changes."
+                f"Failed to get model artifacts path: {str(e)}. "
+                "This might be due to sagemaker-core integration changes."
             )
 
         bucket = setup_config["bucket"]
@@ -679,7 +680,8 @@ class TestModelCustomizationDeployment:
 
         except Exception as e:
             pytest.fail(
-                f"BedrockModelBuilder creation failed: {str(e)}. This might be due to sagemaker-core integration issues."
+                f"BedrockModelBuilder creation failed: {str(e)}. "
+                "This might be due to sagemaker-core integration issues."
             )
 
     @pytest.mark.slow
@@ -689,7 +691,7 @@ class TestModelCustomizationDeployment:
         assert deployed_model_arn is not None
 
     # Note: Below test is flaky and fails due to model not ready exception.
-    # Documentation recommends retries: https://docs.aws.amazon.com/bedrock/latest/userguide/invoke-imported-model.html#handle-model-not-ready-exception.
+    # Documentation recommends retries: https://docs.aws.amazon.com/bedrock/latest/userguide/invoke-imported-model.html#handle-model-not-ready-exception.  # noqa: E501
     # TODO: Fix using provisioned throughput or better wait mechanism
     @pytest.mark.slow
     @pytest.mark.import_model
@@ -774,7 +776,7 @@ def test_model_customization_workflow(training_job_name):
     }
 
     try:
-        s3_client = boto3.client("s3", region_name=config["region"])
+        boto3.client("s3", region_name=config["region"])
         training_job = TrainingJob.get(
             training_job_name=config["training_job_name"], region=config["region"]
         )

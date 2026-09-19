@@ -78,6 +78,9 @@ SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
 
 
 class _ModelBuilderServers(object):
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets attributes on the composed ModelBuilder instance during
+    # build, not in __init__, by design.
     def _build_for_model_server(self) -> Model:
         """Build model using explicit model server configuration.
 
@@ -106,30 +109,29 @@ class _ModelBuilderServers(object):
         # Route to appropriate model server builder
         if self.model_server == ModelServer.TORCHSERVE:
             return self._build_for_torchserve()
-        elif self.model_server == ModelServer.TRITON:
+        if self.model_server == ModelServer.TRITON:
             return self._build_for_triton()
-        elif self.model_server == ModelServer.TENSORFLOW_SERVING:
+        if self.model_server == ModelServer.TENSORFLOW_SERVING:
             return self._build_for_tensorflow_serving()
-        elif self.model_server == ModelServer.DJL_SERVING:
+        if self.model_server == ModelServer.DJL_SERVING:
             return self._build_for_djl()
-        elif self.model_server == ModelServer.TEI:
+        if self.model_server == ModelServer.TEI:
             return self._build_for_tei()
-        elif self.model_server == ModelServer.TGI:
+        if self.model_server == ModelServer.TGI:
             return self._build_for_tgi()
-        elif self.model_server == ModelServer.VLLM:
+        if self.model_server == ModelServer.VLLM:
             return self._build_for_vllm()
-        elif self.model_server == ModelServer.SGLANG:
+        if self.model_server == ModelServer.SGLANG:
             return self._build_for_sglang()
-        elif self.model_server == ModelServer.VLLM_OMNI:
+        if self.model_server == ModelServer.VLLM_OMNI:
             return self._build_for_vllm_omni()
-        elif self.model_server == ModelServer.LLAMACPP:
+        if self.model_server == ModelServer.LLAMACPP:
             return self._build_for_llamacpp()
-        elif self.model_server == ModelServer.MMS:
+        if self.model_server == ModelServer.MMS:
             return self._build_for_transformers()
-        elif self.model_server == ModelServer.SMD:
+        if self.model_server == ModelServer.SMD:
             return self._build_for_smd()
-        else:
-            raise ValueError(f"Unsupported model server: {self.model_server}")
+        raise ValueError(f"Unsupported model server: {self.model_server}")
 
     def _build_for_torchserve(self) -> Model:
         """Build model for TorchServe deployment.
@@ -162,6 +164,8 @@ class _ModelBuilderServers(object):
 
             # Prepare TorchServe artifacts for local container mode
             if self.mode == Mode.LOCAL_CONTAINER and self.model_path:
+                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+                # pylint: disable-next=assignment-from-no-return
                 self.secret_key = prepare_for_torchserve(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
@@ -171,6 +175,8 @@ class _ModelBuilderServers(object):
                     inference_spec=self.inference_spec,
                 )
             if self.mode == Mode.SAGEMAKER_ENDPOINT and self.model_path:
+                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+                # pylint: disable-next=assignment-from-no-return
                 self.secret_key = prepare_for_torchserve(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
@@ -623,6 +629,8 @@ class _ModelBuilderServers(object):
             raise ValueError("image_uri is required for TensorFlow Serving deployment")
 
         # Prepare TensorFlow Serving artifacts for local container mode
+        # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+        # pylint: disable-next=assignment-from-no-return
         self.secret_key = prepare_for_tf_serving(
             model_path=self.model_path,
             shared_libs=self.shared_libs,
@@ -743,6 +751,8 @@ class _ModelBuilderServers(object):
                 cpu_or_gpu = self._get_processing_unit()
                 self.image_uri = self._get_smd_image_uri(processing_unit=cpu_or_gpu)
 
+            # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+            # pylint: disable-next=assignment-from-no-return
             self.secret_key = prepare_for_smd(
                 model_path=self.model_path,
                 shared_libs=self.shared_libs,
@@ -787,6 +797,8 @@ class _ModelBuilderServers(object):
                 self._create_conda_env()
 
             if self.mode in [Mode.LOCAL_CONTAINER] and self.model_path:
+                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+                # pylint: disable-next=assignment-from-no-return
                 self.secret_key = prepare_for_mms(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
@@ -796,6 +808,8 @@ class _ModelBuilderServers(object):
                     inference_spec=self.inference_spec,
                 )
             if self.mode == Mode.SAGEMAKER_ENDPOINT and self.model_path:
+                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+                # pylint: disable-next=assignment-from-no-return
                 self.secret_key = prepare_for_mms(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
@@ -1100,7 +1114,7 @@ class _ModelBuilderServers(object):
                     )
                 return self._build_for_djl_jumpstart(init_kwargs)
 
-            elif "tgi-inference" in self.image_uri:
+            if "tgi-inference" in self.image_uri:
                 self.model_server = ModelServer.TGI
                 if not hasattr(self, "prepared_for_tgi"):
                     self.js_model_config, self.prepared_for_tgi = prepare_tgi_js_resources(
@@ -1111,7 +1125,7 @@ class _ModelBuilderServers(object):
                     )
                 return self._build_for_tgi_jumpstart(init_kwargs)
 
-            elif "huggingface-pytorch-inference" in self.image_uri:
+            if "huggingface-pytorch-inference" in self.image_uri:
                 self.model_server = ModelServer.MMS
                 if not hasattr(self, "prepared_for_mms"):
                     self.js_model_config, self.prepared_for_mms = prepare_mms_js_resources(
@@ -1121,11 +1135,10 @@ class _ModelBuilderServers(object):
                         model_data=self.s3_model_data_url,
                     )
                 return self._build_for_mms_jumpstart(init_kwargs)
-            else:
-                raise ValueError(
-                    f"Local container mode is not yet supported for JumpStart image: {self.image_uri}. "
-                    f"Use Mode.SAGEMAKER_ENDPOINT for deployment."
-                )
+            raise ValueError(
+                f"Local container mode is not yet supported for JumpStart image: {self.image_uri}. "
+                f"Use Mode.SAGEMAKER_ENDPOINT for deployment."
+            )
 
         else:
             # SAGEMAKER_ENDPOINT mode — all JumpStart containers follow the same

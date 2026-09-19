@@ -158,7 +158,7 @@ class TestLiveLoggingDeployDoneWithProgress(unittest.TestCase):
         ]
         mock_tracker = Mock()
 
-        result = _live_logging_deploy_done_with_progress(
+        _live_logging_deploy_done_with_progress(
             mock_client, "test-endpoint", mock_paginator, {}, 5, mock_tracker
         )
 
@@ -191,7 +191,7 @@ class TestLiveLoggingDeployDoneWithProgress(unittest.TestCase):
             {"nextToken": "token123", "events": [{"message": "Log 1"}]}
         ]
 
-        result = _live_logging_deploy_done_with_progress(
+        _live_logging_deploy_done_with_progress(
             mock_client, "test-endpoint", mock_paginator, paginator_config, 5
         )
 

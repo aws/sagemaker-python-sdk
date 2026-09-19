@@ -17,7 +17,9 @@ mock_transformers.Pipeline = mock_pipeline_class
 sys.modules["transformers"] = mock_transformers
 sys.modules["sentence_transformers"] = MagicMock()
 
-from sagemaker.serve.model_server.in_process_model_server.app import InProcessServer
+from sagemaker.serve.model_server.in_process_model_server.app import (  # noqa: E402
+    InProcessServer,
+)
 
 
 class TestInProcessServerInitialization(unittest.TestCase):

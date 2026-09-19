@@ -72,7 +72,7 @@ class TestModelBuilderV3(unittest.TestCase):
     def test_model_server_validation_unsupported_type(self):
         """Test that unsupported model server types raise error."""
         try:
-            builder = ModelBuilder(
+            ModelBuilder(
                 model=self.mock_model,
                 model_server="UNSUPPORTED_SERVER",
                 sagemaker_session=self.mock_session,
@@ -941,7 +941,7 @@ class ModelCustomizationTest(unittest.TestCase):
         self.assertEqual(compute_reqs.min_memory_required_in_mb, 35000)
 
     def test_deploy_passes_inference_config_to_model_customization(self):
-        """Test that deploy() passes inference_config to _deploy_model_customization for model customization deployments."""
+        """Test deploy() passes inference_config to _deploy_model_customization."""
         from sagemaker.core.inference_config import ResourceRequirements
 
         # Create a mock training job that will be recognized as model customization

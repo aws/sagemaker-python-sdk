@@ -14,9 +14,10 @@
 
 from __future__ import absolute_import
 
-from typing import Optional, Dict, List, Union
-from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from dataclasses import dataclass
+from typing import Optional, Dict, List, Union
+
+from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
 
 @dataclass

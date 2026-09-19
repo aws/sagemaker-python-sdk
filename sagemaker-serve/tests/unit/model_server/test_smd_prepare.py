@@ -36,7 +36,7 @@ class TestSmdPrepare(unittest.TestCase):
         mock_inference_spec = Mock(spec=InferenceSpec)
 
         with patch("builtins.open", mock_open(read_data=b"test data")):
-            secret_key = prepare_for_smd(
+            prepare_for_smd(
                 model_path=str(model_path),
                 shared_libs=[],
                 dependencies={},
@@ -67,7 +67,7 @@ class TestSmdPrepare(unittest.TestCase):
         mock_orchestrator = Mock(spec=CustomOrchestrator)
 
         with patch("builtins.open", mock_open(read_data=b"test data")):
-            secret_key = prepare_for_smd(
+            prepare_for_smd(
                 model_path=str(model_path),
                 shared_libs=[],
                 dependencies={},

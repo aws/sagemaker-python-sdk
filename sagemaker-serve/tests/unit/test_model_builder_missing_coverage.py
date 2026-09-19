@@ -40,7 +40,7 @@ class TestModelBuilderMissingCoverage(unittest.TestCase):
                 sagemaker_session=self.mock_session,
             )
             builder.region = "us-west-2"
-            session = builder._create_session_with_region()
+            builder._create_session_with_region()
             mock_session_class.assert_called_once()
 
     def test_warn_deprecated_shared_libs(self):
@@ -49,7 +49,7 @@ class TestModelBuilderMissingCoverage(unittest.TestCase):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            builder = ModelBuilder(
+            ModelBuilder(
                 model=Mock(),
                 shared_libs=["lib1.so"],
                 role_arn="arn:aws:iam::123456789012:role/test",
@@ -90,7 +90,7 @@ class TestModelBuilderMissingCoverage(unittest.TestCase):
         """Test _initialize_defaults region fallback to boto3 (lines 472-476)."""
         with patch("boto3.Session") as mock_boto_session:
             mock_boto_session.return_value.region_name = "eu-west-1"
-            builder = ModelBuilder(
+            ModelBuilder(
                 model=Mock(), role_arn="arn:aws:iam::123456789012:role/test", sagemaker_session=None
             )
             # Region should be set from boto3 session

@@ -40,7 +40,6 @@ def test_jumpstart_build_deploy_invoke_cleanup():
 
     core_model = None
     core_endpoint = None
-    core_endpoint_config = None
 
     try:
         # Build and deploy

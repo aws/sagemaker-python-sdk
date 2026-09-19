@@ -87,7 +87,6 @@ def test_deploy_sdkt_model_as_inference_component():
         )
 
     source_model = None
-    endpoint = None
 
     try:
         # First build resolves the JumpStart container + a readable weights
@@ -109,7 +108,7 @@ def test_deploy_sdkt_model_as_inference_component():
         ic_mb.additional_model_data_sources = _additional_model_data_sources(base_s3)
         ic_mb.build(model_name=ic_model_name)
 
-        endpoint = ic_mb.deploy(
+        ic_mb.deploy(
             endpoint_name=endpoint_name,
             inference_config=ResourceRequirements(
                 requests={

@@ -196,7 +196,7 @@ class TestModelBuilderBuild(unittest.TestCase):
                     with patch.object(builder, "_create_model", return_value=Mock()):
                         try:
                             builder.build()
-                        except:
+                        except Exception:
                             pass
 
         self.assertTrue(any("already been called" in msg for msg in log.output))
@@ -218,7 +218,7 @@ class TestModelBuilderBuild(unittest.TestCase):
                     with patch.object(builder, "_create_model", return_value=Mock()):
                         try:
                             builder.build(region="us-west-2")
-                        except:
+                        except Exception:
                             pass
 
         self.assertTrue(any("Changing region" in msg for msg in log.output))
@@ -235,7 +235,7 @@ class TestModelBuilderBuild(unittest.TestCase):
             with patch.object(builder, "_create_model", return_value=Mock()):
                 try:
                     builder.build(role_arn="arn:aws:iam::123456789012:role/NewRole")
-                except:
+                except Exception:
                     pass
 
         self.assertEqual(builder.role_arn, "arn:aws:iam::123456789012:role/NewRole")
@@ -252,7 +252,7 @@ class TestModelBuilderBuild(unittest.TestCase):
             with patch.object(builder, "_create_model", return_value=Mock()):
                 try:
                     builder.build(model_name="custom-model-name")
-                except:
+                except Exception:
                     pass
 
         self.assertEqual(builder.model_name, "custom-model-name")
@@ -270,7 +270,7 @@ class TestModelBuilderBuild(unittest.TestCase):
             with patch.object(builder, "_create_model", return_value=Mock()):
                 try:
                     builder.build(mode=Mode.LOCAL_CONTAINER)
-                except:
+                except Exception:
                     pass
 
         self.assertEqual(builder.mode, Mode.LOCAL_CONTAINER)

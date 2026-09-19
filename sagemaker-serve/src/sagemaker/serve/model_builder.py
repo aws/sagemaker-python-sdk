@@ -147,12 +147,6 @@ from sagemaker.serve.constants import (
     Framework,
 )
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
-
-if TYPE_CHECKING:
-    from sagemaker.serve.ai_inference_recommender._constants import (
-        InferenceFramework,
-        PerformanceTarget,
-    )
 from sagemaker.core import fw_utils
 from sagemaker.core.helper.session_helper import container_def
 from sagemaker.core.workflow import is_pipeline_variable
@@ -169,6 +163,13 @@ from sagemaker.serve.model_reuse import (
 )
 from sagemaker.core.training.utils import resolve_nova_checkpoint_uri
 from sagemaker.train.common_utils.model_aliases import normalize_model_name
+
+if TYPE_CHECKING:
+    from sagemaker.serve.ai_inference_recommender._constants import (
+        InferenceFramework,
+        PerformanceTarget,
+    )
+    from sagemaker.serve.ai_inference_recommender.workload import Workload
 
 _LOWEST_MMS_VERSION = "1.2"
 SCRIPT_PARAM_NAME = "sagemaker_program"
@@ -266,6 +267,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         instead of predictor.predict() for inference.
     """
 
+    # pylint: disable=attribute-defined-outside-init
+    # Attributes are populated by build()/deploy() and the server/util mixins
+    # during the build pipeline rather than in __init__, by design.
+
     # ========================================
     # Core Model Definition
     # ========================================
@@ -276,7 +281,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         metadata={
             "help": "The model object, JumpStart model ID, or training job from which to extract "
             "model artifacts. Can be a trained model object, ModelTrainer, TrainingJob, "
-            "ModelPackage, JumpStart model ID string, or list of core models. Either model or inference_spec is required."
+            "ModelPackage, JumpStart model ID string, or list of core models. "
+            "Either model or inference_spec is required."
         },
     )
     model_path: Optional[str] = field(
@@ -652,12 +658,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                             hosting_artifact_uri = hub_document.get("HostingArtifactUri")
                             if hosting_artifact_uri:
                                 return hosting_artifact_uri
-                            else:
-                                logger.warning(
-                                    "HostingArtifactUri not found in JumpStart hub metadata. "
-                                    "Deployment may fail if artifact URI is required."
-                                )
-                                return None
+                            logger.warning(
+                                "HostingArtifactUri not found in JumpStart hub metadata. "
+                                "Deployment may fail if artifact URI is required."
+                            )
+                            return None
                         except Exception as e:
                             logger.warning(
                                 f"Failed to retrieve HostingArtifactUri from JumpStart metadata: {e}. "
@@ -1112,9 +1117,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
     @staticmethod
     def _normalize_hosting_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize a raw recipe ``HostingConfigs`` entry into the SAME shape the base/JumpStart
-        ``list_deployment_configs`` response uses, so a caller can iterate results from either
-        pathway identically.
+        """Normalize a raw recipe ``HostingConfigs`` entry to the base response shape.
+
+        This matches the SAME shape the base/JumpStart ``list_deployment_configs``
+        response uses, so a caller can iterate results from either pathway
+        identically.
 
         The serving fields live under ``DeploymentArgs`` with the SAME keys the base response
         nests (``ImageUri``, ``InstanceType``, ``Environment``, ``ComputeResourceRequirements``,
@@ -1975,7 +1982,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 self.env_vars.setdefault(key, value)
             return self.s3_upload_path, env_vars_sagemaker
 
-        elif self.mode == Mode.LOCAL_CONTAINER:
+        if self.mode == Mode.LOCAL_CONTAINER:
             self.modes[str(Mode.LOCAL_CONTAINER)] = LocalContainerMode(
                 inference_spec=self.inference_spec,
                 schema_builder=self.schema_builder,
@@ -1990,7 +1997,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             return None
 
-        elif self.mode == Mode.IN_PROCESS:
+        if self.mode == Mode.IN_PROCESS:
             self.modes[str(Mode.IN_PROCESS)] = InProcessMode(
                 inference_spec=self.inference_spec,
                 model=self.model,
@@ -2831,6 +2838,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
     def _prepare_container_def_base(self):
         """Base container definition logic from your prepare_container_def_base.
+
         dict or list[dict]: A container definition object or list of container definitions
             usable with the CreateModel API.
         """
@@ -3194,7 +3202,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ),
                 execution_role_arn=execution_role,
             )
-        elif self.mode == Mode.IN_PROCESS:
+        if self.mode == Mode.IN_PROCESS:
             return Model(
                 model_name=self.model_name,
                 primary_container=ContainerDefinition(
@@ -3204,7 +3212,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 execution_role_arn=execution_role,
             )
 
-        elif self.mode == Mode.SAGEMAKER_ENDPOINT:
+        if self.mode == Mode.SAGEMAKER_ENDPOINT:
             self._init_sagemaker_session_if_does_not_exist(self.instance_type)
             # Resolve and validate the serving role: explicit role_arn if set,
             # otherwise the caller's own identity role. A RoleValidationError
@@ -3669,19 +3677,18 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     if model_task in VLLM_TASKS:
                         self.built_model = self._build_for_vllm()
                         return self.built_model
-                    elif model_task in OMNI_TASKS:
+                    if model_task in OMNI_TASKS:
                         self.built_model = self._build_for_vllm_omni()
                         return self.built_model
-                    elif model_task in [
+                    if model_task in [
                         "sentence-similarity",
                         "feature-extraction",
                         "text-ranking",
                     ]:
                         self.built_model = self._build_for_tei()
                         return self.built_model
-                    else:
-                        self.built_model = self._build_for_transformers()
-                        return self.built_model
+                    self.built_model = self._build_for_transformers()
+                    return self.built_model
 
             raise ValueError(
                 f"Model {self.model} is not detected as HuggingFace or JumpStart model"
@@ -3752,13 +3759,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 deserializer=self._deserializer,
                 container_config=self.container_config,
             )
-        else:
-            if update_endpoint:
-                raise NotImplementedError(
-                    "Update endpoint is not supported in local mode (V2 parity)"
-                )
-            else:
-                return LocalEndpoint.get(endpoint_name=endpoint_name, local_session=local_session)
+        if update_endpoint:
+            raise NotImplementedError("Update endpoint is not supported in local mode (V2 parity)")
+        return LocalEndpoint.get(endpoint_name=endpoint_name, local_session=local_session)
 
     def _wait_for_endpoint(
         self, endpoint, poll=30, live_logging=False, show_progress=True, wait=True
@@ -5725,7 +5728,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         ``recommendation_index`` when both are given.
         """
         import time as _time
-        import uuid as _uuid
         from sagemaker.core.shapes.shapes import (
             ContainerDefinition as _ContainerDefinition,
             ProductionVariant as _ProductionVariant,
@@ -5849,7 +5851,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ApprovalDescription="Approved by ModelBuilder recommendation deploy",
             )
 
-        suffix = _uuid.uuid4().hex[:8]
+        suffix = uuid.uuid4().hex[:8]
         ts = int(_time.time())
         resolved_model_name = model_name or f"sm-rec-model-{ts}-{suffix}"
         resolved_endpoint_config_name = endpoint_config_name or f"sm-rec-config-{ts}-{suffix}"
@@ -6350,7 +6352,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         Returns:
             Endpoint: The deployed sagemaker.core.resources.Endpoint
         """
-        from sagemaker.core.resources import InferenceComponent
         from sagemaker.core.resources import Tag as CoreTag
 
         # An inference_config of ResourceRequirements requests an inference
@@ -6581,7 +6582,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if not is_existing_endpoint and model_package is not None:
             try:
                 from sagemaker.core.resources import Action, Association, Artifact
-                from sagemaker.core.shapes import ActionSource, MetadataProperties
+                from sagemaker.core.shapes import ActionSource
 
                 ic_name = inference_component_name if not peft_type == "LORA" else adapter_ic_name
                 inference_component = InferenceComponent.get(inference_component_name=ic_name)
@@ -6690,8 +6691,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         - No InferenceComponents are created
         - EnableNetworkIsolation is set on the Model (during build)
         """
-        from sagemaker.core.shapes import ProductionVariant
-
         if not endpoint_name:
             endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
 

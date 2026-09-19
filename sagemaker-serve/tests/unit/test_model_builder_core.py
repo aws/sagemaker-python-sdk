@@ -112,7 +112,7 @@ class TestModelBuilderInitialization(unittest.TestCase):
     def test_deprecated_parameters_warning(self):
         """Test that deprecated parameters trigger warnings."""
         with self.assertWarns(DeprecationWarning):
-            builder = ModelBuilder(
+            ModelBuilder(
                 model=Mock(),
                 shared_libs=["lib1.so"],
                 role_arn="arn:aws:iam::123456789012:role/TestRole",

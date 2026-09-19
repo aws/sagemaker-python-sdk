@@ -83,7 +83,7 @@ class TestGetDefaultImageForMlflow(unittest.TestCase):
             "123456789.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.1-cpu-py38"
         )
 
-        result = _get_default_image_for_mlflow("3.8.10", "us-west-2", "ml.t2.medium")
+        _get_default_image_for_mlflow("3.8.10", "us-west-2", "ml.t2.medium")
 
         call_args = mock_image_uris.retrieve.call_args[1]
         self.assertEqual(call_args["py_version"], "py38")

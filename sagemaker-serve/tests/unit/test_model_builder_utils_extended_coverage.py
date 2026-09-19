@@ -123,7 +123,7 @@ class TestDetectHuggingFaceImage(unittest.TestCase):
         utils.model = "gpt2"
         utils.region = "us-west-2"
         utils.model_server = ModelServer.TGI
-        mock_retrieve.return_value = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.0.1-tgi1.1.0-gpu-py39-cu118-ubuntu20.04"
+        mock_retrieve.return_value = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.0.1-tgi1.1.0-gpu-py39-cu118-ubuntu20.04"  # noqa: E501
 
         utils._detect_huggingface_image()
 

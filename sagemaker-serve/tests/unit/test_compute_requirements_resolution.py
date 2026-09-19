@@ -542,9 +542,10 @@ class TestComputeRequirementsResolution(unittest.TestCase):
                 instance_type=instance_type, user_resource_requirements=None
             )
 
-            assert (
-                requirements.number_of_accelerator_devices_required == expected_gpus
-            ), f"Expected {expected_gpus} GPUs for {instance_type}, got {requirements.number_of_accelerator_devices_required}"
+            assert requirements.number_of_accelerator_devices_required == expected_gpus, (
+                f"Expected {expected_gpus} GPUs for {instance_type}, "
+                f"got {requirements.number_of_accelerator_devices_required}"
+            )
 
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model")
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_instance_resources")

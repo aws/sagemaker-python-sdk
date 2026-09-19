@@ -7,7 +7,7 @@ class TestTask(unittest.TestCase):
     @patch(
         "builtins.open",
         new_callable=mock_open,
-        read_data='{"test-task": {"sample_inputs": {"properties": {"input": "test"}}, "sample_outputs": {"properties": {"output": "result"}}}}',
+        read_data='{"test-task": {"sample_inputs": {"properties": {"input": "test"}}, "sample_outputs": {"properties": {"output": "result"}}}}',  # noqa: E501
     )
     def test_retrieve_local_schemas_success(self, mock_file):
         result = retrieve_local_schemas("test-task")

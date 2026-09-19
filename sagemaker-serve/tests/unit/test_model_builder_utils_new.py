@@ -184,7 +184,7 @@ class TestImageURIExtraction(unittest.TestCase):
 
     def test_extract_framework_from_huggingface_image(self):
         """Test framework extraction from HuggingFace image URI."""
-        self.utils.image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-cpu-py39-ubuntu20.04"
+        self.utils.image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-cpu-py39-ubuntu20.04"  # noqa: E501
 
         framework, version = self.utils._extract_framework_from_image_uri()
 

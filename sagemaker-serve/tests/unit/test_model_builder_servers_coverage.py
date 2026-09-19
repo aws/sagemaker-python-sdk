@@ -449,7 +449,7 @@ class TestBuildForJumpStart(unittest.TestCase):
     def test_build_for_jumpstart_routes_to_tgi(self, mock_prepare, mock_create, mock_get_kwargs):
         """Test JumpStart routing to TGI builder."""
         mock_init_kwargs = Mock()
-        mock_init_kwargs.image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.0.1-tgi0.9.3-gpu-py39-cu118-ubuntu20.04"
+        mock_init_kwargs.image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.0.1-tgi0.9.3-gpu-py39-cu118-ubuntu20.04"  # noqa: E501
         mock_init_kwargs.env = {}
         mock_init_kwargs.model_data = "s3://jumpstart-cache/models/tgi/model.tar.gz"
         mock_get_kwargs.return_value = mock_init_kwargs
@@ -477,7 +477,7 @@ class TestBuildForJumpStart(unittest.TestCase):
     def test_build_for_jumpstart_routes_to_mms(self, mock_prepare, mock_create, mock_get_kwargs):
         """Test JumpStart routing to MMS builder."""
         mock_init_kwargs = Mock()
-        mock_init_kwargs.image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04"
+        mock_init_kwargs.image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:1.13.1-transformers4.26.0-gpu-py39-cu117-ubuntu20.04"  # noqa: E501
         mock_init_kwargs.env = {}
         mock_init_kwargs.model_data = "s3://jumpstart-cache/models/mms/model.tar.gz"
         mock_get_kwargs.return_value = mock_init_kwargs

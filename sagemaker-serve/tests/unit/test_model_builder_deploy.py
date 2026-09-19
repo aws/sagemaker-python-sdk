@@ -122,7 +122,7 @@ class TestModelBuilderContainerDef(unittest.TestCase):
         )
 
         mock_def.return_value = {"Image": "test-image"}
-        result = builder._core_container_to_dict(mock_container)
+        builder._core_container_to_dict(mock_container)
 
         mock_def.assert_called_once()
 
@@ -334,7 +334,7 @@ class TestModelBuilderDeployCore(unittest.TestCase):
                 mock_get.return_value = mock_endpoint
 
                 with self.assertLogs(level="WARNING") as log:
-                    result = builder._deploy_core_endpoint(
+                    builder._deploy_core_endpoint(
                         instance_type="ml.m5.large",
                         initial_instance_count=1,
                         endpoint_type=EndpointType.MODEL_BASED,

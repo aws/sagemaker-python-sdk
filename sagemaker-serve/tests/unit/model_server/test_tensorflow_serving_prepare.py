@@ -41,9 +41,7 @@ class TestTensorflowServingPrepare(unittest.TestCase):
         mock_get_saved.return_value = Path(self.temp_dir) / "saved_model"
 
         with patch("builtins.open", mock_open(read_data=b"test data")):
-            secret_key = prepare_for_tf_serving(
-                model_path=str(model_path), shared_libs=[], dependencies={}
-            )
+            prepare_for_tf_serving(model_path=str(model_path), shared_libs=[], dependencies={})
 
         mock_capture.assert_called_once()
         mock_move.assert_called_once()

@@ -150,7 +150,7 @@ class TestOptimizeForHF(unittest.TestCase):
 
         config = {"ModelProvider": "JumpStart", "ModelID": "draft-model"}
 
-        result = utils._optimize_for_hf(
+        utils._optimize_for_hf(
             output_path="s3://bucket/output",
             job_name="test-job",
             speculative_decoding_config=config,
@@ -170,7 +170,7 @@ class TestOptimizeForHF(unittest.TestCase):
 
         config = {"ModelProvider": "Custom", "ModelSource": "s3://bucket/draft"}
 
-        result = utils._optimize_for_hf(
+        utils._optimize_for_hf(
             output_path="s3://bucket/output",
             job_name="test-job",
             speculative_decoding_config=config,

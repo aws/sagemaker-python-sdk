@@ -27,7 +27,6 @@ def save_sklearn(model_path: str, model: object) -> None:
     """Save sklearn model using joblib serialization."""
     import joblib
     import os
-    from pathlib import Path
 
     # Ensure directory exists
     Path(model_path).mkdir(parents=True, exist_ok=True)

@@ -1,3 +1,5 @@
+"""Rich-based live progress display for SageMaker deployment operations."""
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
@@ -28,6 +30,7 @@ class EndpointDeploymentProgress:
         self.status = Status("Current status: Creating")
 
     def __enter__(self):
+        """Start the live progress display and return self."""
         panel = Panel(
             Group(self.progress, self.status),
             title="Wait Log Panel",
@@ -39,6 +42,7 @@ class EndpointDeploymentProgress:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Stop the live progress display on context exit."""
         if self.live:
             self.live.stop()
 

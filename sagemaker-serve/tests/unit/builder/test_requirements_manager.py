@@ -84,7 +84,7 @@ class TestRequirementsManager(unittest.TestCase):
         """Test warning when using base conda environment."""
         mock_getcwd.return_value = "/current/dir"
 
-        result = self.manager._detect_conda_env_and_local_dependencies()
+        self.manager._detect_conda_env_and_local_dependencies()
 
         mock_logger.warning.assert_called_once()
         self.assertIn("base", mock_logger.warning.call_args[0][0])

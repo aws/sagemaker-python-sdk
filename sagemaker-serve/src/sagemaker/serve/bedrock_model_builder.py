@@ -530,8 +530,6 @@ class BedrockModelBuilder:
 
             # Auto-generate job_name if not provided
             if not job_name:
-                import time
-
                 job_name = f"{imported_model_name or 'import'}-{int(time.time())}"
 
             # Inject the source tag into both the imported model tags and the

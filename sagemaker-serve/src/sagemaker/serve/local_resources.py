@@ -209,6 +209,7 @@ class LocalEndpoint:
 
             elif self.model_server == ModelServer.TRITON:
                 # Triton: Direct data, no serialization, fixed content types (V2 pattern)
+                # pylint: disable-next=no-name-in-module  # lazy submodule import
                 from sagemaker.serve.utils.predictors import APPLICATION_X_NPY
 
                 raw_response = self.local_container_mode_obj._invoke_triton_server(
@@ -486,14 +487,12 @@ def _get_container_config(config: str) -> dict:
     """Get container configuration based on config type."""
     if config == "host":
         return {"network_mode": "host"}
-    elif config == "bridge":
+    if config == "bridge":
         return {"ports": {"8080/tcp": 8080}}
-    elif config == "auto":
+    if config == "auto":
         import platform
 
         if platform.system().lower() == "linux":
             return {"network_mode": "host"}
-        else:
-            return {"ports": {"8080/tcp": 8080}}
-    else:
-        raise ValueError("container_config must be 'host', 'bridge', or 'auto'")
+        return {"ports": {"8080/tcp": 8080}}
+    raise ValueError("container_config must be 'host', 'bridge', or 'auto'")

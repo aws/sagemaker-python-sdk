@@ -776,7 +776,7 @@ class TestDeploy:
         with patch.object(
             b, "create_deployment", return_value={"customModelDeploymentArn": "arn:dep"}
         ) as mock_deploy:
-            result = b.deploy(custom_model_name="my-nova-model", role_arn="arn:role")
+            b.deploy(custom_model_name="my-nova-model", role_arn="arn:role")
 
         b._bedrock_client.create_custom_model.assert_called_once()
         kw = b._bedrock_client.create_custom_model.call_args[1]
@@ -800,7 +800,7 @@ class TestDeploy:
         }
 
         with patch(f"{MODULE}.time.sleep"):
-            result = b.deploy(job_name="j", imported_model_name="my-imported", role_arn="arn:role")
+            b.deploy(job_name="j", imported_model_name="my-imported", role_arn="arn:role")
 
         b._bedrock_client.create_model_import_job.assert_called_once()
         kw = b._bedrock_client.create_model_import_job.call_args[1]
@@ -1439,7 +1439,7 @@ class TestModelReuseDeploy:
 
         # Default is reuse_resources=False: no lookup, but new model is still tagged.
         with patch(f"{MODULE}.find_existing_bedrock_model") as mock_find:
-            result = b.deploy(custom_model_name="m", role_arn="r")
+            b.deploy(custom_model_name="m", role_arn="r")
 
         mock_find.assert_not_called()
         b._bedrock_client.create_custom_model.assert_called_once()

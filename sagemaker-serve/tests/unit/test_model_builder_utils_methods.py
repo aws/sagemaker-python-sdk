@@ -134,7 +134,7 @@ class TestModelBuilderUtilsImageCompatibility(unittest.TestCase):
         incompatible_images = [
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.0-gpu-py38",
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:2.9.1-cpu",
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.0.0-tgi0.8.2-gpu-py39-cu118",
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-tgi-inference:2.0.0-tgi0.8.2-gpu-py39-cu118",  # noqa: E501
         ]
 
         for image in incompatible_images:
