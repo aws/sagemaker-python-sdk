@@ -4,6 +4,7 @@ Defined as a Python constant (rather than a bundled JSON data file) so it is
 always packaged with the module — no MANIFEST.in / package_data entry required.
 Consumed by :mod:`sagemaker.core.helper.iam_role_resolver`.
 """
+
 from __future__ import absolute_import
 
 # Maps each role type to its trust policy and the least-privilege policies
@@ -23,9 +24,7 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
-                    "Condition": {
-                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
-                    },
+                    "Condition": {"StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}},
                 }
             ],
         },
@@ -332,9 +331,7 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
-                    "Condition": {
-                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
-                    },
+                    "Condition": {"StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}},
                 }
             ],
         },
@@ -403,9 +400,7 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
-                    "Condition": {
-                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
-                    },
+                    "Condition": {"StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}},
                 }
             ],
         },
@@ -453,9 +448,7 @@ IAM_POLICY_CONFIG = {
                         # PassedToService condition further restricts to SageMaker.
                         "Resource": "IAM_PASSROLE_PLACEHOLDER",
                         "Condition": {
-                            "StringEquals": {
-                                "iam:PassedToService": "sagemaker.amazonaws.com"
-                            }
+                            "StringEquals": {"iam:PassedToService": "sagemaker.amazonaws.com"}
                         },
                     }
                 ],
@@ -505,9 +498,7 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
-                    "Condition": {
-                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
-                    },
+                    "Condition": {"StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}},
                 }
             ],
         },
@@ -697,9 +688,7 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "bedrock.amazonaws.com"},
                     "Action": "sts:AssumeRole",
-                    "Condition": {
-                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
-                    },
+                    "Condition": {"StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}},
                 }
             ],
         },
@@ -754,9 +743,7 @@ IAM_POLICY_CONFIG = {
                         ]
                     },
                     "Action": "sts:AssumeRole",
-                    "Condition": {
-                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
-                    },
+                    "Condition": {"StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}},
                 }
             ],
         },
@@ -819,13 +806,9 @@ IAM_POLICY_CONFIG = {
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Principal": {
-                        "Service": "sagemaker.amazonaws.com"
-                    },
+                    "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
-                    "Condition": {
-                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
-                    },
+                    "Condition": {"StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}},
                 }
             ],
         },

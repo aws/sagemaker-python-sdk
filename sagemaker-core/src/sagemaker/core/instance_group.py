@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Defines the InstanceGroup class that configures a heterogeneous cluster."""
+
 from __future__ import absolute_import
 
 

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains classes that loads user specified input sources (e.g. Feature Groups, S3 URIs, etc)."""
+
 from __future__ import absolute_import
 
 import logging
@@ -22,7 +23,9 @@ import attr
 from pyspark.sql import DataFrame
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.mlops.feature_store.feature_processor._constants import FEATURE_GROUP_ARN_REGEX_PATTERN
+from sagemaker.mlops.feature_store.feature_processor._constants import (
+    FEATURE_GROUP_ARN_REGEX_PATTERN,
+)
 from sagemaker.mlops.feature_store.feature_processor._data_source import (
     CSVDataSource,
     FeatureGroupDataSource,
@@ -117,9 +120,7 @@ class SparkDataFrameInputLoader(InputLoader[DataFrame]):
         offline_store_uri = offline_store_config.s3_storage_config.resolved_output_s3_uri
 
         table_format = (
-            offline_store_config.table_format
-            if offline_store_config.table_format
-            else None
+            offline_store_config.table_format if offline_store_config.table_format else None
         )
 
         if table_format not in self._supported_table_format:

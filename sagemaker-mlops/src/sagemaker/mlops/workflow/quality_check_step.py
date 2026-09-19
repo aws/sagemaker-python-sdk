@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The step definitions for workflow."""
+
 from __future__ import absolute_import
 
 import logging
@@ -26,11 +27,7 @@ from sagemaker.core.shapes import ProcessingInput, ProcessingOutput
 from sagemaker.core.processing import Processor
 from sagemaker.core.workflow import is_pipeline_variable
 
-from sagemaker.core.helper.pipeline_variable import (
-    RequestType,
-    PipelineVariable,
-    PrimitiveType
-)
+from sagemaker.core.helper.pipeline_variable import RequestType, PipelineVariable, PrimitiveType
 from sagemaker.core.workflow.parameters import Parameter, ParameterString
 from sagemaker.core.workflow.properties import (
     Properties,
@@ -254,11 +251,11 @@ class QualityCheckStep(Step):
                     input_dict["S3Input"] = {
                         "S3Uri": inp.s3_input.s3_uri,
                         "LocalPath": inp.s3_input.local_path,
-                        "S3DataType": getattr(inp.s3_input, 's3_data_type', 'S3Prefix'),
-                        "S3InputMode": getattr(inp.s3_input, 's3_input_mode', 'File'),
+                        "S3DataType": getattr(inp.s3_input, "s3_data_type", "S3Prefix"),
+                        "S3InputMode": getattr(inp.s3_input, "s3_input_mode", "File"),
                     }
                 processing_inputs.append(input_dict)
-        
+
         s3_output_dict = {
             "S3Uri": self._baseline_output.s3_output.s3_uri,
             "LocalPath": self._baseline_output.s3_output.local_path,
@@ -267,15 +264,17 @@ class QualityCheckStep(Step):
         if self.check_job_config.output_kms_key:
             s3_output_dict["KmsKeyId"] = self.check_job_config.output_kms_key
 
-        processing_outputs = [{
-            "OutputName": self._baseline_output.output_name,
-            "S3Output": s3_output_dict,
-        }]
+        processing_outputs = [
+            {
+                "OutputName": self._baseline_output.output_name,
+                "S3Output": s3_output_dict,
+            }
+        ]
 
         cluster_config = {
             "InstanceCount": self._baselining_processor.instance_count,
             "InstanceType": self._baselining_processor.instance_type,
-            "VolumeSizeInGB": getattr(self._baselining_processor, 'volume_size_in_gb', 30),
+            "VolumeSizeInGB": getattr(self._baselining_processor, "volume_size_in_gb", 30),
         }
         if self.check_job_config.volume_kms_key:
             cluster_config["VolumeKmsKeyId"] = self.check_job_config.volume_kms_key
@@ -292,19 +291,26 @@ class QualityCheckStep(Step):
             },
             "RoleArn": self._baselining_processor.role,
             "StoppingCondition": {
-                "MaxRuntimeInSeconds": getattr(self._baselining_processor, 'max_runtime_in_seconds', None) or 86400
+                "MaxRuntimeInSeconds": getattr(
+                    self._baselining_processor, "max_runtime_in_seconds", None
+                )
+                or 86400
             },
         }
-        
+
         # Add optional fields if they exist
         if self._baselining_processor.env:
             request_dict["Environment"] = self._baselining_processor.env
         if self._baselining_processor.network_config:
             request_dict["NetworkConfig"] = self._baselining_processor.network_config
         if self._baselining_processor.entrypoint:
-            request_dict["AppSpecification"]["ContainerEntrypoint"] = self._baselining_processor.entrypoint
+            request_dict["AppSpecification"][
+                "ContainerEntrypoint"
+            ] = self._baselining_processor.entrypoint
         if self._baselining_processor.arguments:
-            request_dict["AppSpecification"]["ContainerArguments"] = self._baselining_processor.arguments
+            request_dict["AppSpecification"][
+                "ContainerArguments"
+            ] = self._baselining_processor.arguments
         # Continue to pop job name if not explicitly opted-in via config
         request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
@@ -356,7 +362,7 @@ class QualityCheckStep(Step):
                 s3_input={
                     "s3_uri": self.quality_check_config.baseline_dataset,
                     "local_path": baseline_dataset_des,
-                }
+                },
             )
         else:
             baseline_dataset_input = self._model_monitor._upload_and_convert_to_processing_input(
@@ -417,9 +423,11 @@ class QualityCheckStep(Step):
             output_name=_DEFAULT_OUTPUT_NAME,
             s3_output={
                 "s3_uri": s3_uri,
-                "local_path": str(pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)),
+                "local_path": str(
+                    pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)
+                ),
                 "s3_upload_mode": "EndOfJob",
-            }
+            },
         )
 
     def _generate_baseline_processor(

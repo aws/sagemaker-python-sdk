@@ -20,9 +20,9 @@ Accounts:
   - PROD (729646638167): Main account
   - PREPROD (391266019386): Staging account
 """
+
 from __future__ import absolute_import
 
-import os
 import pytest
 import logging
 
@@ -53,10 +53,11 @@ ACCOUNT_CONFIGS = {
     # PROD — Main account (729646638167)
     "729646638167": {
         "env_name": "PROD",
-        #"existing_job_name": "mock-oss-test-mtrl-20260611170946",
+        # "existing_job_name": "mock-oss-test-mtrl-20260611170946",
         "existing_job_name": "mock-oss-test-mtrl-20260910094327",
         "base_model": "mock-oss-test",
-        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
+        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/"
+        "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
@@ -67,22 +68,26 @@ ACCOUNT_CONFIGS = {
         "env_name": "PREPROD",
         "existing_job_name": "mtrl-integ-gpt-oss-agentcore-1779143704358",
         "base_model": "mock-oss-test",
-        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:391266019386:runtime/mtrl_integ_gsm8k_streaming-bIz4H5Echk",
+        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:391266019386:runtime/"
+        "mtrl_integ_gsm8k_streaming-bIz4H5Echk",
         "dataset": "s3://sagemaker-rft-beta-391266019386/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-391266019386/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:391266019386:mlflow-app/app-P3FRQFRQTNGI",
-        "model_package_group": "arn:aws:sagemaker:us-west-2:391266019386:model-package-group/mtrl-integ-gpt-oss-agentcore",
+        "model_package_group": "arn:aws:sagemaker:us-west-2:391266019386:model-package-group/"
+        "mtrl-integ-gpt-oss-agentcore",
     },
     # BETA — Dev/test account (742774200982)
     "742774200982": {
         "env_name": "BETA",
         "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260601114439",
         "base_model": "mock-oss-test",
-        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:742774200982:runtime/sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq",
+        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:742774200982:runtime/"
+        "sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq",
         "dataset": "s3://sagemaker-rft-beta-742774200982/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-742774200982/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:742774200982:mlflow-app/app-6ZU5TXXH2GUX",
-        "model_package_group": "arn:aws:sagemaker:us-west-2:742774200982:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
+        "model_package_group": "arn:aws:sagemaker:us-west-2:742774200982:model-package-group/"
+        "openai-reasoning-gpt-oss-20b-mtrl-mpg",
     },
 }
 
@@ -120,9 +125,9 @@ def attached_trainer(config):
         f"Existing job {config['existing_job_name']} is not Completed "
         f"(status: {job.job_status}). Cannot use for evaluation."
     )
-    assert job.output_model_package_arn is not None, (
-        f"Existing job {config['existing_job_name']} has no output_model_package_arn."
-    )
+    assert (
+        job.output_model_package_arn is not None
+    ), f"Existing job {config['existing_job_name']} has no output_model_package_arn."
 
     trainer = MultiTurnRLTrainer(
         model=config["base_model"],
@@ -212,7 +217,9 @@ class TestMTRLEvalIntegration:
             f"reason: {execution.status.failure_reason}"
         )
 
-    @pytest.mark.skip(reason="Comparison template has CreateJob schema validation issue — tracked separately")
+    @pytest.mark.skip(
+        reason="Comparison template has CreateJob schema validation issue — tracked separately"
+    )
     def test_evaluate_comparison(self, attached_trainer, config):
         """Evaluate base + finetuned comparison — submit and wait for completion."""
         evaluator = MultiTurnRLEvaluator(
@@ -264,9 +271,7 @@ class TestMTRLShowMetrics:
         trainer._latest_job = job
 
         result = trainer.show_metrics()
-        logger.info(
-            f"[{config['env_name']}] show_metrics() returned: {type(result).__name__}"
-        )
+        logger.info(f"[{config['env_name']}] show_metrics() returned: {type(result).__name__}")
 
         # stream_logs() should exit quickly for a completed job
         trainer.stream_logs(poll=2)

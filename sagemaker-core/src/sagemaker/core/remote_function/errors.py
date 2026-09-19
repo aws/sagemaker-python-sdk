@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Definitions for reomote job errors and error handling"""
+
 from __future__ import absolute_import
 
 import os
@@ -18,7 +19,6 @@ import os
 from tblib import pickling_support
 from sagemaker.core.s3 import s3_path_join
 import sagemaker.core.remote_function.core.serialization as serialization
-
 
 DEFAULT_FAILURE_CODE = 1
 FAILURE_REASON_PATH = "/opt/ml/output/failure"

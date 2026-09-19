@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Default constants used by Spark processing."""
+
 from __future__ import absolute_import
 
 SPARK_NAME = "spark"

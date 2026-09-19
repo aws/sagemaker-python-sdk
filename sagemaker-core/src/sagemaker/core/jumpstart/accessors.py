@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 # pylint: skip-file
 """This module contains accessors related to SageMaker JumpStart."""
+
 from __future__ import absolute_import
 import functools
 import logging
@@ -301,11 +302,8 @@ class JumpStartModelsAccessor(object):
                 return model_specs
 
             except Exception as ex:
-                logging.info(
-                    "Received exeption while calling APIs for ContentType ModelReference, \
-                        retrying with ContentType Model: "
-                    + str(ex)
-                )
+                logging.info("Received exeption while calling APIs for ContentType ModelReference, \
+                        retrying with ContentType Model: " + str(ex))
                 hub_model_arn = construct_hub_model_arn_from_inputs(
                     hub_arn=hub_arn, model_name=model_id, version=version
                 )
@@ -320,11 +318,8 @@ class JumpStartModelsAccessor(object):
                     return model_specs
                 except Exception as ex:
                     # Failed with both, throw a custom error message
-                    raise RuntimeError(
-                        f"Cannot get details for {model_id} in Hub {hub_arn}. \
-                            {model_id} does not exist as a Model or ModelReference: \n"
-                        + str(ex)
-                    )
+                    raise RuntimeError(f"Cannot get details for {model_id} in Hub {hub_arn}. \
+                            {model_id} does not exist as a Model or ModelReference: \n" + str(ex))
 
         return JumpStartModelsAccessor._cache.get_specs(  # type: ignore
             model_id=model_id, version_str=version, model_type=model_type

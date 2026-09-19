@@ -3,7 +3,7 @@ import importlib
 import inspect
 import unittest
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
 from sagemaker.core.resources import Base, Action
 
@@ -131,7 +131,7 @@ class ResourcesTest(unittest.TestCase):
                             "JobDefinitionSummaries": [summary],
                             f"{name}SummaryList": [summary],
                             f"{name}s": [summary],
-                            f"Summaries": [summary],
+                            "Summaries": [summary],
                         }
                         if name == "MlflowTrackingServer":
                             summary_response = {"TrackingServerSummaries": [summary]}
@@ -361,7 +361,7 @@ class ResourcesTest(unittest.TestCase):
                                         input_args
                                     )
                                     if additional_function_name.startswith("list"):
-                                        # The only additional list method that is a class method is ListCodeRepositories,
+                                        # The only additional list method that is a class method is ListCodeRepositories,  # noqa: E501
                                         # which has already been tested in the get_all part above
                                         continue
                                     else:
@@ -449,7 +449,7 @@ class ResourcesTest(unittest.TestCase):
 
     def _generate_test_shape(self, shape_cls):
         params = {}
-        if shape_cls == None:
+        if shape_cls is None:
             return None
         try:
             for key, val in inspect.signature(shape_cls).parameters.items():
@@ -473,7 +473,7 @@ class ResourcesTest(unittest.TestCase):
 
     def _generate_test_shape_dict(self, shape_cls):
         params = {}
-        if shape_cls == None:
+        if shape_cls is None:
             return None
         for key, val in inspect.signature(shape_cls).parameters.items():
             attribute_type = str(val.annotation)
@@ -775,9 +775,11 @@ class TestWaitLogMarkup(unittest.TestCase):
             ("algo-1", {"message": "loaded [/opt/ml/code/main_ppo.py]"})
         ]
 
-        with patch("sagemaker.core.resources.MultiLogStreamHandler", return_value=log_handler), \
-             patch("sagemaker.core.resources.logger") as mock_logger, \
-             patch.object(type(resource), "refresh", return_value=resource):
+        with (
+            patch("sagemaker.core.resources.MultiLogStreamHandler", return_value=log_handler),
+            patch("sagemaker.core.resources.logger") as mock_logger,
+            patch.object(type(resource), "refresh", return_value=resource),
+        ):
             resource.wait(poll=0, logs=True)
 
         return mock_logger.info.call_args_list
@@ -788,6 +790,7 @@ class TestWaitLogMarkup(unittest.TestCase):
         job = TrainingJob(training_job_name="test-job")
         job.training_job_status = "Completed"
         from sagemaker.core.shapes import shapes
+
         job.resource_config = shapes.ResourceConfig(
             instance_type="ml.m5.large", instance_count=1, volume_size_in_gb=30
         )
@@ -806,6 +809,7 @@ class TestWaitLogMarkup(unittest.TestCase):
         job = ProcessingJob(processing_job_name="test-job")
         job.processing_job_status = "Completed"
         from sagemaker.core.shapes import shapes
+
         job.processing_resources = shapes.ProcessingResources(
             cluster_config=shapes.ProcessingClusterConfig(
                 instance_count=1, instance_type="ml.m5.large", volume_size_in_gb=30
@@ -825,6 +829,7 @@ class TestWaitLogMarkup(unittest.TestCase):
         job = TransformJob(transform_job_name="test-job")
         job.transform_job_status = "Completed"
         from sagemaker.core.shapes import shapes
+
         job.transform_resources = shapes.TransformResources(
             instance_type="ml.m5.large", instance_count=1
         )
@@ -850,8 +855,10 @@ class TestTrainingJobGetModelArtifactsSynthesis(unittest.TestCase):
 
     def _call_get(self, transformed_attrs):
         """Drive TrainingJob.get() with transform() returning the given attrs."""
-        with patch("sagemaker.core.resources.transform", return_value=transformed_attrs), \
-             patch.object(Base, "get_sagemaker_client") as mock_get_client:
+        with (
+            patch("sagemaker.core.resources.transform", return_value=transformed_attrs),
+            patch.object(Base, "get_sagemaker_client") as mock_get_client,
+        ):
             from sagemaker.core.resources import TrainingJob
 
             mock_get_client.return_value.describe_training_job.return_value = {}
@@ -870,10 +877,7 @@ class TestTrainingJobGetModelArtifactsSynthesis(unittest.TestCase):
         )
 
         assert not isinstance(job.model_artifacts, Unassigned)
-        assert (
-            job.model_artifacts.s3_model_artifacts
-            == "s3://bucket/prefix/test-job/output/"
-        )
+        assert job.model_artifacts.s3_model_artifacts == "s3://bucket/prefix/test-job/output/"
 
     def test_trailing_slash_in_output_path_is_normalized(self):
         from sagemaker.core.shapes import OutputDataConfig
@@ -887,10 +891,7 @@ class TestTrainingJobGetModelArtifactsSynthesis(unittest.TestCase):
         )
 
         # No double slash between prefix and job name.
-        assert (
-            job.model_artifacts.s3_model_artifacts
-            == "s3://bucket/prefix/test-job/output/"
-        )
+        assert job.model_artifacts.s3_model_artifacts == "s3://bucket/prefix/test-job/output/"
 
     def test_does_not_override_existing_model_artifacts(self):
         from sagemaker.core.resources import ModelArtifacts

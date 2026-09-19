@@ -15,6 +15,7 @@
 Codes are used for generating cron expressions compatible with Amazon SageMaker Model
 Monitoring Schedules.
 """
+
 from __future__ import print_function, absolute_import
 
 

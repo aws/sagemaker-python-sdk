@@ -2,10 +2,12 @@
 
 from __future__ import absolute_import
 
-import requests
 import logging
 from pathlib import Path
+
+import requests
 from docker.types import DeviceRequest
+
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core import fw_utils
 from sagemaker.core.s3.utils import determine_bucket_and_prefix, parse_s3_url, s3_path_join
@@ -28,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 class LocalDJLServing:
     """Placeholder docstring"""
+
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets self.container during _start_*, not in __init__, by design.
 
     def _start_djl_serving(
         self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
@@ -64,7 +69,7 @@ class LocalDJLServing:
             response.raise_for_status()
             return response.content
         except Exception as e:
-            raise Exception("Unable to send request to the local container server %s", str(e))
+            raise Exception(f"Unable to send request to the local container server {str(e)}")
 
 
 class SageMakerDjlServing:

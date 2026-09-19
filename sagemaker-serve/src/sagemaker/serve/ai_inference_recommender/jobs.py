@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Job subclasses that add ``show_result`` to the inference recommender resources."""
+
 from __future__ import absolute_import
 
 from typing import TYPE_CHECKING
@@ -33,9 +34,7 @@ class BenchmarkJob(AIBenchmarkJob):
     is the only addition.
     """
 
-    @_telemetry_emitter(
-        feature=Feature.INFERENCE_RECOMMENDER, func_name="BenchmarkJob.show_result"
-    )
+    @_telemetry_emitter(feature=Feature.INFERENCE_RECOMMENDER, func_name="BenchmarkJob.show_result")
     def show_result(self):
         """Download the benchmark output from S3 and return a parsed result.
 
@@ -76,9 +75,7 @@ class RecommendationJob(AIRecommendationJob):
 
         self.refresh()
         rows = list(self.recommendations or [])
-        return _RecommendationsView(
-            _RecommendationView(row, index=i) for i, row in enumerate(rows)
-        )
+        return _RecommendationsView(_RecommendationView(row, index=i) for i, row in enumerate(rows))
 
 
 __all__ = ["BenchmarkJob", "RecommendationJob"]

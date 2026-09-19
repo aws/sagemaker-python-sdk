@@ -14,7 +14,7 @@
 
 import hashlib
 import pytest
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
 
 from botocore.exceptions import ClientError
 
@@ -29,7 +29,6 @@ from sagemaker.serve.model_reuse import (
     build_source_tag,
     check_bedrock_model_status,
     check_sagemaker_endpoint_status,
-    _arn_to_name,
 )
 
 
@@ -148,7 +147,9 @@ def test_find_existing_bedrock_model_paginates(boto_session, bedrock_client):
 
 
 @patch("sagemaker.serve.model_reuse.time.sleep")
-def test_find_existing_bedrock_model_polls_creating_until_ready(mock_sleep, boto_session, bedrock_client):
+def test_find_existing_bedrock_model_polls_creating_until_ready(
+    mock_sleep, boto_session, bedrock_client
+):
     _bedrock_with_tagged_model(bedrock_client, SAMPLE_ARN, "source-id")
     bedrock_client.get_custom_model.side_effect = [
         {"modelStatus": "Creating"},
@@ -156,9 +157,7 @@ def test_find_existing_bedrock_model_polls_creating_until_ready(mock_sleep, boto
         {"modelStatus": "Active"},
     ]
 
-    result = find_existing_bedrock_model(
-        bedrock_client, "source-id", poll_interval=5, max_wait=900
-    )
+    result = find_existing_bedrock_model(bedrock_client, "source-id", poll_interval=5, max_wait=900)
 
     assert result == SAMPLE_ARN
     assert mock_sleep.call_count == 2
@@ -166,14 +165,14 @@ def test_find_existing_bedrock_model_polls_creating_until_ready(mock_sleep, boto
 
 
 @patch("sagemaker.serve.model_reuse.time.sleep")
-def test_find_existing_bedrock_model_raises_timeout_on_creating(mock_sleep, boto_session, bedrock_client):
+def test_find_existing_bedrock_model_raises_timeout_on_creating(
+    mock_sleep, boto_session, bedrock_client
+):
     _bedrock_with_tagged_model(bedrock_client, SAMPLE_ARN, "source-id")
     bedrock_client.get_custom_model.return_value = {"modelStatus": "Creating"}
 
     with pytest.raises(TimeoutError, match="did not become ready"):
-        find_existing_bedrock_model(
-            bedrock_client, "source-id", poll_interval=5, max_wait=10
-        )
+        find_existing_bedrock_model(bedrock_client, "source-id", poll_interval=5, max_wait=10)
 
 
 def test_find_existing_bedrock_model_returns_none_on_failed(boto_session, bedrock_client):
@@ -194,9 +193,7 @@ def test_find_existing_bedrock_model_returns_none_on_list_failure(boto_session, 
 
 
 def test_find_existing_bedrock_model_returns_none_when_no_match(boto_session, bedrock_client):
-    bedrock_client.list_custom_models.return_value = {
-        "modelSummaries": [{"modelArn": SAMPLE_ARN}]
-    }
+    bedrock_client.list_custom_models.return_value = {"modelSummaries": [{"modelArn": SAMPLE_ARN}]}
     bedrock_client.list_tags_for_resource.return_value = {
         "tags": [{"key": MODEL_SOURCE_TAG_KEY, "value": "different"}]
     }
@@ -248,7 +245,9 @@ def test_find_active_bedrock_deployment_raises_on_access_denied(boto_session, be
         find_active_bedrock_deployment_for_model(bedrock_client, SAMPLE_ARN)
 
 
-def test_find_existing_sagemaker_endpoint_returns_arn_when_in_service(boto_session, sagemaker_client):
+def test_find_existing_sagemaker_endpoint_returns_arn_when_in_service(
+    boto_session, sagemaker_client
+):
     _sagemaker_with_tagged_endpoint(sagemaker_client, ENDPOINT_ARN, "source-id")
     sagemaker_client.describe_endpoint.return_value = {"EndpointStatus": "InService"}
 
@@ -285,7 +284,9 @@ def test_find_existing_sagemaker_endpoint_returns_none_on_failed(boto_session, s
     assert result is None
 
 
-def test_find_existing_sagemaker_endpoint_returns_none_on_list_failure(boto_session, sagemaker_client):
+def test_find_existing_sagemaker_endpoint_returns_none_on_list_failure(
+    boto_session, sagemaker_client
+):
     sagemaker_client.list_endpoints.side_effect = Exception("Access denied")
 
     result = find_existing_sagemaker_endpoint(sagemaker_client, "source-id")
@@ -293,7 +294,9 @@ def test_find_existing_sagemaker_endpoint_returns_none_on_list_failure(boto_sess
     assert result is None
 
 
-def test_find_existing_sagemaker_endpoint_returns_none_when_no_endpoints(boto_session, sagemaker_client):
+def test_find_existing_sagemaker_endpoint_returns_none_when_no_endpoints(
+    boto_session, sagemaker_client
+):
     sagemaker_client.list_endpoints.return_value = {"Endpoints": []}
 
     result = find_existing_sagemaker_endpoint(sagemaker_client, "source-id")
@@ -303,9 +306,7 @@ def test_find_existing_sagemaker_endpoint_returns_none_when_no_endpoints(boto_se
 
 def test_find_existing_sagemaker_endpoint_raises_on_access_denied(boto_session, sagemaker_client):
     sagemaker_client.list_endpoints.return_value = {"Endpoints": [{"EndpointArn": ENDPOINT_ARN}]}
-    sagemaker_client.list_tags.side_effect = _access_denied_error(
-        "ListTags", "sagemaker:ListTags"
-    )
+    sagemaker_client.list_tags.side_effect = _access_denied_error("ListTags", "sagemaker:ListTags")
 
     with pytest.raises(PermissionError, match="sagemaker:ListTags"):
         find_existing_sagemaker_endpoint(sagemaker_client, "source-id")

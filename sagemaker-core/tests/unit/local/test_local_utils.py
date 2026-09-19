@@ -118,9 +118,11 @@ def test_get_child_process_ids(m_subprocess):
     get_child_process_ids("123")
     m_subprocess.Popen.assert_called_with(cmd, stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE)
 
+
 def test_get_child_process_ids_exception():
     with pytest.raises(ValueError, match="Invalid PID"):
         get_child_process_ids("abc")
+
 
 @patch("sagemaker.core.local.utils.subprocess")
 def test_get_docker_host(m_subprocess):

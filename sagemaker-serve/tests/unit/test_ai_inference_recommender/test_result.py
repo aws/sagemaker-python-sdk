@@ -6,6 +6,7 @@
 #
 #     http://aws.amazon.com/apache2.0/
 """Unit tests for BenchmarkResult / BenchmarkMetrics."""
+
 from __future__ import absolute_import
 
 import io
@@ -22,7 +23,6 @@ from sagemaker.serve.ai_inference_recommender import (
     BenchmarkResult,
     BenchmarkSearchResult,
 )
-
 
 SAMPLE_PROFILE = {
     "request_throughput": {"avg": 12.5, "min": 10.0, "max": 15.0, "unit": "req/s"},

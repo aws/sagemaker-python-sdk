@@ -4,11 +4,11 @@ This script validates that:
 1. It can be executed from an S3-based source_dir
 2. It can import from a sibling module in the same source bundle
 """
+
 import os
 import json
 
 from helpers import get_greeting
-
 
 if __name__ == "__main__":
     output_dir = "/opt/ml/processing/output"

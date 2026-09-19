@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """MPI Driver Unit Tests."""
+
 from __future__ import absolute_import
 
 import os
@@ -23,7 +24,6 @@ sys.modules["utils"] = MagicMock()
 sys.modules["mpi_utils"] = MagicMock()
 
 from sagemaker.train.container_drivers.distributed_drivers import mpi_driver  # noqa: E402
-
 
 DUMMY_MPI_COMMAND = [
     "mpirun",

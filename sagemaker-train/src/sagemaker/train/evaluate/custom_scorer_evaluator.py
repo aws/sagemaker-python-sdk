@@ -26,30 +26,30 @@ _logger = logging.getLogger(__name__)
 
 class _BuiltInMetric(str, Enum):
     """Internal: Preset metrics for custom scorer evaluation.
-    
+
     These metrics provide built-in evaluation capabilities for common use cases.
-    
+
     Note:
         This is an internal class. Users should use ``get_builtin_metrics()`` instead.
     """
+
     PRIME_MATH = "prime_math"
     PRIME_CODE = "prime_code"
 
 
-
 def get_builtin_metrics() -> Type[_BuiltInMetric]:
     """Get the built-in metrics enum for custom scorer evaluation.
-    
+
     This utility function provides access to preset metrics for custom scorer evaluation.
-    
+
     Returns:
         Type[_BuiltInMetric]: The built-in metric enum class
-    
+
     Example:
         .. code:: python
-        
+
             from sagemaker.train.evaluate import get_builtin_metrics
-            
+
             BuiltInMetric = get_builtin_metrics()
             evaluator = CustomScorerEvaluator(
                 evaluator=BuiltInMetric.PRIME_MATH,
@@ -64,10 +64,10 @@ def get_builtin_metrics() -> Type[_BuiltInMetric]:
 
 class CustomScorerEvaluator(BaseEvaluator):
     """Custom scorer evaluation job for preset or custom evaluator metrics.
-    
+
     This evaluator supports both preset metrics (via built-in metrics enum) and
     custom evaluator implementations for specialized evaluation needs.
-    
+
     Attributes:
         evaluator (Union[str, Any]): Built-in metric enum value, Evaluator object, or Evaluator
             ARN string. Required. Use ``get_builtin_metrics()`` for available preset metrics.
@@ -90,16 +90,16 @@ class CustomScorerEvaluator(BaseEvaluator):
         kms_key_id (Optional[str]): KMS key ID for encryption. Inherited from BaseEvaluator.
         model_package_group (Optional[Union[str, ModelPackageGroup]]): Model package group.
             Inherited from BaseEvaluator.
-    
+
     Example:
         .. code:: python
-        
+
             from sagemaker.train.evaluate.custom_scorer_evaluator import (
                 CustomScorerEvaluator,
                 get_builtin_metrics
             )
             from sagemaker.ai_registry.evaluator import Evaluator
-            
+
             # Using preset metric
             BuiltInMetric = get_builtin_metrics()
             evaluator = CustomScorerEvaluator(
@@ -109,7 +109,7 @@ class CustomScorerEvaluator(BaseEvaluator):
                 s3_output_path="s3://bucket/output",
                 mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
             )
-            
+
             # Using custom evaluator
             my_evaluator = Evaluator.create(
                 name="my-custom-evaluator",
@@ -123,7 +123,7 @@ class CustomScorerEvaluator(BaseEvaluator):
                 s3_output_path="s3://bucket/output",
                 mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
             )
-            
+
             # Using evaluator ARN string
             evaluator = CustomScorerEvaluator(
                 evaluator="arn:aws:sagemaker:us-west-2:123456789012:hub-content/AIRegistry/Evaluator/my-evaluator/1",
@@ -132,45 +132,47 @@ class CustomScorerEvaluator(BaseEvaluator):
                 s3_output_path="s3://bucket/output",
                 mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
             )
-            
+
             job = evaluator.evaluate()
     """
-    
+
     evaluator: Union[str, Any]
     dataset: Any
     _hyperparameters: Optional[Any] = None
-    
+
     # Template-required fields
     evaluate_base_model: bool = False
 
     def _get_eval_recipe_display_name_filter(self) -> str:
         """Prefer 'custom' or 'scorer' recipes for CustomScorerEvaluator."""
         return "custom"
-    
-    @validator('dataset', pre=True)
+
+    @validator("dataset", pre=True)
+    @classmethod
     def _resolve_dataset(cls, v):
         """Resolve dataset to string (S3 URI or ARN) and validate format.
-        
+
         Uses BaseEvaluator's common validation logic to avoid code duplication.
         """
         return BaseEvaluator._validate_and_resolve_dataset(v)
-    
-    @validator('evaluator')
+
+    @validator("evaluator")
+    @classmethod
     def _validate_evaluator(cls, v):
         """Validate evaluator parameter is a built-in metric, Evaluator object, or ARN string"""
         # Check if it's a built-in metric enum
         if isinstance(v, _BuiltInMetric):
             return v
-        
+
         # Check if it's an Evaluator object (has 'arn' attribute)
-        if hasattr(v, 'arn'):
+        if hasattr(v, "arn"):
             _logger.info(f"Resolving Evaluator object to ARN: {v.arn}")
             return v.arn
-        
+
         # Check if it's a string (should be an ARN)
         if isinstance(v, str):
             # Validate it looks like an ARN or is a valid built-in metric name
-            if v.startswith('arn:'):
+            if v.startswith("arn:"):
                 return v
             # Try to match as built-in metric name
             try:
@@ -181,49 +183,54 @@ class CustomScorerEvaluator(BaseEvaluator):
                     f"Evaluator object, or valid Evaluator ARN. "
                     f"Available built-in metrics: {', '.join(m.value for m in _BuiltInMetric)}"
                 )
-        
+
         raise ValueError(
             f"Invalid evaluator type: {type(v).__name__}. "
             f"Must be a built-in metric enum value, Evaluator object, or ARN string."
         )
-    
+
     @property
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="CustomScorerEvaluator.hyperparameters")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="CustomScorerEvaluator.hyperparameters"
+    )
     def hyperparameters(self):
         """Get evaluation hyperparameters as a FineTuningOptions object.
-        
+
         This property provides access to evaluation hyperparameters with validation,
         type checking, and user-friendly information display. Hyperparameters are
         lazily loaded from the JumpStart Hub when first accessed.
-        
+
         Returns:
             FineTuningOptions: Dynamic object with evaluation hyperparameters
-        
+
         Raises:
             ValueError: If base model name is not available or if hyperparameters cannot be loaded
-        
+
         Example:
             .. code:: python
-            
+
                 evaluator = CustomScorerEvaluator(...)
-                
+
                 # Access current values
                 print(evaluator.hyperparameters.temperature)
-                
+
                 # Modify values (with validation)
                 evaluator.hyperparameters.temperature = 0.5
-                
+
                 # Get as dictionary
                 params = evaluator.hyperparameters.to_dict()
-                
+
                 # Display parameter information
                 evaluator.hyperparameters.get_info()
                 evaluator.hyperparameters.get_info('temperature')
         """
         if self._hyperparameters is None:
             from ..common import FineTuningOptions
-            from ..common_utils.recipe_utils import _get_evaluation_override_params, _extract_eval_override_options
-            
+            from ..common_utils.recipe_utils import (
+                _get_evaluation_override_params,
+                _extract_eval_override_options,
+            )
+
             # Get the hub content name from the base model
             hub_content_name = self._base_model_name
             if not hub_content_name:
@@ -233,38 +240,42 @@ class CustomScorerEvaluator(BaseEvaluator):
                     "The base_model parameter must be set to a valid model identifier (e.g., JumpStart model ID, "
                     "model package ARN, or model ARN) to enable hyperparameter configuration."
                 )
-            
+
             # Get region
             region = self.region
-            
+
             # Fetch override parameters from hub (let exceptions propagate)
-            _logger.info(f"Fetching evaluation override parameters for hyperparameters property")
-            
+            _logger.info("Fetching evaluation override parameters for hyperparameters property")
+
             # Extract boto_session from sagemaker_core Session
             # HubContent.get() in recipe_utils expects boto3 session, not sagemaker_core Session
-            boto_session = (self.sagemaker_session.boto_session 
-                           if hasattr(self.sagemaker_session, 'boto_session') 
-                           else self.sagemaker_session)
-            
+            boto_session = (
+                self.sagemaker_session.boto_session
+                if hasattr(self.sagemaker_session, "boto_session")
+                else self.sagemaker_session
+            )
+
             override_params = _get_evaluation_override_params(
                 hub_content_name=hub_content_name,
                 hub_name=get_sagemaker_hub_name(),
                 evaluation_type="DeterministicEvaluation",
                 region=region,
-                session=boto_session
+                session=boto_session,
             )
-            
+
             # Extract full parameter specifications
-            configurable_params = _extract_eval_override_options(override_params, return_full_spec=True)
-            
+            configurable_params = _extract_eval_override_options(
+                override_params, return_full_spec=True
+            )
+
             # Create FineTuningOptions object from full specifications
             self._hyperparameters = FineTuningOptions(configurable_params)
-        
+
         return self._hyperparameters
-    
+
     def _resolve_evaluator_config(self) -> dict:
         """Resolve evaluator configuration (ARN vs preset).
-        
+
         Returns:
             dict: Dictionary with:
                 - evaluator_arn (Optional[str]): Custom evaluator ARN or None
@@ -272,28 +283,25 @@ class CustomScorerEvaluator(BaseEvaluator):
         """
         evaluator_arn = None
         preset_reward_function = None
-        
+
         if isinstance(self.evaluator, _BuiltInMetric):
             # Built-in metric enum - use as preset_reward_function
             preset_reward_function = self.evaluator.value
-        elif isinstance(self.evaluator, str) and self.evaluator.startswith('arn:'):
+        elif isinstance(self.evaluator, str) and self.evaluator.startswith("arn:"):
             # Custom evaluator ARN
             evaluator_arn = self.evaluator
         elif isinstance(self.evaluator, str):
             # Built-in metric as string
             preset_reward_function = self.evaluator
-        
-        return {
-            'evaluator_arn': evaluator_arn,
-            'preset_reward_function': preset_reward_function
-        }
-    
+
+        return {"evaluator_arn": evaluator_arn, "preset_reward_function": preset_reward_function}
+
     def _get_custom_scorer_template_additions(self, evaluator_config: dict) -> dict:
         """Get custom scorer specific template context additions.
-        
+
         Args:
             evaluator_config: Dictionary with evaluator_arn and preset_reward_function
-            
+
         Returns:
             dict: Custom scorer specific template context fields
         """
@@ -302,106 +310,120 @@ class CustomScorerEvaluator(BaseEvaluator):
         # Get effective hyperparameters (recipe/overrides take precedence if provided)
         configured_params = self._get_effective_hyperparameters()
         _logger.info(f"Using configured hyperparameters: {configured_params}")
-        
+
         # Determine if this is a Nova model
         is_nova = _is_nova_model(self._base_model_name)
-        metric_key = 'metric' if is_nova else 'evaluation_metric'
-        
+        metric_key = "metric" if is_nova else "evaluation_metric"
+
         # Build custom scorer specific context
         custom_scorer_context = {
-            'task': 'gen_qa',  # Fixed task for custom scorer
-            'strategy': 'gen_qa',  # Fixed strategy for gen_qa task
+            "task": "gen_qa",  # Fixed task for custom scorer
+            "strategy": "gen_qa",  # Fixed strategy for gen_qa task
             metric_key: "all",  # Use 'metric' for Nova, 'evaluation_metric' for OpenWeights
-            'evaluate_base_model': self.evaluate_base_model,
-            'evaluator_arn': evaluator_config['evaluator_arn'],
+            "evaluate_base_model": self.evaluate_base_model,
+            "evaluator_arn": evaluator_config["evaluator_arn"],
         }
-        
+
         # Add lambda_type for Nova models
         if is_nova:
-            custom_scorer_context['lambda_type'] = 'rft'
-        
+            custom_scorer_context["lambda_type"] = "rft"
+
         # Add preset_reward_function if present
-        if evaluator_config['preset_reward_function']:
-            custom_scorer_context['preset_reward_function'] = evaluator_config['preset_reward_function']
-        
+        if evaluator_config["preset_reward_function"]:
+            custom_scorer_context["preset_reward_function"] = evaluator_config[
+                "preset_reward_function"
+            ]
+
         # Add all configured hyperparameters
         for key in configured_params.keys():
             custom_scorer_context[key] = configured_params[key]
-        
+
         # Determine postprocessing and aggregation values
         # When evaluator_arn is provided, postprocessing must be enabled for Lambda execution
-        if evaluator_config['evaluator_arn']:
-            custom_scorer_context['postprocessing'] = 'True'
-            if not custom_scorer_context.get('aggregation'):
-                custom_scorer_context['aggregation'] = 'mean'
-        
+        if evaluator_config["evaluator_arn"]:
+            custom_scorer_context["postprocessing"] = "True"
+            if not custom_scorer_context.get("aggregation"):
+                custom_scorer_context["aggregation"] = "mean"
+
         return custom_scorer_context
-    
+
     def _get_inference_params_from_hub(self, region: str) -> dict:
         """Fetch inference parameters from JumpStart Hub for the base model
-        
+
         This method retrieves the evaluation recipe override parameters from the hub
         and extracts the inference parameters (max_new_tokens, temperature, top_k, top_p).
-        
+
         Args:
             region: AWS region
-            
+
         Returns:
             Dict containing inference parameters as strings. Returns fallback values if fetch fails.
         """
-        from ..common_utils.recipe_utils import _get_evaluation_override_params, _extract_eval_override_options
-        
+        from ..common_utils.recipe_utils import (
+            _get_evaluation_override_params,
+            _extract_eval_override_options,
+        )
+
         # Default fallback values
         fallback_params = {
-            'max_new_tokens': '8192',
-            'temperature': '0',
-            'top_k': '-1',
-            'top_p': '1.0'
+            "max_new_tokens": "8192",
+            "temperature": "0",
+            "top_k": "-1",
+            "top_p": "1.0",
         }
-        
+
         try:
             # Get the hub content name from the base model
             hub_content_name = self._base_model_name
             if not hub_content_name:
-                logger.warning("Base model name not available, using fallback inference parameters")
+                _logger.warning(
+                    "Base model name not available, using fallback inference parameters"
+                )
                 return fallback_params
-            
+
             # Get boto session for API calls
-            session = self.sagemaker_session.boto_session if hasattr(self.sagemaker_session, 'boto_session') else None
-            
+            session = (
+                self.sagemaker_session.boto_session
+                if hasattr(self.sagemaker_session, "boto_session")
+                else None
+            )
+
             # Fetch override parameters from hub
-            _logger.info(f"Fetching evaluation recipe override parameters from hub for model: {hub_content_name}")
+            _logger.info(
+                f"Fetching evaluation recipe override parameters from hub for model: {hub_content_name}"
+            )
             override_params = _get_evaluation_override_params(
                 hub_content_name=hub_content_name,
                 hub_name=get_sagemaker_hub_name(),
                 evaluation_type="DeterministicEvaluation",
                 region=region,
-                session=session
+                session=session,
             )
-            
+
             # Extract evaluation override options
             inference_params = _extract_eval_override_options(override_params)
-            
+
             _logger.info(f"Successfully fetched inference parameters from hub: {inference_params}")
             return inference_params
-            
+
         except Exception as e:
             _logger.warning(
                 f"Failed to fetch inference parameters from hub for model '{self._base_model_name}': {e}. "
                 f"Using fallback values: {fallback_params}"
             )
             return fallback_params
-    
+
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="CustomScorerEvaluator.evaluate",
         telemetry_params=[
             ("evaluator", TelemetryParamType.ATTR_EXISTS),
-        ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
+        ]
+        + BASE_EVALUATOR_TELEMETRY_PARAMS,
     )
     def evaluate(self, dry_run: bool = False) -> EvaluationPipelineExecution:
         """Create and start a custom scorer evaluation job.
-        
+
         Supports multiple compute backends via the ``compute`` parameter set at
         construction time:
         - **Serverless** (default): Runs via SageMaker Pipelines.
@@ -417,10 +439,10 @@ class CustomScorerEvaluator(BaseEvaluator):
         Returns:
             EvaluationPipelineExecution: The created custom scorer evaluation execution,
             or None if dry_run=True.
-        
+
         Example:
             .. code:: python
-            
+
                 evaluator = CustomScorerEvaluator(
                     evaluator=BuiltInMetric.CODE_EXECUTIONS,
                     dataset=my_dataset,
@@ -435,19 +457,21 @@ class CustomScorerEvaluator(BaseEvaluator):
 
         # Validate platform compatibility (HP checkpoints must eval on HP, SMTJ on SMTJ)
         from sagemaker.train.common_utils.finetune_utils import validate_eval_platform_compatibility
+
         model_info = self._get_resolved_model_info()
-        model_path = getattr(model_info, 's3_model_path', None) if model_info else None
+        model_path = getattr(model_info, "s3_model_path", None) if model_info else None
         validate_eval_platform_compatibility(model_path, self.compute)
 
         # Dispatch based on compute type
         if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
             return self._evaluate_serverful_smtj()
-        elif isinstance(self.compute, HyperPodCompute):
+        if isinstance(self.compute, HyperPodCompute):
             return self._evaluate_hyperpod()
 
         # Default: serverless compute via SageMaker Pipelines
         # S3 checkpoint paths are not supported on serverless — require SMTJ or HyperPod compute
         from sagemaker.train.common_utils.model_resolution import _ModelType
+
         info = self._get_resolved_model_info()
         if info and info.model_type == _ModelType.S3_CHECKPOINT:
             raise ValueError(
@@ -456,62 +480,64 @@ class CustomScorerEvaluator(BaseEvaluator):
                 "to run evaluation on dedicated instances."
             )
 
-        from .pipeline_templates import CUSTOM_SCORER_TEMPLATE, CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY
-        
+        from .pipeline_templates import (
+            CUSTOM_SCORER_TEMPLATE,
+            CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY,
+        )
+
         # Get AWS execution context (role ARN, region, account ID)
         aws_context = self._get_aws_execution_context()
-        
+
         # Resolve model artifacts
-        artifacts = self._resolve_model_artifacts(aws_context['region'])
-        
+        artifacts = self._resolve_model_artifacts(aws_context["region"])
+
         # Get or infer model_package_group ARN (handles all cases internally)
         model_package_group_arn = self._get_model_package_group_arn()
-        
+
         # Log resolved model information for debugging
-        _logger.info(f"Resolved model info - base_model_name: {self._base_model_name}, base_model_arn: {self._base_model_arn}, source_model_package_arn: {self._source_model_package_arn}")
-        
+        _logger.info(
+            f"Resolved model info - base_model_name: {self._base_model_name}, "
+            f"base_model_arn: {self._base_model_arn}, "
+            f"source_model_package_arn: {self._source_model_package_arn}"
+        )
+
         # Resolve evaluator configuration
         evaluator_config = self._resolve_evaluator_config()
-        
+
         # Build base template context
         template_context = self._get_base_template_context(
-            role_arn=aws_context['role_arn'],
-            region=aws_context['region'],
-            account_id=aws_context['account_id'],
+            role_arn=aws_context["role_arn"],
+            region=aws_context["region"],
+            account_id=aws_context["account_id"],
             model_package_group_arn=model_package_group_arn,
-            resolved_model_artifact_arn=artifacts['resolved_model_artifact_arn']
+            resolved_model_artifact_arn=artifacts["resolved_model_artifact_arn"],
         )
-        
+
         # Add dataset URI
-        template_context['dataset_uri'] = self.dataset
-        
+        template_context["dataset_uri"] = self.dataset
+
         # Add custom scorer specific template additions
         custom_scorer_additions = self._get_custom_scorer_template_additions(evaluator_config)
         template_context.update(custom_scorer_additions)
-        
+
         # Add VPC and KMS configuration
         template_context = self._add_vpc_and_kms_to_context(template_context)
-        
+
         # Select appropriate template
         template_str = self._select_template(
-            CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY,
-            CUSTOM_SCORER_TEMPLATE
+            CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY, CUSTOM_SCORER_TEMPLATE
         )
-        
+
         # Render pipeline definition
         pipeline_definition = self._render_pipeline_definition(template_str, template_context)
-        
+
         # Generate execution name
-        name = self.base_eval_name or f"custom-scorer-eval"
+        name = self.base_eval_name or "custom-scorer-eval"
 
         # Validate dataset path exists
-        if hasattr(self, 'dataset') and self.dataset:
-            session = TrainDefaults.get_sagemaker_session(
-                sagemaker_session=self.sagemaker_session
-            )
-            validate_data_path_exists(
-                self.dataset, session, label="evaluation dataset"
-            )
+        if hasattr(self, "dataset") and self.dataset:
+            session = TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session)
+            validate_data_path_exists(self.dataset, session, label="evaluation dataset")
 
         if dry_run:
             _logger.info("Dry-run validation passed. No evaluation submitted.")
@@ -522,36 +548,38 @@ class CustomScorerEvaluator(BaseEvaluator):
             eval_type=EvalType.CUSTOM_SCORER,
             name=name,
             pipeline_definition=pipeline_definition,
-            role_arn=aws_context['role_arn'],
-            region=aws_context['region']
+            role_arn=aws_context["role_arn"],
+            region=aws_context["region"],
         )
-    
+
     @classmethod
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="CustomScorerEvaluator.get_all")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="CustomScorerEvaluator.get_all"
+    )
     def get_all(cls, session: Optional[Any] = None, region: Optional[str] = None):
         """Get all custom scorer evaluation executions.
-        
+
         Uses ``EvaluationPipelineExecution.get_all()`` to retrieve all custom scorer
         evaluation executions as an iterator.
-        
+
         Args:
             session (Optional[Any]): Optional boto3 session. If not provided, will be inferred.
             region (Optional[str]): Optional AWS region. If not provided, will be inferred.
-        
+
         Yields:
             EvaluationPipelineExecution: Custom scorer evaluation execution instances
-        
+
         Example:
             .. code:: python
-            
+
                 # Get all custom scorer evaluations as iterator
                 evaluations = CustomScorerEvaluator.get_all()
                 all_executions = list(evaluations)
-                
+
                 # Or iterate directly
                 for execution in CustomScorerEvaluator.get_all():
                     print(f"{execution.name}: {execution.status.overall_status}")
-                
+
                 # With specific session/region
                 evaluations = CustomScorerEvaluator.get_all(session=my_session, region='us-west-2')
                 all_executions = list(evaluations)
@@ -559,9 +587,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         # Use EvaluationPipelineExecution.get_all() with CUSTOM_SCORER eval_type
         # This returns a generator, so we yield from it
         yield from EvaluationPipelineExecution.get_all(
-            eval_type=EvalType.CUSTOM_SCORER,
-            session=session,
-            region=region
+            eval_type=EvalType.CUSTOM_SCORER, session=session, region=region
         )
 
     def _evaluate_serverful_smtj(self):
@@ -575,7 +601,12 @@ class CustomScorerEvaluator(BaseEvaluator):
         from sagemaker.train.utils import _get_unique_name
 
         # --- Validate platform compatibility ---
-        from sagemaker.train.common_utils.model_resolution import _ModelType, _detect_checkpoint_platform, _CheckpointPlatform
+        from sagemaker.train.common_utils.model_resolution import (
+            _ModelType,
+            _detect_checkpoint_platform,
+            _CheckpointPlatform,
+        )
+
         info = self._get_resolved_model_info()
         if info and info.model_type == _ModelType.S3_CHECKPOINT and info.s3_model_path:
             checkpoint_platform = _detect_checkpoint_platform(info.s3_model_path)
@@ -600,11 +631,14 @@ class CustomScorerEvaluator(BaseEvaluator):
 
         # Prefer "custom scorer" recipes if available, otherwise fall back to first
         custom_scorer_recipes = [
-            r for r in smtj_eval_recipes
+            r
+            for r in smtj_eval_recipes
             if "custom" in r.get("DisplayName", "").lower()
             or "scorer" in r.get("DisplayName", "").lower()
         ]
-        recipe_metadata = custom_scorer_recipes[0] if custom_scorer_recipes else smtj_eval_recipes[0]
+        recipe_metadata = (
+            custom_scorer_recipes[0] if custom_scorer_recipes else smtj_eval_recipes[0]
+        )
 
         # Resolve training image
         training_image = self.training_image
@@ -651,9 +685,7 @@ class CustomScorerEvaluator(BaseEvaluator):
             # Custom-scorer semantic fields: task/strategy/metric (or
             # evaluation_metric for OpenWeights), evaluator_arn, lambda_type,
             # preset_reward_function, postprocessing, aggregation, + hyperparams.
-            semantic_values.update(
-                self._get_custom_scorer_template_additions(evaluator_config)
-            )
+            semantic_values.update(self._get_custom_scorer_template_additions(evaluator_config))
 
         # --- Resolve model path (fine-tuned checkpoint or OSS base weights) ---
         # For OSS base models the container loads weights via model_name_or_path,
@@ -661,9 +693,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         # OSS artifacts are delivered via a dedicated "model" input channel so the
         # container's checkpoints/hf_merged resolution runs against a local mount
         # (reproducing the serverless experience); Nova keeps the raw S3 path.
-        model_path, model_channel = self._resolve_eval_model_input(
-            sagemaker_session, region
-        )
+        model_path, model_channel = self._resolve_eval_model_input(sagemaker_session, region)
         if model_path:
             semantic_values["model_name_or_path"] = model_path
 
@@ -717,9 +747,11 @@ class CustomScorerEvaluator(BaseEvaluator):
 
         # --- Custom-scorer Lambda wiring (depends on section presence) ---
         if evaluator_config:
-            if evaluator_config.get('evaluator_arn'):
-                recipe_dict.setdefault("run", {})["eval_lambda_arn"] = evaluator_config['evaluator_arn']
-            elif evaluator_config.get('preset_reward_function'):
+            if evaluator_config.get("evaluator_arn"):
+                recipe_dict.setdefault("run", {})["eval_lambda_arn"] = evaluator_config[
+                    "evaluator_arn"
+                ]
+            elif evaluator_config.get("preset_reward_function"):
                 # Using a preset reward function, not a custom Lambda. The container
                 # schema expects lambda_arn to be present but empty.
                 if "processor" in recipe_dict:
@@ -737,6 +769,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         # covered by the spec/injection, so adding Nova-style keys here would
         # pollute the OSS recipe's run section.
         from ..common_utils.recipe_utils import _is_nova_model
+
         if "run" in recipe_dict and _is_nova_model(self._base_model_name):
             run = recipe_dict["run"]
             run.setdefault("name", semantic_values["name"])
@@ -761,9 +794,15 @@ class CustomScorerEvaluator(BaseEvaluator):
 
         # --- Common: write recipe and submit ---
         return self._write_and_submit_smtj_recipe(
-            recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name,
+            recipe_dict,
+            recipe_tmp_path,
+            training_image,
+            sagemaker_session,
+            role,
+            base_job_name,
             input_data_config=input_data_config,
         )
+
     def _evaluate_hyperpod(self):
         """Execute custom scorer evaluation on HyperPod cluster.
 
@@ -772,13 +811,17 @@ class CustomScorerEvaluator(BaseEvaluator):
         """
         override_parameters = {}
 
-        if hasattr(self, 'evaluator') and self.evaluator:
+        if hasattr(self, "evaluator") and self.evaluator:
             evaluator_config = self._resolve_evaluator_config()
-            if evaluator_config.get('evaluator_arn'):
-                override_parameters["recipes.processor.lambda_arn"] = evaluator_config['evaluator_arn']
-            elif evaluator_config.get('preset_reward_function'):
-                override_parameters["recipes.processor.preset_reward_function"] = evaluator_config['preset_reward_function']
-        if hasattr(self, 'dataset') and self.dataset:
+            if evaluator_config.get("evaluator_arn"):
+                override_parameters["recipes.processor.lambda_arn"] = evaluator_config[
+                    "evaluator_arn"
+                ]
+            elif evaluator_config.get("preset_reward_function"):
+                override_parameters["recipes.processor.preset_reward_function"] = evaluator_config[
+                    "preset_reward_function"
+                ]
+        if hasattr(self, "dataset") and self.dataset:
             override_parameters["recipes.run.data_s3_path"] = str(self.dataset)
 
         # User-provided overrides (e.g. inference params)

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Module containing constants for feature_processor and feature_scheduler module."""
+
 from __future__ import absolute_import
 
 FEATURE_GROUP_PIPELINE_VERSION_CONTEXT_TYPE = "FeatureGroupPipelineVersion"

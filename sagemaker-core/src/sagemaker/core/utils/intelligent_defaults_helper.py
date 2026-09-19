@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-
+"""Helpers for loading and validating SageMaker intelligent default configs."""
 
 import os
 import jsonschema
@@ -56,6 +56,7 @@ S3_PREFIX = "s3://"
 
 
 def load_default_configs(additional_config_paths: List[str] = None, s3_resource=None):
+    """Load the default configuration values."""
     default_config_path = os.getenv(
         ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE, _DEFAULT_ADMIN_CONFIG_FILE_PATH
     )
@@ -179,6 +180,7 @@ def _load_config_from_file(file_path: str) -> dict:
 
 @lru_cache(maxsize=None)
 def load_default_configs_for_resource_name(resource_name: str):
+    """Load the default configs for the given resource name."""
     configs_data = load_default_configs()
     if not configs_data:
         logger.debug("No default configurations found for resource: %s", resource_name)
@@ -187,6 +189,7 @@ def load_default_configs_for_resource_name(resource_name: str):
 
 
 def get_config_value(attribute, resource_defaults, global_defaults):
+    """Return the configured value for the given key path."""
     if resource_defaults and attribute in resource_defaults:
         return resource_defaults[attribute]
     if global_defaults and attribute in global_defaults:

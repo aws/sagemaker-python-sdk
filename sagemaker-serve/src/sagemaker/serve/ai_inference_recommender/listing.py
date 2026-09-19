@@ -23,6 +23,7 @@ hand: ``max_results`` caps the matches returned, and ``max_scan`` caps how many
 candidates are described — so a rarely-matching filter cannot fan out across the
 whole account.
 """
+
 from __future__ import absolute_import
 
 import logging
@@ -89,8 +90,9 @@ def _model_package_matches(job, model_package: str) -> bool:
 
 
 def _collect(iterator, predicate, max_results: int, max_scan: int, subclass) -> list:
-    """Keep candidates from ``iterator`` matching ``predicate``, re-typed to
-    ``subclass`` (so ``show_result`` is available).
+    """Keep candidates from ``iterator`` matching ``predicate``.
+
+    Results are re-typed to ``subclass`` (so ``show_result`` is available).
 
     The iterator hydrates each object as it yields it, so this loop does not
     Describe again. ``max_results`` bounds matches returned; ``max_scan`` bounds
@@ -256,8 +258,11 @@ def _boto_session(sagemaker_session):
 
 
 def _native_filters(name_contains: Optional[str], status: Optional[str]) -> dict:
-    """Build the server-side ``get_all`` filter kwargs, omitting unset ones so
-    each defaults to the sagemaker-core ``Unassigned`` sentinel."""
+    """Build the server-side ``get_all`` filter kwargs.
+
+    Unset filters are omitted so each defaults to the sagemaker-core
+    ``Unassigned`` sentinel.
+    """
     kwargs = {}
     if name_contains:
         kwargs["name_contains"] = name_contains

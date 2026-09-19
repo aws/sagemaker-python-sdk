@@ -11,11 +11,8 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-import json
-import os
 import pytest
-from unittest.mock import Mock, patch, MagicMock, mock_open
-from botocore.exceptions import ClientError
+from unittest.mock import Mock, patch
 
 from sagemaker.core.helper.session_helper import (
     Session,
@@ -27,7 +24,6 @@ from sagemaker.core.helper.session_helper import (
     get_update_model_package_inference_args,
     production_variant,
     update_args,
-    NOTEBOOK_METADATA_FILE,
 )
 
 
@@ -275,7 +271,7 @@ class TestHelperFunctions:
             mock_loader_instance = Mock()
             mock_loader.return_value = mock_loader_instance
 
-            result = botocore_resolver()
+            botocore_resolver()
 
             mock_loader.assert_called_once()
             mock_resolver.assert_called_once_with(mock_loader_instance.load_data.return_value)

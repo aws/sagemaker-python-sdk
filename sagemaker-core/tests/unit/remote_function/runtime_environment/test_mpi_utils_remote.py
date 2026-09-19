@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch, mock_open
 import subprocess
 import paramiko
 
@@ -30,10 +30,7 @@ from sagemaker.core.remote_function.runtime_environment.mpi_utils_remote import 
     start_sshd_daemon,
     write_status_file_to_workers,
     main,
-    SUCCESS_EXIT_CODE,
     DEFAULT_FAILURE_CODE,
-    FINISHED_STATUS_FILE,
-    READY_FILE,
     DEFAULT_SSH_PORT,
 )
 

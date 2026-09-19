@@ -87,7 +87,6 @@ from sagemaker.serve.compute_resource_requirements.resource_requirements import 
 from sagemaker.core import resource_requirements
 from sagemaker.core.enums import EndpointType
 
-
 KwargsType = Union[
     JumpStartModelDeployKwargs,
     JumpStartModelInitKwargs,
@@ -244,8 +243,9 @@ def _add_instance_type_to_kwargs(
 
 
 def _add_image_uri_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
-    """Sets image uri based on default or override, returns full kwargs.
-    Uses placeholder image uri for JumpStart proprietary models that uses ModelPackages
+    """Set image uri based on default or override, returns full kwargs.
+
+    Uses placeholder image uri for JumpStart proprietary models that uses ModelPackages.
     """
 
     if kwargs.model_type == JumpStartModelType.PROPRIETARY:
@@ -507,9 +507,11 @@ def _select_inference_config_from_training_config(
     specs: JumpStartModelSpecs, training_config_name: str
 ) -> Optional[str]:
     """Selects the inference config from the training config.
+
     Args:
         specs (JumpStartModelSpecs): The specs for the model.
         training_config_name (str): The name of the training config.
+
     Returns:
         str: The name of the inference config.
     """
@@ -523,6 +525,7 @@ def _select_inference_config_from_training_config(
 
 def _add_config_name_to_init_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:
     """Sets default config name to the kwargs. Returns full kwargs.
+
     Raises:
         ValueError: If the instance_type is not supported with the current config.
     """
@@ -569,9 +572,11 @@ def _add_additional_model_data_sources_to_kwargs(
 def _add_config_name_to_deploy_kwargs(
     kwargs: JumpStartModelDeployKwargs, training_config_name: Optional[str] = None
 ) -> JumpStartModelInitKwargs:
-    """Sets default config name to the kwargs. Returns full kwargs.
-    If a training_config_name is passed, then choose the inference config
-    based on the supported inference configs in that training config.
+    """Set default config name to the kwargs. Returns full kwargs.
+
+    If a training_config_name is passed, then choose the inference config based on the
+    supported inference configs in that training config.
+
     Raises:
         ValueError: If the instance_type is not supported with the current config.
     """

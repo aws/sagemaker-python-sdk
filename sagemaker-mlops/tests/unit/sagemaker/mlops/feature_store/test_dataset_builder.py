@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for dataset_builder.py"""
+
 import datetime
 import pytest
 from unittest.mock import Mock, patch, MagicMock
@@ -152,11 +153,13 @@ class TestDatasetBuilder:
 
     @pytest.fixture
     def sample_dataframe(self):
-        return pd.DataFrame({
-            "id": [1, 2, 3],
-            "value": [1.1, 2.2, 3.3],
-            "event_time": ["2024-01-01", "2024-01-02", "2024-01-03"],
-        })
+        return pd.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "value": [1.1, 2.2, 3.3],
+                "event_time": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            }
+        )
 
     def test_initialization_with_dataframe(self, mock_session, sample_dataframe):
         builder = DatasetBuilder(
@@ -394,7 +397,9 @@ class TestDatasetBuilderRegisterAsDataset:
     def test_collect_source_fg_arns_with_merged_fg(self, mock_session, mock_feature_group):
         """Collects base + merged FG ARNs."""
         merged_fg = MagicMock(spec=FeatureGroup)
-        merged_fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/orders-fg"
+        merged_fg.feature_group_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:feature-group/orders-fg"
+        )
 
         builder = DatasetBuilder(
             _sagemaker_session=mock_session,
@@ -459,7 +464,9 @@ class TestDatasetBuilderRegisterAsDataset:
             assert call_kwargs["content_metadata"]["SourceFeatureGroups"] == [
                 "arn:aws:sagemaker:us-west-2:123456789012:feature-group/customers-fg"
             ]
-            assert call_kwargs["content_metadata"]["ExtractionMethod"] == "FeatureStoreDatasetBuilder"
+            assert (
+                call_kwargs["content_metadata"]["ExtractionMethod"] == "FeatureStoreDatasetBuilder"
+            )
             assert call_kwargs["content_metadata"]["AthenaQueryExecutionId"] == "abc-123"
             assert call_kwargs["sagemaker_session"] == mock_session
             assert call_kwargs["wait"] is False

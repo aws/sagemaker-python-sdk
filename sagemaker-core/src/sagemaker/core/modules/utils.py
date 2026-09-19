@@ -196,8 +196,7 @@ def _run_clone_command_silent(repo_url, dest_dir):
 
 
 def validate_instance_preferences(compute) -> None:
-    """Client-side validation for Compute.instance_preferences (server remains
-    the source of truth).
+    """Client-side validation for Compute.instance_preferences (server remains the source of truth).
 
     - instance_preferences is mutually exclusive with the classic
       single-cluster fields instance_type / instance_groups /

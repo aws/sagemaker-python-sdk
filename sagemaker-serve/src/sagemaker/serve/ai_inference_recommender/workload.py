@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Workload spec builder."""
+
 from __future__ import absolute_import
 
 import json
@@ -23,7 +24,6 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from sagemaker.serve.ai_inference_recommender.secrets import Secret
-
 
 # Default input-data channel names; the channel is mounted at
 # {_CONTAINER_INPUT_DATA_DIR}/{channel_name}/ inside the benchmark container.

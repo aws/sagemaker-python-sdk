@@ -4,12 +4,14 @@ import random
 
 from dataclasses import asdict, dataclass
 
+
 @dataclass
 class RewardOutput:
     """Reward service."""
 
     id: str
     aggregate_reward_score: float
+
 
 def lambda_handler(event, context):
 
@@ -21,10 +23,10 @@ def lambda_handler(event, context):
         # Extract the ground truth key. In the current dataset it's answer
         print("Sample: ", json.dumps(sample, indent=2))
         ground_truth = sample["reference_answer"]
-        
+
         idx = "no id"
         # print(sample)
-        if not "id" in sample:
+        if "id" not in sample:
             print(f"ID is None/empty for sample: {sample}")
             continue
 
@@ -32,22 +34,22 @@ def lambda_handler(event, context):
 
         ro = RewardOutput(id=idx, aggregate_reward_score=0.0)
 
-        if not "messages" in sample:
+        if "messages" not in sample:
             print(f"Messages is None/empty for id: {idx}")
             # scores.append(RewardOutput(id="0", aggregate_reward_score=0.0))
             continue
-        
+
         # Extract answer from ground truth dict
         if ground_truth is None:
             print(f"Warning: No answer found in ground truth (reference_answer) for id: {idx}")
             scores.append(RewardOutput(id=idx, aggregate_reward_score=0.0))
             continue
-        
+
         # Get completion from last message (assistant message)
         last_message = sample["messages"][-1]
         # completion_text = last_message["content"]
 
-        if not "content" in last_message:
+        if "content" not in last_message:
             print(f"Completion text is empty for id: {idx}")
             # scores.append(RewardOutput(id="0", aggregate_reward_score=0.0))
             continue

@@ -14,10 +14,9 @@
 import pytest
 import os
 import tempfile
-import platform
 import subprocess
 import json
-from unittest.mock import Mock, MagicMock, patch, call
+from unittest.mock import Mock, patch
 from sagemaker.core.local.image import (
     _SageMakerContainer,
     _Volume,
@@ -27,18 +26,16 @@ from sagemaker.core.local.image import (
     _create_processing_config_file_directories,
     _delete_tree,
     _aws_credentials,
-    _aws_credentials_available_in_metadata_service,
     _use_short_lived_credentials,
     _write_json_file,
     _ecr_login_if_needed,
     _pull_image,
     _HostingContainer,
-    CONTAINER_PREFIX,
     STUDIO_HOST_NAME,
 )
 
 
-class TestVolume:
+class TestVolumePart1:
     """Test cases for _Volume class"""
 
     def test_volume_with_container_dir(self):
@@ -488,7 +485,7 @@ class TestSageMakerContainer:
                 assert hasattr(v, "map")
 
 
-class TestHostingContainer:
+class TestHostingContainerPart1:
     """Test cases for _HostingContainer class"""
 
     @patch("subprocess.Popen")
@@ -519,10 +516,9 @@ class TestHostingContainer:
         mock_kill.assert_called_once_with(12345)
         mock_process.terminate.assert_called_once()
 
-    @patch("platform.system")
-    def test_hosting_container_down_windows(self, mock_platform):
+    @patch("sagemaker.core.local.image.os.name", "nt")
+    def test_hosting_container_down_windows(self):
         """Test _HostingContainer down method on Windows"""
-        mock_platform.return_value = "Windows"
         mock_process = Mock()
 
         container = _HostingContainer(["docker", "compose", "up"])
@@ -625,7 +621,9 @@ class TestSageMakerContainerAdvanced:
                                                     "test-job",
                                                 )
 
-    @pytest.mark.skip(reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests")
+    @pytest.mark.skip(
+        reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests"
+    )
     def test_train_with_multiple_channels(self, mock_session):
         """Test train method with multiple input channels"""
         with patch(
@@ -714,7 +712,9 @@ class TestSageMakerContainerAdvanced:
                                                                         == "/tmp/model.tar.gz"
                                                                     )
 
-    @pytest.mark.skip(reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests")
+    @pytest.mark.skip(
+        reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests"
+    )
     def test_serve_with_environment_variables(self, mock_session):
         """Test serve method with environment variables"""
         with patch(
@@ -873,7 +873,9 @@ class TestSageMakerContainerAdvanced:
 
             assert mock_write.call_count == 3  # hyperparameters, resourceconfig, inputdataconfig
 
-    @pytest.mark.skip(reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests")
+    @pytest.mark.skip(
+        reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests"
+    )
     def test_prepare_training_volumes_with_local_code(self, mock_session):
         """Test _prepare_training_volumes with local code directory"""
         with patch(
@@ -1134,7 +1136,7 @@ class TestHelperFunctions:
             assert mock_makedirs.call_count >= 1
 
 
-class TestVolume:
+class TestVolumePart2:
     """Test cases for _Volume class"""
 
     def test_init_with_host_and_container_dir(self):
@@ -1161,7 +1163,7 @@ class TestVolume:
         assert "/container/path" in result
 
 
-class TestHostingContainer:
+class TestHostingContainerPart2:
     """Test cases for _HostingContainer class"""
 
     def test_init(self):

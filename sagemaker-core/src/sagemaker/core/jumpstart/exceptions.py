@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module stores exceptions related to SageMaker JumpStart."""
+
 from __future__ import absolute_import
 from typing import List, Optional
 
@@ -18,7 +19,6 @@ from botocore.exceptions import ClientError
 
 from sagemaker.core.jumpstart.constants import MODEL_ID_LIST_WEB_URL
 from sagemaker.core.jumpstart.enums import JumpStartScriptScope
-
 
 NO_AVAILABLE_INSTANCES_ERROR_MSG = (
     "No instances available in {region} that can support model ID '{model_id}'. "

@@ -14,7 +14,7 @@
 
 import logging
 from typing import Optional
-from urllib.parse import urlparse, parse_qs, urlencode
+from urllib.parse import urlparse, parse_qs
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +52,7 @@ def _build_mlflow_deep_link(
     return f"{root_url}?authToken={auth_token}#{fragment}"
 
 
-def _build_mlflow_deep_link_by_name(
-    authorized_url: str, experiment_name: str
-) -> str:
+def _build_mlflow_deep_link_by_name(authorized_url: str, experiment_name: str) -> str:
     """Build MLflow deep link URL by resolving experiment name to ID.
 
     Authenticates via the presigned URL to get a session, then queries the
@@ -79,12 +77,11 @@ def _build_mlflow_deep_link_by_name(
 
     root_url = authorized_url.split("?")[0]
     from urllib.parse import quote
+
     return f"{root_url}?authToken={auth_token}#/experiments?searchFilter={quote(experiment_name)}"
 
 
-def _resolve_experiment_id(
-    authorized_url: str, experiment_name: str
-) -> Optional[str]:
+def _resolve_experiment_id(authorized_url: str, experiment_name: str) -> Optional[str]:
     """Resolve MLflow experiment name to ID by authenticating via presigned URL."""
     try:
         import requests

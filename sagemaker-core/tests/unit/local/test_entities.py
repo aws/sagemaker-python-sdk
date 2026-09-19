@@ -18,7 +18,7 @@ import datetime
 import os
 import tempfile
 import urllib3
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 
 from sagemaker.core.local.entities import (
     _LocalProcessingJob,
@@ -29,7 +29,6 @@ from sagemaker.core.local.entities import (
     _LocalEndpoint,
     _wait_for_serving_container,
     _perform_request,
-    HEALTH_CHECK_TIMEOUT_LIMIT,
 )
 
 

@@ -106,12 +106,9 @@ def test_jumpstart_build_sets_volume_size():
             f"for model {VOLUME_SIZE_MODEL_ID}, got None"
         )
         assert model_builder.volume_size >= 256, (
-            f"volume_size should be >= 256, "
-            f"got {model_builder.volume_size}"
+            f"volume_size should be >= 256, " f"got {model_builder.volume_size}"
         )
-        logger.info(
-            f"✅ volume_size={model_builder.volume_size} correctly set"
-        )
+        logger.info(f"✅ volume_size={model_builder.volume_size} correctly set")
     finally:
         core_model.delete()
         logger.info("Model deleted.")

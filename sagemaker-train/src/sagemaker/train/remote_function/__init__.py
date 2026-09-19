@@ -10,12 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
-DEPRECATED: This module has been moved to sagemaker.core.remote_function
+"""DEPRECATED: This module has been moved to sagemaker.core.remote_function
 
 This is a backward compatibility shim. Please update your imports to:
     from sagemaker.core.remote_function import ...
 """
+
 from __future__ import absolute_import
 
 import warnings
@@ -30,5 +30,5 @@ warnings.warn(
     "sagemaker.train.remote_function has been moved to sagemaker.core.remote_function. "
     "Please update your imports. This shim will be removed in a future version.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )

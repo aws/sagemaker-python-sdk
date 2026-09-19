@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for list_benchmarks / list_recommendations client-side filtering."""
+
 from __future__ import absolute_import
 
 from unittest.mock import MagicMock, patch
@@ -32,7 +33,6 @@ from sagemaker.serve.ai_inference_recommender import (
     list_recommendations,
 )
 from sagemaker.serve.ai_inference_recommender.jobs import BenchmarkJob, RecommendationJob
-
 
 # Stand-ins are base AIBenchmarkJob / AIRecommendationJob instances, matching
 # what get_all yields, so the retype to the show_result subclass can be asserted

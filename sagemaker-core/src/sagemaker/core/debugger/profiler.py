@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 
 """Configuration for collecting profiler v2 metrics in SageMaker training jobs."""
+
 from __future__ import absolute_import
 
 from sagemaker.core.debugger.profiler_constants import (
