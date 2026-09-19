@@ -515,7 +515,6 @@ class _LocalTransformJob(object):
 
         working_dir = self._get_working_directory()
         dataset_dir = data_source.get_root_dir()
-        working_dir_real = os.path.realpath(working_dir)
 
         for fn in data_source.get_file_list():
 

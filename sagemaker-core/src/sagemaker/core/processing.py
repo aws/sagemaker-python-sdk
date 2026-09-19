@@ -93,8 +93,7 @@ def _validate_processing_instance_preferences(
     instance_count=None,
     instance_preferences=None,
 ):
-    """Client-side validation for Processor.instance_preferences (the service
-    remains the source of truth).
+    """Client-side validation for Processor.instance_preferences (the service remains the source of truth).
 
     - instance_preferences is mutually exclusive with instance_type (a single
       fixed cluster). The top-level instance_count is NOT exclusive: it is the
@@ -1619,8 +1618,7 @@ class FrameworkProcessor(ScriptProcessor):
         source_dir: str = None,
         install_requirements_dir: str = None,
     ) -> str:
-        """
-        Generate a custom framework script with a user-provided entrypoint embedded.
+        """Generate a custom framework script with a user-provided entrypoint embedded.
 
         Reads the entry_point file and embeds its content in the script,
         then appends the command to execute the user script.

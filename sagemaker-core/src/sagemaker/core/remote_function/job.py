@@ -333,10 +333,10 @@ then
 else
     printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
     printf "INFO: torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
-    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function \\n"
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function \\n"  # noqa: E501
 
     torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
-    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function "$@"
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function "$@"  # noqa: E501
 fi
 """
 
@@ -1872,13 +1872,6 @@ class _RunInfo:
 
     experiment_name: str
     run_name: str
-
-
-def _get_initial_job_state(description, status_key, wait):
-    """Placeholder docstring"""
-    status = description[status_key]
-    job_already_completed = status in ("Completed", "Failed", "Stopped")
-    return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
 
 
 def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method

@@ -170,7 +170,7 @@ class TestTorchSerializerWithOptionalDependency:
 
     def test_torch_tensor_serializer_instantiation(self):
         """Test that TorchTensorSerializer can be instantiated when torch is available."""
-        torch = pytest.importorskip("torch")
+        pytest.importorskip("torch")
         from sagemaker.core.serializers.base import TorchTensorSerializer
 
         serializer = TorchTensorSerializer()
@@ -179,7 +179,7 @@ class TestTorchSerializerWithOptionalDependency:
 
     def test_torch_tensor_deserializer_instantiation(self):
         """Test that TorchTensorDeserializer can be instantiated when torch is available."""
-        torch = pytest.importorskip("torch")
+        pytest.importorskip("torch")
         from sagemaker.core.deserializers.base import TorchTensorDeserializer
 
         deserializer = TorchTensorDeserializer()

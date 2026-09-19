@@ -21,6 +21,8 @@ LIST_TYPE = "list"
 
 
 class Color(Enum):
+    """ANSI color codes used for console output."""
+
     RED = "rgb(215,0,0)"
     GREEN = "rgb(0,135,0)"
     BLUE = "rgb(0,105,255)"

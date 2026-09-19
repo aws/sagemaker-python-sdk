@@ -1,3 +1,5 @@
+"""Utilities for retrieving SageMaker framework and algorithm image URIs."""
+
 import re
 from typing import Optional
 from graphene.utils.str_converters import to_camel_case
@@ -65,6 +67,8 @@ CONFIGURABLE_ATTRIBUTES = [
 
 
 class ImageRetriever:
+    """Retrieves SageMaker image URIs for frameworks and algorithms."""
+
     _config = SageMakerConfig()
 
     @staticmethod

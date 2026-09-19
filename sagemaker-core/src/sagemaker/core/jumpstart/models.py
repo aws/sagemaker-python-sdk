@@ -22,10 +22,14 @@ from sagemaker.core.jumpstart.configs import BaseConfig
 
 
 class StrEnum(str, Enum):
+    """A string-valued enumeration."""
+
     def __str__(self) -> str:
+        """Return the enum member value as a string."""
         return self.value
 
     def __repr__(self) -> str:
+        """Return the enum member value as its representation."""
         return str(self)
 
 

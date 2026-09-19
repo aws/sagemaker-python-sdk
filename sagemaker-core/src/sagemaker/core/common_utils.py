@@ -468,7 +468,6 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3, extra_args=Non
         extra_args (dict): Optional extra arguments passed to each download_file call.
             Used to carry ExpectedBucketOwner when the bucket is the session's default.
     """
-    target_real = os.path.realpath(target)
     bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.

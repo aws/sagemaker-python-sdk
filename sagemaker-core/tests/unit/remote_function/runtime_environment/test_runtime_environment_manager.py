@@ -256,7 +256,7 @@ class TestRuntimeEnvironmentManager:
         "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager.os.path.isfile"
     )
     @patch(
-        "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"
+        "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"  # noqa: E501
     )
     def test_run_pre_exec_script_exists(self, mock_run_script, mock_isfile):
         """Test run_pre_exec_script when script exists"""
@@ -272,7 +272,7 @@ class TestRuntimeEnvironmentManager:
         "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager.os.path.isfile"
     )
     @patch(
-        "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"
+        "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"  # noqa: E501
     )
     def test_run_pre_exec_script_fails(self, mock_run_script, mock_isfile):
         """Test run_pre_exec_script when script fails"""

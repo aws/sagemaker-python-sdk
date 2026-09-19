@@ -1527,7 +1527,7 @@ class TestGetInstanceRatePerHour:
         mock_pricing.get_products.return_value = {"PriceList": []}
 
         try:
-            result = get_instance_rate_per_hour("ml.m5.xlarge", "us-west-2")
+            get_instance_rate_per_hour("ml.m5.xlarge", "us-west-2")
             # If no exception, test passes (function may return None or raise)
         except Exception as e:
             # Expected behavior - function raises exception

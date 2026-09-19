@@ -31,4 +31,4 @@ warnings.warn(
 )
 
 # Re-export from core.lineage for backward compatibility
-from sagemaker.core.lineage import *  # noqa: F401, F403
+from sagemaker.core.lineage import *  # noqa: F401, F403, E402

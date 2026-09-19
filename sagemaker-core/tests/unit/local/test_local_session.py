@@ -40,9 +40,7 @@ class TestLocalSagemakerClient:
         mock_session.sagemaker_config = {}
         client = LocalSagemakerClient(mock_session)
 
-        with patch(
-            "sagemaker.core.local.local_session._SageMakerContainer"
-        ) as mock_container_class:
+        with patch("sagemaker.core.local.local_session._SageMakerContainer"):
             with patch("sagemaker.core.local.local_session._LocalProcessingJob") as mock_job_class:
                 mock_job = Mock()
                 mock_job_class.return_value = mock_job
@@ -87,9 +85,7 @@ class TestLocalSagemakerClient:
         mock_session.sagemaker_config = {}
         client = LocalSagemakerClient(mock_session)
 
-        with patch(
-            "sagemaker.core.local.local_session._SageMakerContainer"
-        ) as mock_container_class:
+        with patch("sagemaker.core.local.local_session._SageMakerContainer"):
             with patch("sagemaker.core.local.local_session._LocalTrainingJob") as mock_job_class:
                 mock_job = Mock()
                 mock_job_class.return_value = mock_job
@@ -440,7 +436,7 @@ class TestLocalSession:
                 return_value={"local": {}},
             ):
                 with patch("sagemaker.core.local.local_session.logger") as mock_logger:
-                    session = LocalSession()
+                    LocalSession()
 
                     mock_logger.warning.assert_called()
 

@@ -321,8 +321,8 @@ class ModelMonitor(object):
         self.latest_baselining_job = BaseliningJob(
             sagemaker_session=self.sagemaker_session,
             job_name=self.latest_baselining_job_name,
-            inputs=baseline_job_inputs,
-            outputs=[normalized_baseline_output],
+            inputs=normalized_baseline_inputs,
+            outputs=[normalized_output],
             output_kms_key=None,
         )
         self.baselining_jobs.append(self.latest_baselining_job)
@@ -3773,7 +3773,7 @@ class BaseliningJob:
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
                 status = self.sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=processing_job_name
+                    ProcessingJobName=self.job_name
                 )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
@@ -3812,7 +3812,7 @@ class BaseliningJob:
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
                 status = self.sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=processing_job_name
+                    ProcessingJobName=self.job_name
                 )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
@@ -3957,7 +3957,7 @@ class MonitoringExecution(ProcessingJob):
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
                 status = self.sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=processing_job_name
+                    ProcessingJobName=self.processing_job_name
                 )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
@@ -4001,7 +4001,7 @@ class MonitoringExecution(ProcessingJob):
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
                 status = self.sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=processing_job_name
+                    ProcessingJobName=self.processing_job_name
                 )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(

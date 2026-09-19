@@ -391,7 +391,7 @@ class TestModelMonitorUtils:
             "MonitoringExecutionSummaries": []
         }
 
-        result = boto_list_monitoring_executions(
+        boto_list_monitoring_executions(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
             sort_by="CreationTime",
@@ -420,7 +420,7 @@ class TestModelMonitorUtils:
             "MonitoringScheduleSummaries": []
         }
 
-        result = boto_list_monitoring_schedules(
+        boto_list_monitoring_schedules(
             sagemaker_session=mock_session, endpoint_name="test-endpoint"
         )
 
@@ -463,7 +463,7 @@ class TestModelMonitorUtils:
             "NextToken": "token123",
         }
 
-        result = boto_list_monitoring_alerts(
+        boto_list_monitoring_alerts(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
             next_token="prev_token",
@@ -492,7 +492,7 @@ class TestModelMonitorUtils:
             "MonitoringAlertHistory": []
         }
 
-        result = boto_list_monitoring_alert_history(
+        boto_list_monitoring_alert_history(
             sagemaker_session=mock_session,
             monitoring_schedule_name="test-schedule",
             monitoring_alert_name="test-alert",

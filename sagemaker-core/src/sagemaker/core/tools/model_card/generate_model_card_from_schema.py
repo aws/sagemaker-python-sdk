@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to generate Pydantic classes from JSON schema
-"""
+"""Script to generate Pydantic classes from JSON schema"""
 
 import json
 from typing import Dict, Any, Set

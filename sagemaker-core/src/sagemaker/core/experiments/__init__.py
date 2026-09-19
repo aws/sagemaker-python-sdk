@@ -20,6 +20,7 @@ from __future__ import absolute_import
 # from sagemaker.core.experiments.run import Run
 # etc.
 
+# pylint: disable=undefined-all-variable  # names provided via PEP 562 __getattr__
 __all__ = [
     "Experiment",
     "Run",
@@ -27,6 +28,7 @@ __all__ = [
     "_Trial",
     "_TrialComponent",
 ]
+# pylint: enable=undefined-all-variable
 
 
 def __getattr__(name):

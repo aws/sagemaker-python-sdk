@@ -271,7 +271,7 @@ class TestHelperFunctions:
             mock_loader_instance = Mock()
             mock_loader.return_value = mock_loader_instance
 
-            result = botocore_resolver()
+            botocore_resolver()
 
             mock_loader.assert_called_once()
             mock_resolver.assert_called_once_with(mock_loader_instance.load_data.return_value)

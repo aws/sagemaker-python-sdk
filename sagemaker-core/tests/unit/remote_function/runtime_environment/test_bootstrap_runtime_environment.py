@@ -491,7 +491,7 @@ class TestMain:
         "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._parse_args"
     )
     @patch(
-        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._bootstrap_runtime_env_for_remote_function"
+        "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment._bootstrap_runtime_env_for_remote_function"  # noqa: E501
     )
     @patch(
         "sagemaker.core.remote_function.runtime_environment.bootstrap_runtime_environment.RuntimeEnvironmentManager"

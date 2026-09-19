@@ -52,7 +52,7 @@ class TestJumpStartDataHolderType:
     def test_eq_with_none(self):
         """Test inequality with None"""
         obj1 = JumpStartVersionedModelId("model-1", "1.0.0")
-        assert obj1 != None
+        assert obj1 is not None
 
     def test_hash_same_objects(self):
         """Test that same objects have same hash"""

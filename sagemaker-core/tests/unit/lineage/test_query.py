@@ -447,7 +447,7 @@ class TestLineageQuery:
         query = LineageQuery(mock_session)
         filter_obj = LineageFilter(entities=[LineageEntityEnum.ARTIFACT])
 
-        result = query.query(
+        query.query(
             start_arns=["arn:start"],
             query_filter=filter_obj,
         )

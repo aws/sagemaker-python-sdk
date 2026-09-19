@@ -386,7 +386,7 @@ class TestHasInstanceRateStat:
         assert utils.has_instance_rate_stat([]) is False
 
 
-class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
+class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresentPart1:
     """Test cases for remove_env_var_from_estimator_kwargs_if_accept_eula_present function"""
 
     def test_remove_env_var_accept_eula_none(self):
@@ -667,7 +667,7 @@ class TestAddJumpstartUriTags:
         """Test warning when URI is pipeline variable"""
         mock_is_pipeline.return_value = True
         with patch("logging.warning") as mock_warning:
-            result = utils.add_jumpstart_uri_tags(tags=None, inference_model_uri="pipeline_var")
+            utils.add_jumpstart_uri_tags(tags=None, inference_model_uri="pipeline_var")
             mock_warning.assert_called()
 
     @patch("sagemaker.core.jumpstart.utils.is_pipeline_variable")
@@ -1890,7 +1890,7 @@ class TestGetDraftModelContentBucket:
         assert result == "neo-bucket"
 
 
-class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
+class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresentPart2:
     """Test cases for remove_env_var_from_estimator_kwargs_if_accept_eula_present function"""
 
     def test_remove_env_var_accept_eula_true(self):

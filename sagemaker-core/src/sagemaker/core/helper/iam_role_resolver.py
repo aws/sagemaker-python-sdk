@@ -55,7 +55,7 @@ HYPERPOD_CLI_CONNECT_ACTIONS = (
 # directly. These actions must be held by whoever calls evaluator.evaluate(),
 # NOT by the job execution role (which is covered by role_type="training").
 # See verify_evaluation_caller_permissions().
-from sagemaker.core.helper.iam_policies import EVALUATION_CALLER_ACTIONS
+from sagemaker.core.helper.iam_policies import EVALUATION_CALLER_ACTIONS  # noqa: E402
 
 
 class RoleValidationError(Exception):

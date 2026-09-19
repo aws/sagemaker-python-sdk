@@ -528,7 +528,7 @@ class TestDetermineBucketAndPrefix:
             assert "my-prefix" in prefix
 
 
-class TestGenerateDefaultSagemakerBucketName:
+class TestGenerateDefaultSagemakerBucketNamePart1:
     """Test generate_default_sagemaker_bucket_name method."""
 
     def test_generate_default_sagemaker_bucket_name(self, mock_boto_session, mock_sagemaker_client):
@@ -617,8 +617,6 @@ class TestGeneralBucketCheck:
 
     def test_general_bucket_check_create_bucket(self, mock_boto_session, mock_sagemaker_client):
         """Test general bucket check when creating bucket."""
-        mock_s3_resource = Mock()
-        mock_bucket = Mock()
 
         session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
 
@@ -841,8 +839,6 @@ class TestDescribeEndpoint:
             "EndpointStatus": "InService",
         }
 
-        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
-
         result = mock_sagemaker_client.describe_endpoint(EndpointName="my-endpoint")
 
         assert result["EndpointName"] == "my-endpoint"
@@ -982,7 +978,7 @@ class TestExpandRole:
         assert result == "arn:aws:iam::123456789012:role/MyRole"
 
 
-class TestGenerateDefaultSagemakerBucketName:
+class TestGenerateDefaultSagemakerBucketNamePart2:
     """Test generate_default_sagemaker_bucket_name static method."""
 
     def test_generate_default_sagemaker_bucket_name_standard_region(

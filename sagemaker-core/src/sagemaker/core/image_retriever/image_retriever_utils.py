@@ -456,9 +456,7 @@ def _retrieve_pytorch_uri_inputs_are_all_default(
     inference_tool: Optional[str] = None,
     serverless_inference_config: ServerlessInferenceConfig = None,
 ) -> bool:
-    """
-    Determine if the inputs for _retrieve_pytorch_uri() are all default values.
-    """
+    """Determine if the inputs for _retrieve_pytorch_uri() are all default values."""
     return (
         not version
         and not py_version
@@ -476,9 +474,7 @@ def _retrieve_pytorch_uri_inputs_are_all_default(
 
 
 def _retrieve_latest_pytorch_training_uri(region: str):
-    """
-    Retrive the URI for the latest PyTorch training image for CPU
-    """
+    """Retrive the URI for the latest PyTorch training image for CPU"""
     config = config_for_framework("pytorch")
     image_scope = "training"
 

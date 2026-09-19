@@ -24,9 +24,10 @@ def generate_code(
     shapes_code_gen: Optional[ShapesCodeGen] = None,
     resources_code_gen: Optional[ShapesCodeGen] = None,
 ) -> None:
-    """
-    Generates the code for the given code generators. If any code generator is not
-    provided when calling this function, the function will initiate the generator.
+    """Generate the code for the given code generators.
+
+    If any code generator is not provided when calling this function, the function
+    will initiate the generator.
 
     Note ordering is important, generate the utils and lower level classes first
     then generate the higher level classes.

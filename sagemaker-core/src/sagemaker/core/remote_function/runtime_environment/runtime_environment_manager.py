@@ -365,7 +365,7 @@ class RuntimeEnvironmentManager:
             return_code = process.wait()
 
             if return_code:
-                error_message = f"Encountered error while running command '{' '.join(cmd)}'. Reason: {error_output.decode('utf-8')}"
+                error_message = f"Encountered error while running command '{' '.join(cmd)}'. Reason: {error_output.decode('utf-8')}"  # noqa: E501
                 raise RuntimeEnvironmentError(error_message)
 
             # Write the captured output to the file

@@ -71,7 +71,7 @@ def is_pipeline_variable(var: object) -> bool:
     return isinstance(var, PipelineVariable)
 
 
-from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix
+from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix  # noqa: E402
 
 
 def get_eula_url(document: HubContentDocument, sagemaker_session: Optional[Session] = None) -> str:

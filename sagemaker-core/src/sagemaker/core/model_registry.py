@@ -1,3 +1,5 @@
+"""Helpers for building SageMaker model package and model registry arguments."""
+
 from sagemaker.core.common_utils import (
     format_tags,
     resolve_value_from_config,
@@ -46,6 +48,7 @@ def get_model_package_args(
     model_card=None,
     model_life_cycle=None,
 ):
+    """Build the arguments for creating a SageMaker model package."""
     if container_def_list is not None:
         containers = container_def_list
     else:
@@ -136,6 +139,7 @@ def get_create_model_package_request(
     model_card=None,
     model_life_cycle=None,
 ):
+    """Build the request dictionary for a CreateModelPackage call."""
     if all([model_package_name, model_package_group_name]):
         raise ValueError(
             "model_package_name and model_package_group_name cannot be present at the " "same time."

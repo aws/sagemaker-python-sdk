@@ -35,7 +35,7 @@ from sagemaker.core.local.image import (
 )
 
 
-class TestVolume:
+class TestVolumePart1:
     """Test cases for _Volume class"""
 
     def test_volume_with_container_dir(self):
@@ -485,7 +485,7 @@ class TestSageMakerContainer:
                 assert hasattr(v, "map")
 
 
-class TestHostingContainer:
+class TestHostingContainerPart1:
     """Test cases for _HostingContainer class"""
 
     @patch("subprocess.Popen")
@@ -1137,7 +1137,7 @@ class TestHelperFunctions:
             assert mock_makedirs.call_count >= 1
 
 
-class TestVolume:
+class TestVolumePart2:
     """Test cases for _Volume class"""
 
     def test_init_with_host_and_container_dir(self):
@@ -1164,7 +1164,7 @@ class TestVolume:
         assert "/container/path" in result
 
 
-class TestHostingContainer:
+class TestHostingContainerPart2:
     """Test cases for _HostingContainer class"""
 
     def test_init(self):

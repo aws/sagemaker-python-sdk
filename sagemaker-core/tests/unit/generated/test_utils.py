@@ -8,7 +8,7 @@ from sagemaker.core.shapes import (
     TrialComponent,
     TrialComponentParameterValue,
 )
-from sagemaker.core.utils.utils import *
+from sagemaker.core.utils.utils import *  # noqa: F403
 
 LIST_TRAINING_JOB_RESPONSE_WITH_NEXT_TOKEN = {
     "TrainingJobSummaries": [
@@ -57,13 +57,13 @@ LIST_DATA_QUALITY_JOB_DEFINITION_RESPONSE_WITHOUT_NEXT_TOKEN = {
     "JobDefinitionSummaries": [
         {
             "MonitoringJobDefinitionName": "data-quality-job-definition-1",
-            "MonitoringJobDefinitionArn": "arn:aws:sagemaker:us-west-2:111111111111:data-quality-job-definition/data-quality-job-definition-1",
+            "MonitoringJobDefinitionArn": "arn:aws:sagemaker:us-west-2:111111111111:data-quality-job-definition/data-quality-job-definition-1",  # noqa: E501
             "CreationTime": datetime.datetime.now(),
             "EndpointName": "sagemaker-tensorflow-serving-1",
         },
         {
             "MonitoringJobDefinitionName": "data-quality-job-definition-2",
-            "MonitoringJobDefinitionArn": "arn:aws:sagemaker:us-west-2:111111111111:data-quality-job-definition/data-quality-job-definition-2",
+            "MonitoringJobDefinitionArn": "arn:aws:sagemaker:us-west-2:111111111111:data-quality-job-definition/data-quality-job-definition-2",  # noqa: E501
             "CreationTime": datetime.datetime.now(),
             "EndpointName": "sagemaker-tensorflow-serving-2",
         },
@@ -86,7 +86,7 @@ LIST_ALIASES_RESPONSE_WITHOUT_NEXT_TOKEN = {
 def resource_iterator():
     client = Mock()
     resource_cls = TrainingJob
-    iterator = ResourceIterator(
+    iterator = ResourceIterator(  # noqa: F405
         client=client,
         summaries_key="TrainingJobSummaries",
         summary_name="TrainingJobSummary",
@@ -107,7 +107,7 @@ def resource_iterator_with_custom_key_mapping():
         "monitoring_job_definition_name": "job_definition_name",
         "monitoring_job_definition_arn": "job_definition_arn",
     }
-    iterator = ResourceIterator(
+    iterator = ResourceIterator(  # noqa: F405
         client=client,
         list_method="list_data_quality_job_definitions",
         summaries_key="JobDefinitionSummaries",
@@ -123,7 +123,7 @@ def resource_iterator_with_custom_key_mapping():
 def resource_iterator_with_primitive_class():
     client = Mock()
     resource_cls = str
-    iterator = ResourceIterator(
+    iterator = ResourceIterator(  # noqa: F405
         client=client,
         summaries_key="SageMakerImageVersionAliases",
         summary_name="SageMakerImageVersionAlias",
@@ -319,51 +319,51 @@ def test_next_with_primitive_class(resource_iterator_with_primitive_class):
 
 def test_configure_logging_with_default_log_level(monkeypatch):
     monkeypatch.delenv("LOG_LEVEL", raising=False)
-    configure_logging()
+    configure_logging()  # noqa: F405
     assert logging.getLogger().level == logging.INFO
 
 
 def test_configure_logging_with_debug_log_level(monkeypatch):
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
-    configure_logging()
+    configure_logging()  # noqa: F405
     assert logging.getLogger().level == logging.DEBUG
 
 
 def test_configure_logging_with_invalid_log_level():
     with pytest.raises(AttributeError):
-        configure_logging("INVALID_LOG_LEVEL")
+        configure_logging("INVALID_LOG_LEVEL")  # noqa: F405
 
 
 def test_configure_logging_with_explicit_log_level():
-    configure_logging("WARNING")
+    configure_logging("WARNING")  # noqa: F405
     assert logging.getLogger().level == logging.WARNING
 
 
 def test_serialize_method_returns_dict():
     additional_s3_data_source = AdditionalS3DataSource(s3_data_type="filestring", s3_uri="s3/uri")
-    serialized_data = serialize(additional_s3_data_source)
+    serialized_data = serialize(additional_s3_data_source)  # noqa: F405
     assert isinstance(serialized_data, dict)
 
 
 def test_serialize_method_returns_correct_data():
     additional_s3_data_source = AdditionalS3DataSource(s3_data_type="filestring", s3_uri="s3/uri")
-    serialized_data = serialize(additional_s3_data_source)
+    serialized_data = serialize(additional_s3_data_source)  # noqa: F405
     assert serialized_data["S3DataType"] == "filestring"
     assert serialized_data["S3Uri"] == "s3/uri"
 
 
 def test_serialize_preserves_falsy_dict_values():
     # Regression: previously False / 0 / "" were stripped along with None.
-    assert serialize({"k": False}) == {"k": False}
-    assert serialize({"k": 0}) == {"k": 0}
-    assert serialize({"k": ""}) == {"k": ""}
-    assert serialize({"k": None}) == {}
-    assert serialize({"k": Unassigned()}) == {}
+    assert serialize({"k": False}) == {"k": False}  # noqa: F405
+    assert serialize({"k": 0}) == {"k": 0}  # noqa: F405
+    assert serialize({"k": ""}) == {"k": ""}  # noqa: F405
+    assert serialize({"k": None}) == {}  # noqa: F405
+    assert serialize({"k": Unassigned()}) == {}  # noqa: F405
 
 
 def test_serialize_preserves_falsy_list_values():
-    assert serialize([False, 0, ""]) == [False, 0, ""]
-    assert serialize([None, "x", Unassigned(), 1]) == ["x", 1]
+    assert serialize([False, 0, ""]) == [False, 0, ""]  # noqa: F405
+    assert serialize([None, "x", Unassigned(), 1]) == ["x", 1]  # noqa: F405
 
 
 def test_serialize_method_nested_shape():
@@ -374,7 +374,7 @@ def test_serialize_method_nested_shape():
     trial_component = TrialComponent(
         trial_component_name="test", parameters=trial_component_parameters
     )
-    serialized_data = serialize(trial_component)
+    serialized_data = serialize(trial_component)  # noqa: F405
     assert serialized_data["TrialComponentName"] == "test"
     assert serialized_data["Parameters"] == {
         "test_num_value": {
@@ -395,35 +395,35 @@ class TestUnassignedBehavior:
 
     def test_unassigned_repr(self):
         """Test that Unassigned has clean repr."""
-        u = Unassigned()
+        u = Unassigned()  # noqa: F405
         assert repr(u) == "Unassigned()"
 
     def test_unassigned_str(self):
         """Test that Unassigned converts to empty string."""
-        u = Unassigned()
+        u = Unassigned()  # noqa: F405
         assert str(u) == ""
 
     def test_unassigned_bool(self):
         """Test that Unassigned is falsy."""
-        u = Unassigned()
+        u = Unassigned()  # noqa: F405
         assert not u
         assert bool(u) is False
 
     def test_unassigned_iter(self):
         """Test that Unassigned is iterable and returns empty list."""
-        u = Unassigned()
+        u = Unassigned()  # noqa: F405
         result = list(u)
         assert result == []
 
     def test_unassigned_singleton(self):
         """Test that Unassigned is a singleton."""
-        u1 = Unassigned()
-        u2 = Unassigned()
+        u1 = Unassigned()  # noqa: F405
+        u2 = Unassigned()  # noqa: F405
         assert u1 is u2
 
     def test_unassigned_in_conditional(self):
         """Test that Unassigned works correctly in conditionals."""
-        u = Unassigned()
+        u = Unassigned()  # noqa: F405
 
         # Should evaluate to False
         if u:

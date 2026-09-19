@@ -13,19 +13,19 @@ enable_textual_rich_console_and_traceback()
 register_removed_module_finder()
 
 # Job management
-from sagemaker.core.job import _Job  # noqa: F401
-from sagemaker.core.processing import (  # noqa: F401
+from sagemaker.core.job import _Job  # noqa: F401, E402
+from sagemaker.core.processing import (  # noqa: F401, E402
     Processor,
     ScriptProcessor,
     FrameworkProcessor,
 )
-from sagemaker.core.transformer import Transformer  # noqa: F401
+from sagemaker.core.transformer import Transformer  # noqa: F401, E402
 
 # Partner App
-from sagemaker.core.partner_app.auth_provider import PartnerAppAuthProvider  # noqa: F401
+from sagemaker.core.partner_app.auth_provider import PartnerAppAuthProvider  # noqa: F401, E402
 
 # Attribution
-from sagemaker.core.telemetry.attribution import Attribution, set_attribution  # noqa: F401
+from sagemaker.core.telemetry.attribution import Attribution, set_attribution  # noqa: F401, E402
 
 # Note: HyperparameterTuner and WarmStartTypes are in sagemaker.train.tuner
 # They are not re-exported from core to avoid circular dependencies

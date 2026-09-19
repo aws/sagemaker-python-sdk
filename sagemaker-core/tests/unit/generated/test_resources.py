@@ -361,7 +361,7 @@ class ResourcesTest(unittest.TestCase):
                                         input_args
                                     )
                                     if additional_function_name.startswith("list"):
-                                        # The only additional list method that is a class method is ListCodeRepositories,
+                                        # The only additional list method that is a class method is ListCodeRepositories,  # noqa: E501
                                         # which has already been tested in the get_all part above
                                         continue
                                     else:
@@ -449,7 +449,7 @@ class ResourcesTest(unittest.TestCase):
 
     def _generate_test_shape(self, shape_cls):
         params = {}
-        if shape_cls == None:
+        if shape_cls is None:
             return None
         try:
             for key, val in inspect.signature(shape_cls).parameters.items():
@@ -473,7 +473,7 @@ class ResourcesTest(unittest.TestCase):
 
     def _generate_test_shape_dict(self, shape_cls):
         params = {}
-        if shape_cls == None:
+        if shape_cls is None:
             return None
         for key, val in inspect.signature(shape_cls).parameters.items():
             attribute_type = str(val.annotation)
