@@ -176,7 +176,6 @@ def config_uploader():
     "sagemaker.mlops.feature_store.feature_processor.feature_scheduler._get_spark_image_uri",
     return_value="some_image_uri",
 )
-@patch("sagemaker.mlops.feature_store.feature_processor._config_uploader.TrainingInput")
 @patch("sagemaker.mlops.feature_store.feature_processor.feature_scheduler.TrainingStep")
 @patch("sagemaker.mlops.feature_store.feature_processor.feature_scheduler.ModelTrainer")
 @patch(
@@ -228,7 +227,6 @@ def test_to_pipeline(
     mock_spark_dependency_upload,
     mock_model_trainer,
     mock_training_step,
-    mock_training_input,
     mock_spark_image,
     pipeline,
     lineage_validator,

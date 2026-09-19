@@ -374,7 +374,7 @@ def get_session_from_role(region: str, assume_role: str = None) -> Session:
 def _is_collection_column(series: Series, sample_size: int = 1000) -> bool:
     """Check if column contains list/set values."""
     sample = series.head(sample_size).dropna()
-    return sample.apply(lambda x: isinstance(x, (list, set))).any()
+    return bool(sample.apply(lambda x: isinstance(x, (list, set))).any())
 
 
 def _generate_feature_definition(
