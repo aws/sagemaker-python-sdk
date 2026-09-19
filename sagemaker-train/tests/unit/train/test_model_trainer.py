@@ -350,7 +350,7 @@ def test_train_with_intelligent_defaults_training_job_space(
         training_job_name=ANY,
         algorithm_specification=ANY,
         hyper_parameters={},
-        input_data_config=[],
+        input_data_config=None,
         resource_config=ResourceConfig(
             volume_size_in_gb=30,
             instance_type="ml.m5.xlarge",
