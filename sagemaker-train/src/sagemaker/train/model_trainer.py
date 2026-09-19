@@ -16,11 +16,13 @@ from __future__ import absolute_import
 from enum import Enum
 import os
 import json
+import re
 import shutil
 from tempfile import TemporaryDirectory
 from typing import Optional, List, Union, Dict, Any, ClassVar
 import yaml
 
+from botocore.exceptions import ClientError, NoCredentialsError, NoRegionError
 from graphene.utils.str_converters import to_camel_case, to_snake_case
 from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core import resources
@@ -126,6 +128,42 @@ class Mode(Enum):
 
     LOCAL_CONTAINER = "LOCAL_CONTAINER"
     SAGEMAKER_TRAINING_JOB = "SAGEMAKER_TRAINING_JOB"
+
+
+def _log_actionable_client_error(client_error: "ClientError") -> None:
+    """Log remediation guidance for common CreateTrainingJob service errors.
+
+    This never swallows the error: the caller always re-raises the original
+    exception. It only adds guidance so the failure is actionable without
+    guesswork. ResourceLimitExceeded in particular is not retryable until the
+    quota is raised, so blind retry loops keep failing.
+
+    Args:
+        client_error (ClientError): The error raised by the CreateTrainingJob call.
+    """
+    error = getattr(client_error, "response", None) or {}
+    error_code = error.get("Error", {}).get("Code", "")
+    error_message = error.get("Error", {}).get("Message", "")
+    if error_code == "ResourceLimitExceeded":
+        quota_match = re.search(r"service limit '([^']+)'", error_message)
+        quota_hint = f" ('{quota_match.group(1)}')" if quota_match else ""
+        logger.error(
+            "CreateTrainingJob was rejected because a SageMaker service quota%s "
+            "is insufficient in this account and Region. Retrying will keep "
+            "failing until the quota is raised. Request an increase in the "
+            "Service Quotas console: "
+            "https://console.aws.amazon.com/servicequotas/home/services/sagemaker/quotas "
+            "(or via 'aws service-quotas request-service-quota-increase "
+            "--service-code sagemaker'). Alternatively, use a different instance "
+            "type or reduce the instance count.",
+            quota_hint,
+        )
+    elif error_code in ("AccessDeniedException", "AccessDenied"):
+        logger.error(
+            "CreateTrainingJob was denied by IAM. Verify that your caller identity "
+            "and the training role have the sagemaker:CreateTrainingJob and "
+            "iam:PassRole permissions for the role passed to the ModelTrainer."
+        )
 
 
 class ModelTrainer(BaseModel):
@@ -832,10 +870,30 @@ class ModelTrainer(BaseModel):
                 self.sagemaker_session._intercept_create_request(training_request, None, "train")
                 return
         
-            training_job = TrainingJob.create(
-                session=self.sagemaker_session.boto_session,
-                **training_request
-            )
+            try:
+                training_job = TrainingJob.create(
+                    session=self.sagemaker_session.boto_session,
+                    **training_request
+                )
+            except ClientError as ce:
+                _log_actionable_client_error(ce)
+                raise
+            except NoRegionError:
+                logger.error(
+                    "No AWS Region configured. Set one before calling train(): export "
+                    "AWS_DEFAULT_REGION=<region>, add 'region = <region>' to ~/.aws/config, "
+                    "or pass a boto session with a region to the ModelTrainer's "
+                    "sagemaker_session."
+                )
+                raise
+            except NoCredentialsError:
+                logger.error(
+                    "No AWS credentials found. Configure credentials before calling train(): "
+                    "run 'aws configure' or 'aws sso login', set the AWS_ACCESS_KEY_ID/"
+                    "AWS_SECRET_ACCESS_KEY environment variables, or use an IAM role. See "
+                    "https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html"
+                )
+                raise
             self._latest_training_job = training_job
 
             if wait:

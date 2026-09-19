@@ -2446,6 +2446,42 @@ def _check_job_status(job, desc, status_key_name):
         )
 
 
+# Error codes and message patterns the service returns when a create call collides
+# with an existing resource. The service message wording has changed over time
+# (e.g. CreatePipeline/CreateExperiment now return "... names must be unique within
+# an AWS account ..." instead of "... already exists"), so match every known variant.
+# The uniqueness pattern deliberately includes the "within an AWS account" scope so
+# that other uniqueness validation errors (e.g. duplicate step names WITHIN a
+# pipeline definition) are not mistaken for a resource-name collision.
+_ALREADY_EXISTS_ERROR_CODES = ("ValidationException", "ResourceInUse")
+_ALREADY_EXISTS_MSG_PATTERNS = (
+    "Cannot create already existing",
+    "already exists",
+    "must be unique within an AWS account",
+)
+
+
+def _is_resource_already_exists_error(error) -> bool:
+    """Check whether a botocore ClientError means "this resource already exists".
+
+    Use this predicate for every load-or-create / upsert flow instead of matching
+    a single hardcoded message substring, so that service message wording changes
+    do not silently break the already-exists branch.
+
+    Args:
+        error (botocore.exceptions.ClientError): The error raised by a create call.
+
+    Returns:
+        bool: True if the error indicates a name collision with an existing resource.
+    """
+    error_response = getattr(error, "response", None) or {}
+    error_code = error_response.get("Error", {}).get("Code", "")
+    error_message = error_response.get("Error", {}).get("Message", "")
+    return error_code in _ALREADY_EXISTS_ERROR_CODES and any(
+        pattern in error_message for pattern in _ALREADY_EXISTS_MSG_PATTERNS
+    )
+
+
 def _create_resource(create_fn):
     """Call create function and accepts/pass when resource already exists.
 
@@ -2462,14 +2498,7 @@ def _create_resource(create_fn):
         # create function succeeded, resource does not exist already
         return True
     except ClientError as ce:
-        error_code = ce.response["Error"]["Code"]
-        error_message = ce.response["Error"]["Message"]
-        already_exists_exceptions = ["ValidationException", "ResourceInUse"]
-        already_exists_msg_patterns = ["Cannot create already existing", "already exists"]
-        if not (
-            error_code in already_exists_exceptions
-            and any(p in error_message for p in already_exists_msg_patterns)
-        ):
+        if not _is_resource_already_exists_error(ce):
             raise ce
         # no new resource created as resource already exists
         return False

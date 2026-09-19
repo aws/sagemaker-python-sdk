@@ -20,7 +20,7 @@ from botocore.exceptions import ClientError
 from sagemaker.core.apiutils import _base_types
 from sagemaker.core.experiments.trial import _Trial
 from sagemaker.core.experiments.trial_component import _TrialComponent
-from sagemaker.core.common_utils import format_tags
+from sagemaker.core.common_utils import format_tags, _is_resource_already_exists_error
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 
@@ -169,9 +169,7 @@ class Experiment(_base_types.Record):
                 sagemaker_session=sagemaker_session,
             )
         except ClientError as ce:
-            error_code = ce.response["Error"]["Code"]
-            error_message = ce.response["Error"]["Message"]
-            if not (error_code == "ValidationException" and "already exists" in error_message):
+            if not _is_resource_already_exists_error(ce):
                 raise ce
             # already exists
             experiment = Experiment.load(experiment_name, sagemaker_session)

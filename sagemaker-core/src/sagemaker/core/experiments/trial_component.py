@@ -20,7 +20,7 @@ from botocore.exceptions import ClientError
 from sagemaker.core.apiutils import _base_types
 import sagemaker.core.experiments._api_types as _api_types
 from sagemaker.core.experiments._api_types import TrialComponentSearchResult
-from sagemaker.core.common_utils import format_tags
+from sagemaker.core.common_utils import format_tags, _is_resource_already_exists_error
 
 
 class _TrialComponent(_base_types.Record):
@@ -338,9 +338,7 @@ class _TrialComponent(_base_types.Record):
                 sagemaker_session=sagemaker_session,
             )
         except ClientError as ce:
-            error_code = ce.response["Error"]["Code"]
-            error_message = ce.response["Error"]["Message"]
-            if not (error_code == "ValidationException" and "already exists" in error_message):
+            if not _is_resource_already_exists_error(ce):
                 raise ce
             # already exists
             run_tc = _TrialComponent.load(trial_component_name, sagemaker_session)
