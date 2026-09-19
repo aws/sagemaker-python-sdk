@@ -1415,7 +1415,7 @@ class TestGetLakeFormationServiceLinkedRoleArn:
         """Test that the method generates the correct service-linked role ARN format."""
         account_id = "123456789012"
         result = FeatureGroupManager._get_lake_formation_service_linked_role_arn(account_id)
-        expected = "arn:aws:iam::123456789012:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
+        expected = "arn:aws:iam::123456789012:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"  # noqa: E501
         assert result == expected
 
     def test_uses_region_for_partition(self):
@@ -1675,7 +1675,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
             use_service_linked_role=True, hybrid_access_mode_enabled=False, acknowledge_risk=True
         )
 
-        expected_slr_arn = "arn:aws:iam::123456789012:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
+        expected_slr_arn = "arn:aws:iam::123456789012:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"  # noqa: E501
         mock_generate.assert_called_once()
         call_kwargs = mock_generate.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
@@ -1718,7 +1718,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
 
         fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
 
-        expected_slr_arn = "arn:aws:iam::987654321098:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
+        expected_slr_arn = "arn:aws:iam::987654321098:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"  # noqa: E501
         mock_generate.assert_called_once()
         call_kwargs = mock_generate.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
@@ -1763,7 +1763,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
             use_service_linked_role=True, hybrid_access_mode_enabled=False, acknowledge_risk=True
         )
 
-        expected_slr_arn = f"arn:aws:iam::{account_id}:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
+        expected_slr_arn = f"arn:aws:iam::{account_id}:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"  # noqa: E501
         mock_generate.assert_called_once()
         call_kwargs = mock_generate.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
@@ -1870,7 +1870,7 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
 
         mock_register.assert_called_once()
         call_args = mock_register.call_args
-        assert call_args[1]["use_service_linked_role"] == False
+        assert call_args[1]["use_service_linked_role"] is False
         assert call_args[1]["role_arn"] == custom_registration_role
 
     @patch.object(FeatureGroupManager, "refresh")

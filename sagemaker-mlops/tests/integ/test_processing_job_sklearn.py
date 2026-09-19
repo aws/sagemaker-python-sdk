@@ -55,7 +55,7 @@ def test_sklearn_processing_job(sagemaker_session, role, abalone_data_path):
             role=role,
         )
 
-        processor_args = sklearn_processor.run(
+        sklearn_processor.run(
             wait=False,
             inputs=[
                 ProcessingInput(

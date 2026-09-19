@@ -91,7 +91,7 @@ class RetryPolicy(Entity):
 
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
-        if (self.max_attempts is None) == self.expire_after_mins is None:
+        if (self.max_attempts is None) == (self.expire_after_mins is None):
             raise ValueError("Only one of [max_attempts] and [expire_after_mins] can be given.")
 
         request = {

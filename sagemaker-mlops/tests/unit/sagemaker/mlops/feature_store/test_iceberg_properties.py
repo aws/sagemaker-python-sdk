@@ -329,7 +329,7 @@ class TestUpdateIcebergProperties:
         }
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "value"})
-        result = self.fg._update_iceberg_properties(iceberg_properties=props)
+        self.fg._update_iceberg_properties(iceberg_properties=props)
 
         mock_txn.set_properties.assert_called_once_with(**props.properties)
 
@@ -941,7 +941,7 @@ class TestGetWithIcebergProperties:
         }
         mock_get_client.return_value = mock_client
 
-        result = FeatureGroupManager.get(feature_group_name="test-fg")
+        FeatureGroupManager.get(feature_group_name="test-fg")
 
         mock_get_iceberg.assert_not_called()
 

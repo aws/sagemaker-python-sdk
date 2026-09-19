@@ -125,15 +125,15 @@ class TestLoadFeatureDefinitionsFromDataframe:
 class TestIsCollectionColumn:
     def test_list_column_returns_true(self):
         series = pd.Series([[1, 2], [3, 4], [5]])
-        assert _is_collection_column(series) == True
+        assert _is_collection_column(series) is True
 
     def test_scalar_column_returns_false(self):
         series = pd.Series([1, 2, 3])
-        assert _is_collection_column(series) == False
+        assert _is_collection_column(series) is False
 
     def test_empty_series(self):
         series = pd.Series([], dtype="object")
-        assert _is_collection_column(series) == False
+        assert _is_collection_column(series) is False
 
 
 class TestAsHiveDdl:
@@ -399,7 +399,7 @@ class TestGetFeatureGroupAsDataframe:
 
         from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
 
-        result = get_feature_group_as_dataframe(
+        get_feature_group_as_dataframe(
             feature_group_name="test-fg",
             athena_bucket="s3://bucket/path",
             region="us-east-1",
@@ -476,7 +476,7 @@ class TestGetFeatureGroupAsDataframe:
 
         from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
 
-        result = get_feature_group_as_dataframe(
+        get_feature_group_as_dataframe(
             feature_group_name="test-fg",
             athena_bucket="s3://bucket/path",
             session=mock_session,

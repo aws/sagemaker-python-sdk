@@ -255,7 +255,9 @@ class FeatureStoreManagerFactory:
 
     @property
     @lru_cache()
-    def feature_store_manager(self) -> "fsm.FeatureStoreManager":
+    def feature_store_manager(
+        self,
+    ) -> "fsm.FeatureStoreManager":  # noqa: F821  # fsm imported lazily below
         """Instansiate a new FeatureStoreManager."""
         import feature_store_pyspark.FeatureStoreManager as fsm
 

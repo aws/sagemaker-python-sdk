@@ -91,7 +91,7 @@ class TestRepackModelStep:
                     mock_trainer.return_value = mock_trainer_instance
                     mock_super.return_value = None
 
-                    step = _RepackModelStep(
+                    _RepackModelStep(
                         name="repack-step",
                         sagemaker_session=mock_session,
                         role="arn:aws:iam::123456789012:role/SageMakerRole",
@@ -165,7 +165,7 @@ class TestRepackModelStep:
                     mock_trainer.return_value = mock_trainer_instance
                     mock_super.return_value = None
 
-                    step = _RepackModelStep(
+                    _RepackModelStep(
                         name="repack-step",
                         sagemaker_session=mock_session,
                         role="arn:aws:iam::123456789012:role/SageMakerRole",
@@ -191,7 +191,7 @@ class TestRepackModelStep:
                     mock_trainer.return_value = mock_trainer_instance
                     mock_super.return_value = None
 
-                    step = _RepackModelStep(
+                    _RepackModelStep(
                         name="repack-step",
                         sagemaker_session=mock_session,
                         role="arn:aws:iam::123456789012:role/SageMakerRole",
@@ -216,7 +216,7 @@ class TestRepackModelStep:
                     mock_trainer.return_value = mock_trainer_instance
                     mock_super.return_value = None
 
-                    step = _RepackModelStep(
+                    _RepackModelStep(
                         name="repack-step",
                         sagemaker_session=mock_session,
                         role="arn:aws:iam::123456789012:role/SageMakerRole",
@@ -245,7 +245,7 @@ class TestRepackModelStep:
 
                     retry_policy = RetryPolicy(max_attempts=3)
 
-                    step = _RepackModelStep(
+                    _RepackModelStep(
                         name="repack-step",
                         sagemaker_session=mock_session,
                         role="arn:aws:iam::123456789012:role/SageMakerRole",
@@ -296,7 +296,7 @@ class TestRepackModelStep:
                         mock_trainer.return_value = mock_trainer_instance
                         mock_super.return_value = None
 
-                        step = _RepackModelStep(
+                        _RepackModelStep(
                             name="repack-step",
                             sagemaker_session=mock_session,
                             role="arn:aws:iam::123456789012:role/SageMakerRole",

@@ -197,7 +197,7 @@ class TestPipelineCreate:
                         pipeline = Pipeline(name="test-pipeline", sagemaker_session=mock_session)
 
                         with patch.object(pipeline, "definition", return_value='{"Steps": []}'):
-                            result = pipeline.create(
+                            pipeline.create(
                                 role_arn="arn:aws:iam::123:role/SageMakerRole",
                                 description="Test pipeline description",
                             )
@@ -227,7 +227,7 @@ class TestPipelineCreate:
                         pipeline = Pipeline(name="test-pipeline", sagemaker_session=mock_session)
 
                         with patch.object(pipeline, "definition", return_value='{"Steps": []}'):
-                            result = pipeline.create(
+                            pipeline.create(
                                 role_arn="arn:aws:iam::123:role/SageMakerRole",
                                 tags=[{"Key": "Environment", "Value": "Test"}],
                             )
@@ -261,7 +261,7 @@ class TestPipelineCreate:
                         )
 
                         with patch.object(pipeline, "definition", return_value='{"Steps": []}'):
-                            result = pipeline.create(
+                            pipeline.create(
                                 role_arn="arn:aws:iam::123:role/SageMakerRole",
                                 parallelism_config=parallelism_config,
                             )
@@ -620,7 +620,7 @@ class TestPipelineExecutionMethods:
 
         pipeline = Pipeline(name="test-pipeline", steps=[], sagemaker_session=mock_session)
 
-        result = pipeline.list_executions(next_token="token123")
+        pipeline.list_executions(next_token="token123")
 
         mock_session.sagemaker_client.list_pipeline_executions.assert_called_once_with(
             PipelineName="test-pipeline", NextToken="token123"

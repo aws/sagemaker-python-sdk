@@ -87,7 +87,7 @@ def test_clarify_e2e(sagemaker_session, role, test_data, trained_model):
         label_values_or_threshold=[1], facet_name="gender", facet_values_or_threshold=[1]
     )
 
-    shap_config = SHAPConfig(baseline=None, num_samples=10, agg_method="mean_abs")
+    SHAPConfig(baseline=None, num_samples=10, agg_method="mean_abs")
 
     # Create processor
     clarify_processor = SageMakerClarifyProcessor(

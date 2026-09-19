@@ -433,7 +433,7 @@ def test_arguments_with_init_script(
         role="arn:aws:iam::123456789:role/TestRole",
         s3_root_uri="s3://test-bucket/root",
     )
-    args = step.arguments
+    step.arguments
     mock_uploader.upload.assert_called_once()
 
 
@@ -462,7 +462,7 @@ def test_arguments_with_additional_dependencies(
         role="arn:aws:iam::123456789:role/TestRole",
         s3_root_uri="s3://test-bucket/root",
     )
-    args = step.arguments
+    step.arguments
     mock_uploader.upload.assert_called_once()
 
 

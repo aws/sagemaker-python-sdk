@@ -192,7 +192,7 @@ def test_load_from_iceberg_table(
 
 
 @patch(
-    "sagemaker.mlops.feature_store.feature_processor._input_loader.SparkDataFrameInputLoader.load_from_date_partitioned_s3"
+    "sagemaker.mlops.feature_store.feature_processor._input_loader.SparkDataFrameInputLoader.load_from_date_partitioned_s3"  # noqa: E501
 )
 def test_load_from_feature_group_with_arn(
     mock_load_from_date_partitioned_s3, sagemaker_session, input_loader, mock_fg_get

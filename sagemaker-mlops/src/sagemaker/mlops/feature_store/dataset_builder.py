@@ -44,11 +44,15 @@ _DTYPE_TO_ATHENA_TYPE = {
 
 
 class TableType(Enum):
+    """Kind of table a dataset builder can read from."""
+
     FEATURE_GROUP = "FeatureGroup"
     DATA_FRAME = "DataFrame"
 
 
 class JoinTypeEnum(Enum):
+    """SQL join types supported when joining feature groups."""
+
     INNER_JOIN = "JOIN"
     LEFT_JOIN = "LEFT JOIN"
     RIGHT_JOIN = "RIGHT JOIN"
@@ -57,6 +61,8 @@ class JoinTypeEnum(Enum):
 
 
 class JoinComparatorEnum(Enum):
+    """SQL comparison operators supported in join conditions."""
+
     EQUALS = "="
     GREATER_THAN = ">"
     GREATER_THAN_OR_EQUAL_TO = ">="
@@ -578,9 +584,9 @@ class DatasetBuilder:
 
         for i, fg in enumerate(self._feature_groups_to_be_merged):
             selected += ", " + ", ".join(
-                f'fg_{i}."{f}" as "{f}.{i+1}"' for f in fg.projected_feature_names
+                f'fg_{i}."{f}" as "{f}.{i + 1}"' for f in fg.projected_feature_names
             )
-            selected_final += ", " + ", ".join(f'"{f}.{i+1}"' for f in fg.projected_feature_names)
+            selected_final += ", " + ", ".join(f'"{f}.{i + 1}"' for f in fg.projected_feature_names)
 
         query += (
             f"\nSELECT {selected_final}\nFROM (\n"

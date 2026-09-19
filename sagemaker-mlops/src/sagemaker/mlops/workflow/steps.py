@@ -622,7 +622,10 @@ class ProcessingStep(ConfigurableRetryStep):
                 Processor.run.__name__,
                 LocalSagemakerClient().create_processing_job.__name__,
             },
-            error_message=f"The step_args of ProcessingStep must be obtained from processor.run() or in local mode, not {step_args.caller_name}",
+            error_message=(
+                "The step_args of ProcessingStep must be obtained from processor.run() "
+                f"or in local mode, not {step_args.caller_name}"
+            ),
         )
 
         self.step_args = step_args

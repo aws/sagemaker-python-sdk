@@ -1248,7 +1248,7 @@ def get_pre_execution_commands(sagemaker_session):
         f"{PIP} awscli",
         f"{AWS} s3 cp {s3_prefix}/ /tmp/packages/ --recursive",
         f"{PIP} 'setuptools<75'",
-        f"{PIP} --no-build-isolation '/tmp/packages/{mlops_whl}' 'numpy<2.0.0' 'ml_dtypes<=0.4.1' 'setuptools<75' || true",
+        f"{PIP} --no-build-isolation '/tmp/packages/{mlops_whl}' 'numpy<2.0.0' 'ml_dtypes<=0.4.1' 'setuptools<75' || true",  # noqa: E501
         f"{PIP} --no-deps --force-reinstall /tmp/packages/{sagemaker_whl}",
         f"{PIP} --no-deps --force-reinstall /tmp/packages/{core_whl} /tmp/packages/{mlops_whl}",
     ]

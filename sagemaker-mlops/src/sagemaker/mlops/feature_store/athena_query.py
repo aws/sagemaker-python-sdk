@@ -1,3 +1,5 @@
+"""Run Athena queries against Feature Store offline data and load the results."""
+
 import os
 import tempfile
 from dataclasses import dataclass, field

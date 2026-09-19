@@ -538,7 +538,7 @@ class TestFailStepExecutor:
             )
 
             executor = _FailStepExecutor(pipeline_executor, mock_step)
-            result = executor.execute()
+            executor.execute()
 
             # Should update step properties and then fail
             mock_execution.update_step_properties.assert_called_once()

@@ -193,7 +193,7 @@ def test_configurable_retry_step_to_request_with_retry_policies():
     step.retry_policies = [policy]
 
     with pytest.raises(ValueError):
-        request = step.to_request()
+        step.to_request()
 
 
 def test_step_find_dependencies_in_depends_on_list_with_step():

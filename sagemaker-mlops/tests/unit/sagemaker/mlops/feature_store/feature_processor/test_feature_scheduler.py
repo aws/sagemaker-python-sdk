@@ -189,7 +189,7 @@ def config_uploader():
     return_value="some_s3_uri",
 )
 @patch(
-    "sagemaker.mlops.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_runtime_scripts",
+    "sagemaker.mlops.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_runtime_scripts",  # noqa: E501
     return_value="some_s3_uri",
 )
 @patch(
@@ -1085,7 +1085,7 @@ def test_disable_trigger(mock_disable_rule):
 
 
 @patch(
-    "sagemaker.mlops.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.list_targets_by_rule",
+    "sagemaker.mlops.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.list_targets_by_rule",  # noqa: E501
     return_value=[{"Targets": [{"Id": "target_pipeline"}]}],
 )
 @patch(

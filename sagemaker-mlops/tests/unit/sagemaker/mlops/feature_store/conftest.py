@@ -5,7 +5,6 @@
 import pytest
 from unittest.mock import Mock, MagicMock
 import pandas as pd
-import numpy as np
 
 
 @pytest.fixture
