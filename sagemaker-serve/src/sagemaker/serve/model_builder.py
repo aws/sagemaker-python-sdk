@@ -3988,6 +3988,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "Fast Model Loading. Configure by setting `num_cpus` to 0 in `resources`."
                 )
 
+        if serverless_inference_config is None:
+            inference_ami_version = self._resolve_inference_ami_version(
+                instance_type=instance_type,
+                inference_ami_version=inference_ami_version,
+            )
+
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             if update_endpoint:
                 raise ValueError(
@@ -6053,6 +6059,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
 
+        if instance_type:
+            self.instance_type = instance_type
+
         # Inference component deployments manage their own reuse by IC name
         # (create vs. in-place update in _deploy_for_ic). The endpoint-return
         # reuse gate must not intercept them, or an intended IC create/update
@@ -6112,11 +6121,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             logger.info("Deploying Model Customization model")
             if not self.instance_type and not instance_type:
                 self.instance_type = self._fetch_default_instance_type_for_custom_model()
-
-            # Ensure self.instance_type reflects the caller's intent so the
-            # endpoint config creation in _deploy_model_customization picks it up.
-            if instance_type:
-                self.instance_type = instance_type
 
             # Pass inference_config if it's ResourceRequirements
             inference_config_param = None
