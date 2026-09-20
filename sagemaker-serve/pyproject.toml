@@ -34,11 +34,13 @@ dependencies = [
     "psutil",
     "tritonclient[http]",
     "onnx",
-    "onnxruntime",
-    "torch>=2.0.0"
+    "onnxruntime"
 ]
 
 [project.optional-dependencies]
+torch = [
+    "torch>=2.0.0",
+]
 test = [
     "pytest",
     "pytest-cov",

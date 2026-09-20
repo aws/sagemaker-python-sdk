@@ -6,7 +6,6 @@ import asyncio
 import io
 import logging
 import threading
-import torch
 from typing import Optional, Type
 
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -62,7 +61,12 @@ class InProcessServer:
                         "Unable to import transformers, check if transformers is installed."
                     )
 
-                device = 0 if torch.cuda.is_available() else -1
+                try:
+                    import torch
+
+                    device = 0 if torch.cuda.is_available() else -1
+                except ImportError:
+                    device = -1
 
                 self._load_model = pipeline(task, model=self.model, device=device)
             except Exception:
