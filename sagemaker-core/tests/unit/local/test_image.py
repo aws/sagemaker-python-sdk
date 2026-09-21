@@ -621,9 +621,6 @@ class TestSageMakerContainerAdvanced:
                                                     "test-job",
                                                 )
 
-    @pytest.mark.skip(
-        reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests"
-    )
     def test_train_with_multiple_channels(self, mock_session):
         """Test train method with multiple input channels"""
         with patch(
@@ -666,7 +663,7 @@ class TestSageMakerContainerAdvanced:
                         mock_data_source.return_value = mock_source
                         with patch("os.path.isdir", return_value=False):
                             with patch(
-                                "sagemaker.serve.model_builder.DIR_PARAM_NAME", "sagemaker_program"
+                                "sagemaker.core.local.image.DIR_PARAM_NAME", "sagemaker_program"
                             ):
                                 with patch.object(
                                     container,
@@ -712,9 +709,6 @@ class TestSageMakerContainerAdvanced:
                                                                         == "/tmp/model.tar.gz"
                                                                     )
 
-    @pytest.mark.skip(
-        reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests"
-    )
     def test_serve_with_environment_variables(self, mock_session):
         """Test serve method with environment variables"""
         with patch(
@@ -741,7 +735,7 @@ class TestSageMakerContainerAdvanced:
                     mock_data_source.return_value = mock_source
                     with patch("os.path.isdir", return_value=False):
                         with patch(
-                            "sagemaker.serve.model_builder.DIR_PARAM_NAME", "sagemaker_program"
+                            "sagemaker.core.local.image.DIR_PARAM_NAME", "sagemaker_program"
                         ):
                             with patch(
                                 "sagemaker.core.local.image._ecr_login_if_needed",
@@ -873,9 +867,6 @@ class TestSageMakerContainerAdvanced:
 
             assert mock_write.call_count == 3  # hyperparameters, resourceconfig, inputdataconfig
 
-    @pytest.mark.skip(
-        reason="Requires sagemaker-serve module which is not installed in sagemaker-core tests"
-    )
     def test_prepare_training_volumes_with_local_code(self, mock_session):
         """Test _prepare_training_volumes with local code directory"""
         with patch(
@@ -899,7 +890,7 @@ class TestSageMakerContainerAdvanced:
                 with patch("os.path.isdir", return_value=False):
                     with patch("os.mkdir"):
                         with patch(
-                            "sagemaker.serve.model_builder.DIR_PARAM_NAME", "sagemaker_program"
+                            "sagemaker.core.local.image.DIR_PARAM_NAME", "sagemaker_program"
                         ):
                             with patch(
                                 "sagemaker.core.local.data.get_data_source_instance"

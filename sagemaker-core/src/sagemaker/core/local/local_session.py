@@ -86,6 +86,25 @@ class LocalSagemakerClient(object):  # pylint: disable=too-many-public-methods
         """
         self.sagemaker_session = sagemaker_session or LocalSession()
 
+    def describe_user_profile(self, DomainId, UserProfileName, **kwargs):
+        """Passes ``describe_user_profile`` through to the real SageMaker client.
+
+        Local mode does not model user profiles, but Studio role resolution calls
+        this during session setup. Delegating to a real boto client keeps that path
+        working instead of raising ``AttributeError``.
+
+        Args:
+          DomainId (str): The domain ID the user profile belongs to.
+          UserProfileName (str): The name of the user profile to describe.
+          **kwargs: Additional keyword arguments forwarded to the boto client.
+
+        Returns: (dict) DescribeUserProfile response.
+        """
+        boto_client = self.sagemaker_session.boto_session.client("sagemaker")
+        return boto_client.describe_user_profile(
+            DomainId=DomainId, UserProfileName=UserProfileName, **kwargs
+        )
+
     @_telemetry_emitter(Feature.LOCAL_MODE, "local_session.create_processing_job")
     def create_processing_job(
         self,
@@ -533,7 +552,28 @@ class LocalSagemakerRuntimeClient(object):
             Body = Body.encode("utf-8")
         r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
 
-        return {"Body": r, "ContentType": Accept}
+        # Mirror the response shape of the real SageMaker runtime client so the same
+        # code works in local mode and against a hosted endpoint. HTTP header names
+        # are case-insensitive and containers send e.g. ``Content-Type`` or
+        # ``content-type``, so look them up without regard to case.
+        try:
+            response_headers = dict(r.headers)
+        except (TypeError, ValueError):
+            response_headers = {}
+        lowered = {str(k).lower(): v for k, v in response_headers.items()}
+        request_id = lowered.get("x-amzn-requestid", "local-request-id")
+        status_code = getattr(r, "status", None)
+        return {
+            "Body": r,
+            "ContentType": lowered.get("content-type", Accept),
+            "InvokedProductionVariant": TargetVariant or "AllTraffic",
+            "ResponseMetadata": {
+                "RequestId": request_id,
+                "HTTPStatusCode": status_code,
+                "HTTPHeaders": response_headers,
+                "RetryAttempts": 0,
+            },
+        }
 
 
 class LocalSession(Session):

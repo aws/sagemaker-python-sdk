@@ -2292,3 +2292,52 @@ class TestScriptAndSparkProcessorInstancePreferences:
             sagemaker_session=mock_session,
         )
         assert processor.instance_preferences == self._PREFS
+
+
+class TestProcessorLocalModeRole:
+    def test_role_not_required_for_local_instance(self, mock_session):
+        """A role is optional when instance_type is local (role is unused locally)."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local",
+            sagemaker_session=mock_session,
+        )
+        assert processor.role is None
+        assert processor.instance_type == "local"
+
+    def test_role_not_required_for_local_gpu_instance(self, mock_session):
+        """A role is optional when instance_type is local_gpu."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local_gpu",
+            sagemaker_session=mock_session,
+        )
+        assert processor.role is None
+
+    def test_role_still_required_for_managed_instance(self, mock_session):
+        """A missing role still raises for non-local instance types."""
+        with pytest.raises(
+            ValueError, match="An AWS IAM role is required to create a Processing job."
+        ):
+            Processor(
+                image_uri="test-image:latest",
+                instance_count=1,
+                instance_type="ml.m5.xlarge",
+                sagemaker_session=mock_session,
+            )
+
+    def test_request_args_skip_role_expansion_when_no_role(self, mock_session):
+        """Building the create request must not call expand_role(None) in local mode."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "local-job"
+        processor._normalize_args = lambda *a, **k: None
+        request = processor._get_process_args(inputs=[], outputs=[], experiment_config=None)
+        assert request["role_arn"] is None
+        mock_session.expand_role.assert_not_called()

@@ -32,7 +32,7 @@ def mock_pipeline():
 def local_session():
     def mock_init(self, *args, **kwargs):
         self.sagemaker_client = Mock()
-        self.sagemaker_client._pipelines = {}
+        self._local_pipelines = {}
 
     with patch.object(LocalPipelineSession, "__init__", mock_init):
         session = LocalPipelineSession()
@@ -40,31 +40,33 @@ def local_session():
 
 
 def test_local_pipeline_session_init():
-    """Test LocalPipelineSession initialization."""
+    """Test LocalPipelineSession initialization owns the registry on the session."""
 
     def mock_parent_init(self, *args, **kwargs):
-        self.sagemaker_client = Mock(spec=[])  # Empty spec means no attributes initially
+        self.sagemaker_client = Mock(spec=[])  # Empty spec means no attributes
 
     with patch("sagemaker.core.local.LocalSession.__init__", mock_parent_init):
         session = LocalPipelineSession()
 
-        # Verify _pipelines attribute is created as a dict
-        assert hasattr(session.sagemaker_client, "_pipelines")
-        assert session.sagemaker_client._pipelines == {}
+        # Registry lives on the session, not on the sagemaker_client.
+        assert session._local_pipelines == {}
+        assert not hasattr(session.sagemaker_client, "_pipelines")
 
 
-def test_local_pipeline_session_init_with_existing_pipelines():
-    """Test LocalPipelineSession initialization when _pipelines already exists."""
+def test_local_pipeline_session_registry_isolated_per_session():
+    """Two sessions sharing a client do not share pipeline state (issue #5604)."""
 
     def mock_parent_init(self, *args, **kwargs):
-        self.sagemaker_client = Mock()
-        self.sagemaker_client._pipelines = {"existing": "pipeline"}
+        self.sagemaker_client = Mock(spec=[])
 
     with patch("sagemaker.core.local.LocalSession.__init__", mock_parent_init):
-        session = LocalPipelineSession()
+        session1 = LocalPipelineSession()
+        session2 = LocalPipelineSession()
 
-        # Should not overwrite existing _pipelines
-        assert session.sagemaker_client._pipelines == {"existing": "pipeline"}
+        session1._local_pipelines["pipelineA"] = "A"
+
+        assert session2._local_pipelines == {}
+        assert session1._local_pipelines is not session2._local_pipelines
 
 
 def test_create_pipeline(local_session, mock_pipeline):
@@ -81,11 +83,8 @@ def test_create_pipeline(local_session, mock_pipeline):
         )
 
         assert result == {"PipelineArn": "test-pipeline"}
-        assert "test-pipeline" in local_session.sagemaker_client._pipelines
-        assert (
-            local_session.sagemaker_client._pipelines["test-pipeline"]
-            == mock_local_pipeline_instance
-        )
+        assert "test-pipeline" in local_session._local_pipelines
+        assert local_session._local_pipelines["test-pipeline"] == mock_local_pipeline_instance
 
         mock_local_pipeline.assert_called_once_with(
             pipeline=mock_pipeline,
@@ -117,7 +116,7 @@ def test_update_pipeline(local_session, mock_pipeline):
     mock_local_pipeline.pipeline = Mock()
     mock_local_pipeline.last_modified_time = 1000.0
 
-    local_session.sagemaker_client._pipelines["test-pipeline"] = mock_local_pipeline
+    local_session._local_pipelines["test-pipeline"] = mock_local_pipeline
 
     new_pipeline = Mock()
     new_pipeline.name = "test-pipeline"
@@ -143,7 +142,7 @@ def test_update_pipeline_not_found(local_session, mock_pipeline):
 def test_update_pipeline_with_kwargs(local_session, mock_pipeline):
     """Test update_pipeline ignores extra kwargs."""
     mock_local_pipeline = Mock()
-    local_session.sagemaker_client._pipelines["test-pipeline"] = mock_local_pipeline
+    local_session._local_pipelines["test-pipeline"] = mock_local_pipeline
 
     result = LocalPipelineSession.update_pipeline(
         local_session, mock_pipeline, "Description", extra_param="ignored"
@@ -163,7 +162,7 @@ def test_describe_pipeline(local_session):
         }
     )
 
-    local_session.sagemaker_client._pipelines["test-pipeline"] = mock_local_pipeline
+    local_session._local_pipelines["test-pipeline"] = mock_local_pipeline
 
     result = LocalPipelineSession.describe_pipeline(local_session, "test-pipeline")
 
@@ -185,12 +184,12 @@ def test_describe_pipeline_not_found(local_session):
 def test_delete_pipeline(local_session):
     """Test delete_pipeline removes pipeline."""
     mock_local_pipeline = Mock()
-    local_session.sagemaker_client._pipelines["test-pipeline"] = mock_local_pipeline
+    local_session._local_pipelines["test-pipeline"] = mock_local_pipeline
 
     result = LocalPipelineSession.delete_pipeline(local_session, "test-pipeline")
 
     assert result == {"PipelineArn": "test-pipeline"}
-    assert "test-pipeline" not in local_session.sagemaker_client._pipelines
+    assert "test-pipeline" not in local_session._local_pipelines
 
 
 def test_delete_pipeline_not_found(local_session):
@@ -206,7 +205,7 @@ def test_start_pipeline_execution(local_session):
     mock_execution = Mock()
     mock_local_pipeline.start = Mock(return_value=mock_execution)
 
-    local_session.sagemaker_client._pipelines["test-pipeline"] = mock_local_pipeline
+    local_session._local_pipelines["test-pipeline"] = mock_local_pipeline
 
     result = LocalPipelineSession.start_pipeline_execution(local_session, "test-pipeline")
 
@@ -220,7 +219,7 @@ def test_start_pipeline_execution_with_kwargs(local_session):
     mock_execution = Mock()
     mock_local_pipeline.start = Mock(return_value=mock_execution)
 
-    local_session.sagemaker_client._pipelines["test-pipeline"] = mock_local_pipeline
+    local_session._local_pipelines["test-pipeline"] = mock_local_pipeline
 
     result = LocalPipelineSession.start_pipeline_execution(
         local_session,
@@ -242,7 +241,7 @@ def test_start_pipeline_execution_with_parallelism_config(local_session, caplog)
     mock_execution = Mock()
     mock_local_pipeline.start = Mock(return_value=mock_execution)
 
-    local_session.sagemaker_client._pipelines["test-pipeline"] = mock_local_pipeline
+    local_session._local_pipelines["test-pipeline"] = mock_local_pipeline
 
     result = LocalPipelineSession.start_pipeline_execution(
         local_session, "test-pipeline", ParallelismConfiguration={"MaxParallelExecutionSteps": 5}
@@ -255,7 +254,7 @@ def test_start_pipeline_execution_with_parallelism_config(local_session, caplog)
 def test_start_pipeline_execution_with_selective_execution_config(local_session):
     """Test start_pipeline_execution raises error for selective execution config."""
     mock_local_pipeline = Mock()
-    local_session.sagemaker_client._pipelines["test-pipeline"] = mock_local_pipeline
+    local_session._local_pipelines["test-pipeline"] = mock_local_pipeline
 
     with pytest.raises(ValueError) as exc_info:
         LocalPipelineSession.start_pipeline_execution(
