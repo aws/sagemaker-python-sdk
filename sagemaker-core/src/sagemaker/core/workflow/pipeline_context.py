@@ -356,6 +356,12 @@ def runnable_by_pipeline(run_func):
     return wrapper
 
 
+# Names a producer may declare via `_pipeline_caller_name`. Restricted so a producer
+# cannot declare a name the structural checks below already resolve and compose the
+# wrong step over a different create API.
+_DECLARABLE_CALLER_NAMES = frozenset({"create_job"})
+
+
 def retrieve_caller_name(job_instance):
     """Convenience method for runnable_by_pipeline decorator
 
@@ -366,13 +372,21 @@ def retrieve_caller_name(job_instance):
         job_instance: A job class instance, one of the following types:
             - Processor (from sagemaker.core.processing)
             - ModelTrainer (from sagemaker.train.model_trainer)
+            - a V3 finetune trainer (SFT/DPO/RLVR/RLAIF, from sagemaker.train), which
+              subclasses BaseTrainer and carries no training_image
             - Transformer (from sagemaker.core.transformer)
             - HyperparameterTuner (from sagemaker.train.tuner)
+            - a CreateJob-backed producer that declares `_pipeline_caller_name`
+              (multi-turn RL)
 
     Note:
         This function uses duck typing to avoid importing from Train package,
         which would create architecture violations (Core should not depend on Train).
         Instead of isinstance checks, we check for characteristic attributes/methods.
+
+        The CreateJob family is the exception, and declares its name rather than
+        being duck typed, because its producers share no common signature to key on.
+        See `_DECLARABLE_CALLER_NAMES`.
     """
 
     from sagemaker.core.processing import Processor
@@ -380,12 +394,23 @@ def retrieve_caller_name(job_instance):
 
     # from sagemaker.utils.automl.automl import AutoML
 
+    # Resolved FIRST, and the order is load-bearing: MultiTurnRLTrainer inherits
+    # `input_data_config` from BaseTrainer, so the train branch below would claim it
+    # and compose a TrainingStep over CreateJob arguments.
+    declared_caller_name = getattr(job_instance, "_pipeline_caller_name", None)
+    if declared_caller_name in _DECLARABLE_CALLER_NAMES:
+        return declared_caller_name
+
     if isinstance(job_instance, Processor):
         return "run"
 
-    # Duck typing for ModelTrainer: has 'train' method and 'training_image' attribute
-    # This avoids importing from sagemaker.train which would violate architecture
-    if hasattr(job_instance, "train") and hasattr(job_instance, "training_image"):
+    # Duck typing for the CreateTrainingJob family, avoiding an import from
+    # sagemaker.train. Either marker suffices: `training_image` is ModelTrainer's,
+    # `input_data_config` is BaseTrainer's (the V3 finetune trainers resolve their
+    # image from the recipe and carry no `training_image`).
+    if hasattr(job_instance, "train") and (
+        hasattr(job_instance, "training_image") or hasattr(job_instance, "input_data_config")
+    ):
         return "train"
 
     if isinstance(job_instance, Transformer):
