@@ -2292,3 +2292,122 @@ class TestScriptAndSparkProcessorInstancePreferences:
             sagemaker_session=mock_session,
         )
         assert processor.instance_preferences == self._PREFS
+
+
+class TestFrameworkProcessorRequirements:
+    """#5805: FrameworkProcessor.run(requirements=...) must be honored in the runproc script."""
+
+    def _make_processor(self, mock_session):
+        return FrameworkProcessor(
+            image_uri="test-image:latest",
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            command=["python3"],
+            sagemaker_session=mock_session,
+        )
+
+    def test_custom_requirements_file_is_used(self, mock_session):
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(
+            "run_entrypoint.py", requirements="cpu-requirements.txt"
+        )
+        assert "if [[ -f 'cpu-requirements.txt' ]]; then" in script
+        assert "install_requirements.py cpu-requirements.txt" in script
+        assert "if [[ -f 'requirements.txt' ]]; then" not in script
+
+    def test_requirements_relative_subdirectory_is_preserved(self, mock_session):
+        """requirements is relative to source_dir, whose layout the bundle preserves."""
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(
+            "run_entrypoint.py", requirements="reqs/cpu-requirements.txt"
+        )
+        assert "if [[ -f 'reqs/cpu-requirements.txt' ]]; then" in script
+        assert "install_requirements.py reqs/cpu-requirements.txt" in script
+
+    def test_requirements_absolute_path_uses_basename(self, mock_session):
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(
+            "run_entrypoint.py", requirements="/home/me/proj/cpu-requirements.txt"
+        )
+        assert "if [[ -f 'cpu-requirements.txt' ]]; then" in script
+
+    def test_custom_requirements_file_used_with_entry_point_s3_source(self, mock_session):
+        """The custom-entrypoint (S3 source_dir) branch must honor requirements too."""
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(
+            "run_entrypoint.py",
+            entry_point="runproc.sh",
+            source_dir="s3://bucket/code/sourcedir.tar.gz",
+            requirements="cpu-requirements.txt",
+        )
+        assert "if [[ -f 'cpu-requirements.txt' ]]; then" in script
+        assert "install_requirements.py cpu-requirements.txt" in script
+        assert "if [[ -f 'requirements.txt' ]]; then" not in script
+        assert "./runproc.sh" in script
+
+    def test_default_requirements_file_when_none(self, mock_session):
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script("run_entrypoint.py")
+        assert "if [[ -f 'requirements.txt' ]]; then" in script
+        assert "install_requirements.py requirements.txt" in script
+
+
+class TestProcessorKmsKeyDefault:
+    """#4874: Processor.run kms_key should default to the configured output_kms_key."""
+
+    def test_run_defaults_kms_key_to_output_kms_key(self, mock_session):
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            output_kms_key="arn:aws:kms:us-west-2:123456789012:key/out-key",
+            sagemaker_session=mock_session,
+        )
+
+        captured = {}
+
+        def fake_normalize(**kwargs):
+            captured["kms_key"] = kwargs.get("kms_key")
+            return [], []
+
+        with (
+            patch.object(processor, "_normalize_args", side_effect=fake_normalize),
+            patch.object(processor, "_start_new", return_value=Mock()),
+            patch(
+                "sagemaker.core.processing.check_and_get_run_experiment_config",
+                side_effect=lambda x: x,
+            ),
+        ):
+            processor.run(wait=False, logs=False)
+
+        assert captured["kms_key"] == "arn:aws:kms:us-west-2:123456789012:key/out-key"
+
+    def test_run_explicit_kms_key_wins(self, mock_session):
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            output_kms_key="arn:aws:kms:us-west-2:123456789012:key/out-key",
+            sagemaker_session=mock_session,
+        )
+
+        captured = {}
+
+        def fake_normalize(**kwargs):
+            captured["kms_key"] = kwargs.get("kms_key")
+            return [], []
+
+        with (
+            patch.object(processor, "_normalize_args", side_effect=fake_normalize),
+            patch.object(processor, "_start_new", return_value=Mock()),
+            patch(
+                "sagemaker.core.processing.check_and_get_run_experiment_config",
+                side_effect=lambda x: x,
+            ),
+        ):
+            processor.run(wait=False, logs=False, kms_key="arn:aws:kms:us-west-2:1:key/explicit")
+
+        assert captured["kms_key"] == "arn:aws:kms:us-west-2:1:key/explicit"

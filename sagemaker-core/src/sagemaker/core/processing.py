@@ -332,7 +332,8 @@ class Processor(object):
                 is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
                 However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
+                user code file. If not provided, the processor's configured
+                ``output_kms_key`` is used (default: None).
         Returns:
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
@@ -342,6 +343,12 @@ class Processor(object):
         if logs and not wait:
             raise ValueError("""Logs can only be shown if wait is set to True.
                 Please either set wait to True or set logs to False.""")
+
+        # When no explicit code-encryption key is given, fall back to the
+        # configured output KMS key so the uploaded code and job outputs are
+        # encrypted with the same key.
+        if kms_key is None:
+            kms_key = self.output_kms_key
 
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -903,7 +910,8 @@ class ScriptProcessor(Processor):
                 is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
                 However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
+                user code file. If not provided, the processor's configured
+                ``output_kms_key`` is used (default: None).
         Returns:
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
@@ -914,7 +922,7 @@ class ScriptProcessor(Processor):
             inputs=inputs,
             outputs=outputs,
             code=code,
-            kms_key=kms_key,
+            kms_key=kms_key if kms_key is not None else self.output_kms_key,
         )
 
         experiment_config = check_and_get_run_experiment_config(experiment_config)
@@ -1481,6 +1489,7 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point,
             source_dir,
             install_requirements_dir,
+            requirements=requirements,
         )
 
         return s3_runproc_sh, inputs, job_name
@@ -1526,13 +1535,14 @@ class FrameworkProcessor(ScriptProcessor):
         entry_point=None,
         source_dir=None,
         install_requirements_dir=None,
+        requirements=None,
     ):
         """Create runproc shell script and upload to S3 bucket."""
         from sagemaker.core.workflow.utilities import _pipeline_config, hash_object
 
         if _pipeline_config and _pipeline_config.pipeline_name:
             runproc_file_str = self._generate_framework_script(
-                user_script, entry_point, source_dir, install_requirements_dir
+                user_script, entry_point, source_dir, install_requirements_dir, requirements
             )
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
@@ -1551,7 +1561,7 @@ class FrameworkProcessor(ScriptProcessor):
         else:
             s3_runproc_sh = s3.S3Uploader.upload_string_as_file_body(
                 self._generate_framework_script(
-                    user_script, entry_point, source_dir, install_requirements_dir
+                    user_script, entry_point, source_dir, install_requirements_dir, requirements
                 ),
                 desired_s3_uri=entrypoint_s3_uri,
                 kms_key=kms_key,
@@ -1560,20 +1570,36 @@ class FrameworkProcessor(ScriptProcessor):
 
         return s3_runproc_sh
 
+    @staticmethod
+    def _requirements_file_in_container(requirements: Optional[str]) -> str:
+        """Return the requirements path as it appears inside the extracted source bundle.
+
+        ``requirements`` is documented as relative to ``source_dir`` and ``_package_code``
+        preserves the directory layout, so a relative path (``reqs/cpu.txt``) is kept. An
+        absolute path cannot be located inside the bundle, so only its basename is used.
+        """
+        if not requirements:
+            return "requirements.txt"
+        if os.path.isabs(requirements):
+            return os.path.basename(requirements)
+        return os.path.normpath(requirements).replace(os.sep, "/")
+
     def _generate_framework_script(
         self,
         user_script: str,
         entry_point: str = None,
         source_dir: str = None,
         install_requirements_dir: str = None,
+        requirements: str = None,
     ) -> str:
         """Generate the framework entrypoint file (as text) for a processing job."""
         if entry_point:
             return self._generate_custom_framework_script(
-                user_script, entry_point, source_dir, install_requirements_dir
+                user_script, entry_point, source_dir, install_requirements_dir, requirements
             )
 
         install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
+        requirements_file = self._requirements_file_in_container(requirements)
 
         return dedent("""\
             #!/bin/bash
@@ -1597,16 +1623,17 @@ class FrameworkProcessor(ScriptProcessor):
                 exit 1
             fi
 
-            if [[ -f 'requirements.txt' ]]; then
+            if [[ -f '{requirements_file}' ]]; then
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
-                python3 {install_requirements_dir}/install_requirements.py requirements.txt
+                python3 {install_requirements_dir}/install_requirements.py {requirements_file}
             fi
 
             {entry_point_command} {entry_point} "$@"
         """).format(
             install_requirements_dir=install_requirements_dir,
+            requirements_file=requirements_file,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )
@@ -1617,6 +1644,7 @@ class FrameworkProcessor(ScriptProcessor):
         entry_point: str,
         source_dir: str = None,
         install_requirements_dir: str = None,
+        requirements: str = None,
     ) -> str:
         """Generate a custom framework script with a user-provided entrypoint embedded.
 
@@ -1630,6 +1658,8 @@ class FrameworkProcessor(ScriptProcessor):
                 is relative, it will be combined with source_dir.
             install_requirements_dir (str): Container directory that holds
                 ``install_requirements.py`` (default: the extracted source code dir).
+            requirements (str): Path to the requirements file relative to source_dir
+                (default: ``requirements.txt``).
 
         Returns:
             str: The generated script content
@@ -1639,6 +1669,7 @@ class FrameworkProcessor(ScriptProcessor):
         # source bundle on the container.
         if self._is_s3_uri(source_dir):
             install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
+            requirements_file = self._requirements_file_in_container(requirements)
             return dedent("""\
                 #!/bin/bash
 
@@ -1655,9 +1686,9 @@ class FrameworkProcessor(ScriptProcessor):
                     exit 1
                 fi
 
-                if [[ -f 'requirements.txt' ]]; then
+                if [[ -f '{requirements_file}' ]]; then
                     pip uninstall --yes typing
-                    python3 {install_requirements_dir}/install_requirements.py requirements.txt
+                    python3 {install_requirements_dir}/install_requirements.py {requirements_file}
                 fi
 
                 # Execute custom entrypoint
@@ -1667,6 +1698,7 @@ class FrameworkProcessor(ScriptProcessor):
                 {entry_point_command} {user_script} "$@"
             """).format(
                 install_requirements_dir=install_requirements_dir,
+                requirements_file=requirements_file,
                 entry_point=entry_point,
                 entry_point_command=" ".join(self.command),
                 user_script=user_script,
