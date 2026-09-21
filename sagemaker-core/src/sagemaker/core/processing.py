@@ -1289,7 +1289,9 @@ class FrameworkProcessor(ScriptProcessor):
             raise ValueError(f"source_dir does not exist: {source_dir}")
 
         # Create tar.gz with source_dir contents + dependencies
-        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+        tmp = tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False)
+        tmp.close()
+        try:
             with tarfile.open(tmp.name, "w:gz") as tar:
                 # Add all files from source_dir
                 for item in os.listdir(source_dir):
@@ -1311,15 +1313,19 @@ class FrameworkProcessor(ScriptProcessor):
                 "sourcedir.tar.gz",
             )
 
+            with open(tmp.name, "rb") as tar_file:
+                tar_bytes = tar_file.read()
+
             s3.S3Uploader.upload_string_as_file_body(
-                body=open(tmp.name, "rb").read(),
+                body=tar_bytes,
                 desired_s3_uri=s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
 
-            os.unlink(tmp.name)
             return s3_uri
+        finally:
+            os.unlink(tmp.name)
 
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
     @runnable_by_pipeline

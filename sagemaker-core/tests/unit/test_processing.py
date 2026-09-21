@@ -1290,6 +1290,59 @@ class TestFrameworkProcessorPackageCode:
             assert result.startswith("s3://my-custom-bucket/my-prefix")
             assert "sourcedir.tar.gz" in result
 
+    def test_package_code_closes_temp_handle_before_unlink(self, mock_session):
+        """Temp tar.gz must be closed before os.unlink (issue #5873).
+
+        On Windows os.unlink raises PermissionError (WinError 32) if any
+        handle to the file is still open. We track every open handle on the
+        temp path and assert none remain open when os.unlink is called.
+        """
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        real_open = open
+        open_handles = {}
+
+        def tracking_open(file, mode="r", *args, **kwargs):
+            handle = real_open(file, mode, *args, **kwargs)
+            if isinstance(file, str) and file.endswith(".tar.gz"):
+                open_handles[handle] = file
+            return handle
+
+        real_unlink = os.unlink
+        observed = {}
+
+        def checking_unlink(path, *args, **kwargs):
+            if isinstance(path, str) and path.endswith(".tar.gz"):
+                observed["still_open"] = [
+                    p for h, p in open_handles.items() if p == path and not h.closed
+                ]
+            return real_unlink(path, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with real_open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            with patch("builtins.open", side_effect=tracking_open):
+                with patch("sagemaker.core.processing.os.unlink", side_effect=checking_unlink):
+                    processor._package_code(
+                        entry_point=entry_point,
+                        source_dir=tmpdir,
+                        requirements=None,
+                        job_name="test-job",
+                        kms_key=None,
+                    )
+
+        assert (
+            observed.get("still_open") == []
+        ), "temp tar.gz handle was still open when os.unlink was called"
+
 
 class TestFrameworkProcessorRun:
     def test_run_with_s3_code(self, mock_session):
