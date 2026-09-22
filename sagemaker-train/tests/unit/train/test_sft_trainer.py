@@ -47,8 +47,8 @@ class TestSFTTrainer:
 
     @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
     @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
-    def test_init_ignores_non_overridable_constructor_hyperparameter(self, mock_finetuning_options, mock_validate_group, mock_session):
-        """A non-overridable constructor hyperparameter is ignored (not applied, no raise)."""
+    def test_init_invalid_constructor_hyperparameter_raises(self, mock_finetuning_options, mock_validate_group, mock_session):
+        """A non-overridable constructor hyperparameter raises rather than being dropped."""
         from sagemaker.train.common import FineTuningOptions
         mock_validate_group.return_value = "test-group"
         options = FineTuningOptions(
@@ -56,15 +56,12 @@ class TestSFTTrainer:
         )
         mock_finetuning_options.return_value = (options, "model-arn", False)
 
-        trainer = SFTTrainer(
-            model="test-model",
-            model_package_group="test-group",
-            hyperparameters={"learning_rate": 0.001, "not_a_real_option": 1},
-        )
-
-        # Overridable value applied; non-overridable one ignored rather than raising.
-        assert trainer.hyperparameters.learning_rate == 0.001
-        assert not hasattr(trainer.hyperparameters, "not_a_real_option")
+        with pytest.raises(AttributeError):
+            SFTTrainer(
+                model="test-model",
+                model_package_group="test-group",
+                hyperparameters={"learning_rate": 0.001, "not_a_real_option": 1},
+            )
 
     @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
     @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
