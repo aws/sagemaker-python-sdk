@@ -25,7 +25,14 @@ PROCESSOR_INSTANCE_TYPES = {"cpu": "ml.m5.xlarge", "gpu": "ml.g5.2xlarge"}
 
 # Single-variant configs whose tag_prefix is the full image tag, taken verbatim
 # (no processors / processor_in_tag / container_version). Instance type is ignored.
-WHOLE_TAG_CONFIG_FILES = [
+# (None currently: llama-cpp-arm64 migrated to the cpu processor schema below.)
+WHOLE_TAG_CONFIG_FILES = []
+
+# CPU-only configs on the processor schema: processors=["cpu"], processor_in_tag=false,
+# and the tag tail in container_version["cpu"]. Mirror of the gpu-only case: instance_type
+# is optional (single processor) and resolves to the cpu image; a gpu instance is rejected
+# until a gpu image is added.
+CPU_ONLY_PROCESSOR_FILES = [
     "llama-cpp-arm64.json",
 ]
 
@@ -130,6 +137,51 @@ def test_gpu_only_processor_rejects_cpu_instance(framework):
             version="latest",
             image_scope="inference",
             instance_type=PROCESSOR_INSTANCE_TYPES["cpu"],
+        )
+
+
+@pytest.mark.parametrize("load_config_and_file_name", CPU_ONLY_PROCESSOR_FILES, indirect=True)
+def test_cpu_only_processor_serving_framework_uris(load_config_and_file_name):
+    """CPU-only framework on the processor schema resolves to the cpu tail, and because it
+    has a single processor, omitting instance_type still yields the cpu image."""
+    config, file_name = load_config_and_file_name
+    framework = file_name[: -len(".json")]
+    for version, version_config in config["versions"].items():
+        repo = version_config["repository"]
+        prefix = version_config["tag_prefix"]
+        cpu_tail = version_config["container_version"]["cpu"]
+        expected_tag = f"{prefix}-{cpu_tail}"
+        for region, account in version_config["registries"].items():
+            uri = image_uris.retrieve(
+                framework=framework,
+                region=region,
+                version=version,
+                image_scope="inference",
+                instance_type=PROCESSOR_INSTANCE_TYPES["cpu"],
+            )
+            assert uri.startswith(f"{account}.dkr.ecr.{region}."), uri
+            assert uri.endswith(f"/{repo}:{expected_tag}"), uri
+        # instance_type is optional for a single-processor config (backward-compatible
+        # with the whole-tag form this config used before the processor-schema change).
+        uri_no_instance = image_uris.retrieve(
+            framework=framework,
+            region="us-west-2",
+            version=version,
+            image_scope="inference",
+        )
+        assert uri_no_instance.endswith(f"/{repo}:{expected_tag}"), uri_no_instance
+
+
+@pytest.mark.parametrize("framework", [f[: -len(".json")] for f in CPU_ONLY_PROCESSOR_FILES])
+def test_cpu_only_processor_rejects_gpu_instance(framework):
+    """Until a gpu image is added, a gpu instance type is rejected (not silently served cpu)."""
+    with pytest.raises(ValueError):
+        image_uris.retrieve(
+            framework=framework,
+            region="us-west-2",
+            version="latest",
+            image_scope="inference",
+            instance_type=PROCESSOR_INSTANCE_TYPES["gpu"],
         )
 
 
