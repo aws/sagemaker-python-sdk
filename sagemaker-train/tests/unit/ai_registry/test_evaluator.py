@@ -25,6 +25,8 @@ from sagemaker.ai_registry.air_constants import (
     REWARD_PROMPT,
 )
 
+DUMMY_ROLE = "arn:aws:iam::123456789012:role/SageMakerRole"
+
 
 def _keywords_from_import_call(mock_air_hub):
     """Extract the SearchKeyword strings passed to import_hub_content."""
@@ -33,6 +35,35 @@ def _keywords_from_import_call(mock_air_hub):
 
 
 class TestEvaluator:
+    @pytest.fixture(autouse=True)
+    def stub_aws_resolution(self):
+        """Keep these unit tests offline.
+
+        ``Evaluator.create`` builds a default ``Session``, auto-detects the Studio domain
+        ID (STS ``GetCallerIdentity``) and resolves/validates an execution role (IAM
+        ``SimulatePrincipalPolicy``); constructing the entity also derives the hub name
+        from the caller's account. Unmocked, those reach real AWS and make the suite slow
+        and flaky — CI hit ``Throttling: Rate exceeded`` on ``SimulatePrincipalPolicy``.
+
+        ``AIRHub`` is patched on the base-entity module as well as on ``evaluator``, since
+        ``AIRHubEntity.__init__`` resolves the hub name through its own import.
+        """
+        session = MagicMock()
+        with (
+            patch("sagemaker.ai_registry.evaluator.Session", return_value=session),
+            patch("sagemaker.ai_registry.evaluator._get_current_domain_id", return_value=None),
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+                return_value=session,
+            ),
+            patch("sagemaker.train.defaults.TrainDefaults.get_role", return_value=DUMMY_ROLE),
+            patch(
+                "sagemaker.ai_registry.air_hub_entity.AIRHub.get_hub_name",
+                return_value="test-hub",
+            ),
+        ):
+            yield
+
     @patch("sagemaker.ai_registry.evaluator.AIRHub")
     def test_create_with_lambda_arn(self, mock_air_hub):
         mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
@@ -55,9 +86,10 @@ class TestEvaluator:
         assert evaluator.method == EvaluatorMethod.LAMBDA
         mock_air_hub.import_hub_content.assert_called_once()
 
+    @patch("sagemaker.ai_registry.evaluator._get_default_bucket", return_value="test-bucket")
     @patch("sagemaker.ai_registry.evaluator.boto3")
     @patch("sagemaker.ai_registry.evaluator.AIRHub")
-    def test_create_with_byoc(self, mock_air_hub, mock_boto3):
+    def test_create_with_byoc(self, mock_air_hub, mock_boto3, mock_default_bucket):
         mock_lambda_client = MagicMock()
         mock_boto3.client.return_value = mock_lambda_client
         mock_lambda_client.create_function.return_value = {"FunctionArn": "lambda-arn"}

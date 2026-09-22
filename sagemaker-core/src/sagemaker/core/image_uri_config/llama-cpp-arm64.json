@@ -7,6 +7,13 @@
     },
     "versions": {
         "1": {
+            "container_version": {
+                "cpu": "cpu-v1"
+            },
+            "processor_in_tag": false,
+            "processors": [
+                "cpu"
+            ],
             "registries": {
                 "af-south-1": "626614931356",
                 "ap-east-1": "871362719292",
@@ -48,9 +55,16 @@
                 "us-west-2": "763104351884"
             },
             "repository": "llama-cpp-arm64",
-            "tag_prefix": "server-sagemaker-cpu-v1"
+            "tag_prefix": "server-sagemaker"
         },
         "1.0": {
+            "container_version": {
+                "cpu": "cpu-v1.0"
+            },
+            "processor_in_tag": false,
+            "processors": [
+                "cpu"
+            ],
             "registries": {
                 "af-south-1": "626614931356",
                 "ap-east-1": "871362719292",
@@ -92,7 +106,7 @@
                 "us-west-2": "763104351884"
             },
             "repository": "llama-cpp-arm64",
-            "tag_prefix": "server-sagemaker-cpu-v1.0"
+            "tag_prefix": "server-sagemaker"
         }
     }
 }

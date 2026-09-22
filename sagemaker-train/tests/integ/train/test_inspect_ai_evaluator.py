@@ -60,6 +60,30 @@ BENCHMARKS_DATA_DIR = os.path.join(DATA_DIR, "inspectai", "boolq")
 EVALUATION_TIMEOUT_SECONDS = 7200  # 2 hours
 POLL_INTERVAL_SECONDS = 30
 
+# SageMaker's message when UpdatePipeline loses an optimistic-concurrency race.
+_PIPELINE_CONFLICT_MESSAGE = "has been modified since your last read"
+
+
+def _evaluate_or_skip_on_pipeline_conflict(evaluator):
+    """Start an evaluation, skipping if a concurrent evaluation won the pipeline race.
+
+    All evaluations of one eval type share a single SageMaker pipeline, so two
+    evaluations starting at the same time both call UpdatePipeline and SageMaker
+    rejects the loser with a conflict. ``evaluate()`` reports that as a Failed
+    execution with no ARN. The tests in this module run on separate xdist workers
+    and can overlap, so hitting it says nothing about the code under test --
+    give up on this pipeline update and move on rather than failing.
+    """
+    execution = evaluator.evaluate()
+
+    failure_reason = getattr(execution.status, "failure_reason", None) or ""
+    if execution.arn is None and _PIPELINE_CONFLICT_MESSAGE in failure_reason:
+        pytest.skip(
+            f"A concurrent evaluation modified the shared evaluation pipeline: " f"{failure_reason}"
+        )
+
+    return execution
+
 
 def _prefix_has_content(s3_client, bucket_name: str, prefix: str) -> bool:
     """Check if an S3 prefix has any objects."""
@@ -135,7 +159,7 @@ class TestInspectAIEvaluatorIntegration:
         )
 
         logger.info("Starting InspectAI evaluation with Bedrock inference...")
-        execution = evaluator.evaluate()
+        execution = _evaluate_or_skip_on_pipeline_conflict(evaluator)
 
         assert execution is not None
         assert execution.arn is not None
@@ -197,7 +221,7 @@ class TestInspectAIEvaluatorIntegration:
         )
 
         logger.info("Starting evaluation with pre-existing benchmarks...")
-        execution = evaluator2.evaluate()
+        execution = _evaluate_or_skip_on_pipeline_conflict(evaluator2)
 
         assert execution is not None
         assert execution.arn is not None

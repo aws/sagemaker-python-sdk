@@ -21,7 +21,7 @@ from __future__ import absolute_import, annotations
 
 import os
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 # SageMaker core imports
 from sagemaker.core.resources import Model, Endpoint
@@ -75,6 +75,22 @@ JOB_NAME_PARAM_NAME = "sagemaker_job_name"
 MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
 SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
 SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
+# Intentionally allowlist only instance families documented for the GPU 4.1 AMI.
+# Add new families only after SageMaker documents support for them.
+_CUDA_13_INFERENCE_AMI = "al2023-ami-sagemaker-inference-gpu-4-1"
+_CUDA_13_INFERENCE_AMI_COMPATIBLE_FAMILIES = frozenset(
+    {
+        "ml.g4dn",
+        "ml.g5",
+        "ml.g6",
+        "ml.g6e",
+        "ml.p4d",
+        "ml.p4de",
+        "ml.p5",
+        "ml.p5e",
+        "ml.p5en",
+    }
+)
 
 
 class _ModelBuilderServers(object):
@@ -332,15 +348,37 @@ class _ModelBuilderServers(object):
 
         return model
 
+    def _resolve_inference_ami_version(
+        self,
+        instance_type: Optional[str],
+        inference_ami_version: Optional[str],
+    ) -> Optional[str]:
+        """Resolve a CUDA-compatible inference AMI without overriding the caller."""
+        if inference_ami_version is not None:
+            return inference_ami_version
+        if not isinstance(self.image_uri, str) or not isinstance(instance_type, str):
+            return inference_ami_version
+
+        # DLC CUDA versions are hyphen-delimited tag tokens. Splitting also
+        # recognizes a tag ending in ``-cu130`` without requiring a suffix.
+        image_tag = self.image_uri.rpartition(":")[2]
+        if "cu130" not in image_tag.split("-"):
+            return inference_ami_version
+
+        instance_family = instance_type.rsplit(".", 1)[0]
+        if instance_family not in _CUDA_13_INFERENCE_AMI_COMPATIBLE_FAMILIES:
+            return inference_ami_version
+
+        return _CUDA_13_INFERENCE_AMI
+
     def _build_for_hf_server(self, model_server: ModelServer) -> Model:
         """Build a HuggingFace model for a hub-download serving container.
 
         Generic build path shared by the vLLM, SGLang, and vLLM-omni servers. It
-        configures the container to pull the model directly from the HuggingFace Hub
-        (HF_MODEL_ID), resolves the appropriate DLC image via _auto_detect_image_uri,
-        and prepares the model for the selected mode. Server-specific tuning (sharding,
-        tensor parallelism, MAX_* limits, etc.) is intentionally left to the container
-        defaults and will be added in a follow-up.
+        configures the container to pull the model directly from the HuggingFace Hub,
+        resolves the appropriate DLC image via _auto_detect_image_uri, and prepares the
+        model for the selected mode. Server-specific tuning (sharding, tensor parallelism,
+        MAX_* limits, etc.) remains configurable through environment variables.
 
         Args:
             model_server: The HuggingFace serving model server to build for
@@ -363,8 +401,7 @@ class _ModelBuilderServers(object):
         _create_dir_structure(self.model_path)
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
-            # These containers download the model directly from the HuggingFace Hub
-            # Todo: missing something?
+            # These containers download the model directly from the HuggingFace Hub.
             self.env_vars.setdefault("HF_MODEL_ID", self.model)
 
             if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):

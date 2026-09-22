@@ -61,6 +61,23 @@ def sample_dataset_file():
 class TestDataSetDomainId:
     """Test domain-id is added to SearchKeywords when available."""
 
+    @pytest.fixture(autouse=True)
+    def stub_account_lookups(self):
+        """Keep these unit tests offline.
+
+        Uploading a local dataset derives the default bucket, and constructing the entity
+        derives the hub name — both call STS ``GetCallerIdentity``. ``AIRHub`` is patched on
+        the base-entity module because ``AIRHubEntity.__init__`` resolves the hub name
+        through its own import, not the one patched on ``dataset``.
+        """
+        with (
+            patch("sagemaker.ai_registry.dataset._get_default_bucket", return_value="test-bucket"),
+            patch(
+                "sagemaker.ai_registry.air_hub_entity.AIRHub.get_hub_name", return_value="test-hub"
+            ),
+        ):
+            yield
+
     @patch("sagemaker.core.helper.session_helper.Session")
     @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
     @patch("sagemaker.ai_registry.dataset.AIRHub")

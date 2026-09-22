@@ -1,4 +1,4 @@
-"""Unit tests: HF_MODEL_ID is not overwritten when user provides it."""
+"""Unit tests for Hugging Face ModelBuilder server configuration."""
 
 from __future__ import annotations
 
@@ -261,6 +261,102 @@ def test_sets_default_hf_model_id_when_not_provided(
     finally:
         _stop_patches(patchers)
     assert builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
+
+
+class TestCuda13AmiResolution:
+    """CUDA 13 serving images select compatible host drivers at deployment."""
+
+    def test_selects_cuda_13_ami_for_vllm_omni(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """The deploy-time G5 instance overrides the M5 instance used at build time."""
+        builder = mock_builder
+        builder.instance_type = "ml.m5.large"
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-vllm-omni:0.20.0-gpu-py312-cu130-amzn2023"
+        )
+
+        result = _ModelBuilderServers._resolve_inference_ami_version(
+            builder,
+            instance_type="ml.g5.2xlarge",
+            inference_ami_version=None,
+        )
+
+        assert result == "al2023-ami-sagemaker-inference-gpu-4-1"
+
+    def test_recognizes_image_tag_ending_in_cu130(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """A cu130 token remains detectable without a trailing tag component."""
+        builder = mock_builder
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-vllm:0.21.0-gpu-py312-cu130"
+        )
+
+        result = _ModelBuilderServers._resolve_inference_ami_version(
+            builder,
+            instance_type="ml.g5.2xlarge",
+            inference_ami_version=None,
+        )
+
+        assert result == "al2023-ami-sagemaker-inference-gpu-4-1"
+
+    @pytest.mark.parametrize(
+        "image_uri, instance_type",
+        [
+            (
+                "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+                "huggingface-vllm:0.17.0-gpu-py312-cu129-ubuntu22.04",
+                "ml.g5.2xlarge",
+            ),
+            (
+                "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+                "huggingface-vllm:0.21.0-gpu-py312-cu130-ubuntu22.04",
+                "ml.m5.large",
+            ),
+        ],
+        ids=["non-cu130-image", "unsupported-instance-family"],
+    )
+    def test_leaves_ami_unset_outside_compatibility_gate(
+        self,
+        mock_builder: MagicMock,
+        image_uri: str,
+        instance_type: str,
+    ) -> None:
+        """Images and instances outside the compatibility gate retain the default."""
+        builder = mock_builder
+        builder.image_uri = image_uri
+
+        result = _ModelBuilderServers._resolve_inference_ami_version(
+            builder,
+            instance_type=instance_type,
+            inference_ami_version=None,
+        )
+
+        assert result is None
+
+    def test_preserves_explicit_inference_ami(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """An explicit deployment AMI takes precedence over automatic selection."""
+        builder = mock_builder
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-vllm:0.21.0-gpu-py312-cu130-ubuntu22.04"
+        )
+
+        result = _ModelBuilderServers._resolve_inference_ami_version(
+            builder,
+            instance_type="ml.g5.2xlarge",
+            inference_ami_version="custom-inference-ami",
+        )
+
+        assert result == "custom-inference-ami"
 
 
 # -----------------------------------------------------------
