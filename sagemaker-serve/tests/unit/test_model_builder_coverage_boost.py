@@ -8,6 +8,8 @@ from unittest.mock import Mock, patch, MagicMock, PropertyMock
 from dataclasses import dataclass
 import tempfile
 
+import pytest
+
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.types import ModelServer
@@ -15,6 +17,26 @@ from sagemaker.core.training.configs import Compute, Networking
 from sagemaker.core.jumpstart.configs import JumpStartConfig
 from sagemaker.core.inference_config import AsyncInferenceConfig
 from botocore.exceptions import ClientError
+
+TEST_ROLE_ARN = "arn:aws:iam::123456789012:role/SageMakerRole"
+
+
+@pytest.fixture(autouse=True)
+def stub_role_resolution():
+    """Keep ModelBuilder construction offline.
+
+    ``ModelBuilder.__post_init__`` auto-resolves a serving role when no
+    ``role_arn`` is given, which calls sts:GetCallerIdentity and the paginated
+    iam:SimulatePrincipalPolicy. Tests here construct ``ModelBuilder`` without a
+    role, so unpatched they issue live IAM calls and fail on throttling
+    (SimulatePrincipalPolicy "Rate exceeded") rather than on the behavior under
+    test. Tests that patch the resolver themselves still override this.
+    """
+    with patch(
+        "sagemaker.serve.model_builder.resolve_and_validate_role",
+        side_effect=lambda provided_role=None, **kwargs: provided_role or TEST_ROLE_ARN,
+    ):
+        yield
 
 
 class TestModelBuilderInit(unittest.TestCase):
