@@ -19,6 +19,7 @@ import json
 import os
 import yaml
 from omegaconf import OmegaConf
+import logging
 import pytest
 from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
@@ -2019,3 +2020,97 @@ def test_networking_intelligent_defaults_fills_subnets_on_existing(model_trainer
     assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
     # pre-existing security_group_ids are preserved.
     assert model_trainer.networking.security_group_ids == ["sg-preexisting"]
+
+
+# Actionable error guidance in train(). The original exception must always propagate
+# unchanged; the SDK only adds remediation logging for common terminal failures
+# (quota exhaustion, missing region/credentials) so users and automation stop
+# blind-retrying errors that cannot succeed.
+
+RLE_ERROR_RESPONSE = {
+    "Error": {
+        "Code": "ResourceLimitExceeded",
+        "Message": (
+            "The account-level service limit 'ml.g5.2xlarge for training job usage' is 0 "
+            "Instances, with current utilization of 0 Instances and a request delta of 1 "
+            "Instances. Please use AWS Service Quotas to request an increase for this quota."
+        ),
+    }
+}
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_resource_limit_exceeded_reraises_and_logs_guidance(
+    mock_training_job, model_trainer, caplog
+):
+    from botocore.exceptions import ClientError
+
+    mock_training_job.create.side_effect = ClientError(RLE_ERROR_RESPONSE, "CreateTrainingJob")
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(ClientError) as raised:
+            model_trainer.train()
+
+    assert raised.value.response["Error"]["Code"] == "ResourceLimitExceeded"
+    guidance = caplog.text
+    assert "Service Quotas" in guidance
+    assert "ml.g5.2xlarge for training job usage" in guidance
+    assert "Retrying will keep failing" in guidance
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_no_region_error_reraises_and_logs_guidance(
+    mock_training_job, model_trainer, caplog
+):
+    from botocore.exceptions import NoRegionError
+
+    mock_training_job.create.side_effect = NoRegionError()
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(NoRegionError):
+            model_trainer.train()
+
+    assert "AWS_DEFAULT_REGION" in caplog.text
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_no_credentials_error_reraises_and_logs_guidance(
+    mock_training_job, model_trainer, caplog
+):
+    from botocore.exceptions import NoCredentialsError
+
+    mock_training_job.create.side_effect = NoCredentialsError()
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(NoCredentialsError):
+            model_trainer.train()
+
+    assert "aws configure" in caplog.text
+
+
+def test_log_actionable_client_error_access_denied(caplog):
+    from botocore.exceptions import ClientError
+    from sagemaker.train.model_trainer import _log_actionable_client_error
+
+    error = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": "User is not authorized"}},
+        "CreateTrainingJob",
+    )
+    with caplog.at_level(logging.ERROR):
+        _log_actionable_client_error(error)
+
+    assert "iam:PassRole" in caplog.text
+
+
+def test_log_actionable_client_error_other_codes_stay_silent(caplog):
+    from botocore.exceptions import ClientError
+    from sagemaker.train.model_trainer import _log_actionable_client_error
+
+    error = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "1 validation error detected"}},
+        "CreateTrainingJob",
+    )
+    with caplog.at_level(logging.ERROR):
+        _log_actionable_client_error(error)
+
+    assert caplog.text == ""

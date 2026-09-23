@@ -429,6 +429,119 @@ class TestPipelineUpsert:
                             # Verify tags were merged and added
                             mock_session.sagemaker_client.add_tags.assert_called_once()
 
+    def test_upsert_updates_existing_pipeline_with_names_must_be_unique_message(
+        self, mock_session
+    ):
+        """Upsert must also recognize the newer service wording 'names must be unique'."""
+        error_response = {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Pipeline names must be unique within an AWS account and region",
+            }
+        }
+
+        mock_session.sagemaker_client.list_tags = Mock(return_value={"Tags": []})
+        mock_session.sagemaker_client.add_tags = Mock()
+
+        with patch.object(Pipeline, 'create') as mock_create:
+            with patch.object(Pipeline, 'update') as mock_update:
+                with patch('sagemaker.mlops.workflow.pipeline.resolve_value_from_config') as mock_resolve:
+                    with patch('sagemaker.mlops.workflow.pipeline.resolve_and_validate_role') as mock_validate:
+                        with patch('sagemaker.mlops.workflow.pipeline.format_tags') as mock_format:
+                            mock_resolve.return_value = "arn:aws:iam::123:role/SageMakerRole"
+                            mock_validate.return_value = "arn:aws:iam::123:role/SageMakerRole"
+                            mock_format.return_value = []
+                            mock_create.side_effect = ClientError(error_response, "create_pipeline")
+                            mock_update.return_value = {
+                                "PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test-pipeline"
+                            }
+
+                            pipeline = Pipeline(
+                                name="test-pipeline",
+                                sagemaker_session=mock_session
+                            )
+
+                            result = pipeline.upsert(role_arn="arn:aws:iam::123:role/SageMakerRole")
+
+                            assert "PipelineArn" in result
+                            mock_update.assert_called_once()
+
+    def test_upsert_of_existing_pipeline_does_not_log_error_hint(self, mock_session, caplog):
+        """The create() name-collision hint must NOT fire on the successful upsert path."""
+        import logging
+
+        error_response = {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Pipeline names must be unique within an AWS account and region",
+            }
+        }
+        mock_session.local_mode = False
+        mock_session.sagemaker_client.create_pipeline = Mock(
+            side_effect=ClientError(error_response, "create_pipeline")
+        )
+        mock_session.sagemaker_client.list_tags = Mock(return_value={"Tags": []})
+
+        with patch.object(Pipeline, 'update') as mock_update:
+            with patch.object(Pipeline, '_create_args') as mock_args:
+                with patch('sagemaker.mlops.workflow.pipeline.resolve_value_from_config') as mock_resolve:
+                    with patch('sagemaker.mlops.workflow.pipeline.resolve_and_validate_role') as mock_validate:
+                        with patch('sagemaker.mlops.workflow.pipeline.format_tags') as mock_format:
+                            mock_resolve.return_value = "arn:aws:iam::123:role/SageMakerRole"
+                            mock_validate.return_value = "arn:aws:iam::123:role/SageMakerRole"
+                            mock_format.return_value = []
+                            mock_args.return_value = {"PipelineName": "test-pipeline"}
+                            mock_update.return_value = {
+                                "PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test-pipeline"
+                            }
+
+                            pipeline = Pipeline(
+                                name="test-pipeline",
+                                sagemaker_session=mock_session
+                            )
+
+                            with caplog.at_level(logging.ERROR):
+                                result = pipeline.upsert(role_arn="arn:aws:iam::123:role/SageMakerRole")
+
+        assert "PipelineArn" in result
+        mock_update.assert_called_once()
+        assert "pipeline.upsert() instead of pipeline.create()" not in caplog.text
+
+    def test_bare_create_of_existing_pipeline_logs_error_hint(self, mock_session, caplog):
+        """A direct create() name collision logs the remediation hint and re-raises."""
+        import logging
+
+        error_response = {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Pipeline names must be unique within an AWS account and region",
+            }
+        }
+        mock_session.local_mode = False
+        mock_session.sagemaker_client.create_pipeline = Mock(
+            side_effect=ClientError(error_response, "create_pipeline")
+        )
+
+        with patch.object(Pipeline, '_create_args') as mock_args:
+            with patch('sagemaker.mlops.workflow.pipeline.resolve_value_from_config') as mock_resolve:
+                with patch('sagemaker.mlops.workflow.pipeline.resolve_and_validate_role') as mock_validate:
+                    with patch('sagemaker.mlops.workflow.pipeline.format_tags') as mock_format:
+                        mock_resolve.return_value = "arn:aws:iam::123:role/SageMakerRole"
+                        mock_validate.return_value = "arn:aws:iam::123:role/SageMakerRole"
+                        mock_format.return_value = []
+                        mock_args.return_value = {"PipelineName": "test-pipeline"}
+
+                        pipeline = Pipeline(
+                            name="test-pipeline",
+                            sagemaker_session=mock_session
+                        )
+
+                        with caplog.at_level(logging.ERROR):
+                            with pytest.raises(ClientError):
+                                pipeline.create(role_arn="arn:aws:iam::123:role/SageMakerRole")
+
+        assert "pipeline.upsert() instead of pipeline.create()" in caplog.text
+
     def test_upsert_without_role_raises_error(self, mock_session):
         """Test upsert without role raises ValueError."""
         with patch('sagemaker.mlops.workflow.pipeline.resolve_value_from_config') as mock_resolve:
