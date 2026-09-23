@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The Pipeline entity for workflow."""
+
 from __future__ import absolute_import
 
 import json
@@ -1208,7 +1209,10 @@ def get_function_step_result(
     #
     # Cases 1 and 2 both end with RESULTS_FOLDER; case 3 does not.
     s3_output_path_stripped = s3_output_path.rstrip("/")
-    if s3_output_path_stripped.endswith("/" + RESULTS_FOLDER) or s3_output_path_stripped == RESULTS_FOLDER:
+    if (
+        s3_output_path_stripped.endswith("/" + RESULTS_FOLDER)
+        or s3_output_path_stripped == RESULTS_FOLDER
+    ):
         # S3OutputPath already points to the results folder (new or old format)
         s3_uri = s3_output_path_stripped
     else:

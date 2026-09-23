@@ -15,10 +15,10 @@
 Tests that model resolution correctly handles MultiTurnRLTrainer instances when
 passed to existing evaluators (BenchMarkEvaluator, CustomScorerEvaluator).
 """
+
 from __future__ import absolute_import
 
 import os
-import json
 from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
@@ -27,25 +27,24 @@ os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
 os.environ.setdefault("SAGEMAKER_REGION", "us-west-2")
 os.environ.setdefault("AWS_REGION", "us-west-2")
 
-from sagemaker.train.common_utils.model_resolution import (
+from sagemaker.train.common_utils.model_resolution import (  # noqa: E402
     _ModelResolver,
     _ModelInfo,
     _ModelType,
-    _resolve_base_model,
 )
-from sagemaker.train.base_trainer import BaseTrainer
-
 
 # ============================================================
 # Fixtures
 # ============================================================
 
 MODEL_PACKAGE_ARN = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-finetuned-model/1"
-BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/openai-reasoning-gpt-oss-20b/1.0.0"
+BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/openai-reasoning-gpt-oss-20b/1.0.0"  # noqa: E501
 BASE_MODEL_NAME = "openai-reasoning-gpt-oss-20b"
 MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-app/app-ABCDEF"
 S3_OUTPUT = "s3://sagemaker-us-west-2-123456789012/eval-output/"
-MODEL_PACKAGE_GROUP_ARN = "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/my-finetuned-model"
+MODEL_PACKAGE_GROUP_ARN = (
+    "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/my-finetuned-model"
+)
 
 
 def _make_mock_agent_rft_job(output_model_package_arn=MODEL_PACKAGE_ARN):
@@ -83,6 +82,7 @@ def _make_mock_mtrl_trainer(with_job=True):
 # Tests: Model Resolution with MTRLTrainer
 # ============================================================
 
+
 class TestModelResolutionWithMTRLTrainer:
     """Test that _ModelResolver correctly handles MultiTurnRLTrainer instances."""
 
@@ -100,7 +100,7 @@ class TestModelResolutionWithMTRLTrainer:
         assert result.model_type == _ModelType.FINE_TUNED
 
     def test_resolve_mtrl_trainer_with_model_arn_no_job(self):
-        """MTRLTrainer with _model_arn but no _latest_job should resolve as JumpStart-like (no source_model_package_arn)."""
+        """MTRLTrainer with _model_arn but no _latest_job should resolve as JumpStart-like (no source MP arn)."""
         trainer = _make_mock_mtrl_trainer(with_job=False)
 
         resolver = _ModelResolver(sagemaker_session=None)
@@ -129,7 +129,9 @@ class TestModelResolutionWithMTRLTrainer:
         )
 
         resolver = _ModelResolver(sagemaker_session=None)
-        with patch.object(resolver, '_resolve_model_package_arn', return_value=mock_info) as mock_resolve:
+        with patch.object(
+            resolver, "_resolve_model_package_arn", return_value=mock_info
+        ) as mock_resolve:
             result = resolver.resolve_model_info(trainer)
 
         mock_resolve.assert_called_once_with(MODEL_PACKAGE_ARN)
@@ -159,7 +161,9 @@ class TestModelResolutionWithMTRLTrainer:
         )
 
         resolver = _ModelResolver(sagemaker_session=None)
-        with patch.object(resolver, '_resolve_model_package_arn', return_value=mock_info) as mock_resolve:
+        with patch.object(
+            resolver, "_resolve_model_package_arn", return_value=mock_info
+        ) as mock_resolve:
             result = resolver.resolve_model_info(job)
 
         mock_resolve.assert_called_once_with(MODEL_PACKAGE_ARN)
@@ -170,11 +174,14 @@ class TestModelResolutionWithMTRLTrainer:
 # Tests: BenchMarkEvaluator with MTRLTrainer
 # ============================================================
 
+
 class TestBenchmarkEvaluatorWithMTRLTrainer:
     """Test that BenchMarkEvaluator accepts MTRLTrainer as model input."""
 
-    @patch('sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn')
-    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn')
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
+    @patch(
+        "sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn"
+    )
     def test_benchmark_evaluator_accepts_mtrl_trainer(self, mock_resolve_mp, mock_mlflow):
         """BenchMarkEvaluator should accept a MultiTurnRLTrainer with completed job."""
         from sagemaker.train.evaluate import BenchMarkEvaluator, get_benchmarks
@@ -198,7 +205,7 @@ class TestBenchmarkEvaluatorWithMTRLTrainer:
         assert evaluator._base_model_arn == BASE_MODEL_ARN
         assert evaluator._source_model_package_arn == MODEL_PACKAGE_ARN
 
-    @patch('sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn')
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_benchmark_evaluator_rejects_mtrl_trainer_without_job(self, mock_mlflow):
         """BenchMarkEvaluator should reject a MultiTurnRLTrainer without a completed job or _model_arn."""
         from sagemaker.train.evaluate import BenchMarkEvaluator, get_benchmarks
@@ -224,14 +231,17 @@ class TestBenchmarkEvaluatorWithMTRLTrainer:
 # Tests: CustomScorerEvaluator with MTRLTrainer
 # ============================================================
 
+
 class TestCustomScorerEvaluatorWithMTRLTrainer:
     """Test that CustomScorerEvaluator accepts MTRLTrainer as model input."""
 
-    @patch('sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn')
-    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn')
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
+    @patch(
+        "sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn"
+    )
     def test_custom_scorer_evaluator_accepts_mtrl_trainer(self, mock_resolve_mp, mock_mlflow):
         """CustomScorerEvaluator should accept a MultiTurnRLTrainer with completed job."""
-        from sagemaker.train.evaluate import CustomScorerEvaluator, get_builtin_metrics
+        from sagemaker.train.evaluate import CustomScorerEvaluator
 
         mock_mlflow.return_value = MLFLOW_ARN
 
@@ -252,7 +262,7 @@ class TestCustomScorerEvaluatorWithMTRLTrainer:
         assert evaluator._base_model_arn == BASE_MODEL_ARN
         assert evaluator._source_model_package_arn == MODEL_PACKAGE_ARN
 
-    @patch('sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn')
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_custom_scorer_evaluator_rejects_mtrl_trainer_without_job(self, mock_mlflow):
         """CustomScorerEvaluator should reject a MultiTurnRLTrainer without completed job or _model_arn."""
         from sagemaker.train.evaluate import CustomScorerEvaluator
@@ -278,15 +288,24 @@ class TestCustomScorerEvaluatorWithMTRLTrainer:
 # Tests: Evaluate submission (mock pipeline start)
 # ============================================================
 
+
 class TestEvaluateSubmissionWithMTRLTrainer:
     """Test that evaluate() can be called successfully when model is an MTRLTrainer."""
 
-    @patch('sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role', side_effect=lambda provided_role, **kwargs: provided_role)
-    @patch('sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn')
-    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn')
-    @patch('sagemaker.train.evaluate.base_evaluator.BaseEvaluator._get_or_create_artifact_arn')
-    @patch('sagemaker.train.evaluate.execution.EvaluationPipelineExecution.start')
-    @patch('sagemaker.train.evaluate.benchmark_evaluator.BenchMarkEvaluator.hyperparameters', new_callable=PropertyMock)
+    @patch(
+        "sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role",
+        side_effect=lambda provided_role, **kwargs: provided_role,
+    )
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
+    @patch(
+        "sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn"
+    )
+    @patch("sagemaker.train.evaluate.base_evaluator.BaseEvaluator._get_or_create_artifact_arn")
+    @patch("sagemaker.train.evaluate.execution.EvaluationPipelineExecution.start")
+    @patch(
+        "sagemaker.train.evaluate.benchmark_evaluator.BenchMarkEvaluator.hyperparameters",
+        new_callable=PropertyMock,
+    )
     def test_benchmark_evaluate_submission_with_mtrl_trainer(
         self, mock_hyperparams, mock_start, mock_artifact, mock_resolve_mp, mock_mlflow, mock_role
     ):
@@ -301,11 +320,15 @@ class TestEvaluateSubmissionWithMTRLTrainer:
         mock_hyperparams.return_value = hp_mock
 
         # Mock artifact creation
-        mock_artifact.return_value = "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
+        mock_artifact.return_value = (
+            "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
+        )
 
         # Mock pipeline execution start
         mock_execution = MagicMock()
-        mock_execution.arn = "arn:aws:sagemaker:us-west-2:123456789012:pipeline/eval/execution/abc123"
+        mock_execution.arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:pipeline/eval/execution/abc123"
+        )
         mock_start.return_value = mock_execution
 
         Benchmark = get_benchmarks()
@@ -326,15 +349,30 @@ class TestEvaluateSubmissionWithMTRLTrainer:
         assert execution.arn is not None
         mock_start.assert_called_once()
 
-    @patch('sagemaker.train.evaluate.custom_scorer_evaluator.validate_data_path_exists')
-    @patch('sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role', side_effect=lambda provided_role, **kwargs: provided_role)
-    @patch('sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn')
-    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn')
-    @patch('sagemaker.train.evaluate.base_evaluator.BaseEvaluator._get_or_create_artifact_arn')
-    @patch('sagemaker.train.evaluate.execution.EvaluationPipelineExecution.start')
-    @patch('sagemaker.train.evaluate.custom_scorer_evaluator.CustomScorerEvaluator.hyperparameters', new_callable=PropertyMock)
+    @patch("sagemaker.train.evaluate.custom_scorer_evaluator.validate_data_path_exists")
+    @patch(
+        "sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role",
+        side_effect=lambda provided_role, **kwargs: provided_role,
+    )
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
+    @patch(
+        "sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn"
+    )
+    @patch("sagemaker.train.evaluate.base_evaluator.BaseEvaluator._get_or_create_artifact_arn")
+    @patch("sagemaker.train.evaluate.execution.EvaluationPipelineExecution.start")
+    @patch(
+        "sagemaker.train.evaluate.custom_scorer_evaluator.CustomScorerEvaluator.hyperparameters",
+        new_callable=PropertyMock,
+    )
     def test_custom_scorer_evaluate_submission_with_mtrl_trainer(
-        self, mock_hyperparams, mock_start, mock_artifact, mock_resolve_mp, mock_mlflow, mock_role, mock_validate_data
+        self,
+        mock_hyperparams,
+        mock_start,
+        mock_artifact,
+        mock_resolve_mp,
+        mock_mlflow,
+        mock_role,
+        mock_validate_data,
     ):
         """CustomScorerEvaluator.evaluate() should successfully submit when model is MTRLTrainer."""
         from sagemaker.train.evaluate import CustomScorerEvaluator
@@ -347,11 +385,15 @@ class TestEvaluateSubmissionWithMTRLTrainer:
         mock_hyperparams.return_value = hp_mock
 
         # Mock artifact creation
-        mock_artifact.return_value = "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
+        mock_artifact.return_value = (
+            "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
+        )
 
         # Mock pipeline execution start
         mock_execution = MagicMock()
-        mock_execution.arn = "arn:aws:sagemaker:us-west-2:123456789012:pipeline/eval/execution/def456"
+        mock_execution.arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:pipeline/eval/execution/def456"
+        )
         mock_start.return_value = mock_execution
 
         trainer = _make_mock_mtrl_trainer(with_job=True)

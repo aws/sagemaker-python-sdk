@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Telemetry module for SageMaker Python SDK to collect usage data and metrics."""
+
 from __future__ import absolute_import
 import logging
 import os
@@ -32,7 +33,6 @@ from botocore.exceptions import (
     ReadTimeoutError,
     EndpointConnectionError,
     ConnectionClosedError,
-    ClientError,
     NoRegionError,
 )
 from sagemaker.core.apiutils._boto_functions import to_lower_camel_case
@@ -343,9 +343,7 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                                     FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_OSS)]
                                 )
                     except Exception:  # pylint: disable=W0703
-                        logger.debug(
-                            "Unable to determine NOVA/OSS model type for telemetry."
-                        )
+                        logger.debug("Unable to determine NOVA/OSS model type for telemetry.")
 
                 if (
                     hasattr(sagemaker_session, "sagemaker_config")

@@ -1,3 +1,5 @@
+"""Data utility functions for inspecting and processing datasets."""
+
 # Data utility functions for inspecting and processing datasets
 import re
 import json
@@ -30,8 +32,7 @@ def _parse_s3_uri(uri: str) -> Optional[Tuple[str, str]]:
 
 
 def _validate_extension(path: str, extension: str) -> None:
-    """
-    Validate that the given path has the required file extension.
+    """Validate that the given path has the required file extension.
 
     Args:
         path: File path or S3 URI
@@ -50,8 +51,8 @@ def load_file_content(
     encoding: Optional[str] = "utf-8",
     region: Optional[str] = None,
 ):
-    """
-    Stream file content line by line from S3 or local filesystem.
+    """Stream file content line by line from S3 or local filesystem.
+
     This is a generator that yields lines lazily without loading the entire file into memory.
 
     Args:
@@ -134,9 +135,7 @@ def validate_data_path_exists(
     try:
         resp = s3.list_objects_v2(Bucket=bucket, Prefix=key, MaxKeys=1)
         if resp.get("KeyCount", 0) == 0:
-            raise ValueError(
-                f"S3 {label} path does not exist: {data_path}"
-            )
+            raise ValueError(f"S3 {label} path does not exist: {data_path}")
     except ClientError as e:
         code = e.response["Error"]["Code"]
         if code == "403" or "AccessDenied" in str(e):
@@ -171,9 +170,7 @@ def _validate_dataset_arn_exists(
     )
     match = re.match(pattern, dataset_arn)
     if not match:
-        raise ValueError(
-            f"Invalid {label} DataSet ARN format: {dataset_arn}"
-        )
+        raise ValueError(f"Invalid {label} DataSet ARN format: {dataset_arn}")
 
     region, _, hub_name, content_name, content_version = match.groups()
     sm_client = sagemaker_session.sagemaker_client
@@ -188,19 +185,16 @@ def _validate_dataset_arn_exists(
     except ClientError as e:
         code = e.response["Error"]["Code"]
         if code == "ResourceNotFound" or "does not exist" in str(e).lower():
-            raise ValueError(
-                f"{label.capitalize()} DataSet does not exist: {dataset_arn}"
-            )
+            raise ValueError(f"{label.capitalize()} DataSet does not exist: {dataset_arn}")
         elif code == "AccessDeniedException" or "AccessDenied" in str(e):
             logger.warning(
                 "Cannot verify %s DataSet %s from caller identity "
                 "(AccessDenied). The execution role may still have access.",
-                label, dataset_arn,
+                label,
+                dataset_arn,
             )
         else:
-            raise ValueError(
-                f"Error validating {label} DataSet {dataset_arn}: {e}"
-            )
+            raise ValueError(f"Error validating {label} DataSet {dataset_arn}: {e}")
 
 
 def _has_multimodal_content(record: dict) -> bool:
@@ -229,8 +223,7 @@ def _check_records(records) -> bool:
 
 
 def is_multimodal_data(dataset: Union[str, "DataSet"]) -> bool:
-    """
-    Check if dataset contains multimodal data by scanning records.
+    """Check if dataset contains multimodal data by scanning records.
 
     Supports .jsonl (line-delimited JSON, streamed) and .json (full JSON array/object,
     loaded into memory). Returns True as soon as a multimodal record is found.

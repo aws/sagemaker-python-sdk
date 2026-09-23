@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests for evaluator stream_logs()"""
+
 from __future__ import annotations
 
 import logging
@@ -21,7 +22,10 @@ import pytest
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator, get_benchmarks
-from sagemaker.train.evaluate.custom_scorer_evaluator import CustomScorerEvaluator, get_builtin_metrics
+from sagemaker.train.evaluate.custom_scorer_evaluator import (
+    CustomScorerEvaluator,
+    get_builtin_metrics,
+)
 from sagemaker.train.evaluate.llm_as_judge_evaluator import LLMAsJudgeEvaluator
 from sagemaker.train.evaluate.execution import (
     EvaluationPipelineExecution,
@@ -34,18 +38,37 @@ logger = logging.getLogger(__name__)
 REGION = "us-west-2"
 
 S3_OUTPUT = "s3://sagemaker-us-west-2-729646638167/model-customization/eval/"
-MODEL_PACKAGE_ARN = "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1"
+MODEL_PACKAGE_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1"
+)
 DATASET_S3 = "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl"
 
-BENCHMARK_EXECUTION_ARN = "arn:aws:sagemaker:us-west-2:729646638167:pipeline/SagemakerEvaluation-BenchmarkEvaluation-499b3c7e-e456-4297-9dc0-cc5737137c9c/execution/p1gtwhjm9dzt"
-BENCHMARK_STEP_ARN = "arn:aws:sagemaker:us-west-2:729646638167:training-job/pipelines-p1gtwhjm9dzt-EvaluateCustomModel-XEdt5h2gQC"
+BENCHMARK_EXECUTION_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
+    "SagemakerEvaluation-BenchmarkEvaluation-499b3c7e-e456-4297-9dc0-cc5737137c9c/execution/p1gtwhjm9dzt"
+)
+BENCHMARK_STEP_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
+    "pipelines-p1gtwhjm9dzt-EvaluateCustomModel-XEdt5h2gQC"
+)
 
-CUSTOM_SCORER_EXECUTION_ARN = "arn:aws:sagemaker:us-west-2:729646638167:pipeline/SagemakerEvaluation-CustomScorerEvaluation-2d0fde36-af0f-49d7-8b8e-a5e11352dc1f/execution/yca2ij65mlhr"
-CUSTOM_SCORER_STEP_ARN = "arn:aws:sagemaker:us-west-2:729646638167:training-job/pipelines-yca2ij65mlhr-EvaluateCustomModel-MlMUskwbNB"
+CUSTOM_SCORER_EXECUTION_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
+    "SagemakerEvaluation-CustomScorerEvaluation-2d0fde36-af0f-49d7-8b8e-a5e11352dc1f/execution/yca2ij65mlhr"
+)
+CUSTOM_SCORER_STEP_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
+    "pipelines-yca2ij65mlhr-EvaluateCustomModel-MlMUskwbNB"
+)
 
-LLMAJ_EXECUTION_ARN = "arn:aws:sagemaker:us-west-2:729646638167:pipeline/SagemakerEvaluation-LLMAJEvaluation-ac7a1fe7-fe8a-445c-8aa5-702b3d6b7771/execution/hmk0lcu6ufzc"
-LLMAJ_STEP_ARN = "arn:aws:sagemaker:us-west-2:729646638167:training-job/pipelines-hmk0lcu6ufzc-EvaluateCustomModelM-6UaY2bgNL5"
-
+LLMAJ_EXECUTION_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
+    "SagemakerEvaluation-LLMAJEvaluation-ac7a1fe7-fe8a-445c-8aa5-702b3d6b7771/execution/hmk0lcu6ufzc"
+)
+LLMAJ_STEP_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
+    "pipelines-hmk0lcu6ufzc-EvaluateCustomModelM-6UaY2bgNL5"
+)
 
 
 @pytest.fixture(scope="module")
@@ -97,9 +120,9 @@ class TestEvaluatorStreamLogsFromCompletedJobs:
         evaluator.stream_logs(poll=2)
         elapsed = time.time() - start
 
-        assert elapsed < 30, (
-            f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
-        )
+        assert (
+            elapsed < 30
+        ), f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
         print(f"✓ BenchMarkEvaluator.stream_logs() completed in {elapsed:.1f}s")
 
     def test_custom_scorer_evaluator_stream_logs(self, sagemaker_session):
@@ -120,9 +143,9 @@ class TestEvaluatorStreamLogsFromCompletedJobs:
         evaluator.stream_logs(poll=2)
         elapsed = time.time() - start
 
-        assert elapsed < 30, (
-            f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
-        )
+        assert (
+            elapsed < 30
+        ), f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
         print(f"✓ CustomScorerEvaluator.stream_logs() completed in {elapsed:.1f}s")
 
     def test_llm_as_judge_evaluator_stream_logs(self, sagemaker_session):
@@ -144,7 +167,7 @@ class TestEvaluatorStreamLogsFromCompletedJobs:
         evaluator.stream_logs(poll=2)
         elapsed = time.time() - start
 
-        assert elapsed < 30, (
-            f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
-        )
+        assert (
+            elapsed < 30
+        ), f"stream_logs() took {elapsed:.1f}s — should exit quickly for completed job"
         print(f"✓ LLMAsJudgeEvaluator.stream_logs() completed in {elapsed:.1f}s")

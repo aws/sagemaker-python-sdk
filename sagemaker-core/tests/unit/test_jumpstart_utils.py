@@ -12,22 +12,17 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List, Optional
-from packaging.version import Version
+from unittest.mock import Mock, patch
 
 import sagemaker
 from sagemaker.core.jumpstart import utils, enums, constants
 from sagemaker.core.jumpstart.types import (
     JumpStartVersionedModelId,
-    JumpStartModelHeader,
     JumpStartModelSpecs,
-    JumpStartBenchmarkStat,
     DeploymentConfigMetadata,
 )
 from sagemaker.core.jumpstart.exceptions import VulnerableJumpStartModelError
 from sagemaker.core.jumpstart.models import HubContentDocument
-from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
 
 class TestIsPipelineVariable:
@@ -391,7 +386,7 @@ class TestHasInstanceRateStat:
         assert utils.has_instance_rate_stat([]) is False
 
 
-class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
+class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresentPart1:
     """Test cases for remove_env_var_from_estimator_kwargs_if_accept_eula_present function"""
 
     def test_remove_env_var_accept_eula_none(self):
@@ -672,7 +667,7 @@ class TestAddJumpstartUriTags:
         """Test warning when URI is pipeline variable"""
         mock_is_pipeline.return_value = True
         with patch("logging.warning") as mock_warning:
-            result = utils.add_jumpstart_uri_tags(tags=None, inference_model_uri="pipeline_var")
+            utils.add_jumpstart_uri_tags(tags=None, inference_model_uri="pipeline_var")
             mock_warning.assert_called()
 
     @patch("sagemaker.core.jumpstart.utils.is_pipeline_variable")
@@ -1572,7 +1567,9 @@ class TestAddInstanceRateStatsToBenchmarkMetrics:
         result = utils.add_instance_rate_stats_to_benchmark_metrics("us-west-2", None)
         assert result is None
 
-    @pytest.mark.skip(reason="Requires AWS Pricing API permissions which are not available in CI environment")
+    @pytest.mark.skip(
+        reason="Requires AWS Pricing API permissions which are not available in CI environment"
+    )
     @patch("sagemaker.core.common_utils.get_instance_rate_per_hour")
     def test_add_instance_rate_stats_success(self, mock_get_rate):
         """Test successfully adding instance rate stats"""
@@ -1893,7 +1890,7 @@ class TestGetDraftModelContentBucket:
         assert result == "neo-bucket"
 
 
-class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
+class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresentPart2:
     """Test cases for remove_env_var_from_estimator_kwargs_if_accept_eula_present function"""
 
     def test_remove_env_var_accept_eula_true(self):

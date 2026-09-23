@@ -11,16 +11,16 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow function_step."""
+
 from __future__ import absolute_import
 
-import pytest
 from unittest.mock import Mock
 
 
 def test_delayed_return_to_json_get():
     """Test DelayedReturn _to_json_get method"""
     from sagemaker.mlops.workflow.function_step import DelayedReturn
-    
+
     delayed = DelayedReturn(function_step=Mock())
     json_get = delayed._to_json_get()
     assert json_get is not None

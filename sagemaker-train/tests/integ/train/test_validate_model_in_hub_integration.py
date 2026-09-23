@@ -24,6 +24,7 @@ fail-closes with a clear ``ValueError`` rather than fail-opening (silently
 skipping) on an unexpected error code. A mocked unit test cannot confirm the
 real service's error shape; this test can.
 """
+
 from __future__ import annotations
 
 import os

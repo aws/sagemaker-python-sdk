@@ -11,22 +11,20 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.jumpstart.cache module."""
+
 from __future__ import absolute_import
 
 import json
 import os
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from packaging.version import Version
+from unittest.mock import Mock, patch
 
 from sagemaker.core.jumpstart.cache import JumpStartModelsCache
 from sagemaker.core.jumpstart.types import (
-    JumpStartCachedContentKey,
     JumpStartVersionedModelId,
     JumpStartS3FileType,
     JumpStartModelHeader,
     JumpStartModelSpecs,
-    HubContentType,
 )
 from sagemaker.core.jumpstart.enums import JumpStartModelType
 

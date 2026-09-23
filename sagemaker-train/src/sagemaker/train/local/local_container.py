@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """LocalContainer class module."""
+
 from __future__ import absolute_import
 
 import base64
@@ -22,11 +23,6 @@ import subprocess
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
-
-# Constant defined here to avoid importing from sagemaker.serve.model
-# which would unnecessarily load deployment-related dependencies
-DIR_PARAM_NAME = "sagemaker_submit_directory"
-logger = logging.getLogger(__name__)
 
 from sagemaker.core.local.image import (
     _stream_output,
@@ -53,6 +49,11 @@ from sagemaker.core.shapes import DataSource
 
 from six.moves.urllib.parse import urlparse
 
+# Constant defined here to avoid importing from sagemaker.serve.model
+# which would unnecessarily load deployment-related dependencies
+DIR_PARAM_NAME = "sagemaker_submit_directory"
+logger = logging.getLogger(__name__)
+
 STUDIO_HOST_NAME = "sagemaker-local"
 DOCKER_COMPOSE_FILENAME = "docker-compose.yaml"
 DOCKER_COMPOSE_HTTP_TIMEOUT_ENV = "COMPOSE_HTTP_TIMEOUT"
@@ -76,7 +77,8 @@ def _rmtree(path, image=None, is_studio=False):
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
                 "You may need to remove them manually with: sudo rm -rf %s",
-                path, path,
+                path,
+                path,
             )
             raise
         try:
@@ -90,7 +92,8 @@ def _rmtree(path, image=None, is_studio=False):
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
                 "You may need to remove them manually with: sudo rm -rf %s",
-                path, path,
+                path,
+                path,
             )
             raise
 

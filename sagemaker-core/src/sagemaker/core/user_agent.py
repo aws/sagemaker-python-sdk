@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import json
@@ -23,7 +24,7 @@ NOTEBOOK_PREFIX = "AWS-SageMaker-Notebook-Instance"
 NOTEBOOK_METADATA_FILE = "/etc/opt/ml/sagemaker-notebook-instance-version.txt"
 STUDIO_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
 
-SDK_VERSION ="3.0"
+SDK_VERSION = "3.0"
 
 
 def process_notebook_metadata_file():
@@ -74,5 +75,6 @@ def get_user_agent_extra_suffix():
         suffix = "{} md/{}#{}".format(suffix, STUDIO_PREFIX, studio_app_type)
 
     return suffix
+
 
 # Trigger PR check: run full integ test suite.

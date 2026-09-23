@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Helpers for building the SageMaker SDK user agent string."""
+
 from __future__ import absolute_import
 
 import json
@@ -101,6 +103,8 @@ def get_user_agent_extra_suffix() -> str:
     # Add created_by metadata if attribution has been set
     created_by = os.environ.get(_CREATED_BY_ENV_VAR)
     if created_by:
-        suffix = "{} md/{}#{}".format(suffix, "createdBy", sanitize_user_agent_string_component(created_by))
+        suffix = "{} md/{}#{}".format(
+            suffix, "createdBy", sanitize_user_agent_string_component(created_by)
+        )
 
     return suffix

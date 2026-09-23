@@ -14,6 +14,7 @@
 
 DEPRECATED: Use `sagemaker.core.lineage.context` instead.
 """
+
 from __future__ import absolute_import
 
 import warnings
@@ -25,4 +26,4 @@ warnings.warn(
     stacklevel=2,
 )
 
-from sagemaker.core.lineage.context import *  # noqa: F401, F403
+from sagemaker.core.lineage.context import *  # noqa: F401, F403, E402

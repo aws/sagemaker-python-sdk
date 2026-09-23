@@ -27,6 +27,7 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_sft_trainer_serverful_smtj.py -v -s
 """
+
 from __future__ import absolute_import
 
 import logging
@@ -129,9 +130,9 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
     logger.info(f"Resolved training_config: {training_config}")
 
     # Nova Micro uses trainer.max_epochs for step control
-    assert training_config["trainer"]["max_epochs"] == 1, (
-        f"Expected max_epochs=1, got: {training_config.get('trainer')}"
-    )
+    assert (
+        training_config["trainer"]["max_epochs"] == 1
+    ), f"Expected max_epochs=1, got: {training_config.get('trainer')}"
 
     # Submit (non-blocking)
     training_job = sft_trainer.train(wait=False)
@@ -166,18 +167,15 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
     # Verify show_metrics() returns valid training metrics after completion
     # Use non-interactive backend so plt.show() doesn't require a display in CI
     import matplotlib
+
     matplotlib.use("Agg")
 
     df = sft_trainer.show_metrics()
     assert df is not None, "show_metrics() returned None"
     assert not df.empty, "show_metrics() returned empty DataFrame"
-    assert "global_step" in df.columns, (
-        f"Expected 'global_step' column, got: {list(df.columns)}"
-    )
+    assert "global_step" in df.columns, f"Expected 'global_step' column, got: {list(df.columns)}"
     assert len(df) > 0
-    logger.info(
-        f"show_metrics() returned {len(df)} rows, columns: {list(df.columns)}"
-    )
+    logger.info(f"show_metrics() returned {len(df)} rows, columns: {list(df.columns)}")
 
     # Verify metric filter
     df_filtered = sft_trainer.show_metrics(metrics=["training_loss"])
@@ -193,13 +191,8 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
         assert not df_range.empty
         assert df_range["global_step"].min() >= mid
         assert df_range["global_step"].max() <= max_step
-        logger.info(
-            f"Step range [{mid}, {max_step}] returned {len(df_range)}/{len(df)} rows"
-        )
+        logger.info(f"Step range [{mid}, {max_step}] returned {len(df_range)}/{len(df)} rows")
 
     # Verify stream_logs() exits without error on a completed job
     sft_trainer.stream_logs(poll=2)
     logger.info("stream_logs() completed without error")
-
-
-

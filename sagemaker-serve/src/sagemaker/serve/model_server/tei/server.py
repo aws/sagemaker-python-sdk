@@ -2,10 +2,12 @@
 
 from __future__ import absolute_import
 
-import requests
 import logging
 from pathlib import Path
+
+import requests
 from docker.types import DeviceRequest
+
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core import fw_utils
 from sagemaker.core.s3.utils import determine_bucket_and_prefix, parse_s3_url, s3_path_join
@@ -25,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 class LocalTeiServing:
     """LocalTeiServing class"""
+
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets self.container during _start_*, not in __init__, by design.
 
     def _start_tei_serving(
         self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict

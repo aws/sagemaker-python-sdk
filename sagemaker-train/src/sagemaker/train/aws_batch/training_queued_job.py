@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Define QueuedJob class for AWS Batch service"""
+
 from __future__ import absolute_import
 
 import logging
@@ -26,8 +27,6 @@ from sagemaker.train.configs import (
     Compute,
     Networking,
     StoppingCondition,
-    SourceCode,
-    TrainingImageConfig,
 )
 from .batch_api_helper import _terminate_service_job, _describe_service_job, _update_service_job
 from .exception import NoTrainingJob, MissingRequiredArgument
@@ -45,7 +44,13 @@ class TrainingQueuedJob:
     With this class, customers are able to attach the latest training job to a ModelTrainer.
     """
 
-    def __init__(self, job_arn: str, job_name: str, share_identifier: Optional[str] = None, quota_share_name: Optional[str] = None):
+    def __init__(
+        self,
+        job_arn: str,
+        job_name: str,
+        share_identifier: Optional[str] = None,
+        quota_share_name: Optional[str] = None,
+    ):
         self.job_arn = job_arn
         self.job_name = job_name
         self.share_identifier = share_identifier
@@ -203,46 +208,65 @@ def _construct_model_trainer_from_training_job_name(training_job_name: str) -> M
     init_params["base_job_name"] = _extract_base_job_name(training_job_name)
 
     # Training image or algorithm
-    if training_job.algorithm_specification and not isinstance(training_job.algorithm_specification, Unassigned):
-        if (training_job.algorithm_specification.training_image and 
-            not isinstance(training_job.algorithm_specification.training_image, Unassigned)):
+    if training_job.algorithm_specification and not isinstance(
+        training_job.algorithm_specification, Unassigned
+    ):
+        if training_job.algorithm_specification.training_image and not isinstance(
+            training_job.algorithm_specification.training_image, Unassigned
+        ):
             init_params["training_image"] = training_job.algorithm_specification.training_image
-        if (training_job.algorithm_specification.algorithm_name and 
-            not isinstance(training_job.algorithm_specification.algorithm_name, Unassigned)):
+        if training_job.algorithm_specification.algorithm_name and not isinstance(
+            training_job.algorithm_specification.algorithm_name, Unassigned
+        ):
             init_params["algorithm_name"] = training_job.algorithm_specification.algorithm_name
-        if (training_job.algorithm_specification.training_input_mode and 
-            not isinstance(training_job.algorithm_specification.training_input_mode, Unassigned)):
-            init_params["training_input_mode"] = training_job.algorithm_specification.training_input_mode
+        if training_job.algorithm_specification.training_input_mode and not isinstance(
+            training_job.algorithm_specification.training_input_mode, Unassigned
+        ):
+            init_params["training_input_mode"] = (
+                training_job.algorithm_specification.training_input_mode
+            )
 
     # Compute config
     if training_job.resource_config and not isinstance(training_job.resource_config, Unassigned):
         compute_params = {}
-        
-        if (training_job.resource_config.instance_type and 
-            not isinstance(training_job.resource_config.instance_type, Unassigned)):
+
+        if training_job.resource_config.instance_type and not isinstance(
+            training_job.resource_config.instance_type, Unassigned
+        ):
             compute_params["instance_type"] = training_job.resource_config.instance_type
-        if (training_job.resource_config.instance_count and 
-            not isinstance(training_job.resource_config.instance_count, Unassigned)):
+        if training_job.resource_config.instance_count and not isinstance(
+            training_job.resource_config.instance_count, Unassigned
+        ):
             compute_params["instance_count"] = training_job.resource_config.instance_count
-        if (training_job.resource_config.volume_size_in_gb and 
-            not isinstance(training_job.resource_config.volume_size_in_gb, Unassigned)):
+        if training_job.resource_config.volume_size_in_gb and not isinstance(
+            training_job.resource_config.volume_size_in_gb, Unassigned
+        ):
             compute_params["volume_size_in_gb"] = training_job.resource_config.volume_size_in_gb
-        
+
         # Add managed spot training if enabled (available directly on TrainingJob)
-        if training_job.enable_managed_spot_training and not isinstance(training_job.enable_managed_spot_training, Unassigned):
-            compute_params["enable_managed_spot_training"] = training_job.enable_managed_spot_training
-            
+        if training_job.enable_managed_spot_training and not isinstance(
+            training_job.enable_managed_spot_training, Unassigned
+        ):
+            compute_params["enable_managed_spot_training"] = (
+                training_job.enable_managed_spot_training
+            )
+
         if compute_params:  # Only create Compute if we have valid params
             init_params["compute"] = Compute(**compute_params)
 
     # Output config - pass the raw training job output config directly
-    if training_job.output_data_config and not isinstance(training_job.output_data_config, Unassigned):
+    if training_job.output_data_config and not isinstance(
+        training_job.output_data_config, Unassigned
+    ):
         init_params["output_data_config"] = training_job.output_data_config
 
     # Stopping condition
-    if training_job.stopping_condition and not isinstance(training_job.stopping_condition, Unassigned):
-        if (training_job.stopping_condition.max_runtime_in_seconds and 
-            not isinstance(training_job.stopping_condition.max_runtime_in_seconds, Unassigned)):
+    if training_job.stopping_condition and not isinstance(
+        training_job.stopping_condition, Unassigned
+    ):
+        if training_job.stopping_condition.max_runtime_in_seconds and not isinstance(
+            training_job.stopping_condition.max_runtime_in_seconds, Unassigned
+        ):
             init_params["stopping_condition"] = StoppingCondition(
                 max_runtime_in_seconds=training_job.stopping_condition.max_runtime_in_seconds,
             )
@@ -250,22 +274,30 @@ def _construct_model_trainer_from_training_job_name(training_job_name: str) -> M
     # Networking
     if training_job.vpc_config and not isinstance(training_job.vpc_config, Unassigned):
         networking_params = {}
-        
-        if (training_job.vpc_config.subnets and 
-            not isinstance(training_job.vpc_config.subnets, Unassigned)):
+
+        if training_job.vpc_config.subnets and not isinstance(
+            training_job.vpc_config.subnets, Unassigned
+        ):
             networking_params["subnets"] = training_job.vpc_config.subnets
-        if (training_job.vpc_config.security_group_ids and 
-            not isinstance(training_job.vpc_config.security_group_ids, Unassigned)):
+        if training_job.vpc_config.security_group_ids and not isinstance(
+            training_job.vpc_config.security_group_ids, Unassigned
+        ):
             networking_params["security_group_ids"] = training_job.vpc_config.security_group_ids
-        
+
         # Add network isolation if present (available directly on TrainingJob)
-        if training_job.enable_network_isolation and not isinstance(training_job.enable_network_isolation, Unassigned):
+        if training_job.enable_network_isolation and not isinstance(
+            training_job.enable_network_isolation, Unassigned
+        ):
             networking_params["enable_network_isolation"] = training_job.enable_network_isolation
-            
+
         # Add inter-container traffic encryption if present (available directly on TrainingJob)
-        if training_job.enable_inter_container_traffic_encryption and not isinstance(training_job.enable_inter_container_traffic_encryption, Unassigned):
-            networking_params["enable_inter_container_traffic_encryption"] = training_job.enable_inter_container_traffic_encryption
-            
+        if training_job.enable_inter_container_traffic_encryption and not isinstance(
+            training_job.enable_inter_container_traffic_encryption, Unassigned
+        ):
+            networking_params["enable_inter_container_traffic_encryption"] = (
+                training_job.enable_inter_container_traffic_encryption
+            )
+
         if networking_params:  # Only create Networking if we have valid params
             init_params["networking"] = Networking(**networking_params)
 
@@ -278,7 +310,9 @@ def _construct_model_trainer_from_training_job_name(training_job_name: str) -> M
         init_params["environment"] = training_job.environment
 
     # Checkpoint config
-    if training_job.checkpoint_config and not isinstance(training_job.checkpoint_config, Unassigned):
+    if training_job.checkpoint_config and not isinstance(
+        training_job.checkpoint_config, Unassigned
+    ):
         init_params["checkpoint_config"] = training_job.checkpoint_config
 
     # Step 3: Create ModelTrainer
@@ -301,7 +335,9 @@ def _extract_base_job_name(training_job_name: str) -> str:
     """
     # Use the same regex pattern as PySDK V2's base_from_name() function
     # Matches timestamps like: YYYY-MM-DD-HH-MM-SS-SSS or YYMMDD-HHMM
-    match = re.match(r"^(.+)-(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{3}|\d{6}-\d{4})", training_job_name)
+    match = re.match(
+        r"^(.+)-(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{3}|\d{6}-\d{4})", training_job_name
+    )
     return match.group(1) if match else training_job_name
 
 
@@ -355,13 +391,13 @@ def _remove_system_tags_in_place_in_model_trainer_object(model_trainer: ModelTra
                     filtered_tags.append(tag)
             else:
                 # V3 format - assume it has .key attribute
-                if hasattr(tag, 'key') and not tag.key.startswith("aws:"):
+                if hasattr(tag, "key") and not tag.key.startswith("aws:"):
                     filtered_tags.append(tag)
-                elif hasattr(tag, 'Key') and not tag.Key.startswith("aws:"):
+                elif hasattr(tag, "Key") and not tag.Key.startswith("aws:"):
                     # Fallback for other formats
                     filtered_tags.append(tag)
                 else:
                     # If we can't determine the key, keep the tag to be safe
                     filtered_tags.append(tag)
-        
+
         model_trainer.tags = filtered_tags

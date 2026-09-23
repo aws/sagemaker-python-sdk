@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from sagemaker.core import hyperparameters
 from sagemaker.core.jumpstart.enums import HyperparameterValidationMode, JumpStartModelType

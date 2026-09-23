@@ -1,4 +1,5 @@
 """Unit tests for LogStreamer utility."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -114,9 +115,7 @@ class TestLogStreamerStreamMode:
         session = _make_mock_session()
         logs_client = session.boto_session.client.return_value
 
-        logs_client.get_paginator.return_value.paginate.return_value = [
-            {"logStreams": []}
-        ]
+        logs_client.get_paginator.return_value.paginate.return_value = [{"logStreams": []}]
 
         streamer = LogStreamer(
             log_group="/aws/sagemaker/Job/AgentRFT",
@@ -309,7 +308,8 @@ class TestStreamLogLoop:
             {"logStreams": [{"logStreamName": "job/algo-1"}]}
         ]
         logs_client.get_log_events.return_value = {
-            "events": [], "nextForwardToken": "t1",
+            "events": [],
+            "nextForwardToken": "t1",
         }
 
         streamer = LogStreamer(
@@ -431,9 +431,7 @@ class TestLogStreamerErrorHandling:
         session = _make_mock_session()
         logs_client = session.boto_session.client.return_value
 
-        logs_client.filter_log_events.side_effect = _make_client_error(
-            "AccessDeniedException"
-        )
+        logs_client.filter_log_events.side_effect = _make_client_error("AccessDeniedException")
 
         streamer = LogStreamer(
             log_group="/aws/sagemaker/Clusters/c/id",
@@ -493,10 +491,12 @@ class TestPollTailStreamMode:
         mock_logs = session.boto_session.client.return_value
 
         mock_logs.get_paginator.return_value.paginate.return_value = [
-            {"logStreams": [
-                {"logStreamName": "job/algo-1-123"},
-                {"logStreamName": "job/algo-2-456"},
-            ]}
+            {
+                "logStreams": [
+                    {"logStreamName": "job/algo-1-123"},
+                    {"logStreamName": "job/algo-2-456"},
+                ]
+            }
         ]
 
         # Stream 1: events at ts 100, 300
@@ -636,7 +636,6 @@ class TestStreamLogLoopTailLines:
 
         streamer.poll_tail.assert_not_called()
         status_fn.assert_called()
-
 
     def test_poll_tail_filter_mode_raises_for_pre_2024_start_time(self):
         """poll_tail raises ValueError when start_time is before 2024-01-01."""

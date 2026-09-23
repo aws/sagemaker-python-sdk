@@ -19,7 +19,6 @@ import pytest
 import requests
 from unittest.mock import Mock, patch, MagicMock
 import boto3
-import sagemaker
 from sagemaker.core.telemetry.constants import Feature, DEFAULT_AWS_REGION
 from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.telemetry_logging import (
@@ -505,7 +504,6 @@ class TestTelemetryLogging(unittest.TestCase):
         self.assertEqual(url, expected_url)
         self.assertIn("x-createdBy=awslabs%2Fagent-plugins%2Fsagemaker-ai", url)
 
-
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
     def test_telemetry_emitter_with_resource_arn(
@@ -677,10 +675,13 @@ class TestTelemetryLogging(unittest.TestCase):
             mock_local_client.mock_create_model()
 
             info_calls = [
-                call for call in mock_logger_info.call_args_list
+                call
+                for call in mock_logger_info.call_args_list
                 if "telemetry" in str(call).lower() and "opt out" in str(call).lower()
             ]
-            self.assertEqual(len(info_calls), 1, "Telemetry opt-out message should be logged exactly once")
+            self.assertEqual(
+                len(info_calls), 1, "Telemetry opt-out message should be logged exactly once"
+            )
 
         # Reset the flag for other tests
         telemetry_module._telemetry_msg_shown = False
@@ -703,10 +704,13 @@ class TestTelemetryLogging(unittest.TestCase):
             mock_local_client.mock_create_model()
 
             info_calls = [
-                call for call in mock_logger_info.call_args_list
+                call
+                for call in mock_logger_info.call_args_list
                 if "telemetry" in str(call).lower() and "opt out" in str(call).lower()
             ]
-            self.assertEqual(len(info_calls), 0, "Telemetry opt-out message should not appear when opted out")
+            self.assertEqual(
+                len(info_calls), 0, "Telemetry opt-out message should not appear when opted out"
+            )
 
         # Reset the flag for other tests
         telemetry_module._telemetry_msg_shown = False
@@ -893,7 +897,9 @@ class TestDefaultSessionRegion(unittest.TestCase):
 class TestEmitFailureTelemetry(unittest.TestCase):
     """Tests for the failure-only _emit_failure_telemetry helper."""
 
-    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False)
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     def test_emits_failure_event(self, mock_send, mock_default_session, mock_optout):
@@ -909,7 +915,9 @@ class TestEmitFailureTelemetry(unittest.TestCase):
         assert args[4] == "ValueError"  # failure_type
         assert "MyClass.method" in args[5]  # extra_info carries func_name
 
-    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=True)
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=True
+    )
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     def test_opt_out_suppresses_emit(self, mock_send, mock_default_session, mock_optout):
@@ -920,7 +928,9 @@ class TestEmitFailureTelemetry(unittest.TestCase):
 
         mock_send.assert_not_called()
 
-    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False)
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     def test_no_session_does_not_emit(self, mock_send, mock_default_session, mock_optout):
@@ -930,21 +940,27 @@ class TestEmitFailureTelemetry(unittest.TestCase):
 
         mock_send.assert_not_called()
 
-    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False)
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     def test_uses_provided_session_without_default_lookup(
         self, mock_send, mock_default_session, mock_optout
     ):
         _emit_failure_telemetry(
-            Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"),
+            Feature.MODEL_CUSTOMIZATION,
+            "MyClass.method",
+            ValueError("x"),
             sagemaker_session=Mock(),
         )
 
         mock_default_session.assert_not_called()
         mock_send.assert_called_once()
 
-    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False)
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
     @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     def test_backend_error_is_swallowed(self, mock_send, mock_default_session, mock_optout):

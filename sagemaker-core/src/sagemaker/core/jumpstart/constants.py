@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains constants for JumpStart."""
+
 from __future__ import absolute_import
 from __future__ import absolute_import
 import logging
@@ -35,7 +36,6 @@ from sagemaker.core.serializers import (
     JSONSerializer,
 )
 from sagemaker.core.helper.session_helper import Session
-
 
 SAGEMAKER_PUBLIC_HUB = "SageMakerPublicHub"
 DEFAULT_TRAINING_ENTRY_POINT = "transfer_learning.py"

@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Session helpers for interacting with SageMaker and AWS services."""
+
 from __future__ import absolute_import, annotations, print_function
 
 import json
@@ -36,14 +38,9 @@ from sagemaker.core.common_utils import (
 import sagemaker.core.logs
 from sagemaker.core.session_settings import SessionSettings
 from sagemaker.core.common_utils import (
-    secondary_training_status_changed,
-    secondary_training_status_message,
-    sts_regional_endpoint,
     retries,
     resolve_value_from_config,
     get_sagemaker_config_value,
-    resolve_class_attribute_from_config,
-    resolve_nested_dict_value_from_config,
     update_nested_dictionary_with_values_from_config,
     update_list_of_dicts_with_values_from_config,
     format_tags,
@@ -59,12 +56,6 @@ from sagemaker.core._studio import _append_project_tags
 from sagemaker.core.config.config import load_sagemaker_config, validate_sagemaker_config
 from sagemaker.core.config.config_schema import (
     KEY,
-    TRANSFORM_JOB,
-    TRANSFORM_JOB_ENVIRONMENT_PATH,
-    TRANSFORM_JOB_KMS_KEY_ID_PATH,
-    TRANSFORM_OUTPUT_KMS_KEY_ID_PATH,
-    VOLUME_KMS_KEY_ID,
-    TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
     MODEL,
     MODEL_CONTAINERS_PATH,
     MODEL_EXECUTION_ROLE_ARN_PATH,
@@ -72,7 +63,6 @@ from sagemaker.core.config.config_schema import (
     MODEL_PRIMARY_CONTAINER_PATH,
     MODEL_VPC_CONFIG_PATH,
     ENDPOINT_CONFIG_PRODUCTION_VARIANTS_PATH,
-    KMS_KEY_ID,
     ENDPOINT_CONFIG_KMS_KEY_ID_PATH,
     ENDPOINT_CONFIG,
     ENDPOINT_CONFIG_DATA_CAPTURE_PATH,
@@ -241,6 +231,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.sagemaker_client = sagemaker_client
         else:
             from sagemaker.core.user_agent import get_user_agent_extra_suffix
+
             config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
             self.sagemaker_client = self.boto_session.client("sagemaker", config=config)
 
@@ -475,6 +466,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def upload_string_as_file_body(self, body, bucket, key, kms_key=None):
         """Upload a string as a file body.
+
         Args:
             body (str): String representing the body of the file.
             bucket (str): Name of the S3 Bucket to upload to (default: None). If not specified, the
@@ -482,6 +474,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ``Session`` creates it).
             key (str): S3 object key. This is the s3 path to the file.
             kms_key (str): The KMS key to use for encrypting the file.
+
         Returns:
             str: The S3 URI of the uploaded file.
                 The URI format is: ``s3://{bucket name}/{key}``.
@@ -510,6 +503,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def download_data(self, path, bucket, key_prefix="", extra_args=None):
         """Download file or directory from S3.
+
         Args:
             path (str): Local path where the file or directory should be downloaded to.
             bucket (str): Name of the S3 Bucket to download from.
@@ -518,6 +512,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 download operation. Please refer to the ExtraArgs parameter in the boto3
                 documentation here:
                 https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-example-download-file.html
+
         Returns:
             list[str]: List of local paths of downloaded files
         """
@@ -570,7 +565,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if expected_owner:
             download_extra_args["ExpectedBucketOwner"] = expected_owner
         downloaded_paths = []
-        path_real = os.path.realpath(path)
         for dir_path in directories:
             validate_path_within_directory(dir_path, path)
             os.makedirs(os.path.dirname(dir_path), exist_ok=True)
@@ -580,9 +574,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
 
-            validate_path_within_directory(
-                destination_path, path, source_description=key
-            )
+            validate_path_within_directory(destination_path, path, source_description=key)
 
             if not os.path.exists(os.path.dirname(destination_path)):
                 os.makedirs(os.path.dirname(destination_path), exist_ok=True)
@@ -625,9 +617,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def list_s3_files(self, bucket, key_prefix):
         """Lists the S3 files given an S3 bucket and key.
+
         Args:
             bucket (str): Name of the S3 Bucket to download from.
             key_prefix (str): S3 object key name prefix.
+
         Returns:
             [str]: The list of files at the S3 path.
         """
@@ -3003,7 +2997,9 @@ def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, pagina
         if endpoint_status != "Creating":
             stop = True
             if endpoint_status == "InService":
-                LOGGER.info("Created endpoint with name %s. Waiting for it to be InService", endpoint_name)
+                LOGGER.info(
+                    "Created endpoint with name %s. Waiting for it to be InService", endpoint_name
+                )
             else:
                 time.sleep(poll)
 

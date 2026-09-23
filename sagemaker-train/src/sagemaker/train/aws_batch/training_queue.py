@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Define Queue class for AWS Batch service"""
+
 from __future__ import absolute_import
 
 from typing import Dict, Optional, List
@@ -63,8 +64,7 @@ class TrainingQueue:
         """
         if not isinstance(training_job, ModelTrainer):
             raise TypeError(
-                "training_job must be an instance of ModelTrainer, "
-                f"but got {type(training_job)}"
+                "training_job must be an instance of ModelTrainer, " f"but got {type(training_job)}"
             )
 
         if training_job.training_mode != Mode.SAGEMAKER_TRAINING_JOB:
@@ -72,7 +72,7 @@ class TrainingQueue:
                 "TrainingQueue requires using a ModelTrainer with Mode.SAGEMAKER_TRAINING_JOB"
             )
 
-        if share_identifier != None and quota_share_name != None:
+        if share_identifier is not None and quota_share_name is not None:
             raise ValueError(
                 "Either share_identifier or quota_share_name can be specified, but not both"
             )
@@ -179,7 +179,12 @@ class TrainingQueue:
             for job_result in job_result_dict.get("jobSummaryList", []):
                 if "jobArn" in job_result and "jobName" in job_result:
                     jobs_to_return.append(
-                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"], job_result.get("shareIdentifier", None), job_result.get("quotaShareName", None))
+                        TrainingQueuedJob(
+                            job_result["jobArn"],
+                            job_result["jobName"],
+                            job_result.get("shareIdentifier", None),
+                            job_result.get("quotaShareName", None),
+                        )
                     )
                 else:
                     logging.warning("Missing JobArn or JobName in Batch ListJobs API")
@@ -203,7 +208,7 @@ class TrainingQueue:
 
         """
         filters = None
-        if share_identifier != None and quota_share_name != None:
+        if share_identifier is not None and quota_share_name is not None:
             raise ValueError(
                 "Either share_identifier or quota_share_name can be specified, but not both"
             )
@@ -218,7 +223,12 @@ class TrainingQueue:
             for job_result in job_result_dict.get("jobSummaryList", []):
                 if "jobArn" in job_result and "jobName" in job_result:
                     jobs_to_return.append(
-                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"], job_result.get("shareIdentifier", None), job_result.get("quotaShareName", None))
+                        TrainingQueuedJob(
+                            job_result["jobArn"],
+                            job_result["jobName"],
+                            job_result.get("shareIdentifier", None),
+                            job_result.get("quotaShareName", None),
+                        )
                     )
                 else:
                     logging.warning("Missing JobArn or JobName in Batch ListJobs API")

@@ -19,6 +19,7 @@ circular dependencies.
 For pipeline and step orchestration classes (Pipeline, TrainingStep, etc.),
 import from sagemaker.mlops.workflow instead.
 """
+
 from __future__ import absolute_import
 
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
@@ -49,25 +50,25 @@ def is_pipeline_parameter_string(var: object) -> bool:
 
 
 # Entities
-from sagemaker.core.workflow.entities import (
+from sagemaker.core.workflow.entities import (  # noqa: E402
     DefaultEnumMeta,
     Entity,
 )
 
 # Execution Variables
-from sagemaker.core.workflow.execution_variables import (
+from sagemaker.core.workflow.execution_variables import (  # noqa: E402
     ExecutionVariable,
     ExecutionVariables,
 )
 
 # Functions
-from sagemaker.core.workflow.functions import (
+from sagemaker.core.workflow.functions import (  # noqa: E402
     Join,
     JsonGet,
 )
 
 # Parameters
-from sagemaker.core.workflow.parameters import (
+from sagemaker.core.workflow.parameters import (  # noqa: E402
     Parameter,
     ParameterBoolean,
     ParameterFloat,
@@ -77,7 +78,7 @@ from sagemaker.core.workflow.parameters import (
 )
 
 # Properties
-from sagemaker.core.workflow.properties import (
+from sagemaker.core.workflow.properties import (  # noqa: E402
     Properties,
     PropertiesList,
     PropertiesMap,
@@ -85,13 +86,13 @@ from sagemaker.core.workflow.properties import (
 )
 
 # Step Outputs (primitive - used by properties)
-from sagemaker.core.workflow.step_outputs import (
+from sagemaker.core.workflow.step_outputs import (  # noqa: E402
     StepOutput,
     get_step,
 )
 
 # Conditions (primitive)
-from sagemaker.core.workflow.conditions import (
+from sagemaker.core.workflow.conditions import (  # noqa: E402
     Condition,
     ConditionComparison,
     ConditionEquals,

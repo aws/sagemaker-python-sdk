@@ -78,7 +78,7 @@ def test_ready():
 
         result = multi_log_stream_handler.ready()
 
-        assert result == True
+        assert result is True
         mock_cw_client.describe_log_streams.assert_called_once()
 
 
@@ -90,7 +90,7 @@ def test_ready_streams_set():
     with patch.object(multi_log_stream_handler, "cw_client") as mock_cw_client:
         result = multi_log_stream_handler.ready()
 
-        assert result == True
+        assert result is True
         mock_cw_client.describe_log_streams.assert_not_called()
 
 
@@ -103,7 +103,7 @@ def test_not_ready():
 
         result = multi_log_stream_handler.ready()
 
-        assert result == False
+        assert result is False
         mock_cw_client.describe_log_streams.assert_called_once()
 
 
@@ -117,5 +117,5 @@ def test_ready_resource_not_found():
 
         result = multi_log_stream_handler.ready()
 
-        assert result == False
+        assert result is False
         mock_cw_client.describe_log_streams.assert_called_once()

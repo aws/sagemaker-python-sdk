@@ -23,20 +23,18 @@ Strategy: mock only at the evaluate() method's two key boundaries:
 For evaluators that call S3/Hub before those boundaries, we mock the specific
 network-calling helpers rather than the entire evaluate flow.
 """
+
 from __future__ import absolute_import
 
-from unittest.mock import Mock, patch, PropertyMock
+from unittest.mock import Mock, patch
 
-import pytest
 
 from sagemaker.train.common_utils.model_resolution import _ModelInfo, _ModelType
 from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator
-from sagemaker.train.evaluate.constants import EvalType
 from sagemaker.train.evaluate.custom_scorer_evaluator import CustomScorerEvaluator
 from sagemaker.train.evaluate.inspect_ai_evaluator import InspectAIEvaluator
 from sagemaker.train.evaluate.llm_as_judge_evaluator import LLMAsJudgeEvaluator
 from sagemaker.train.evaluate.multi_turn_rl_evaluator import MultiTurnRLEvaluator
-
 
 DEFAULT_REGION = "us-east-1"
 DEFAULT_ROLE = "arn:aws:iam::123456789012:role/test-role"
@@ -136,7 +134,9 @@ class TestInspectAIDryRun:
     def test_dry_run_passes_flag(self, mock_uploader, mock_artifact, mock_resolve):
         evaluator = self._create(mock_artifact, mock_resolve)
 
-        with patch.object(evaluator, "_get_aws_execution_context", return_value=_aws_context()) as ctx:
+        with patch.object(
+            evaluator, "_get_aws_execution_context", return_value=_aws_context()
+        ) as ctx:
             evaluator.evaluate(dry_run=True)
 
         ctx.assert_called_once_with()
@@ -186,13 +186,19 @@ class TestMultiTurnRLDryRun:
             patch.object(evaluator, "_resolve_agent_arn"),
             patch.object(evaluator, "_get_aws_execution_context", return_value=_aws_context()),
             patch.object(evaluator, "_resolve_model_artifacts", return_value={}),
-            patch.object(evaluator, "_get_model_package_group_arn", return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN),
+            patch.object(
+                evaluator,
+                "_get_model_package_group_arn",
+                return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            ),
             patch.object(evaluator, "_build_template_context", return_value={}),
             patch.object(evaluator, "_select_mtrl_template", return_value="{}"),
             patch.object(evaluator, "_render_pipeline_definition", return_value='{"Steps": []}'),
             patch.object(evaluator, "_start_mtrl_execution") as mock_start,
         ):
-            evaluator._agent_arn_resolved = "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/test"
+            evaluator._agent_arn_resolved = (
+                "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/test"
+            )
             result = evaluator.evaluate(dry_run=True)
 
         assert result is None
@@ -204,14 +210,22 @@ class TestMultiTurnRLDryRun:
         with (
             patch.object(evaluator, "_resolve_trainer_defaults"),
             patch.object(evaluator, "_resolve_agent_arn"),
-            patch.object(evaluator, "_get_aws_execution_context", return_value=_aws_context()) as ctx,
+            patch.object(
+                evaluator, "_get_aws_execution_context", return_value=_aws_context()
+            ) as ctx,
             patch.object(evaluator, "_resolve_model_artifacts", return_value={}),
-            patch.object(evaluator, "_get_model_package_group_arn", return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN),
+            patch.object(
+                evaluator,
+                "_get_model_package_group_arn",
+                return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            ),
             patch.object(evaluator, "_build_template_context", return_value={}),
             patch.object(evaluator, "_select_mtrl_template", return_value="{}"),
             patch.object(evaluator, "_render_pipeline_definition", return_value='{"Steps": []}'),
         ):
-            evaluator._agent_arn_resolved = "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/test"
+            evaluator._agent_arn_resolved = (
+                "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/test"
+            )
             evaluator.evaluate(dry_run=True)
 
         ctx.assert_called_once_with()
@@ -245,12 +259,24 @@ class TestBenchmarkDryRun:
 
         with (
             patch.object(evaluator, "_get_aws_execution_context", return_value=_aws_context()),
-            patch.object(evaluator, "_resolve_model_artifacts", return_value={
-                "resolved_model_artifact_arn": DEFAULT_ARTIFACT_ARN,
-            }),
-            patch.object(evaluator, "_get_model_package_group_arn", return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN),
-            patch.object(evaluator, "_get_base_template_context", return_value={"evaluate_base_model": False}),
-            patch.object(evaluator, "_get_benchmark_template_additions", return_value={"task": "mmlu"}),
+            patch.object(
+                evaluator,
+                "_resolve_model_artifacts",
+                return_value={
+                    "resolved_model_artifact_arn": DEFAULT_ARTIFACT_ARN,
+                },
+            ),
+            patch.object(
+                evaluator,
+                "_get_model_package_group_arn",
+                return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            ),
+            patch.object(
+                evaluator, "_get_base_template_context", return_value={"evaluate_base_model": False}
+            ),
+            patch.object(
+                evaluator, "_get_benchmark_template_additions", return_value={"task": "mmlu"}
+            ),
             patch.object(evaluator, "_add_vpc_and_kms_to_context", side_effect=lambda c: c),
             patch.object(evaluator, "_select_template", return_value="{}"),
             patch.object(evaluator, "_render_pipeline_definition", return_value='{"Steps": []}'),
@@ -291,15 +317,29 @@ class TestCustomScorerDryRun:
 
         with (
             patch.object(evaluator, "_get_aws_execution_context", return_value=_aws_context()),
-            patch.object(evaluator, "_resolve_model_artifacts", return_value={
-                "resolved_model_artifact_arn": DEFAULT_ARTIFACT_ARN,
-            }),
-            patch.object(evaluator, "_get_model_package_group_arn", return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN),
-            patch.object(evaluator, "_resolve_evaluator_config", return_value={
-                "evaluator_arn": "arn:aws:lambda:us-east-1:123456789012:function:my-scorer",
-                "preset_reward_function": None,
-            }),
-            patch.object(evaluator, "_get_base_template_context", return_value={"evaluate_base_model": False}),
+            patch.object(
+                evaluator,
+                "_resolve_model_artifacts",
+                return_value={
+                    "resolved_model_artifact_arn": DEFAULT_ARTIFACT_ARN,
+                },
+            ),
+            patch.object(
+                evaluator,
+                "_get_model_package_group_arn",
+                return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            ),
+            patch.object(
+                evaluator,
+                "_resolve_evaluator_config",
+                return_value={
+                    "evaluator_arn": "arn:aws:lambda:us-east-1:123456789012:function:my-scorer",
+                    "preset_reward_function": None,
+                },
+            ),
+            patch.object(
+                evaluator, "_get_base_template_context", return_value={"evaluate_base_model": False}
+            ),
             patch.object(evaluator, "_add_vpc_and_kms_to_context", side_effect=lambda c: c),
             patch.object(evaluator, "_select_template", return_value="{}"),
             patch.object(evaluator, "_render_pipeline_definition", return_value='{"Steps": []}'),
@@ -340,13 +380,27 @@ class TestLLMAsJudgeDryRun:
 
         with (
             patch.object(evaluator, "_get_aws_execution_context", return_value=_aws_context()),
-            patch.object(evaluator, "_resolve_model_artifacts", return_value={
-                "resolved_model_artifact_arn": DEFAULT_ARTIFACT_ARN,
-            }),
-            patch.object(evaluator, "_get_model_package_group_arn", return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN),
-            patch.object(evaluator, "_get_base_template_context", return_value={"evaluate_base_model": False}),
+            patch.object(
+                evaluator,
+                "_resolve_model_artifacts",
+                return_value={
+                    "resolved_model_artifact_arn": DEFAULT_ARTIFACT_ARN,
+                },
+            ),
+            patch.object(
+                evaluator,
+                "_get_model_package_group_arn",
+                return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            ),
+            patch.object(
+                evaluator, "_get_base_template_context", return_value={"evaluate_base_model": False}
+            ),
             patch.object(evaluator, "_add_vpc_and_kms_to_context", side_effect=lambda c: c),
-            patch.object(evaluator, "_upload_benchmark_and_dataset", return_value="s3://test-bucket/benchmarks/converted"),
+            patch.object(
+                evaluator,
+                "_upload_benchmark_and_dataset",
+                return_value="s3://test-bucket/benchmarks/converted",
+            ),
             patch.object(evaluator, "_build_inspectai_config", return_value={}),
             patch.object(evaluator, "_render_pipeline_definition", return_value='{"Steps": []}'),
             patch.object(evaluator, "_start_execution") as mock_start,
@@ -362,13 +416,23 @@ class TestLLMAsJudgeDryRun:
 
         with (
             patch.object(evaluator, "_get_aws_execution_context", return_value=_aws_context()),
-            patch.object(evaluator, "_resolve_model_artifacts", return_value={
-                "resolved_model_artifact_arn": DEFAULT_ARTIFACT_ARN,
-            }),
-            patch.object(evaluator, "_get_model_package_group_arn", return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN),
+            patch.object(
+                evaluator,
+                "_resolve_model_artifacts",
+                return_value={
+                    "resolved_model_artifact_arn": DEFAULT_ARTIFACT_ARN,
+                },
+            ),
+            patch.object(
+                evaluator,
+                "_get_model_package_group_arn",
+                return_value=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            ),
             # Force the standard (non-InspectAI) path
             patch.object(evaluator, "_should_use_inspectai_path", return_value=False),
-            patch.object(evaluator, "_get_base_template_context", return_value={"evaluate_base_model": False}),
+            patch.object(
+                evaluator, "_get_base_template_context", return_value={"evaluate_base_model": False}
+            ),
             patch.object(evaluator, "_add_vpc_and_kms_to_context", side_effect=lambda c: c),
             patch.object(evaluator, "_render_pipeline_definition", return_value='{"Steps": []}'),
             patch.object(evaluator, "_start_execution") as mock_start,

@@ -17,8 +17,10 @@ for backward compatibility and convenience.
 
 Note: Uses lazy imports via __getattr__ to avoid circular import issues.
 """
+
 from __future__ import absolute_import
 
+# pylint: disable=undefined-all-variable  # names provided via PEP 562 __getattr__
 __all__ = [
     "_save_model",
     "download_file_from_url",
@@ -37,6 +39,7 @@ __all__ = [
     "sagemaker_short_timestamp",
     "get_config_value",
 ]
+# pylint: enable=undefined-all-variable
 
 
 def __getattr__(name):

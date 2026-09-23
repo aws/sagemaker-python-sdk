@@ -11,19 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for KMS key propagation in ClarifyCheckStep."""
+
 from __future__ import absolute_import
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.mlops.workflow.clarify_check_step import (
     ClarifyCheckStep,
-    DataBiasCheckConfig,
-    ModelBiasCheckConfig,
-    ModelExplainabilityCheckConfig,
 )
-from sagemaker.mlops.workflow.check_job_config import CheckJobConfig
-
 
 _OUTPUT_KMS_KEY = "arn:aws:kms:us-east-1:123456789012:key/output-key-id"
 _VOLUME_KMS_KEY = "arn:aws:kms:us-east-1:123456789012:key/volume-key-id"
@@ -83,7 +78,9 @@ def _create_mock_clarify_check_step(output_kms_key=None, volume_kms_key=None):
     step._baselining_processor.instance_count = 1
     step._baselining_processor.instance_type = "ml.m5.xlarge"
     step._baselining_processor.volume_size_in_gb = 30
-    step._baselining_processor.image_uri = "123456789012.dkr.ecr.us-east-1.amazonaws.com/clarify:latest"
+    step._baselining_processor.image_uri = (
+        "123456789012.dkr.ecr.us-east-1.amazonaws.com/clarify:latest"
+    )
     step._baselining_processor.role = "arn:aws:iam::123456789012:role/SageMakerRole"
     step._baselining_processor.max_runtime_in_seconds = 3600
     step._baselining_processor.env = None
@@ -177,9 +174,7 @@ class TestClarifyCheckStepKmsKeyPropagation:
     @patch(_TRIM_PATCH, side_effect=_noop_trim)
     def test_output_kms_key_only_without_volume_kms(self, mock_trim):
         """Test output_kms_key set but volume_kms_key not set."""
-        step = _create_mock_clarify_check_step(
-            output_kms_key=_OUTPUT_KMS_KEY, volume_kms_key=None
-        )
+        step = _create_mock_clarify_check_step(output_kms_key=_OUTPUT_KMS_KEY, volume_kms_key=None)
 
         args = step.arguments
 
@@ -192,9 +187,7 @@ class TestClarifyCheckStepKmsKeyPropagation:
     @patch(_TRIM_PATCH, side_effect=_noop_trim)
     def test_volume_kms_key_only_without_output_kms(self, mock_trim):
         """Test volume_kms_key set but output_kms_key not set."""
-        step = _create_mock_clarify_check_step(
-            output_kms_key=None, volume_kms_key=_VOLUME_KMS_KEY
-        )
+        step = _create_mock_clarify_check_step(output_kms_key=None, volume_kms_key=_VOLUME_KMS_KEY)
 
         args = step.arguments
 

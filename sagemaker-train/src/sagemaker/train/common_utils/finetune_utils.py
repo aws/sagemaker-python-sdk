@@ -12,11 +12,19 @@ from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
+from sagemaker.train.common_utils.model_aliases import normalize_model_name as _normalize_model_name
+
 # Single source of truth for Lambda-ARN detection, shared with the reward verifier
 # so both code paths agree on what counts as a Lambda ARN.
 from sagemaker.train.common_utils.rlvr_reward_verifier import LAMBDA_ARN_REGEX
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE, FineTuningOptions
-from sagemaker.core.shapes import ServerlessJobConfig, Channel, DataSource, ModelPackageConfig, MlflowConfig
+from sagemaker.core.shapes import (
+    ServerlessJobConfig,
+    Channel,
+    DataSource,
+    ModelPackageConfig,
+    MlflowConfig,
+)
 from sagemaker.core.training.configs import HyperPodCompute, TrainingJobCompute
 from sagemaker.train.configs import InputData, OutputDataConfig
 from sagemaker.train.defaults import TrainDefaults
@@ -25,13 +33,15 @@ from sagemaker.train.constants import get_sagemaker_hub_name
 logger = logging.getLogger(__name__)
 
 # Region mappings for model availability
-OPEN_WEIGHTS_REGIONS = ['us-east-1', 'us-west-2', 'ap-northeast-1', 'eu-west-1']  # IAD, PDX, NRT, DUB
-NOVA_REGIONS = ['us-east-1', 'us-west-2']  # IAD, PDX
+OPEN_WEIGHTS_REGIONS = [
+    "us-east-1",
+    "us-west-2",
+    "ap-northeast-1",
+    "eu-west-1",
+]  # IAD, PDX, NRT, DUB
+NOVA_REGIONS = ["us-east-1", "us-west-2"]  # IAD, PDX
 # Constants
 DEFAULT_REGION = "us-west-2"
-
-
-from sagemaker.train.common_utils.model_aliases import normalize_model_name as _normalize_model_name
 
 
 def _select_recipe_by_training_type(recipes: list, training_type, with_fallback: bool = True):
@@ -49,15 +59,23 @@ def _select_recipe_by_training_type(recipes: list, training_type, with_fallback:
     Returns:
         The matching recipe dict, or None if no match found.
     """
-    is_lora = (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA"
-    is_full = (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL"
+    is_lora = (
+        isinstance(training_type, TrainingType) and training_type == TrainingType.LORA
+    ) or training_type == "LORA"
+    is_full = (
+        isinstance(training_type, TrainingType) and training_type == TrainingType.FULL
+    ) or training_type == "FULL"
 
     if is_lora:
-        recipe = next((r for r in recipes if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+        recipe = next(
+            (r for r in recipes if r.get("Peft") and not r.get("IsSubscriptionModel")), None
+        )
         if not recipe and with_fallback:
             recipe = next((r for r in recipes if r.get("Peft")), None)
     elif is_full:
-        recipe = next((r for r in recipes if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+        recipe = next(
+            (r for r in recipes if not r.get("Peft") and not r.get("IsSubscriptionModel")), None
+        )
         if not recipe and with_fallback:
             recipe = next((r for r in recipes if not r.get("Peft")), None)
     else:
@@ -115,23 +133,19 @@ def _validate_model_region_availability(model_name: str, region_name: str):
     """Validate if the model is available in the specified region."""
     if "nova" in model_name.lower():
         if region_name not in NOVA_REGIONS:
-            raise ValueError(
-                f"""
+            raise ValueError(f"""
 Region '{region_name}' does not support model customization.
 Currently supported regions for this feature are: {', '.join(NOVA_REGIONS)}
 Please choose one of the supported regions or check our documentation for updates.
-            """
-            )
+            """)
     else:
         # Open weights models
         if region_name not in OPEN_WEIGHTS_REGIONS:
-            raise ValueError(
-                f"""
+            raise ValueError(f"""
 Region '{region_name}' does not support model customization.
 Currently supported regions for this feature are: {', '.join(OPEN_WEIGHTS_REGIONS)}
 Please choose one of the supported regions or check our documentation for updates.
-            """
-            )
+            """)
 
 
 def _is_hub_content_not_found(exc: Exception) -> bool:
@@ -218,22 +232,22 @@ def _validate_model_in_hub(model_name: str, sagemaker_session=None):
 
 def _get_beta_session():
     """Create a SageMaker session with beta endpoint for demo purposes."""
-    sm_client = boto3.client('sagemaker', region_name=DEFAULT_REGION)
+    sm_client = boto3.client("sagemaker", region_name=DEFAULT_REGION)
     return Session(sagemaker_client=sm_client)
 
 
 def _read_domain_id_from_metadata() -> Optional[str]:
     """Read domain ID from Studio metadata file.
-    
+
     This is the standard location for domain information in Studio with Spaces.
     Returns None if not running in Studio or if metadata file doesn't exist.
     """
     try:
-        metadata_path = '/opt/ml/metadata/resource-metadata.json'
+        metadata_path = "/opt/ml/metadata/resource-metadata.json"
         if os.path.exists(metadata_path):
-            with open(metadata_path, 'r') as f:
+            with open(metadata_path, "r") as f:
                 metadata = json.load(f)
-                return metadata.get('DomainId')
+                return metadata.get("DomainId")
     except Exception as e:
         logger.debug(f"Could not read Studio metadata file: {e}")
     return None
@@ -241,27 +255,27 @@ def _read_domain_id_from_metadata() -> Optional[str]:
 
 def _get_current_domain_id(sagemaker_session) -> Optional[str]:
     """Get current SageMaker Studio domain ID.
-    
+
     Checks multiple sources in order of reliability:
     1. Studio metadata file (Studio with Spaces - newer architecture)
     2. User profile ARN (Studio Classic with User Profiles - legacy)
-    
+
     Returns None if not running in a Studio environment with domain.
     """
     # Try metadata file first (Studio with Spaces)
     domain_id = _read_domain_id_from_metadata()
     if domain_id:
         return domain_id
-    
+
     # Fallback to original logic (Studio Classic with User Profiles)
     try:
         user_profile_arn = sagemaker_session.get_caller_identity_arn()
-        if user_profile_arn and 'user-profile' in user_profile_arn:
+        if user_profile_arn and "user-profile" in user_profile_arn:
             # ARN format: arn:aws:sagemaker:region:account:user-profile/domain-id/profile-name
-            return user_profile_arn.split('/')[1]
+            return user_profile_arn.split("/")[1]
     except Exception as e:
         logger.debug(f"Could not extract domain ID from user profile ARN: {e}")
-    
+
     return None
 
 
@@ -300,59 +314,90 @@ def _resolve_mlflow_resource_arn(
         for page in paginator.paginate():
             mlflow_apps_list.extend(page.get("Summaries", []))
 
-        logger.info("Found %d MLflow apps: %s", len(mlflow_apps_list),
-                    [(a.get("Name", "?"), a.get("Status", "?"), a.get("MlflowVersion", "?")) for a in mlflow_apps_list])
+        logger.info(
+            "Found %d MLflow apps: %s",
+            len(mlflow_apps_list),
+            [
+                (a.get("Name", "?"), a.get("Status", "?"), a.get("MlflowVersion", "?"))
+                for a in mlflow_apps_list
+            ],
+        )
         current_domain_id = _get_current_domain_id(sagemaker_session)
 
         # Check for domain match
         resolved_app = None
         if current_domain_id:
-            resolved_app = next((app for app in mlflow_apps_list
-                               if current_domain_id in app.get("DefaultDomainIdList", [])), None)
+            resolved_app = next(
+                (
+                    app
+                    for app in mlflow_apps_list
+                    if current_domain_id in app.get("DefaultDomainIdList", [])
+                ),
+                None,
+            )
 
         # Check for account default
         if not resolved_app:
-            resolved_app = next((app for app in mlflow_apps_list
-                              if app.get("AccountDefaultStatus") == "ENABLED"), None)
+            resolved_app = next(
+                (app for app in mlflow_apps_list if app.get("AccountDefaultStatus") == "ENABLED"),
+                None,
+            )
 
         # Use first available with ready status
         if not resolved_app and mlflow_apps_list:
-            resolved_app = next((app for app in mlflow_apps_list
-                            if app.get("Status") in ["Created", "Updated"]), None)
+            resolved_app = next(
+                (app for app in mlflow_apps_list if app.get("Status") in ["Created", "Updated"]),
+                None,
+            )
 
         # Check resolved app status
         if resolved_app:
             resolved_arn = resolved_app["Arn"]
-            logger.info("Resolved MLflow app: %s (status: %s, version: %s)",
-                        resolved_arn, resolved_app.get("Status"),
-                        resolved_app.get("MlflowVersion", "unknown"))
+            logger.info(
+                "Resolved MLflow app: %s (status: %s, version: %s)",
+                resolved_arn,
+                resolved_app.get("Status"),
+                resolved_app.get("MlflowVersion", "unknown"),
+            )
             if resolved_app.get("Status") in ["Failed", "CreateFailed", "DeleteFailed", "Stopped"]:
-                logger.warning("Resolved MLflow app %s is in failed state: %s. Skipping.",
-                               resolved_arn, resolved_app.get("Status"))
+                logger.warning(
+                    "Resolved MLflow app %s is in failed state: %s. Skipping.",
+                    resolved_arn,
+                    resolved_app.get("Status"),
+                )
                 resolved_app = None
             elif dry_run and resolved_app.get("Status") in ["Creating", "Updating"]:
                 logger.warning(
                     "dry_run: MLflow app %s is in '%s' state. "
                     "Job submission would block until the app is ready.",
-                    resolved_arn, resolved_app.get("Status"),
+                    resolved_arn,
+                    resolved_app.get("Status"),
                 )
                 return resolved_arn
 
         # Version check: if resolved app is below min version, create a new one as default
-        if resolved_app and min_mlflow_version and not _mlflow_version_meets_minimum_dict(resolved_app, min_mlflow_version):
+        if (
+            resolved_app
+            and min_mlflow_version
+            and not _mlflow_version_meets_minimum_dict(resolved_app, min_mlflow_version)
+        ):
             resolved_arn = resolved_app["Arn"]
             if dry_run:
                 logger.warning(
                     "dry_run: MLflow app %s has version below %s. "
                     "Job submission would create a new app (may take several minutes).",
-                    resolved_arn, min_mlflow_version,
+                    resolved_arn,
+                    min_mlflow_version,
                 )
                 return resolved_arn
             logger.info(
                 "Existing MLflow app %s has version below %s. Creating new app as default.",
-                resolved_arn, min_mlflow_version
+                resolved_arn,
+                min_mlflow_version,
             )
-            new_arn = _create_mlflow_app_as_upgrade(sagemaker_session, resolved_app, current_domain_id)
+            new_arn = _create_mlflow_app_as_upgrade(
+                sagemaker_session, resolved_app, current_domain_id
+            )
             if new_arn:
                 logger.info("Created new MLflow app as default: %s", new_arn)
                 return new_arn
@@ -415,8 +460,9 @@ def _wait_for_mlflow_app_ready_boto(sm_client, arn: str, timeout: int = 600) -> 
         if status in ["Created", "Updated"]:
             return arn
         if status in ["Failed", "Stopped", "CreateFailed", "DeleteFailed"]:
-            logger.error("MLflow app failed with status: %s, reason: %s",
-                         status, resp.get("FailureReason"))
+            logger.error(
+                "MLflow app failed with status: %s, reason: %s", status, resp.get("FailureReason")
+            )
             return None
         time.sleep(60)
     logger.warning("Timed out waiting for MLflow app to be ready.")
@@ -428,7 +474,9 @@ def _default_bucket_name(region: str, account_id: str) -> str:
     return f"sagemaker-{region}-{account_id}"
 
 
-def _verify_default_bucket_ownership(s3_client, bucket_name: str, account_id: str, region: str) -> None:
+def _verify_default_bucket_ownership(
+    s3_client, bucket_name: str, account_id: str, region: str
+) -> None:
     """Refuse to use the SDK-derived default bucket if another account owns it.
 
     The default bucket name ``sagemaker-{region}-{account_id}`` is predictable, so a
@@ -477,8 +525,10 @@ def _create_mlflow_app_as_upgrade(
             logger.info("Unsetting account default from old MLflow app: %s", old_arn)
             sm_client.update_mlflow_app(Arn=old_arn, AccountDefaultStatus="DISABLED")
 
-        artifact_store_uri = old_app.get("ArtifactStoreUri") or \
-            f"s3://sagemaker-{region}-{account_id}/mlflow-artifacts"
+        artifact_store_uri = (
+            old_app.get("ArtifactStoreUri")
+            or f"s3://sagemaker-{region}-{account_id}/mlflow-artifacts"
+        )
         # If we fell back to the predictable default bucket, refuse it when another
         # account owns it before registering it as the MLflow ArtifactStoreUri.
         default_bucket = _default_bucket_name(region, account_id)
@@ -489,8 +539,9 @@ def _create_mlflow_app_as_upgrade(
                 account_id,
                 region,
             )
-        role_arn = old_app.get("RoleArn") or \
-            TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
+        role_arn = old_app.get("RoleArn") or TrainDefaults.get_role(
+            role=None, sagemaker_session=sagemaker_session
+        )
         old_name = old_app.get("Name", "mlflow-app")
         app_name = f"{old_name}-upgraded-{int(time.time())}"
 
@@ -519,13 +570,13 @@ def _create_mlflow_app(sagemaker_session) -> Optional[str]:
     try:
         sm_client = _get_prod_sm_client(sagemaker_session)
         region = sagemaker_session.boto_session.region_name
-        account_id = sagemaker_session.boto_session.client('sts').get_caller_identity()['Account']
+        account_id = sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"]
         artifact_store_uri = f"s3://sagemaker-{region}-{account_id}/mlflow-artifacts"
         role_arn = TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
         app_name = f"finetune-mlflow-{int(time.time())}"
 
         # Ensure S3 bucket and prefix exist
-        s3_client = sagemaker_session.boto_session.client('s3')
+        s3_client = sagemaker_session.boto_session.client("s3")
         bucket_name = f"sagemaker-{region}-{account_id}"
 
         # Refuse the predictable default bucket if it exists under another owner.
@@ -538,19 +589,18 @@ def _create_mlflow_app(sagemaker_session) -> Optional[str]:
                 MaxKeys=1,
                 ExpectedBucketOwner=account_id,
             )
-            if 'Contents' not in response:
+            if "Contents" not in response:
                 s3_client.put_object(
                     Bucket=bucket_name,
                     Key="mlflow-artifacts/",
                     ExpectedBucketOwner=account_id,
                 )
         except s3_client.exceptions.NoSuchBucket:
-            if region == 'us-east-1':
+            if region == "us-east-1":
                 s3_client.create_bucket(Bucket=bucket_name)
             else:
                 s3_client.create_bucket(
-                    Bucket=bucket_name,
-                    CreateBucketConfiguration={'LocationConstraint': region}
+                    Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
                 )
             s3_client.put_object(
                 Bucket=bucket_name,
@@ -582,14 +632,18 @@ def _validate_dataset_arn(dataset: str, param_name: str):
 def _validate_evaluator_arn(evaluator_arn: str, param_name: str):
     """Validate that evaluator_arn is in correct ARN format."""
     arn_pattern = r"^arn:aws:sagemaker:[^:]+:\d+:hub-content/[^/]+/JsonDoc/[^/]+/[\d\.]+$"
-    if not evaluator_arn.startswith("arn:aws:sagemaker:") or not re.match(arn_pattern, evaluator_arn):
+    if not evaluator_arn.startswith("arn:aws:sagemaker:") or not re.match(
+        arn_pattern, evaluator_arn
+    ):
         raise ValueError(f"{param_name} must be a valid SageMaker hub-content evaluator ARN")
 
 
 def _validate_model_package_group_requirement(model, model_package_group_name):
     """Validate model_package_group_name when source_model_package_arn is not available."""
     if not isinstance(model, ModelPackage) and not model_package_group_name:
-        raise ValueError("model_package_group_name must be provided when source_model_package_arn is not available")
+        raise ValueError(
+            "model_package_group_name must be provided when source_model_package_arn is not available"
+        )
 
 
 def _resolve_model_package_group_arn(model_package_group_name_or_arn, sagemaker_session) -> str:
@@ -597,7 +651,7 @@ def _resolve_model_package_group_arn(model_package_group_name_or_arn, sagemaker_
     if isinstance(model_package_group_name_or_arn, str):
         # Check if it's already an ARN using pattern matching
         arn_pattern = r"^arn:aws:sagemaker:[^:]+:\d+:model-package-group/[^/]+$"
-        
+
         if re.match(arn_pattern, model_package_group_name_or_arn):
             # It's already an ARN
             return model_package_group_name_or_arn
@@ -606,7 +660,7 @@ def _resolve_model_package_group_arn(model_package_group_name_or_arn, sagemaker_
             model_package_group = ModelPackageGroup.get(
                 model_package_group_name=model_package_group_name_or_arn,
                 session=sagemaker_session.boto_session,
-                region=sagemaker_session.boto_session.region_name
+                region=sagemaker_session.boto_session.region_name,
             )
             return model_package_group.model_package_group_arn
     else:
@@ -616,7 +670,7 @@ def _resolve_model_package_group_arn(model_package_group_name_or_arn, sagemaker_
 
 def _get_default_s3_output_path(sagemaker_session) -> str:
     """Generate default S3 output path: s3://sagemaker-<region>-<account-id>/output"""
-    account_id = sagemaker_session.boto_session.client('sts').get_caller_identity()['Account']
+    account_id = sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"]
     region = sagemaker_session.boto_session.region_name
     return f"s3://sagemaker-{region}-{account_id}/output"
 
@@ -690,9 +744,7 @@ def _get_lambda_arn_from_evaluator_arn(evaluator_arn: str, sagemaker_session=Non
         hub_content_name = parts[3]
         hub_content_version = parts[4] if len(parts) > 4 else None
     except (IndexError, ValueError) as e:
-        raise ValueError(
-            f"Failed to parse evaluator ARN '{evaluator_arn}': {str(e)}"
-        )
+        raise ValueError(f"Failed to parse evaluator ARN '{evaluator_arn}': {str(e)}")
 
     sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
     client = sagemaker_session.sagemaker_client
@@ -726,17 +778,21 @@ def _resolve_model_name(model_package) -> str:
     if model_package:
         try:
             # Extract base model from InferenceSpecification
-            if (model_package.inference_specification and 
-                model_package.inference_specification.containers):
+            if (
+                model_package.inference_specification
+                and model_package.inference_specification.containers
+            ):
                 container = model_package.inference_specification.containers[0]
-                if hasattr(container, 'base_model') and container.base_model:
+                if hasattr(container, "base_model") and container.base_model:
                     return container.base_model.hub_content_name
-            
-            raise ValueError("Continued fine tuning is only allowed on model packages fine tuned with sagemaker 1p models")
+
+            raise ValueError(
+                "Continued fine tuning is only allowed on model packages fine tuned with sagemaker 1p models"
+            )
         except Exception as e:
             logger.error("Failed to resolve model_name from model package: %s", e)
             raise
-    
+
     raise ValueError("model name or package must be provided")
 
 
@@ -768,10 +824,17 @@ def _parse_sequence_length(value) -> int:
         )
 
 
-def _get_fine_tuning_options_and_model_arn(model_name: str, customization_technique: str, training_type, sagemaker_session,
-                                         sequence_length=None, hub_name: Optional[str] = None,
-                                         compute: Optional[Union[HyperPodCompute, TrainingJobCompute]] = None) -> tuple:
+def _get_fine_tuning_options_and_model_arn(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    sequence_length=None,
+    hub_name: Optional[str] = None,
+    compute: Optional[Union[HyperPodCompute, TrainingJobCompute]] = None,
+) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
+
     Returns:
         tuple: (FineTuningOptions, model_arn, is_gated_model)
     """
@@ -785,26 +848,32 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
 
         hub_content = _get_hub_content_metadata(
             hub_name=hub_name,
-            hub_content_type="Model", 
+            hub_content_type="Model",
             hub_content_name=model_name,
             session=sagemaker_session.boto_session,
-            region=sagemaker_session.boto_session.region_name
+            region=sagemaker_session.boto_session.region_name,
         )
-        
-        model_arn = hub_content.get('hub_content_arn')
-        document = hub_content.get('hub_content_document')
-        
+
+        model_arn = hub_content.get("hub_content_arn")
+        document = hub_content.get("hub_content_document")
+
         # Check if model is gated
         is_gated_model = document.get("GatedBucket", False)
-        
+
         recipe_collection = document.get("RecipeCollection", [])
-        
+
         # Filter recipes by customization technique
-        matching_recipes = [r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique]
-        
+        matching_recipes = [
+            r
+            for r in recipe_collection
+            if r.get("CustomizationTechnique") == customization_technique
+        ]
+
         if not matching_recipes:
-            raise ValueError(f"No recipes found for model '{model_name}' with customization technique: {customization_technique}")
-        
+            raise ValueError(
+                f"No recipes found for model '{model_name}' with customization technique: {customization_technique}"
+            )
+
         # Filter recipes based on compute type:
         # - HyperPodCompute: filter by HpEksPayloadTemplateS3Uri
         # - Default (serverless/SMTJ): filter by SmtjRecipeTemplateS3Uri
@@ -818,9 +887,11 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             platform_label = "Smtj"
 
         recipes_with_template = [r for r in matching_recipes if r.get(recipe_template_key)]
-        
+
         if not recipes_with_template:
-            raise ValueError(f"No recipes found with {platform_label} for technique: {customization_technique}")
+            raise ValueError(
+                f"No recipes found with {platform_label} for technique: {customization_technique}"
+            )
 
         # Filter by SequenceLength before recipe selection if sequence_length is requested.
         # Multiple recipes may share the same SequenceLength (e.g. LORA and FULL
@@ -830,18 +901,25 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             requested = _parse_sequence_length(sequence_length)
             candidates_with_sequence = [r for r in recipes_with_template if r.get("SequenceLength")]
             if candidates_with_sequence:
-                filtered = [r for r in candidates_with_sequence if _parse_sequence_length(r.get("SequenceLength")) == requested]
+                filtered = [
+                    r
+                    for r in candidates_with_sequence
+                    if _parse_sequence_length(r.get("SequenceLength")) == requested
+                ]
                 if filtered:
                     recipes_with_template = filtered
                 else:
-                    available = sorted(set(r.get("SequenceLength") for r in candidates_with_sequence))
+                    available = sorted(
+                        set(r.get("SequenceLength") for r in candidates_with_sequence)
+                    )
                     raise ValueError(
                         f"No recipes found with SequenceLength == {sequence_length}. "
                         f"Available sequence lengths: {available}"
                     )
             else:
                 raise ValueError(
-                    f"No recipes found with {platform_label} for technique: {customization_technique},training_type:{training_type}, "
+                    f"No recipes found with {platform_label} for technique: "
+                    f"{customization_technique},training_type:{training_type}, "
                     f"and sequence length:{sequence_length}"
                 )
 
@@ -849,7 +927,10 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         recipe = _select_recipe_by_training_type(recipes_with_template, training_type)
 
         if not recipe:
-            raise ValueError(f"No recipes found with {platform_label} for technique: {customization_technique},training_type:{training_type}")
+            raise ValueError(
+                f"No recipes found with {platform_label} for technique: "
+                f"{customization_technique},training_type:{training_type}"
+            )
 
         # Start with the recipe's override_params (platform-specific key)
         options_dict = {}
@@ -857,7 +938,10 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             s3_uri = recipe[override_params_key]
             # Handle {customer_id} placeholder (subscription recipes use access point ARNs)
             if "{customer_id}" in s3_uri:
-                s3_uri = s3_uri.replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
+                s3_uri = s3_uri.replace(
+                    "{customer_id}",
+                    sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"],
+                )
             s3 = sagemaker_session.boto_session.client("s3")
             uri_path = s3_uri.replace("s3://", "")
             # Handle access point ARN URIs (subscription recipes use S3 access points).
@@ -873,14 +957,33 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             options_dict = json.loads(obj["Body"].read())
 
         # Auto-detect and merge subscription recipe's override_params if available
-        if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-            sub_recipe = next((r for r in recipes_with_template if r.get("Peft") and r.get("IsSubscriptionModel")), None)
+        if (
+            isinstance(training_type, TrainingType) and training_type == TrainingType.LORA
+        ) or training_type == "LORA":
+            sub_recipe = next(
+                (
+                    r
+                    for r in recipes_with_template
+                    if r.get("Peft") and r.get("IsSubscriptionModel")
+                ),
+                None,
+            )
         else:
-            sub_recipe = next((r for r in recipes_with_template if not r.get("Peft") and r.get("IsSubscriptionModel")), None)
+            sub_recipe = next(
+                (
+                    r
+                    for r in recipes_with_template
+                    if not r.get("Peft") and r.get("IsSubscriptionModel")
+                ),
+                None,
+            )
 
         if sub_recipe and sub_recipe.get(override_params_key):
             try:
-                sub_s3_uri = sub_recipe[override_params_key].replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
+                sub_s3_uri = sub_recipe[override_params_key].replace(
+                    "{customer_id}",
+                    sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"],
+                )
                 sub_uri_path = sub_s3_uri.replace("s3://", "")
                 # Handle access point ARN URIs
                 if sub_uri_path.startswith("arn:"):
@@ -898,10 +1001,14 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
                     if k not in options_dict:
                         v_copy = v.copy() if isinstance(v, dict) else v
                         if isinstance(v_copy, dict):
-                            v_copy['default'] = None  # No default — won't appear in to_dict() unless set
+                            v_copy["default"] = (
+                                None  # No default — won't appear in to_dict() unless set
+                            )
                         options_dict[k] = v_copy
             except Exception as e:
-                logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
+                logger.debug(
+                    f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}"
+                )
 
         # Supported sequence-length ceiling: the recipe's SequenceLength ("<n>K")
         # is the single source of truth. Parse it to an int so we can validate that
@@ -910,10 +1017,18 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         sequence_length_ceiling = _parse_sequence_length(recipe.get("SequenceLength")) or None
 
         if options_dict:
-            return FineTuningOptions(options_dict, sequence_length=sequence_length_ceiling), model_arn, is_gated_model
+            return (
+                FineTuningOptions(options_dict, sequence_length=sequence_length_ceiling),
+                model_arn,
+                is_gated_model,
+            )
         else:
-            return FineTuningOptions({}, sequence_length=sequence_length_ceiling), model_arn, is_gated_model
-            
+            return (
+                FineTuningOptions({}, sequence_length=sequence_length_ceiling),
+                model_arn,
+                is_gated_model,
+            )
+
     except Exception as e:
         logger.debug("Exception getting fine-tuning options: %s", e)
         raise
@@ -964,52 +1079,54 @@ def _resolve_base_model_weights_s3_uri(model_name: str, sagemaker_session) -> Op
     return None
 
 
-def _create_input_channels(dataset: str, content_type: Optional[str] = None, 
-                         input_compression_type: Optional[str] = None,
-                         record_wrapper_type: Optional[str] = None,
-                         input_mode: Optional[str] = None):
+def _create_input_channels(
+    dataset: str,
+    content_type: Optional[str] = None,
+    input_compression_type: Optional[str] = None,
+    record_wrapper_type: Optional[str] = None,
+    input_mode: Optional[str] = None,
+):
     """Create input channels from dataset (S3 URI or dataset ARN).
-    
+
     Args:
         dataset: S3 URI (s3://bucket/key) or dataset ARN (arn:aws:sagemaker:...)
-        
+
     Returns:
         list: List of Channel objects
     """
 
     channels = []
 
-    
     if dataset.startswith("s3://"):
         # S3 URI - create S3DataSource
         data_source = DataSource(
             s3_data_source={
                 "s3_uri": dataset,
                 "s3_data_type": "S3Prefix",
-                "s3_data_distribution_type": "FullyReplicated"
+                "s3_data_distribution_type": "FullyReplicated",
             }
         )
     else:
         # Dataset ARN - validate and create dataset source
         _validate_dataset_arn(dataset, "dataset")
-        data_source = DataSource(
-            dataset_source={"dataset_arn": dataset}
-        )
-    
+        data_source = DataSource(dataset_source={"dataset_arn": dataset})
+
     channel = Channel(
         channel_name="train",
         data_source=data_source,
         content_type=content_type,
         compression_type=input_compression_type,
         record_wrapper_type=record_wrapper_type,
-        input_mode=input_mode
-        )
+        input_mode=input_mode,
+    )
     channels.append(channel)
-    
+
     return channels
 
 
-def _resolve_model_with_checkpoint(model, base_model_name, compute, sagemaker_session=None, resolve_fn=None):
+def _resolve_model_with_checkpoint(
+    model, base_model_name, compute, sagemaker_session=None, resolve_fn=None
+):
     """Resolve model identity and checkpoint source from model param.
 
     Handles the S3 checkpoint detection: when model is an S3 URI, base_model_name
@@ -1057,11 +1174,11 @@ def _resolve_model_with_checkpoint(model, base_model_name, compute, sagemaker_se
 
 def _resolve_model_and_name(model, sagemaker_session=None):
     """Resolve model and extract model name from string, ARN, or ModelPackage object.
-    
+
     Args:
         model: Can be a model name (str), model package ARN (str), or ModelPackage object
         sagemaker_session: SageMaker session for API calls (required for ARN resolution)
-    
+
     Returns:
         tuple: (resolved_model, model_name)
     """
@@ -1071,14 +1188,15 @@ def _resolve_model_and_name(model, sagemaker_session=None):
         region_name = sagemaker_session.boto_region_name
     else:
         # Try to get region from SAGEMAKER_REGION env var, then boto3 session, then AWS_DEFAULT_REGION
-        region_name = os.environ.get('SAGEMAKER_REGION')
+        region_name = os.environ.get("SAGEMAKER_REGION")
         if not region_name:
             try:
                 import boto3
-                region_name = boto3.Session().region_name or os.environ.get('AWS_DEFAULT_REGION')
-            except:
+
+                region_name = boto3.Session().region_name or os.environ.get("AWS_DEFAULT_REGION")
+            except Exception:
                 pass
-    
+
     if isinstance(model, str):
         # Check if it's a model package ARN
         if model.startswith("arn:aws:sagemaker:") and ":model-package/" in model:
@@ -1086,7 +1204,7 @@ def _resolve_model_and_name(model, sagemaker_session=None):
             model_package = ModelPackage.get(
                 model_package_name=model,
                 session=sagemaker_session.boto_session if sagemaker_session else None,
-                region=sagemaker_session.boto_session.region_name if sagemaker_session else None
+                region=sagemaker_session.boto_session.region_name if sagemaker_session else None,
             )
             model_name = _resolve_model_name(model_package)
             # Validate region availability
@@ -1112,11 +1230,17 @@ def _resolve_model_and_name(model, sagemaker_session=None):
         return model, model_name
 
 
-def _create_serverless_config(model_arn, customization_technique,
-                           training_type, accept_eula, evaluator_arn=None,
-                           sequence_length=None, job_type=JOB_TYPE) -> Optional['ServerlessJobConfig']:
+def _create_serverless_config(
+    model_arn,
+    customization_technique,
+    training_type,
+    accept_eula,
+    evaluator_arn=None,
+    sequence_length=None,
+    job_type=JOB_TYPE,
+) -> Optional["ServerlessJobConfig"]:
     """Create serverless job configuration for fine-tuning.
-    
+
     Args:
         model_arn: ARN of the base model
         customization_technique: Technique used (e.g., "SFT", "DPO", "RLVR", "RLAIF")
@@ -1125,12 +1249,15 @@ def _create_serverless_config(model_arn, customization_technique,
         evaluator_arn: Optional evaluator ARN for RLVR/RLAIF
         sequence_length: Optional sequence length enum value (e.g., "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K")
         job_type: Type of job (default: "FineTuning")
-    
+
     Returns:
         ServerlessJobConfig object or None if required parameters are missing
     """
-    peft = None if (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) \
+    peft = (
+        None
+        if (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL)
         else (training_type.value if isinstance(training_type, TrainingType) else training_type)
+    )
 
     # Create ServerlessJobConfig using shapes
     serverless_config = ServerlessJobConfig(
@@ -1148,44 +1275,41 @@ def _create_serverless_config(model_arn, customization_technique,
 
 def _create_input_data_config(training_dataset, validation_dataset=None):
     """Create input data configuration from training and validation datasets.
-    
+
     Args:
         training_dataset: Training dataset (method parameter takes priority over class attribute)
         validation_dataset: Validation dataset (method parameter takes priority over class attribute)
-    
+
     Returns:
         List of InputData objects for training job configuration
     """
     # Extract and validate training dataset
     final_training_dataset = _extract_dataset_source(training_dataset, "training_dataset")
-    
-    input_data_config = [
-        InputData(channel_name="train", data_source=final_training_dataset)
-    ]
-    
+
+    input_data_config = [InputData(channel_name="train", data_source=final_training_dataset)]
+
     # Add validation dataset if provided
     if validation_dataset:
         final_validation_dataset = _extract_dataset_source(validation_dataset, "validation_dataset")
         input_data_config.append(
             InputData(channel_name="validation", data_source=final_validation_dataset)
         )
-    
-    return input_data_config
 
+    return input_data_config
 
 
 def _create_model_package_config(model_package_group_name, model, sagemaker_session):
     """Create model package configuration with resolved ARNs.
-    
+
     Args:
         model_package_group_name: Model package group name to resolve
         model: Model object (used to resolve source model package ARN if it's a ModelPackage)
         sagemaker_session: SageMaker session for API calls
-    
+
     Returns:
         ModelPackageConfig object or None if no model package group name provided
     """
-    
+
     model_package_group_arn = None
     if model_package_group_name:
         model_package_group_arn = _resolve_model_package_group_arn(
@@ -1202,12 +1326,15 @@ def _create_model_package_config(model_package_group_name, model, sagemaker_sess
     )
 
 
-
-def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None, 
-                       mlflow_experiment_name=None, mlflow_run_name=None,
-                       dry_run=False):
+def _create_mlflow_config(
+    sagemaker_session,
+    mlflow_resource_arn=None,
+    mlflow_experiment_name=None,
+    mlflow_run_name=None,
+    dry_run=False,
+):
     """Create MLflow configuration with resolved resource ARN.
-    
+
     Args:
         sagemaker_session: SageMaker session for resolving MLflow ARN
         mlflow_resource_arn: MLflow resource ARN (if None, uses default experience)
@@ -1215,12 +1342,11 @@ def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None,
         mlflow_run_name: MLflow run name
         dry_run: If True, only performs read-only checks without creating
             new MLflow apps or waiting for apps in Creating status.
-    
+
     Returns:
         MlflowConfig object or None if no MLflow resource ARN is resolved
     """
 
-    
     # Derive mlflow_resource_arn with default experience
     resolved_mlflow_arn = _resolve_mlflow_resource_arn(
         sagemaker_session, mlflow_resource_arn, dry_run=dry_run
@@ -1235,11 +1361,13 @@ def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None,
             mlflow_experiment_name=mlflow_experiment_name,
             mlflow_run_name=mlflow_run_name,
         )
-    
+
     return mlflow_config
 
 
-def _create_output_config(sagemaker_session, s3_output_path=None, kms_key_id=None, disable_output_compression=False):
+def _create_output_config(
+    sagemaker_session, s3_output_path=None, kms_key_id=None, disable_output_compression=False
+):
     """Create output data configuration with default S3 path if needed.
 
     Args:
@@ -1271,18 +1399,18 @@ def _create_output_config(sagemaker_session, s3_output_path=None, kms_key_id=Non
 
 def _convert_input_data_to_channels(input_data_config, s3_data_type="S3Prefix"):
     """Convert InputData objects to Channel objects with S3 and dataset ARN support.
-    
+
     Args:
         input_data_config: List of InputData objects
         s3_data_type: The S3 data type to use for S3 data sources. Use "Converse"
             for Nova SFT/DPO multimodal datasets so the SageMaker data agent
             downloads images and rewrites "uri" to "localPath" in the JSONL.
             Defaults to "S3Prefix".
-    
+
     Returns:
         List of Channel objects
     """
-    
+
     channels = []
     for input_data in input_data_config:
         if input_data.data_source.startswith("s3://"):
@@ -1291,27 +1419,25 @@ def _convert_input_data_to_channels(input_data_config, s3_data_type="S3Prefix"):
                 s3_data_source={
                     "s3_uri": input_data.data_source,
                     "s3_data_type": s3_data_type,
-                    "s3_data_distribution_type": "FullyReplicated"
+                    "s3_data_distribution_type": "FullyReplicated",
                 }
             )
         else:
             # Dataset ARN - create dataset source
-            data_source = DataSource(
-                dataset_source={"dataset_arn": input_data.data_source}
-            )
+            data_source = DataSource(dataset_source={"dataset_arn": input_data.data_source})
 
         channel = Channel(
             channel_name=input_data.channel_name,
             data_source=data_source,
         )
         channels.append(channel)
-    
+
     return channels
 
 
 def _validate_and_resolve_model_package_group(model, model_package_group_name):
     """Validate and resolve model_package_group_name from ModelPackage if needed.
-    
+
     Only called for serverless compute paths where model_package_group is required.
     """
     # If model_package_group_name is already provided, return it as-is
@@ -1332,29 +1458,31 @@ def _validate_and_resolve_model_package_group(model, model_package_group_name):
 
 def _validate_eula_for_gated_model(model, accept_eula, is_gated_model):
     """Validate EULA acceptance for gated models.
-    
+
     Args:
         model: Original model input (string, ARN, or ModelPackage)
         accept_eula: Boolean indicating if EULA is accepted
         is_gated_model: Boolean indicating if the model is gated
-    
+
     Returns:
         bool: True if EULA is accepted (either explicitly or by default for ARN/ModelPackage)
-    
+
     Raises:
         ValueError: If model is gated but accept_eula is False
     """
     # For ModelPackage/ARN inputs, EULA is assumed accepted by default
-    if isinstance(model, ModelPackage) or (isinstance(model, str) and model.startswith("arn:aws:sagemaker:")):
+    if isinstance(model, ModelPackage) or (
+        isinstance(model, str) and model.startswith("arn:aws:sagemaker:")
+    ):
         return True
-    
+
     # Validate EULA acceptance for gated models
     if is_gated_model and not accept_eula:
         raise ValueError(
             f"Model '{model}' is a gated model and requires EULA acceptance. "
             "Please set accept_eula=True to proceed with training."
         )
-    
+
     return accept_eula
 
 
@@ -1362,13 +1490,13 @@ def _validate_s3_path_exists(s3_path: str, sagemaker_session):
     """Validate S3 path and create bucket/prefix if they don't exist."""
     if not s3_path.startswith("s3://"):
         raise ValueError(f"Invalid S3 path format: {s3_path}")
-    
+
     # Parse S3 URI
     s3_parts = s3_path.replace("s3://", "").split("/", 1)
     bucket_name = s3_parts[0]
     prefix = s3_parts[1] if len(s3_parts) > 1 else ""
-    
-    s3_client = sagemaker_session.boto_session.client('s3')
+
+    s3_client = sagemaker_session.boto_session.client("s3")
 
     # Refuse the predictable default bucket if another account owns it, before we
     # create it or pass it to the training job as OutputDataConfig. The training
@@ -1376,7 +1504,7 @@ def _validate_s3_path_exists(s3_path: str, sagemaker_session):
     # ExpectedBucketOwner cannot be attached to it; verifying ownership of the
     # derived bucket up front is the applicable guard.
     try:
-        account_id = sagemaker_session.boto_session.client('sts').get_caller_identity()['Account']
+        account_id = sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"]
         region = sagemaker_session.boto_session.region_name
     except Exception:  # pragma: no cover - identity resolution is best-effort
         account_id = region = None
@@ -1391,25 +1519,24 @@ def _validate_s3_path_exists(s3_path: str, sagemaker_session):
             if "NoSuchBucket" in str(e) or "Not Found" in str(e):
                 # Create bucket
                 region = sagemaker_session.boto_region_name
-                if region == 'us-east-1':
+                if region == "us-east-1":
                     s3_client.create_bucket(Bucket=bucket_name)
                 else:
                     s3_client.create_bucket(
-                        Bucket=bucket_name,
-                        CreateBucketConfiguration={'LocationConstraint': region}
+                        Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
                     )
             else:
                 raise
-        
+
         # If prefix is provided, check if it exists, create if it doesn't
         if prefix:
             response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix, MaxKeys=1)
-            if 'Contents' not in response:
+            if "Contents" not in response:
                 # Create the prefix by putting an empty object
-                if not prefix.endswith('/'):
-                    prefix += '/'
-                s3_client.put_object(Bucket=bucket_name, Key=prefix, Body=b'')
-                
+                if not prefix.endswith("/"):
+                    prefix += "/"
+                s3_client.put_object(Bucket=bucket_name, Key=prefix, Body=b"")
+
     except Exception as e:
         raise ValueError(f"Failed to validate/create S3 path '{s3_path}': {str(e)}")
 
@@ -1417,6 +1544,7 @@ def _validate_s3_path_exists(s3_path: str, sagemaker_session):
 def _validate_hyperparameter_values(hyperparameters: dict):
     """Validate hyperparameter values for allowed characters."""
     import re
+
     allowed_chars = r"^[a-zA-Z0-9/_.:,\-\s'\"\[\]]*$"
     for key, value in hyperparameters.items():
         if isinstance(value, str) and not re.match(allowed_chars, value):
@@ -1426,8 +1554,13 @@ def _validate_hyperparameter_values(hyperparameters: dict):
             )
 
 
-def get_recipe_s3_uri(model_name: str, customization_technique: str, training_type,
-                      sagemaker_session, hub_name: Optional[str] = None) -> str:
+def get_recipe_s3_uri(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    hub_name: Optional[str] = None,
+) -> str:
     """Resolve the SmtjRecipeTemplateS3Uri for a model + technique + training_type.
 
     This is used by the SMTJ compute path to download the recipe and pass it to
@@ -1456,14 +1589,16 @@ def get_recipe_s3_uri(model_name: str, customization_technique: str, training_ty
         hub_content_type="Model",
         hub_content_name=model_name,
         session=sagemaker_session.boto_session,
-        region=sagemaker_session.boto_session.region_name
+        region=sagemaker_session.boto_session.region_name,
     )
 
-    document = hub_content.get('hub_content_document')
+    document = hub_content.get("hub_content_document")
     recipe_collection = document.get("RecipeCollection", [])
 
     # Filter recipes by customization technique
-    matching_recipes = [r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique]
+    matching_recipes = [
+        r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique
+    ]
 
     if not matching_recipes:
         raise ValueError(
@@ -1479,7 +1614,9 @@ def get_recipe_s3_uri(model_name: str, customization_technique: str, training_ty
         )
 
     # Select recipe based on training type
-    recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=True)
+    recipe = _select_recipe_by_training_type(
+        recipes_with_template, training_type, with_fallback=True
+    )
 
     if not recipe:
         raise ValueError(
@@ -1528,22 +1665,28 @@ def _get_recipe_entry_and_override_spec(
         hub_content_type="Model",
         hub_content_name=model_name,
         session=sagemaker_session.boto_session,
-        region=sagemaker_session.boto_session.region_name
+        region=sagemaker_session.boto_session.region_name,
     )
 
-    document = hub_content.get('hub_content_document')
+    document = hub_content.get("hub_content_document")
     recipe_collection = document.get("RecipeCollection", [])
 
     # Filter by customization technique
     # Evaluation recipes use "Type": "Evaluation" in the Hub rather than
     # "CustomizationTechnique": "Evaluation", so check both fields.
     if customization_technique == "Evaluation":
-        matching_recipes = [r for r in recipe_collection
-                            if r.get("CustomizationTechnique") == customization_technique
-                            or r.get("Type") == "Evaluation"]
+        matching_recipes = [
+            r
+            for r in recipe_collection
+            if r.get("CustomizationTechnique") == customization_technique
+            or r.get("Type") == "Evaluation"
+        ]
     else:
-        matching_recipes = [r for r in recipe_collection
-                            if r.get("CustomizationTechnique") == customization_technique]
+        matching_recipes = [
+            r
+            for r in recipe_collection
+            if r.get("CustomizationTechnique") == customization_technique
+        ]
 
     if not matching_recipes:
         raise ValueError(
@@ -1569,8 +1712,11 @@ def _get_recipe_entry_and_override_spec(
 
     # Filter by display name if specified (e.g., "benchmark" for general text benchmark eval)
     if display_name_filter:
-        filtered = [r for r in platform_recipes
-                    if display_name_filter.lower() in r.get("DisplayName", "").lower()]
+        filtered = [
+            r
+            for r in platform_recipes
+            if display_name_filter.lower() in r.get("DisplayName", "").lower()
+        ]
         if filtered:
             platform_recipes = filtered
 
@@ -1593,7 +1739,7 @@ def _get_recipe_entry_and_override_spec(
 
         # Handle S3 access point ARN URIs
         if uri_path.startswith("arn:"):
-            match = re.match(r'(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)', uri_path)
+            match = re.match(r"(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)", uri_path)
             if match:
                 bucket = match.group(1)
                 key = match.group(2)
@@ -1606,16 +1752,27 @@ def _get_recipe_entry_and_override_spec(
         override_spec = json.loads(response["Body"].read())
 
     # Add infrastructure fields not in the spec but present in recipe templates
-    for infra_key in ("name", "data_s3_path", "output_s3_path",
-                      "mlflow_tracking_uri", "mlflow_experiment_name", "mlflow_run_name"):
+    for infra_key in (
+        "name",
+        "data_s3_path",
+        "output_s3_path",
+        "mlflow_tracking_uri",
+        "mlflow_experiment_name",
+        "mlflow_run_name",
+    ):
         if infra_key not in override_spec:
             override_spec[infra_key] = {"default": "", "type": "string"}
 
     return recipe, override_spec
 
 
-def _get_smtj_override_spec(model_name: str, customization_technique: str, training_type,
-                            sagemaker_session, hub_name: Optional[str] = None) -> dict:
+def _get_smtj_override_spec(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    hub_name: Optional[str] = None,
+) -> dict:
     """Fetch the SMTJ override params spec JSON for a model recipe.
 
     Returns the parsed override spec dict from SmtjOverrideParamsS3Uri,
@@ -1642,8 +1799,13 @@ def _get_smtj_override_spec(model_name: str, customization_technique: str, train
     return override_spec
 
 
-def _get_smhp_replicas_enum(model_name: str, customization_technique: str, training_type,
-                            sagemaker_session, hub_name: Optional[str] = None) -> Optional[list]:
+def _get_smhp_replicas_enum(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    hub_name: Optional[str] = None,
+) -> Optional[list]:
     """Fetch the replicas enum from the SMHP override spec for the same model/technique.
 
     SMTJ hub content does not include a replicas enum in its override spec, but
@@ -1676,8 +1838,13 @@ def _get_smhp_replicas_enum(model_name: str, customization_technique: str, train
     return None
 
 
-def _get_smhp_instance_type_enum(model_name: str, customization_technique: str, training_type,
-                                 sagemaker_session, hub_name: Optional[str] = None) -> Optional[list]:
+def _get_smhp_instance_type_enum(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    hub_name: Optional[str] = None,
+) -> Optional[list]:
     """Fetch the instance_type enum from the SMHP override spec for the same model/technique.
 
     SMTJ hub content does not include an instance_type enum in its override spec, but
@@ -1710,7 +1877,9 @@ def _get_smhp_instance_type_enum(model_name: str, customization_technique: str, 
     return None
 
 
-def _extract_recipe_from_helm_template(template_content: str, customization_technique: str = None) -> str:
+def _extract_recipe_from_helm_template(
+    template_content: str, customization_technique: str = None
+) -> str:
     """Extract the training config YAML from a HyperPod Helm chart template.
 
     The HpEksPayloadTemplateS3Uri contains a full Helm chart (multi-document YAML
@@ -1718,7 +1887,7 @@ def _extract_recipe_from_helm_template(template_content: str, customization_tech
     This function extracts just the ``config.yaml`` content section.
 
     For RFT/RLVR recipes, also strips the ``task_type: storm_rbs`` field from the
-    Hub template. 
+    Hub template.
 
     Args:
         template_content: Raw Helm chart template string from S3.
@@ -1740,9 +1909,7 @@ def _extract_recipe_from_helm_template(template_content: str, customization_tech
             "Expected 'training-config.yaml' section not found."
         )
 
-    recipe_pattern = (
-        r"# Source: .*/training-config\.yaml.*?config\.yaml: \|-\n(.*?)(?=---|\Z)"
-    )
+    recipe_pattern = r"# Source: .*/training-config\.yaml.*?config\.yaml: \|-\n(.*?)(?=---|\Z)"
     recipe_match = re.search(recipe_pattern, template_content, re.DOTALL)
     if not recipe_match:
         raise ValueError(
@@ -1809,11 +1976,16 @@ def _render_recipe_placeholders(recipe_content: str, override_spec: dict) -> str
     return recipe_content
 
 
-def get_hyperpod_recipe_path(model_name: str, customization_technique: str, training_type,
-                             sagemaker_session, job_name: str,
-                             hub_name: Optional[str] = None,
-                             display_name_filter: Optional[str] = None,
-                             additional_overrides: Optional[Dict[str, Any]] = None) -> str:
+def get_hyperpod_recipe_path(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    job_name: str,
+    hub_name: Optional[str] = None,
+    display_name_filter: Optional[str] = None,
+    additional_overrides: Optional[Dict[str, Any]] = None,
+) -> str:
     """Resolve and write the HyperPod recipe for a model from SageMaker Hub.
 
     Downloads the recipe template from Hub (HpEksPayloadTemplateS3Uri), writes it
@@ -1845,7 +2017,6 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
         RuntimeError: If the HyperPod CLI is not installed
     """
     import uuid
-    import yaml
 
     recipe, override_spec = _get_recipe_entry_and_override_spec(
         model_name=model_name,
@@ -1870,7 +2041,9 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
     # Extract the training config from the Helm chart template
     # Only pass customization_technique for Nova models (task_type stripping is Nova RLVR/RFT specific)
     technique_for_extraction = customization_technique if _is_nova_model(model_name) else None
-    recipe_content = _extract_recipe_from_helm_template(recipe_content, customization_technique=technique_for_extraction)
+    recipe_content = _extract_recipe_from_helm_template(
+        recipe_content, customization_technique=technique_for_extraction
+    )
 
     # Inject additional overrides into spec before rendering
     if additional_overrides:
@@ -1896,9 +2069,7 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
     HYPERPOD_RECIPE_PATH = os.path.join(
         "sagemaker_hyperpod_recipes", "recipes_collection", "recipes"
     )
-    hp_cli_recipes_dir = os.path.join(
-        os.path.dirname(hyperpod_cli.__file__), HYPERPOD_RECIPE_PATH
-    )
+    hp_cli_recipes_dir = os.path.join(os.path.dirname(hyperpod_cli.__file__), HYPERPOD_RECIPE_PATH)
 
     # Build recipe subdirectory based on technique
     technique_lower = customization_technique.lower()
@@ -1926,16 +2097,19 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
 
     # Return relative path (strip prefix + .yaml extension) as expected by CLI
     relative_path = (
-        recipe_path.split(HYPERPOD_RECIPE_PATH, 1)[1]
-        .lstrip("/").lstrip("\\")
-        .removesuffix(".yaml")
+        recipe_path.split(HYPERPOD_RECIPE_PATH, 1)[1].lstrip("/").lstrip("\\").removesuffix(".yaml")
     )
 
     return relative_path
 
 
-def get_training_image(model_name: str, customization_technique: str, training_type,
-                       sagemaker_session, hub_name: Optional[str] = None) -> Optional[str]:
+def get_training_image(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    hub_name: Optional[str] = None,
+) -> Optional[str]:
     """Resolve the training image URI for SMTJ from hub model metadata.
 
     Args:
@@ -1958,26 +2132,35 @@ def get_training_image(model_name: str, customization_technique: str, training_t
         hub_content_type="Model",
         hub_content_name=model_name,
         session=sagemaker_session.boto_session,
-        region=sagemaker_session.boto_session.region_name
+        region=sagemaker_session.boto_session.region_name,
     )
 
-    document = hub_content.get('hub_content_document')
+    document = hub_content.get("hub_content_document")
     recipe_collection = document.get("RecipeCollection", [])
 
-    matching_recipes = [r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique]
+    matching_recipes = [
+        r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique
+    ]
     if not matching_recipes and customization_technique == "Evaluation":
         matching_recipes = [r for r in recipe_collection if r.get("Type") == "Evaluation"]
     recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
 
-    recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=True)
+    recipe = _select_recipe_by_training_type(
+        recipes_with_template, training_type, with_fallback=True
+    )
 
     if recipe:
         return recipe.get("SmtjImageUri")
     return None
 
 
-def get_hyperpod_training_image(model_name: str, customization_technique: str, training_type,
-                                sagemaker_session, hub_name: Optional[str] = None) -> Optional[str]:
+def get_hyperpod_training_image(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    hub_name: Optional[str] = None,
+) -> Optional[str]:
     """Resolve the training image URI for HyperPod from the EKS payload template.
 
     Downloads the HpEksPayloadTemplateS3Uri for the matching recipe and extracts
@@ -2076,16 +2259,10 @@ def list_hyperparameters(
         >>> hp.get_info()  # Display all parameters with defaults and ranges
         >>> hp.get_info("learning_rate")  # Display info for a single parameter
     """
-    technique_val = (
-        technique.value if isinstance(technique, CustomizationTechnique) else technique
-    )
-    training_type_val = (
-        training_type if isinstance(training_type, str) else training_type.value
-    )
+    technique_val = technique.value if isinstance(technique, CustomizationTechnique) else technique
+    training_type_val = training_type if isinstance(training_type, str) else training_type.value
 
-    session = sagemaker_session or TrainDefaults.get_sagemaker_session(
-        sagemaker_session=None
-    )
+    session = sagemaker_session or TrainDefaults.get_sagemaker_session(sagemaker_session=None)
 
     options, _, _ = _get_fine_tuning_options_and_model_arn(
         model_name=model,

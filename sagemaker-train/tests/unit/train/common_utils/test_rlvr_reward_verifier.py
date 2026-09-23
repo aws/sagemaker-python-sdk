@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for the RLVR reward function verifier."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -695,6 +696,7 @@ def lambda_handler(event, context):
 # Platform / Lambda ARN validation
 # ---------------------------------------------------------------------------
 
+
 def test_verify_smhp_compute_invalid_lambda_arn():
     """Test that HyperPod compute rejects a Lambda ARN without 'SageMaker' in the name."""
     sample_data = [
@@ -707,7 +709,9 @@ def test_verify_smhp_compute_invalid_lambda_arn():
 
     invalid_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-function"
 
-    with pytest.raises(ValueError, match="Lambda ARN for HyperPod compute.*must contain 'SageMaker'"):
+    with pytest.raises(
+        ValueError, match="Lambda ARN for HyperPod compute.*must contain 'SageMaker'"
+    ):
         verify_reward_function(
             reward_function=invalid_arn,
             sample_data=sample_data,

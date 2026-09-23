@@ -42,10 +42,10 @@ def test_deserializer_for_structure_type():
                 "S3DataSource": {
                     "CompressionType": "Gzip",
                     "S3DataType": "S3Object",
-                    "S3Uri": "s3://sagemaker-us-west-2-616250812882/session-default-prefix/large-model-lmi/code/mymodel-7B.tar.gz",
+                    "S3Uri": "s3://sagemaker-us-west-2-616250812882/session-default-prefix/large-model-lmi/code/mymodel-7B.tar.gz",  # noqa: E501
                 }
             },
-            "ModelDataUrl": "s3://sagemaker-us-west-2-616250812882/session-default-prefix/large-model-lmi/code/mymodel-7B.tar.gz",
+            "ModelDataUrl": "s3://sagemaker-us-west-2-616250812882/session-default-prefix/large-model-lmi/code/mymodel-7B.tar.gz",  # noqa: E501
         },
     }
     transformed_data = transform(describe_model_response, "DescribeModelOutput")
@@ -88,7 +88,7 @@ def test_deserializer_for_list_type():
     real_time_inference_recommendations = (
         instance.deployment_recommendation.real_time_inference_recommendations
     )
-    assert type(real_time_inference_recommendations) == list
+    assert type(real_time_inference_recommendations) is list
     assert real_time_inference_recommendations[0].recommendation_id == "dummy-recomm-id-1"
     assert real_time_inference_recommendations[1].instance_type == "mlm4"
     assert real_time_inference_recommendations[1].environment == {"ENV_VAR_2": "ENV_VAR_2_VALUE"}
@@ -106,17 +106,17 @@ def test_deserializer_for_map_type():
                 "Value": "s3://sagemaker-us-west-2-616250812882/session-default-prefix/"
             },
             "SageMaker.ModelArtifact": {
-                "Value": "s3://sagemaker-us-west-2-616250812882/session-default-prefix/huggingface-pytorch-training-2024-01-10-02-32-59-730/output/model.tar.gz"
+                "Value": "s3://sagemaker-us-west-2-616250812882/session-default-prefix/huggingface-pytorch-training-2024-01-10-02-32-59-730/output/model.tar.gz"  # noqa: E501
             },
         },
         "Parameters": {
             "SageMaker.ImageUri": {
-                "StringValue": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+                "StringValue": "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-training:2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"  # noqa: E501
             },
             "SageMaker.InstanceCount": {"NumberValue": 1.0},
             "SageMaker.InstanceType": {"StringValue": "ml.g5.4xlarge"},
         },
-        "TrialComponentArn": "arn:aws:sagemaker:us-west-2:616250812882:experiment-trial-component/huggingface-pytorch-training-2024-01-10-02-32-59-730-aws-training-job",
+        "TrialComponentArn": "arn:aws:sagemaker:us-west-2:616250812882:experiment-trial-component/huggingface-pytorch-training-2024-01-10-02-32-59-730-aws-training-job",  # noqa: E501
         "TrialComponentName": "huggingface-pytorch-training-2024-01-10-02-32-59-730-aws-training-job",
     }
     transformed_data = transform(
@@ -125,11 +125,11 @@ def test_deserializer_for_map_type():
     pprint(transformed_data)
     instance = TrialComponent(**transformed_data)
     parameters = instance.parameters
-    assert type(parameters) == dict
+    assert type(parameters) is dict
     assert parameters["SageMaker.InstanceType"].string_value == "ml.g5.4xlarge"
     assert parameters["SageMaker.InstanceCount"].number_value == 1.0
     output_artifacts = instance.output_artifacts
-    assert type(output_artifacts) == dict
+    assert type(output_artifacts) is dict
     assert (
         output_artifacts["SageMaker.DebugHookOutput"].value
         == "s3://sagemaker-us-west-2-616250812882/session-default-prefix/"
@@ -145,7 +145,7 @@ def test_deserializer_for_map_type():
                 "DataSource": {
                     "S3DataSource": {
                         "S3DataType": "S3Prefix",
-                        "S3Uri": "s3://sagemaker-us-west-2-616250812882/sagemaker/beta-automl-xgboost/input/iris_training.csv",
+                        "S3Uri": "s3://sagemaker-us-west-2-616250812882/sagemaker/beta-automl-xgboost/input/iris_training.csv",  # noqa: E501
                     }
                 },
             }
@@ -176,22 +176,22 @@ def test_deserializer_for_map_type():
             "CandidateStatus": "Completed",
             "CandidateSteps": [
                 {
-                    "CandidateStepArn": "arn:aws:sagemaker:us-west-2:616250812882:processing-job/python-sdk-integ-test-base-job-db-1-0661642ca7be48d280cb7fe6197",
+                    "CandidateStepArn": "arn:aws:sagemaker:us-west-2:616250812882:processing-job/python-sdk-integ-test-base-job-db-1-0661642ca7be48d280cb7fe6197",  # noqa: E501
                     "CandidateStepName": "python-sdk-integ-test-base-job-db-1-0661642ca7be48d280cb7fe6197",
                     "CandidateStepType": "AWS::SageMaker::ProcessingJob",
                 },
                 {
-                    "CandidateStepArn": "arn:aws:sagemaker:us-west-2:616250812882:training-job/python-sdk-integ-test-base-job-dpp1-1-e49c814570994bd98293d0087",
+                    "CandidateStepArn": "arn:aws:sagemaker:us-west-2:616250812882:training-job/python-sdk-integ-test-base-job-dpp1-1-e49c814570994bd98293d0087",  # noqa: E501
                     "CandidateStepName": "python-sdk-integ-test-base-job-dpp1-1-e49c814570994bd98293d0087",
                     "CandidateStepType": "AWS::SageMaker::TrainingJob",
                 },
                 {
-                    "CandidateStepArn": "arn:aws:sagemaker:us-west-2:616250812882:transform-job/python-sdk-integ-test-base-job-dpp1-csv-1-73af2590ca7a4719988c3",
+                    "CandidateStepArn": "arn:aws:sagemaker:us-west-2:616250812882:transform-job/python-sdk-integ-test-base-job-dpp1-csv-1-73af2590ca7a4719988c3",  # noqa: E501
                     "CandidateStepName": "python-sdk-integ-test-base-job-dpp1-csv-1-73af2590ca7a4719988c3",
                     "CandidateStepType": "AWS::SageMaker::TransformJob",
                 },
                 {
-                    "CandidateStepArn": "arn:aws:sagemaker:us-west-2:616250812882:training-job/python-sdk-integ-test-base-jobta-001-143b672d",
+                    "CandidateStepArn": "arn:aws:sagemaker:us-west-2:616250812882:training-job/python-sdk-integ-test-base-jobta-001-143b672d",  # noqa: E501
                     "CandidateStepName": "python-sdk-integ-test-base-jobTA-001-143b672d",
                     "CandidateStepType": "AWS::SageMaker::TrainingJob",
                 },
@@ -223,10 +223,10 @@ def test_deserializer_for_map_type():
     instance = AutoMLJobV2(**transformed_data)
     best_candidate = instance.best_candidate
     inference_container_definitions = best_candidate.inference_container_definitions
-    assert type(inference_container_definitions) == dict
+    assert type(inference_container_definitions) is dict
     assert best_candidate.candidate_name == "python-sdk-integ-test-base-jobTA-001-143b672d"
     inference_container_definitions_def1 = inference_container_definitions["def1"]
-    assert type(inference_container_definitions_def1) == list
+    assert type(inference_container_definitions_def1) is list
     assert inference_container_definitions_def1[0].image == "dummy-image-1"
     assert inference_container_definitions_def1[1].environment == {"ENV_VAR_2": "ENV_VAR_2_VALUE"}
     # StructA -> map(string, map)

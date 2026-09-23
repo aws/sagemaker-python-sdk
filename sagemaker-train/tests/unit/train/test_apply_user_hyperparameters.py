@@ -4,6 +4,7 @@ These lock in that hyperparameters supplied at trainer construction are re-appli
 onto the spec-backed FineTuningOptions (through its validating __setattr__) instead of
 being silently dropped when the trainer rebuilds hyperparameters from the model spec.
 """
+
 import pytest
 
 from sagemaker.train.base_trainer import BaseTrainer

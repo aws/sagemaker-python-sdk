@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains constants of feature processor to be used for unit tests."""
+
 from __future__ import absolute_import
 
 import datetime
@@ -33,7 +34,9 @@ from sagemaker.mlops.feature_store.feature_processor.lineage._feature_group_cont
 from sagemaker.mlops.feature_store.feature_processor.lineage._pipeline_schedule import (
     PipelineSchedule,
 )
-from sagemaker.mlops.feature_store.feature_processor.lineage._pipeline_trigger import PipelineTrigger
+from sagemaker.mlops.feature_store.feature_processor.lineage._pipeline_trigger import (
+    PipelineTrigger,
+)
 from sagemaker.mlops.feature_store.feature_processor.lineage._transformation_code import (
     TransformationCode,
 )

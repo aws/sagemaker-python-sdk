@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""General-purpose utility helpers for SageMaker core."""
 
 import datetime
 import logging
@@ -32,11 +33,12 @@ from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix
 
 
 def add_indent(text, num_spaces=4):
-    """
-    Add customizable indent spaces to a given text.
+    """Add customizable indent spaces to a given text.
+
     Parameters:
         text (str): The text to which the indent spaces will be added.
         num_spaces (int): Number of spaces to be added for each level of indentation. Default is 4.
+
     Returns:
         str: The text with added indent spaces.
     """
@@ -47,16 +49,18 @@ def add_indent(text, num_spaces=4):
 
 
 def clean_documentaion(documentation):
+    """Clean HTML tags from a documentation string."""
     documentation = re.sub(r"<\/?p>", "", documentation)
     documentation = re.sub(r"<\/?code>", "'", documentation)
     return documentation
 
 
 def convert_to_snake_case(entity_name):
-    """
-    Convert a string to snake_case.
+    """Convert a string to snake_case.
+
     Args:
         entity_name (str): The string to convert.
+
     Returns:
         str: The converted string in snake_case.
     """
@@ -64,19 +68,8 @@ def convert_to_snake_case(entity_name):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake_case).lower()
 
 
-def snake_to_pascal(snake_str):
-    """
-    Convert a snake_case string to PascalCase.
-    Args:
-        snake_str (str): The snake_case string to be converted.
-    Returns:
-        str: The PascalCase string.
-    """
-    components = snake_str.split("_")
-    return "".join(x.title() for x in components[0:])
-
-
 def reformat_file_with_black(filename):
+    """Reformat the given file in place using black."""
     try:
         # Run black with specific options using subprocess
         subprocess.run(["black", "-l", "100", filename], check=True)
@@ -86,12 +79,14 @@ def reformat_file_with_black(filename):
 
 
 def remove_html_tags(text):
+    """Remove HTML tags from the given text."""
     clean = re.compile("<.*?>")
     return re.sub(clean, "", text)
 
 
 def escape_special_rst_characters(text):
     # List of special characters that need to be escaped in reStructuredText
+    """Escape special reStructuredText characters in the given text."""
     special_characters = ["*", "|"]
 
     for char in special_characters:
@@ -103,8 +98,7 @@ def escape_special_rst_characters(text):
 
 
 def get_textual_rich_theme() -> Theme:
-    """
-    Get a textual rich theme with customized styling.
+    """Get a textual rich theme with customized styling.
 
     Returns:
         Theme: A textual rich theme
@@ -147,10 +141,7 @@ textual_rich_console_and_traceback_enabled = False
 
 
 def enable_textual_rich_console_and_traceback():
-    """
-    Reconfigure the global textual rich console with the customized theme
-        and enable textual rich error traceback
-    """
+    """Reconfigure the global textual rich console with the customized theme and enable textual rich error traceback"""
     global textual_rich_console_and_traceback_enabled
     if not textual_rich_console_and_traceback_enabled:
         theme = get_textual_rich_theme()
@@ -161,14 +152,14 @@ def enable_textual_rich_console_and_traceback():
 
 
 def get_rich_handler():
+    """Return a rich logging handler."""
     handler = RichHandler(markup=True)
     handler.setFormatter(logging.Formatter("%(message)s"))
     return handler
 
 
 def get_textual_rich_logger(name: str, log_level: str = "INFO") -> logging.Logger:
-    """
-    Get a logger with textual rich handler.
+    """Get a logger with textual rich handler.
 
     Args:
         name (str): The name of the logger
@@ -178,7 +169,6 @@ def get_textual_rich_logger(name: str, log_level: str = "INFO") -> logging.Logge
 
     Return:
         logging.Logger: A textial rich logger.
-
     """
     enable_textual_rich_console_and_traceback()
     handler = get_rich_handler()
@@ -228,6 +218,7 @@ def configure_logging(log_level=None):
 
 
 def is_snake_case(s: str):
+    """Return True if the string is snake_case."""
     if not s:
         return False
     if s[0].isupper():
@@ -242,15 +233,13 @@ def is_snake_case(s: str):
 
 
 def snake_to_pascal(snake_str):
-    """
-    Convert a snake_case string to PascalCase.
+    """Convert a snake_case string to PascalCase.
 
     Args:
         snake_str (str): The snake_case string to be converted.
 
     Returns:
         str: The PascalCase string.
-
     """
     if pascal_str := SPECIAL_SNAKE_TO_PASCAL_MAPPINGS.get(snake_str):
         return pascal_str
@@ -259,8 +248,7 @@ def snake_to_pascal(snake_str):
 
 
 def pascal_to_snake(pascal_str):
-    """
-    Converts a PascalCase string to snake_case.
+    """Converts a PascalCase string to snake_case.
 
     Args:
         pascal_str (str): The PascalCase string to be converted.
@@ -273,18 +261,22 @@ def pascal_to_snake(pascal_str):
 
 
 def is_not_primitive(obj):
+    """Return True if the object is not a primitive value."""
     return not isinstance(obj, (int, float, str, bool, datetime.datetime, bytes))
 
 
 def is_not_str_dict(obj):
+    """Return True if the object is not a string-keyed dict."""
     return not isinstance(obj, dict) or not all(isinstance(k, str) for k in obj.keys())
 
 
 def is_primitive_list(obj):
+    """Return True if all items in the list are primitives."""
     return all(not is_not_primitive(s) for s in obj)
 
 
 def is_primitive_class(cls):
+    """Return True if the class is a primitive type."""
     return cls in (str, int, bool, float, datetime.datetime)
 
 
@@ -294,6 +286,7 @@ class Unassigned:
     _instance = None
 
     def __new__(cls):
+        """Create and return the singleton instance."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -316,16 +309,14 @@ class Unassigned:
 
 
 class SingletonMeta(type):
-    """
-    Singleton metaclass. Ensures that a single instance of a class using this metaclass is created.
-    """
+    """Singleton metaclass. Ensures that a single instance of a class using this metaclass is created."""
 
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
-        """
-        Overrides the call method to return an existing instance of the class if it exists,
-        or create a new one if it doesn't.
+        """Return an existing instance of the class, or create a new one.
+
+        Overrides the call method so the class behaves as a singleton.
         """
         if cls not in cls._instances:
             instance = super().__call__(*args, **kwargs)
@@ -334,9 +325,7 @@ class SingletonMeta(type):
 
 
 class SageMakerClient(metaclass=SingletonMeta):
-    """
-    A singleton class for creating a SageMaker client.
-    """
+    """A singleton class for creating a SageMaker client."""
 
     @classmethod
     def reset(cls):
@@ -349,8 +338,8 @@ class SageMakerClient(metaclass=SingletonMeta):
         region_name: str = None,
         config: Config = None,
     ):
-        """
-        Initializes the SageMakerClient with a boto3 session, region name, and service name.
+        """Initialize the SageMakerClient with a boto3 session, region, and service name.
+
         Creates a boto3 client using the provided session, region, and service.
         """
         if session is None:
@@ -369,9 +358,7 @@ class SageMakerClient(metaclass=SingletonMeta):
         self.session = session
         self.region_name = region_name
 
-        self.sagemaker_client = session.client(
-            "sagemaker", region_name, config=self.config
-        )
+        self.sagemaker_client = session.client("sagemaker", region_name, config=self.config)
         self.sagemaker_runtime_client = session.client(
             "sagemaker-runtime", region_name, config=self.config
         )
@@ -383,8 +370,7 @@ class SageMakerClient(metaclass=SingletonMeta):
         )
 
     def get_client(self, service_name: str) -> Any:
-        """
-        Get the client of corresponding service
+        """Get the client of corresponding service
 
         Args:
             service_name (str): the service name
@@ -418,7 +404,9 @@ class ResourceIterator(Generic[T]):
             resource_cls (Type[T]): The resource class to be instantiated for each resource object.
             list_method (str): The list method string used to make list calls to the client.
             list_method_kwargs (dict, optional): The kwargs used to make list method calls. Defaults to {}.
-            custom_key_mapping (dict, optional): The custom key mapping used to map keys from summary object to those expected from resource object during initialization. Defaults to None.
+            custom_key_mapping (dict, optional): The custom key mapping used to map keys from
+                summary object to those expected from resource object during initialization.
+                Defaults to None.
         """
         self.summaries_key = summaries_key
         self.summary_name = summary_name
@@ -433,11 +421,13 @@ class ResourceIterator(Generic[T]):
         self.next_token = None
 
     def __iter__(self):
+        """Return the iterator object."""
         return self
 
     def __next__(self) -> T:
 
         # If there are summaries in the summary_list, return the next summary
+        """Return the next item from the iterator."""
         if len(self.summary_list) > 0 and self.index < len(self.summary_list):
             # Get the next summary from the resource summary_list
             summary = self.summary_list[self.index]
@@ -494,8 +484,7 @@ class ResourceIterator(Generic[T]):
 
 
 def serialize(value: Any) -> Any:
-    """
-    Serialize an object recursively by converting all objects to JSON-serializable types
+    """Serialize an object recursively by converting all objects to JSON-serializable types
 
     Args:
        value (Any): The object to be serialized
@@ -524,8 +513,7 @@ def serialize(value: Any) -> Any:
 
 
 def _serialize_dict(value: Dict) -> dict:
-    """
-    Serialize all values in a dict recursively
+    """Serialize all values in a dict recursively
 
     Args:
        value (dict): The dict to be serialized
@@ -543,8 +531,7 @@ def _serialize_dict(value: Dict) -> dict:
 
 
 def _serialize_list(value: List) -> list:
-    """
-    Serialize all objects in a list
+    """Serialize all objects in a list
 
     Args:
        value (list): The dict to be serialized
@@ -562,8 +549,7 @@ def _serialize_list(value: List) -> list:
 
 
 def _serialize_shape(value: Any) -> dict:
-    """
-    Serialize a shape object defined in resource.py or shape.py to a dict
+    """Serialize a shape object defined in resource.py or shape.py to a dict
 
     Args:
        value (Any): The shape to be serialized

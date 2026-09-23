@@ -96,7 +96,6 @@ class TestComputeInstancePreferences:
     def test_training_compute_per_preference_count(self):
         """A per-preference (unset uniform) count must round-trip without error."""
         from sagemaker.core.shapes.shapes import InstancePreference
-        from sagemaker.core.utils.utils import Unassigned
 
         prefs = [
             InstancePreference(instance_type="ml.p5.48xlarge", instance_count=2),

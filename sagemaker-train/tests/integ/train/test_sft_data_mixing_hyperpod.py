@@ -26,6 +26,7 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_sft_data_mixing_hyperpod.py -v -s
 """
+
 from __future__ import absolute_import
 
 import json
@@ -61,7 +62,9 @@ def _generate_training_data() -> str:
         sample = {
             "schemaVersion": "bedrock-conversation-2024",
             "system": [
-                {"text": "You are a helpful assistant who answers the question based on the task assigned"}
+                {
+                    "text": "You are a helpful assistant who answers the question based on the task assigned"
+                }
             ],
             "messages": [
                 {"role": "user", "content": [{"text": f"Q{i}"}]},
@@ -125,7 +128,9 @@ def training_resources(sagemaker_session_us_east_1):
 
 @pytest.mark.gpu_intensive
 @pytest.mark.us_east_1
-def test_sft_trainer_nova_micro_data_mixing_hyperpod(sagemaker_session_us_east_1, training_resources):
+def test_sft_trainer_nova_micro_data_mixing_hyperpod(
+    sagemaker_session_us_east_1, training_resources
+):
     """Test SFT trainer with Nova Micro model and data mixing on HyperPod.
 
     This end-to-end test submits a real HyperPod training job with DataMixingConfig
@@ -136,10 +141,7 @@ def test_sft_trainer_nova_micro_data_mixing_hyperpod(sagemaker_session_us_east_1
 
     data_mixing_config = DataMixingConfig(
         customer_data_percent=70.0,
-        nova_data_percentages={
-            "code": 50.0,
-            "chat": 50.0
-        },
+        nova_data_percentages={"code": 50.0, "chat": 50.0},
     )
 
     compute = HyperPodCompute(
@@ -178,13 +180,15 @@ def test_sft_trainer_nova_micro_data_mixing_hyperpod(sagemaker_session_us_east_1
 
     # Verify the job exists on the cluster via hyperpod get-job
     import subprocess
+
     get_job_result = subprocess.run(
         ["hyperpod", "get-job", "--job-name", job_name],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
-    assert get_job_result.returncode == 0, (
-        f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}"
-    )
+    assert (
+        get_job_result.returncode == 0
+    ), f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}"
     logger.info(f"Verified job '{job_name}' exists on the cluster using hp-cli.")
 
     # Poll for job completion by checking for the manifest in S3.
@@ -211,7 +215,7 @@ def test_sft_trainer_nova_micro_data_mixing_hyperpod(sagemaker_session_us_east_1
         logger.info(f"Waiting for manifest... ({elapsed}s elapsed)")
         time.sleep(poll_interval)
 
-    assert checkpoint_path is not None, (
-        f"Job {job_name} did not produce a manifest within {max_wait_time}s"
-    )
+    assert (
+        checkpoint_path is not None
+    ), f"Job {job_name} did not produce a manifest within {max_wait_time}s"
     logger.info(f"Training complete. Checkpoint: {checkpoint_path}")

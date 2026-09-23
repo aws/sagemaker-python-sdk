@@ -46,7 +46,6 @@ from sagemaker.mlops.workflow.lineage_step import (
 )
 from sagemaker.mlops.workflow.pipeline import Pipeline
 
-
 # sagemaker_session, pipeline_session and role come from tests/integ/conftest.py.
 # They build their sessions on a boto3.Session carrying an explicit region, which a
 # bare Session() would not have: CI runs the integ suite with AWS_DEFAULT_REGION

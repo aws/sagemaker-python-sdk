@@ -18,7 +18,6 @@ from sagemaker.core.jumpstart.hub.parser_utils import (
     walk_and_apply_json,
 )
 
-
 VARIANTS = {
     "Variants": {
         "g5": {

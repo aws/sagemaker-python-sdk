@@ -1,4 +1,5 @@
 """Integration tests for FeatureGroupManager iceberg property handling."""
+
 import time
 
 import boto3
@@ -47,13 +48,18 @@ def feature_group_name():
 @pytest.fixture
 def sample_dataframe():
     from datetime import datetime, timezone, timedelta
+
     base_time = datetime.now(timezone.utc)
-    return pd.DataFrame({
-        "record_id": [f"id-{i}" for i in range(10)],
-        "feature_1": [i * 1.5 for i in range(10)],
-        "feature_2": [i * 2 for i in range(10)],
-        "event_time": [(base_time + timedelta(seconds=i)).strftime("%Y-%m-%dT%H:%M:%SZ") for i in range(10)],
-    })
+    return pd.DataFrame(
+        {
+            "record_id": [f"id-{i}" for i in range(10)],
+            "feature_1": [i * 1.5 for i in range(10)],
+            "feature_2": [i * 2 for i in range(10)],
+            "event_time": [
+                (base_time + timedelta(seconds=i)).strftime("%Y-%m-%dT%H:%M:%SZ") for i in range(10)
+            ],
+        }
+    )
 
 
 def cleanup_feature_group(feature_group_name):
@@ -65,15 +71,15 @@ def cleanup_feature_group(feature_group_name):
         pass
 
 
-def test_create_with_iceberg_properties(
-    feature_group_name, sample_dataframe, bucket, role
-):
+def test_create_with_iceberg_properties(feature_group_name, sample_dataframe, bucket, role):
     try:
         feature_definitions = load_feature_definitions_from_dataframe(sample_dataframe)
-        iceberg_props = IcebergProperties(properties={
-            "write.metadata.delete-after-commit.enabled": "true",
-            "write.metadata.previous-versions-max": "5",
-        })
+        iceberg_props = IcebergProperties(
+            properties={
+                "write.metadata.delete-after-commit.enabled": "true",
+                "write.metadata.previous-versions-max": "5",
+            }
+        )
 
         fg = FeatureGroupManager.create(
             feature_group_name=feature_group_name,
@@ -95,15 +101,18 @@ def test_create_with_iceberg_properties(
             include_iceberg_properties=True,
         )
         assert retrieved.iceberg_properties is not None
-        assert retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"] == "true"
-        assert retrieved.iceberg_properties.properties["write.metadata.previous-versions-max"] == "5"
+        assert (
+            retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"]
+            == "true"
+        )
+        assert (
+            retrieved.iceberg_properties.properties["write.metadata.previous-versions-max"] == "5"
+        )
     finally:
         cleanup_feature_group(feature_group_name)
 
 
-def test_update_iceberg_properties(
-    feature_group_name, sample_dataframe, bucket, role
-):
+def test_update_iceberg_properties(feature_group_name, sample_dataframe, bucket, role):
     try:
         feature_definitions = load_feature_definitions_from_dataframe(sample_dataframe)
 
@@ -121,24 +130,31 @@ def test_update_iceberg_properties(
 
         fg.wait_for_status("Created")
 
-        fg.update(iceberg_properties=IcebergProperties(properties={
-            "write.metadata.delete-after-commit.enabled": "true",
-            "write.metadata.previous-versions-max": "5",
-        }))
+        fg.update(
+            iceberg_properties=IcebergProperties(
+                properties={
+                    "write.metadata.delete-after-commit.enabled": "true",
+                    "write.metadata.previous-versions-max": "5",
+                }
+            )
+        )
 
         retrieved = FeatureGroupManager.get(
             feature_group_name=feature_group_name,
             include_iceberg_properties=True,
         )
-        assert retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"] == "true"
-        assert retrieved.iceberg_properties.properties["write.metadata.previous-versions-max"] == "5"
+        assert (
+            retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"]
+            == "true"
+        )
+        assert (
+            retrieved.iceberg_properties.properties["write.metadata.previous-versions-max"] == "5"
+        )
     finally:
         cleanup_feature_group(feature_group_name)
 
 
-def test_get_with_include_iceberg_properties(
-    feature_group_name, sample_dataframe, bucket, role
-):
+def test_get_with_include_iceberg_properties(feature_group_name, sample_dataframe, bucket, role):
     try:
         feature_definitions = load_feature_definitions_from_dataframe(sample_dataframe)
 
@@ -152,9 +168,11 @@ def test_get_with_include_iceberg_properties(
                 s3_storage_config=S3StorageConfig(s3_uri=f"s3://{bucket}/feature-store"),
                 table_format="Iceberg",
             ),
-            iceberg_properties=IcebergProperties(properties={
-                "write.metadata.delete-after-commit.enabled": "true",
-            }),
+            iceberg_properties=IcebergProperties(
+                properties={
+                    "write.metadata.delete-after-commit.enabled": "true",
+                }
+            ),
         )
 
         fg.wait_for_status("Created")
@@ -165,14 +183,15 @@ def test_get_with_include_iceberg_properties(
         )
         assert retrieved.iceberg_properties is not None
         assert isinstance(retrieved.iceberg_properties.properties, dict)
-        assert retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"] == "true"
+        assert (
+            retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"]
+            == "true"
+        )
     finally:
         cleanup_feature_group(feature_group_name)
 
 
-def test_create_with_iceberg_properties_none(
-    feature_group_name, sample_dataframe, bucket, role
-):
+def test_create_with_iceberg_properties_none(feature_group_name, sample_dataframe, bucket, role):
     try:
         feature_definitions = load_feature_definitions_from_dataframe(sample_dataframe)
 
@@ -218,15 +237,22 @@ def test_update_only_iceberg_properties_skips_parent_update(
         fg.wait_for_status("Created")
 
         # Update with ONLY iceberg properties — no description or other parent args
-        fg.update(iceberg_properties=IcebergProperties(properties={
-            "write.metadata.delete-after-commit.enabled": "true",
-        }))
+        fg.update(
+            iceberg_properties=IcebergProperties(
+                properties={
+                    "write.metadata.delete-after-commit.enabled": "true",
+                }
+            )
+        )
 
         retrieved = FeatureGroupManager.get(
             feature_group_name=feature_group_name,
             include_iceberg_properties=True,
         )
-        assert retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"] == "true"
+        assert (
+            retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"]
+            == "true"
+        )
     finally:
         cleanup_feature_group(feature_group_name)
 
@@ -248,9 +274,11 @@ def test_get_without_include_flag_has_no_iceberg_properties(
                 s3_storage_config=S3StorageConfig(s3_uri=f"s3://{bucket}/feature-store"),
                 table_format="Iceberg",
             ),
-            iceberg_properties=IcebergProperties(properties={
-                "write.metadata.delete-after-commit.enabled": "true",
-            }),
+            iceberg_properties=IcebergProperties(
+                properties={
+                    "write.metadata.delete-after-commit.enabled": "true",
+                }
+            ),
         )
 
         fg.wait_for_status("Created")
@@ -278,23 +306,31 @@ def test_update_iceberg_properties_overwrites_previous_values(
                 s3_storage_config=S3StorageConfig(s3_uri=f"s3://{bucket}/feature-store"),
                 table_format="Iceberg",
             ),
-            iceberg_properties=IcebergProperties(properties={
-                "write.metadata.previous-versions-max": "5",
-            }),
+            iceberg_properties=IcebergProperties(
+                properties={
+                    "write.metadata.previous-versions-max": "5",
+                }
+            ),
         )
 
         fg.wait_for_status("Created")
 
         # Overwrite with a new value
-        fg.update(iceberg_properties=IcebergProperties(properties={
-            "write.metadata.previous-versions-max": "10",
-        }))
+        fg.update(
+            iceberg_properties=IcebergProperties(
+                properties={
+                    "write.metadata.previous-versions-max": "10",
+                }
+            )
+        )
 
         retrieved = FeatureGroupManager.get(
             feature_group_name=feature_group_name,
             include_iceberg_properties=True,
         )
-        assert retrieved.iceberg_properties.properties["write.metadata.previous-versions-max"] == "10"
+        assert (
+            retrieved.iceberg_properties.properties["write.metadata.previous-versions-max"] == "10"
+        )
     finally:
         cleanup_feature_group(feature_group_name)
 
@@ -307,9 +343,11 @@ def test_create_iceberg_properties_without_offline_store_raises():
             event_time_feature_name="event_time",
             feature_definitions=[],
             role_arn="arn:aws:iam::000000000000:role/dummy",
-            iceberg_properties=IcebergProperties(properties={
-                "write.target-file-size-bytes": "536870912",
-            }),
+            iceberg_properties=IcebergProperties(
+                properties={
+                    "write.target-file-size-bytes": "536870912",
+                }
+            ),
         )
 
 
@@ -325,7 +363,9 @@ def test_create_iceberg_properties_with_non_iceberg_table_format_raises():
                 s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/prefix"),
                 table_format="Glue",
             ),
-            iceberg_properties=IcebergProperties(properties={
-                "write.target-file-size-bytes": "536870912",
-            }),
+            iceberg_properties=IcebergProperties(
+                properties={
+                    "write.target-file-size-bytes": "536870912",
+                }
+            ),
         )

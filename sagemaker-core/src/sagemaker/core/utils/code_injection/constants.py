@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Constants used in the code_injection modules."""
+
 from enum import Enum
 
 BASIC_TYPES = ["string", "boolean", "integer", "long", "double", "timestamp", "float"]
@@ -20,6 +21,8 @@ LIST_TYPE = "list"
 
 
 class Color(Enum):
+    """ANSI color codes used for console output."""
+
     RED = "rgb(215,0,0)"
     GREEN = "rgb(0,135,0)"
     BLUE = "rgb(0,105,255)"

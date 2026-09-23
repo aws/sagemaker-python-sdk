@@ -1,3 +1,5 @@
+"""Validation helpers for SageMaker training configuration inputs."""
+
 from typing import Optional
 
 from sagemaker.core.helper.session_helper import Session
@@ -49,9 +51,7 @@ def validate_hyperpod_compute(
             raise PermissionError(
                 "Missing SageMaker permissions: sagemaker:DescribeCluster required"
             ) from e
-        raise RuntimeError(
-            f"Failed to describe cluster '{cluster_name}': {str(e)}"
-        ) from e
+        raise RuntimeError(f"Failed to describe cluster '{cluster_name}': {str(e)}") from e
 
     # Gather instance groups from cluster response
     if is_nova:
@@ -63,24 +63,23 @@ def validate_hyperpod_compute(
 
     instance_groups = []
     for group in response.get(response_key, []):
-        instance_groups.append({
-            "instance_group_name": group["InstanceGroupName"],
-            "instance_type": group["InstanceType"],
-            "current_count": group["CurrentCount"],
-            "target_count": group["TargetCount"],
-            "status": group["Status"],
-        })
+        instance_groups.append(
+            {
+                "instance_group_name": group["InstanceGroupName"],
+                "instance_type": group["InstanceType"],
+                "current_count": group["CurrentCount"],
+                "target_count": group["TargetCount"],
+                "status": group["Status"],
+            }
+        )
 
     # Check if requested instance type exists in any instance group
     compatible_groups = [
-        group for group in instance_groups
-        if group["instance_type"] == compute.instance_type
+        group for group in instance_groups if group["instance_type"] == compute.instance_type
     ]
 
     if not compatible_groups:
-        available_types = sorted(set(
-            group["instance_type"] for group in instance_groups
-        ))
+        available_types = sorted(set(group["instance_type"] for group in instance_groups))
         raise ValueError(
             f"Instance type '{compute.instance_type}' not available in {group_label} "
             f"in cluster '{cluster_name}'. Available types: {available_types}"

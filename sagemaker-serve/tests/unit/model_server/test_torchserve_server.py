@@ -2,7 +2,6 @@
 
 import unittest
 from unittest.mock import Mock, patch
-from pathlib import Path
 
 
 class TestLocalTorchServe(unittest.TestCase):

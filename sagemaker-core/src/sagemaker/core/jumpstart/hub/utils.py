@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 # pylint: skip-file
 """This module contains utilities related to SageMaker JumpStart Hub."""
+
 from __future__ import absolute_import
 import re
 from typing import Optional, List, Any

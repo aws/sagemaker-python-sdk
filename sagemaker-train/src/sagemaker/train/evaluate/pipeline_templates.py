@@ -4,8 +4,6 @@ This module contains Jinja2 template strings for generating SageMaker Pipeline
 definitions for different evaluation types (benchmark, custom scorer, LLM-as-judge).
 """
 
-from .constants import EvalType  # noqa: F401
-
 DETERMINISTIC_TEMPLATE = """{
     "Version": "2020-12-01",
     "Metadata": {},
@@ -128,7 +126,9 @@ DETERMINISTIC_TEMPLATE = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }
@@ -190,7 +190,9 @@ DETERMINISTIC_TEMPLATE = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }
@@ -361,7 +363,9 @@ LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }
@@ -507,7 +511,9 @@ DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }
@@ -652,7 +658,9 @@ CUSTOM_SCORER_TEMPLATE = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }
@@ -715,7 +723,9 @@ CUSTOM_SCORER_TEMPLATE = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }
@@ -898,7 +908,9 @@ CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }
@@ -1033,7 +1045,9 @@ LLMAJ_TEMPLATE = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }
@@ -1087,7 +1101,9 @@ LLMAJ_TEMPLATE = """{
                 "InputDataConfig": [
                     {
                         "ChannelName": "train",
-                        "DataSource": {% if dataset_uri.startswith('arn:') and 'hub-content' in dataset_uri and '/DataSet/' in dataset_uri %}{
+                        "DataSource": {% if dataset_uri.startswith('arn:')
+                        and 'hub-content' in dataset_uri
+                        and '/DataSet/' in dataset_uri %}{
                             "DatasetSource": {
                                 "DatasetArn": "{{ dataset_uri }}"
                             }

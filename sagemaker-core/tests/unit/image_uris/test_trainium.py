@@ -17,7 +17,6 @@ from . import expected_uris
 
 import pytest
 
-
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
 
 

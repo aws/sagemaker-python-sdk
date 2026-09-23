@@ -18,6 +18,7 @@ versions >= 2 (including v3, v4, v5, etc.) rather than only accepting v2.
 The tests run against the real Docker Compose installation on the machine — no mocking.
 Requires: Docker with Compose plugin installed (any version >= 2).
 """
+
 from __future__ import absolute_import
 
 import re
@@ -133,9 +134,7 @@ class TestDockerComposeVersionDetection:
             f"Installed Docker Compose is v{_compose_major}."
         )
 
-    def test_sagemaker_train_local_container_accepts_installed_compose(
-        self, _train_container
-    ):
+    def test_sagemaker_train_local_container_accepts_installed_compose(self, _train_container):
         """sagemaker-train local/local_container.py
         _LocalContainer._get_compose_cmd_prefix should accept the installed version."""
         result = _train_container._get_compose_cmd_prefix()
@@ -156,12 +155,10 @@ class TestDockerComposeVersionDetection:
             text=True,
             timeout=10,
         )
-        assert result.returncode == 0, (
-            f"Command {cmd + ['version']} failed: {result.stderr}"
-        )
-        assert "version" in result.stdout.lower(), (
-            f"Unexpected output from {cmd + ['version']}: {result.stdout}"
-        )
+        assert result.returncode == 0, f"Command {cmd + ['version']} failed: {result.stderr}"
+        assert (
+            "version" in result.stdout.lower()
+        ), f"Unexpected output from {cmd + ['version']}: {result.stdout}"
 
     @pytest.mark.skipif(
         _compose_major is not None and _compose_major < 3,

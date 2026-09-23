@@ -1,4 +1,5 @@
 """Unit tests for sagemaker.serve.validations.check_image_and_hardware_type module."""
+
 import unittest
 from unittest.mock import patch
 from sagemaker.serve.validations.check_image_and_hardware_type import (
@@ -116,49 +117,37 @@ class TestValidateImageUriAndHardware(unittest.TestCase):
         """Test that xgboost images skip validation."""
         # Should not raise any warnings
         result = validate_image_uri_and_hardware(
-            "xgboost:latest",
-            "ml.m5.xlarge",
-            ModelServer.TORCHSERVE
+            "xgboost:latest", "ml.m5.xlarge", ModelServer.TORCHSERVE
         )
         self.assertIsNone(result)
 
-    @patch('sagemaker.serve.validations.check_image_and_hardware_type.logger')
+    @patch("sagemaker.serve.validations.check_image_and_hardware_type.logger")
     def test_matching_hardware_types(self, mock_logger):
         """Test matching hardware types don't trigger warnings."""
         validate_image_uri_and_hardware(
-            "pytorch-cpu:latest",
-            "ml.m5.xlarge",
-            ModelServer.TORCHSERVE
+            "pytorch-cpu:latest", "ml.m5.xlarge", ModelServer.TORCHSERVE
         )
         mock_logger.warning.assert_not_called()
 
-    @patch('sagemaker.serve.validations.check_image_and_hardware_type.logger')
+    @patch("sagemaker.serve.validations.check_image_and_hardware_type.logger")
     def test_mismatched_hardware_types(self, mock_logger):
         """Test mismatched hardware types trigger warnings."""
         validate_image_uri_and_hardware(
-            "pytorch-gpu:latest",
-            "ml.m5.xlarge",  # CPU instance
-            ModelServer.TORCHSERVE
+            "pytorch-gpu:latest", "ml.m5.xlarge", ModelServer.TORCHSERVE  # CPU instance
         )
         mock_logger.warning.assert_called_once()
 
-    @patch('sagemaker.serve.validations.check_image_and_hardware_type.logger')
+    @patch("sagemaker.serve.validations.check_image_and_hardware_type.logger")
     def test_triton_validation(self, mock_logger):
         """Test Triton image validation."""
-        validate_image_uri_and_hardware(
-            "triton-cpu:latest",
-            "ml.m5.xlarge",
-            ModelServer.TRITON
-        )
+        validate_image_uri_and_hardware("triton-cpu:latest", "ml.m5.xlarge", ModelServer.TRITON)
         mock_logger.warning.assert_not_called()
 
-    @patch('sagemaker.serve.validations.check_image_and_hardware_type.logger')
+    @patch("sagemaker.serve.validations.check_image_and_hardware_type.logger")
     def test_unsupported_model_server_skips_validation(self, mock_logger):
         """Test unsupported model servers skip validation."""
         validate_image_uri_and_hardware(
-            "some-image:latest",
-            "ml.m5.xlarge",
-            ModelServer.DJL_SERVING
+            "some-image:latest", "ml.m5.xlarge", ModelServer.DJL_SERVING
         )
         mock_logger.info.assert_called_once()
         mock_logger.warning.assert_not_called()

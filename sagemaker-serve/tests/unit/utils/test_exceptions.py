@@ -7,7 +7,7 @@ from sagemaker.serve.utils.exceptions import (
     LocalModelLoadException,
     LocalModelInvocationException,
     SkipTuningComboException,
-    TaskNotFoundException
+    TaskNotFoundException,
 )
 
 

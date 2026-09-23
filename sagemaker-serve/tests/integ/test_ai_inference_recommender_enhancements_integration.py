@@ -14,6 +14,7 @@
 ``list_benchmarks`` / ``list_recommendations`` filtering, ``deploy`` from a
 recommendation row (``mb.recommendations.best``), and ``compare_benchmarks``.
 """
+
 from __future__ import absolute_import
 
 import logging

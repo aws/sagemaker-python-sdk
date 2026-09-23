@@ -8,8 +8,6 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
 import asyncio
 import threading
-import io
-import json
 import sys
 
 # Mock optional dependencies before importing
@@ -19,7 +17,9 @@ mock_transformers.Pipeline = mock_pipeline_class
 sys.modules["transformers"] = mock_transformers
 sys.modules["sentence_transformers"] = MagicMock()
 
-from sagemaker.serve.model_server.in_process_model_server.app import InProcessServer
+from sagemaker.serve.model_server.in_process_model_server.app import (  # noqa: E402
+    InProcessServer,
+)
 
 
 class TestInProcessServerInitialization(unittest.TestCase):
@@ -144,7 +144,6 @@ class TestInProcessServerInvokeEndpoint(unittest.TestCase):
         invoke_func = server._router.routes[0].endpoint
 
         # Run async function
-        import asyncio
 
         result = asyncio.run(invoke_func(mock_request))
 

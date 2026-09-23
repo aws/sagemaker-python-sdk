@@ -19,6 +19,7 @@ is reloaded because the class identity changes, causing
 ``TypeError: super(type, obj): obj must be an instance or subtype of type``
 in subsequent tests that instantiate serializers/deserializers.
 """
+
 from __future__ import absolute_import
 
 import io
@@ -82,9 +83,9 @@ def test_serializer_module_imports_without_torch():
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, (
-        f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
 
 def test_deserializer_module_imports_without_torch():
@@ -116,9 +117,9 @@ def test_deserializer_module_imports_without_torch():
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, (
-        f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
 
 def test_torch_tensor_serializer_raises_import_error_without_torch():

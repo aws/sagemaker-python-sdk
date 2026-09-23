@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The `Step` definitions for SageMaker Pipelines Workflows."""
+
 from __future__ import absolute_import
 
 import abc
@@ -621,7 +622,10 @@ class ProcessingStep(ConfigurableRetryStep):
                 Processor.run.__name__,
                 LocalSagemakerClient().create_processing_job.__name__,
             },
-            error_message=f"The step_args of ProcessingStep must be obtained from processor.run() or in local mode, not {step_args.caller_name}",
+            error_message=(
+                "The step_args of ProcessingStep must be obtained from processor.run() "
+                f"or in local mode, not {step_args.caller_name}"
+            ),
         )
 
         self.step_args = step_args

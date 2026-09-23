@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains classes for handling UDF outputs"""
+
 from __future__ import absolute_import
 
 import logging
@@ -81,7 +82,7 @@ class SparkOutputReceiver(UDFOutputReceiver[DataFrame]):
                 input_data_frame=output,
                 feature_group_arn=fp_config.output,
                 target_stores=fp_config.target_stores,
-                use_lake_formation_credentials=fp_config.use_lake_formation_credentials
+                use_lake_formation_credentials=fp_config.use_lake_formation_credentials,
             )
         except Py4JJavaError as e:
             if e.java_exception.getClass().getSimpleName() == "StreamIngestionFailureException":

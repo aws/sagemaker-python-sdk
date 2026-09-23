@@ -16,7 +16,6 @@ import pandas as pd
 
 from sagemaker.core.remote_function import remote
 
-
 if __name__ == "__main__":
 
     @remote(

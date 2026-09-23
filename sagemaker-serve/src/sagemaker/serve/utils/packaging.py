@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def package_inference_code(*args, **kwargs):
     """Package inference code for deployment.
-    
+
     This is a stub implementation that needs to be completed.
     """
     logger.warning("package_inference_code is not yet fully implemented")

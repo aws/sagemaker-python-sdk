@@ -1,8 +1,7 @@
 """Unit tests for multi_model_server server.py module."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 class TestLocalMultiModelServer(unittest.TestCase):

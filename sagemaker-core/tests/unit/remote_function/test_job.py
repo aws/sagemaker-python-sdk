@@ -11,20 +11,19 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.remote_function.job module."""
+
 from __future__ import absolute_import
 
 import json
 import os
 import pytest
 import sys
-from unittest.mock import Mock, patch, MagicMock, call, mock_open
-from io import BytesIO
+from unittest.mock import Mock, patch, mock_open
 
 from sagemaker.core.remote_function.job import (
     _JobSettings,
     _Job,
     _prepare_and_upload_runtime_scripts,
-    _generate_input_data_config,
     _prepare_dependencies_and_pre_execution_scripts,
     _prepare_and_upload_workspace,
     _convert_run_to_json,
@@ -35,9 +34,7 @@ from sagemaker.core.remote_function.job import (
     _extend_torchrun_to_request,
     _extend_spark_config_to_request,
     _update_job_request_with_checkpoint_config,
-    _RunInfo,
     _get_initial_job_state,
-    _logs_for_job,
     _check_job_status,
     _flush_log_streams,
     _rule_statuses_changed,

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utils module."""
+
 from __future__ import absolute_import
 
 import re
@@ -25,7 +26,7 @@ from typing import Literal, Any
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.shapes import Unassigned
-from sagemaker.train import logger
+from sagemaker.core.utils.utils import logger
 from sagemaker.core.workflow.parameters import PipelineVariable
 
 
@@ -187,7 +188,7 @@ def safe_serialize(data):
     """
     if isinstance(data, str):
         return data
-    elif isinstance(data, PipelineVariable):
+    if isinstance(data, PipelineVariable):
         return data
     try:
         return json.dumps(data)
@@ -240,21 +241,17 @@ def _run_clone_command_silent(repo_url, dest_dir):
             logger.error(f"Error output:\n{e}")
             raise
 
+
 def _get_jumpstart_tags(model_id: str, hub_name: str):
     return [
-        {
-            "key": "sagemaker-sdk:jumpstart-model-id",
-            "value": model_id
-        },
-        {
-            "key": "sagemaker-sdk:jumpstart-hub-name",
-            "value": hub_name
-        }
+        {"key": "sagemaker-sdk:jumpstart-model-id", "value": model_id},
+        {"key": "sagemaker-sdk:jumpstart-hub-name", "value": hub_name},
     ]
 
 
 def _get_training_job_name_from_training_job_arn(training_job_arn: str) -> str:
     """Extract Training job name from Training job arn.
+
     Args:
         training_job_arn: Training job arn.
     Returns: Training job name.
