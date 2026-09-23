@@ -18,18 +18,38 @@ from sagemaker.ai_registry.evaluator import Evaluator, EvaluatorMethod
 
 class TestEvaluatorDomainId:
     """Test domain-id is added to SearchKeywords when available."""
-    
-    @patch('sagemaker.core.helper.session_helper.Session')
+
+    @pytest.fixture(autouse=True)
+    def stub_aws_resolution(self):
+        """Keep these unit tests offline.
+
+        ``Evaluator.create`` builds a default ``Session``, resolves/validates an execution
+        role via IAM ``SimulatePrincipalPolicy``, and derives the hub name from the
+        caller's account. Unmocked, those reach real AWS and made CI fail with
+        ``Throttling: Rate exceeded``.
+        """
+        session = Mock()
+        with patch("sagemaker.ai_registry.evaluator.Session", return_value=session), patch(
+            "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+            return_value=session,
+        ), patch(
+            "sagemaker.train.defaults.TrainDefaults.get_role",
+            return_value="arn:aws:iam::123456789012:role/test-role",
+        ), patch(
+            "sagemaker.ai_registry.air_hub_entity.AIRHub.get_hub_name",
+            return_value="test-hub",
+        ):
+            yield
+
     @patch('sagemaker.ai_registry.evaluator._get_current_domain_id')
     @patch('sagemaker.ai_registry.evaluator.AIRHub')
     def test_domain_id_added_when_available(
-        self, mock_air_hub, mock_get_domain_id, mock_session
+        self, mock_air_hub, mock_get_domain_id
     ):
         """Test that domain-id is added to tags when available."""
         # Setup mocks
         mock_domain_id = "d-test123456"
         mock_get_domain_id.return_value = mock_domain_id
-        mock_session.return_value = Mock()
         
         # Mock AIRHub methods
         mock_air_hub.import_hub_content = Mock()
@@ -62,16 +82,14 @@ class TestEvaluatorDomainId:
         # Verify domain-id is in tags
         assert any(tag[0] == '@domain' and tag[1] == mock_domain_id for tag in tags)
         
-    @patch('sagemaker.core.helper.session_helper.Session')
     @patch('sagemaker.ai_registry.evaluator._get_current_domain_id')
     @patch('sagemaker.ai_registry.evaluator.AIRHub')
     def test_domain_id_not_added_when_unavailable(
-        self, mock_air_hub, mock_get_domain_id, mock_session
+        self, mock_air_hub, mock_get_domain_id
     ):
         """Test that domain-id is not added when unavailable (non-Studio)."""
         # Setup mocks - domain_id returns None
         mock_get_domain_id.return_value = None
-        mock_session.return_value = Mock()
         
         # Mock AIRHub methods
         mock_air_hub.import_hub_content = Mock()
@@ -104,18 +122,16 @@ class TestEvaluatorDomainId:
         # Verify domain-id is NOT in tags
         assert not any(tag[0] == '@domain' for tag in tags)
 
-    @patch('sagemaker.core.helper.session_helper.Session')
     @patch('sagemaker.ai_registry.evaluator._get_current_domain_id')
     @patch('sagemaker.ai_registry.evaluator.AIRHub')
     def test_explicit_domain_id_used_without_auto_detection(
-        self, mock_air_hub, mock_get_domain_id, mock_session
+        self, mock_air_hub, mock_get_domain_id
     ):
         """An explicit domain_id is tagged and auto-detection is not invoked.
 
         Covers the non-Studio case (P467494019) where the domain cannot be inferred and
         must be supplied by the caller.
         """
-        mock_session.return_value = Mock()
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value={
             'HubContentName': 'test-evaluator',

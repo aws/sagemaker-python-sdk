@@ -195,6 +195,10 @@ class RLAIFTrainer(BaseTrainer):
         # Process reward_prompt parameter
         self._process_hyperparameters()
 
+        # Re-apply any hyperparameters passed at construction (see BaseTrainer),
+        # which the FineTuningOptions rebuild above would otherwise drop.
+        self._apply_user_hyperparameters(self._constructor_hyperparameters)
+
     def _validate_reward_model_id(self, reward_model_id):
         """Validate reward_model_id is one of the allowed values."""
         if not reward_model_id:
