@@ -422,9 +422,7 @@ class TestPipelineUpsert:
                             # Verify tags were merged and added
                             mock_session.sagemaker_client.add_tags.assert_called_once()
 
-    def test_upsert_updates_existing_pipeline_with_names_must_be_unique_message(
-        self, mock_session
-    ):
+    def test_upsert_updates_existing_pipeline_with_names_must_be_unique_message(self, mock_session):
         """Upsert must also recognize the newer service wording 'names must be unique'."""
         error_response = {
             "Error": {
@@ -436,11 +434,15 @@ class TestPipelineUpsert:
         mock_session.sagemaker_client.list_tags = Mock(return_value={"Tags": []})
         mock_session.sagemaker_client.add_tags = Mock()
 
-        with patch.object(Pipeline, 'create') as mock_create:
-            with patch.object(Pipeline, 'update') as mock_update:
-                with patch('sagemaker.mlops.workflow.pipeline.resolve_value_from_config') as mock_resolve:
-                    with patch('sagemaker.mlops.workflow.pipeline.resolve_and_validate_role') as mock_validate:
-                        with patch('sagemaker.mlops.workflow.pipeline.format_tags') as mock_format:
+        with patch.object(Pipeline, "create") as mock_create:
+            with patch.object(Pipeline, "update") as mock_update:
+                with patch(
+                    "sagemaker.mlops.workflow.pipeline.resolve_value_from_config"
+                ) as mock_resolve:
+                    with patch(
+                        "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role"
+                    ) as mock_validate:
+                        with patch("sagemaker.mlops.workflow.pipeline.format_tags") as mock_format:
                             mock_resolve.return_value = "arn:aws:iam::123:role/SageMakerRole"
                             mock_validate.return_value = "arn:aws:iam::123:role/SageMakerRole"
                             mock_format.return_value = []
@@ -450,8 +452,7 @@ class TestPipelineUpsert:
                             }
 
                             pipeline = Pipeline(
-                                name="test-pipeline",
-                                sagemaker_session=mock_session
+                                name="test-pipeline", sagemaker_session=mock_session
                             )
 
                             result = pipeline.upsert(role_arn="arn:aws:iam::123:role/SageMakerRole")
@@ -475,11 +476,15 @@ class TestPipelineUpsert:
         )
         mock_session.sagemaker_client.list_tags = Mock(return_value={"Tags": []})
 
-        with patch.object(Pipeline, 'update') as mock_update:
-            with patch.object(Pipeline, '_create_args') as mock_args:
-                with patch('sagemaker.mlops.workflow.pipeline.resolve_value_from_config') as mock_resolve:
-                    with patch('sagemaker.mlops.workflow.pipeline.resolve_and_validate_role') as mock_validate:
-                        with patch('sagemaker.mlops.workflow.pipeline.format_tags') as mock_format:
+        with patch.object(Pipeline, "update") as mock_update:
+            with patch.object(Pipeline, "_create_args") as mock_args:
+                with patch(
+                    "sagemaker.mlops.workflow.pipeline.resolve_value_from_config"
+                ) as mock_resolve:
+                    with patch(
+                        "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role"
+                    ) as mock_validate:
+                        with patch("sagemaker.mlops.workflow.pipeline.format_tags") as mock_format:
                             mock_resolve.return_value = "arn:aws:iam::123:role/SageMakerRole"
                             mock_validate.return_value = "arn:aws:iam::123:role/SageMakerRole"
                             mock_format.return_value = []
@@ -489,12 +494,13 @@ class TestPipelineUpsert:
                             }
 
                             pipeline = Pipeline(
-                                name="test-pipeline",
-                                sagemaker_session=mock_session
+                                name="test-pipeline", sagemaker_session=mock_session
                             )
 
                             with caplog.at_level(logging.ERROR):
-                                result = pipeline.upsert(role_arn="arn:aws:iam::123:role/SageMakerRole")
+                                result = pipeline.upsert(
+                                    role_arn="arn:aws:iam::123:role/SageMakerRole"
+                                )
 
         assert "PipelineArn" in result
         mock_update.assert_called_once()
@@ -515,19 +521,20 @@ class TestPipelineUpsert:
             side_effect=ClientError(error_response, "create_pipeline")
         )
 
-        with patch.object(Pipeline, '_create_args') as mock_args:
-            with patch('sagemaker.mlops.workflow.pipeline.resolve_value_from_config') as mock_resolve:
-                with patch('sagemaker.mlops.workflow.pipeline.resolve_and_validate_role') as mock_validate:
-                    with patch('sagemaker.mlops.workflow.pipeline.format_tags') as mock_format:
+        with patch.object(Pipeline, "_create_args") as mock_args:
+            with patch(
+                "sagemaker.mlops.workflow.pipeline.resolve_value_from_config"
+            ) as mock_resolve:
+                with patch(
+                    "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role"
+                ) as mock_validate:
+                    with patch("sagemaker.mlops.workflow.pipeline.format_tags") as mock_format:
                         mock_resolve.return_value = "arn:aws:iam::123:role/SageMakerRole"
                         mock_validate.return_value = "arn:aws:iam::123:role/SageMakerRole"
                         mock_format.return_value = []
                         mock_args.return_value = {"PipelineName": "test-pipeline"}
 
-                        pipeline = Pipeline(
-                            name="test-pipeline",
-                            sagemaker_session=mock_session
-                        )
+                        pipeline = Pipeline(name="test-pipeline", sagemaker_session=mock_session)
 
                         with caplog.at_level(logging.ERROR):
                             with pytest.raises(ClientError):
