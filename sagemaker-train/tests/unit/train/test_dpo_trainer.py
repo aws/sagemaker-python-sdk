@@ -26,6 +26,24 @@ class TestDPOTrainer:
 
     @patch('sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group')
     @patch('sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn')
+    def test_init_applies_constructor_hyperparameters(self, mock_finetuning_options, mock_validate_group, mock_session):
+        """Constructor hyperparameters are applied onto the resolved FineTuningOptions (wiring guard)."""
+        from sagemaker.train.common import FineTuningOptions
+        mock_validate_group.return_value = "test-group"
+        options = FineTuningOptions(
+            {"learning_rate": {"type": "float", "default": 0.0001, "min": 0.0, "max": 1.0}}
+        )
+        mock_finetuning_options.return_value = (options, "model-arn", False)
+        trainer = DPOTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            hyperparameters={"learning_rate": 0.001},
+        )
+        assert trainer.hyperparameters.learning_rate == 0.001
+        assert "learning_rate" in trainer.hyperparameters._user_set
+
+    @patch('sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn')
     def test_init_with_full_training_type(self, mock_finetuning_options, mock_validate_group, mock_session):
         mock_validate_group.return_value = "test-group"
         mock_hyperparams = Mock()

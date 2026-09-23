@@ -176,41 +176,35 @@ class BaseTrainer(ABC):
         """Apply constructor-supplied hyperparameters onto the resolved FineTuningOptions.
 
         The fine-tuning trainers replace ``self.hyperparameters`` with a
-        ``FineTuningOptions`` built from the model's Hub spec, which would otherwise
-        discard any ``hyperparameters`` dict passed at construction. This re-applies
-        those user-provided values, but only for names that are overridable for the
-        model (i.e. present in the options' ``_specs``). Each applied value goes through
-        ``FineTuningOptions.__setattr__``, so it is still validated against the spec and
-        an out-of-spec value for an overridable name raises, exactly as
-        ``trainer.hyperparameters.<name> = value`` would.
+        ``FineTuningOptions`` built from the model's recipe override-params spec, which
+        would otherwise discard any ``hyperparameters`` dict passed at construction. This
+        re-applies those user-provided values by routing each one through
+        ``FineTuningOptions.__setattr__``, so a dict passed at construction behaves
+        exactly like the ``trainer.hyperparameters.<name> = value`` path and is validated
+        against the recipe spec:
 
-        Names that are not overridable are ignored (not applied), and a single warning
-        lists them so the user knows those values will not take effect.
+        * an unknown option name raises ``AttributeError``;
+        * an out-of-spec or off-enum value for a known name raises ``ValueError``.
+
+        Values are never silently dropped in favor of the recipe default, which would
+        otherwise launch a billable job on a configuration the caller did not set.
 
         No-op when nothing was supplied or when ``self.hyperparameters`` is not a
-        spec-backed ``FineTuningOptions`` (e.g. a plain dict).
+        spec-backed ``FineTuningOptions`` (e.g. ``ModelTrainer``'s plain dict).
 
         Args:
             user_hyperparameters: The hyperparameters dict captured from construction.
+
+        Raises:
+            AttributeError: If a supplied name is not a valid option for the recipe.
+            ValueError: If a supplied value fails the recipe spec (type/range/enum).
         """
         if not user_hyperparameters:
             return
-        specs = getattr(getattr(self, "hyperparameters", None), "_specs", None)
-        if not isinstance(specs, dict):
+        if not isinstance(getattr(getattr(self, "hyperparameters", None), "_specs", None), dict):
             return
-        ignored = []
         for name, value in user_hyperparameters.items():
-            if name not in specs:
-                ignored.append(name)
-                continue
             setattr(self.hyperparameters, name, value)
-        if ignored:
-            logger.warning(
-                "Ignoring hyperparameters that are not overridable for this model: %s. "
-                "These values will not take effect. Overridable hyperparameters: %s",
-                ignored,
-                list(specs.keys()),
-            )
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
