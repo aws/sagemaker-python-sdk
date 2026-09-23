@@ -17,9 +17,11 @@ import os
 import json
 import boto3
 import time
+import uuid
 import pytest
 import random
 import logging
+from unittest.mock import patch
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from datetime import datetime, timezone, timedelta
@@ -28,7 +30,13 @@ from datetime import datetime, timezone, timedelta
 logger = logging.getLogger(__name__)
 
 from sagemaker.core.helper.session_helper import Session, get_execution_role
-from sagemaker.core.resources import TrainingJob, ModelPackage, InferenceComponent, Endpoint
+from sagemaker.core.resources import (
+    Endpoint,
+    EndpointConfig,
+    InferenceComponent,
+    ModelPackage,
+    TrainingJob,
+)
 from sagemaker.core.utils.exceptions import FailedStatusError
 from sagemaker.serve import ModelBuilder
 from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
@@ -108,92 +116,208 @@ class TestModelCustomizationFromTrainingJob:
         assert model_builder.instance_type is not None
 
     @pytest.mark.skip_in_pr_check
-    def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
-        """Test deploying model from training job.
+    def test_deploy_from_training_job(self, training_job_name, sagemaker_session):
+        """Deploy, reuse, invoke, and clean up one training-job endpoint."""
+        test_id = uuid.uuid4().hex
+        source_identity = f"model-customization-reuse-{test_id}"
+        model_name = f"reuse-model-{test_id[:12]}"
+        endpoint_name = f"reuse-endpoint-{test_id[:12]}"
+        base_ic_name = f"{endpoint_name}-inference-component"
+        adapter_ic_name = f"{endpoint_name}-adapter"
 
-        For LORA models, this verifies the two-step deployment:
-        base IC + adapter IC are both created on the same endpoint.
-        """
-
-
-        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
-        model_builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
-        model_builder.accept_eula = True
-        model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}", region=AWS_REGION)
-
-        peft_type = model_builder._fetch_peft()
-        adapter_name = f"{endpoint_name}-adapter"
+        model = None
+        endpoint = None
+        base_ic = None
+        adapter_ic = None
+        training_job = TrainingJob.get(
+            training_job_name=training_job_name, region=AWS_REGION
+        )
+        first_builder = ModelBuilder(
+            model=training_job,
+            instance_type="ml.g5.4xlarge",
+            sagemaker_session=sagemaker_session,
+        )
+        first_builder.accept_eula = True
 
         try:
-            endpoint = model_builder.deploy(
-                endpoint_name=endpoint_name,
-                inference_component_name=adapter_name if peft_type == "LORA" else None,
+            with patch.object(
+                first_builder, "_resolve_model_source_id", return_value=source_identity
+            ):
+                model = first_builder.build(model_name=model_name, region=AWS_REGION)
+                peft_type = first_builder._fetch_peft()
+                try:
+                    endpoint = first_builder.deploy(
+                        endpoint_name=endpoint_name,
+                        inference_component_name=(
+                            adapter_ic_name if peft_type == "LORA" else None
+                        ),
+                    )
+                except (FailedStatusError, ClientError) as error:
+                    message = str(error)
+                    if (
+                        "InsufficientInstanceCapacity" in message
+                        or "ResourceLimitExceeded" in message
+                    ):
+                        pytest.xfail(
+                            "Environmental capacity or quota limit prevented deployment"
+                        )
+                    raise
+
+            assert model.model_name == model_name
+            assert endpoint.endpoint_name == endpoint_name
+            assert endpoint.endpoint_status == "InService"
+
+            sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+            model_tags = sm_client.list_tags(ResourceArn=model.model_arn).get("Tags", [])
+            endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get(
+                "Tags", []
             )
-        except (FailedStatusError, ClientError) as e:
-            # xfail on environmental capacity/quota limits rather than fail the build.
-            msg = str(e)
-            if "InsufficientInstanceCapacity" in msg or "ResourceLimitExceeded" in msg:
-                cleanup_endpoints.append(endpoint_name)
-                pytest.xfail(
-                    f"Environmental capacity/quota limit for ml.g5.4xlarge in {AWS_REGION}: {e}"
+            assert any(
+                tag["Key"] == MODEL_SOURCE_TAG_KEY
+                and tag["Value"] == source_identity
+                for tag in model_tags
+            )
+            assert any(
+                tag["Key"] == MODEL_SOURCE_TAG_KEY
+                and tag["Value"] == source_identity
+                for tag in endpoint_tags
+            )
+
+            if peft_type == "LORA":
+                base_ic = InferenceComponent.get(
+                    inference_component_name=base_ic_name, region=AWS_REGION
                 )
-            raise
+                adapter_ic = InferenceComponent.get(
+                    inference_component_name=adapter_ic_name, region=AWS_REGION
+                )
+                assert base_ic.inference_component_status == "InService"
+                assert adapter_ic.inference_component_status == "InService"
 
-        cleanup_endpoints.append(endpoint_name)
-
-        assert endpoint is not None
-        assert endpoint.endpoint_arn is not None
-        assert endpoint.endpoint_status == "InService"
-
-        # Verify model-source tag is present on the endpoint for reuse discovery.
-        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
-        endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
-        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in endpoint_tags}, (
-            f"Endpoint {endpoint.endpoint_arn} missing model-source tag for reuse"
-        )
-
-        if peft_type == "LORA":
-            # Verify base IC was created
-            base_ic_name = f"{endpoint_name}-inference-component"
-            base_ic = InferenceComponent.get(inference_component_name=base_ic_name, region=AWS_REGION)
-            assert base_ic is not None
-            assert base_ic.inference_component_status == "InService"
-
-            # Verify adapter IC was created
-            adapter_ic = InferenceComponent.get(inference_component_name=adapter_name, region=AWS_REGION)
-            assert adapter_ic is not None
-
-        # Invoke verification
-        time.sleep(10)  # brief buffer for IC readiness
-
-        invoke_ic_name = adapter_name if peft_type == "LORA" else f"{endpoint_name}-inference-component"
-
-        test_payload = {
-            "inputs": "What is machine learning?",
-            "parameters": {"max_new_tokens": 32},
-        }
-
-        invoke_response = endpoint.invoke(
-            body=json.dumps(test_payload),
-            content_type="application/json",
-            accept="application/json",
-            inference_component_name=invoke_ic_name,
-        )
-
-        response_body = json.loads(invoke_response.body.read())
-
-        # Validate response structure
-        assert response_body is not None, f"Empty response from invoke on {invoke_ic_name}"
-        if isinstance(response_body, list):
-            assert len(response_body) > 0
-            assert "generated_text" in response_body[0] or "generation" in response_body[0]
-        elif isinstance(response_body, dict):
-            assert (
-                "generated_text" in response_body
-                or "generation" in response_body
-                or "outputs" in response_body
+            second_builder = ModelBuilder(
+                model=training_job,
+                instance_type="ml.g5.4xlarge",
+                sagemaker_session=sagemaker_session,
             )
+            second_builder.accept_eula = True
 
+            with patch.object(
+                second_builder, "_resolve_model_source_id", return_value=source_identity
+            ):
+                deadline = time.monotonic() + 180
+                while True:
+                    discovered_model = second_builder._find_reusable_model()
+                    discovered_endpoint = second_builder._find_reusable_endpoint(
+                        instance_type="ml.g5.4xlarge"
+                    )
+                    if (
+                        discovered_model is not None
+                        and discovered_model.model_name == model_name
+                        and discovered_endpoint == endpoint_name
+                    ):
+                        break
+                    if time.monotonic() >= deadline:
+                        raise AssertionError(
+                            "Timed out waiting for the exact test resources to become discoverable"
+                        )
+                    time.sleep(5)
+
+                with (
+                    patch.object(
+                        second_builder,
+                        "_build_single_modelbuilder",
+                        side_effect=AssertionError(
+                            "Model discovery missed and attempted to create another Model"
+                        ),
+                    ),
+                    patch.object(
+                        second_builder,
+                        "_deploy_model_customization",
+                        side_effect=AssertionError(
+                            "Endpoint discovery missed and attempted another deployment"
+                        ),
+                    ),
+                ):
+                    reused_model = second_builder.build(
+                        region=AWS_REGION, reuse_resources=True
+                    )
+                    reused_endpoint = second_builder.deploy(
+                        endpoint_name=endpoint_name, reuse_resources=True
+                    )
+
+            assert reused_model.model_name == model.model_name
+            assert reused_model.model_arn == model.model_arn
+            assert reused_endpoint.endpoint_name == endpoint.endpoint_name
+            assert reused_endpoint.endpoint_arn == endpoint.endpoint_arn
+
+            time.sleep(10)
+            invoke_ic_name = (
+                adapter_ic_name if peft_type == "LORA" else base_ic_name
+            )
+            invoke_response = reused_endpoint.invoke(
+                body=json.dumps(
+                    {
+                        "inputs": "What is machine learning?",
+                        "parameters": {"max_new_tokens": 32},
+                    }
+                ),
+                content_type="application/json",
+                accept="application/json",
+                inference_component_name=invoke_ic_name,
+            )
+            response_body = json.loads(invoke_response.body.read())
+            assert response_body is not None
+            if isinstance(response_body, list):
+                assert response_body
+                assert (
+                    "generated_text" in response_body[0]
+                    or "generation" in response_body[0]
+                )
+            elif isinstance(response_body, dict):
+                assert any(
+                    key in response_body
+                    for key in ("generated_text", "generation", "outputs")
+                )
+        finally:
+            for component, name in (
+                (adapter_ic, adapter_ic_name),
+                (base_ic, base_ic_name),
+            ):
+                if component is None:
+                    try:
+                        component = InferenceComponent.get(
+                            inference_component_name=name, region=AWS_REGION
+                        )
+                    except Exception:
+                        continue
+                try:
+                    component.delete()
+                    component.wait_for_delete(timeout=300)
+                except Exception as error:
+                    logger.warning("Failed to clean up inference component %s: %s", name, error)
+
+            if endpoint is not None:
+                try:
+                    endpoint.delete()
+                    endpoint.wait_for_delete(timeout=300)
+                except Exception as error:
+                    logger.warning("Failed to clean up endpoint %s: %s", endpoint_name, error)
+
+            try:
+                EndpointConfig.get(
+                    endpoint_config_name=endpoint_name, region=AWS_REGION
+                ).delete()
+            except Exception as error:
+                logger.warning(
+                    "Failed to clean up endpoint configuration %s: %s",
+                    endpoint_name,
+                    error,
+                )
+
+            if model is not None:
+                try:
+                    model.delete()
+                except Exception as error:
+                    logger.warning("Failed to clean up Model %s: %s", model_name, error)
 
     def test_fetch_endpoint_names_for_base_model(self, training_job_name, sagemaker_session):
         """Test fetching endpoint names for base model."""
@@ -203,87 +327,6 @@ class TestModelCustomizationFromTrainingJob:
         endpoint_names = model_builder.fetch_endpoint_names_for_base_model()
 
         assert isinstance(endpoint_names, set)
-
-    def test_deploy_reuse_returns_existing_endpoint(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
-        """deploy(reuse_resources=True) finds and returns an existing tagged endpoint.
-
-        Verifies that the reuse mechanism finds an endpoint with the
-        correct model-source tag. Because prior test runs may have left
-        behind an endpoint with the same tag, we accept any InService
-        endpoint carrying the tag as a valid reuse hit.
-        """
-
-        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
-
-        # Try reuse first — if a tagged endpoint already exists from a prior
-        # run, reuse should find it without needing to create a new one.
-        builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
-        builder.accept_eula = True
-        builder.build(region=AWS_REGION, reuse_resources=True)
-        endpoint = builder.deploy(reuse_resources=True)
-
-        if endpoint is not None and hasattr(endpoint, "endpoint_arn") and endpoint.endpoint_arn:
-            # Reuse found an existing endpoint — verify it has the tag
-            sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
-            tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
-            assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in tags}, (
-                f"Reused endpoint {endpoint.endpoint_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
-            )
-            return
-
-        # No reusable endpoint found — create one and verify the tag is applied
-        model_builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
-        model_builder.accept_eula = True
-        model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}", region=AWS_REGION)
-
-        try:
-            endpoint = model_builder.deploy(endpoint_name=endpoint_name)
-        except (FailedStatusError, ClientError) as e:
-            msg = str(e)
-            if "InsufficientInstanceCapacity" in msg or "ResourceLimitExceeded" in msg:
-                cleanup_endpoints.append(endpoint_name)
-                pytest.xfail(f"Capacity/quota limit: {e}")
-            raise
-
-        cleanup_endpoints.append(endpoint_name)
-        assert endpoint is not None
-        assert endpoint.endpoint_status == "InService"
-
-        # Verify model-source tag was applied
-        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
-        tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
-        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in tags}, (
-            f"Endpoint {endpoint.endpoint_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
-        )
-
-    def test_build_reuse_skips_model_creation(self, training_job_name, sagemaker_session):
-        """build(reuse_resources=True) reuses an existing tagged Model.
-
-        Verifies that the reuse lookup finds a model with the correct
-        model-source tag. Because prior test runs may have left behind a
-        model with the same tag, we accept any model carrying the tag as
-        a valid reuse hit (not only the one created in *this* test run).
-        """
-
-        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
-
-        # Build with reuse — this should find any existing model tagged
-        # with this training job's source ID. It doesn't matter whether
-        # the model was created in this test run or a prior one; what
-        # matters is that the reuse mechanism works.
-        builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
-        builder.accept_eula = True
-        model = builder.build(region=AWS_REGION, reuse_resources=True)
-
-        assert model is not None
-        assert model.model_arn is not None
-
-        # Verify the model-source tag is actually present on the reused model
-        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
-        tags = sm_client.list_tags(ResourceArn=model.model_arn).get("Tags", [])
-        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in tags}, (
-            f"Reused model {model.model_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
-        )
 
 
 class TestModelCustomizationFromModelPackage:

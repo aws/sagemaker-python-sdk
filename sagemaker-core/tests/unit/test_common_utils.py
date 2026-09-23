@@ -2911,3 +2911,95 @@ class TestSaveModelSpotCheck:
         assert merged["ServerSideEncryption"] == "aws:kms"
         assert merged["SSEKMSKeyId"] == "kms-key-id"
         assert merged["ExpectedBucketOwner"] == "111111111111"
+
+
+class TestIsResourceAlreadyExistsError:
+    """Test the shared already-exists predicate used by load-or-create/upsert flows."""
+
+    @staticmethod
+    def _client_error(code, message):
+        from botocore.exceptions import ClientError
+
+        return ClientError({"Error": {"Code": code, "Message": message}}, "create_pipeline")
+
+    def test_matches_legacy_already_exists_message(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error("ValidationException", "Pipeline pipe-1 already exists")
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_matches_new_names_must_be_unique_message(self):
+        """The service now returns 'names must be unique' instead of 'already exists'."""
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ValidationException",
+            "Pipeline names must be unique within an AWS account and region",
+        )
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_matches_experiment_names_must_be_unique_message(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ValidationException",
+            "Experiment names must be unique within an AWS account and region",
+        )
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_matches_cannot_create_already_existing_message(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ValidationException", "Cannot create already existing endpoint configuration"
+        )
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_matches_resource_in_use_code(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ResourceInUse", "Job name must be unique within an AWS account and region"
+        )
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_rejects_other_validation_errors(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error("ValidationException", "1 validation error detected")
+        assert _is_resource_already_exists_error(error) is False
+
+    def test_rejects_uniqueness_errors_scoped_within_a_resource(self):
+        """Uniqueness violations INSIDE a definition (e.g. duplicate step names) are
+        not name collisions -- treating them as already-exists would make upsert()
+        wrongly fall through to update() and mask the real validation error."""
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ValidationException", "Step names must be unique within a pipeline"
+        )
+        assert _is_resource_already_exists_error(error) is False
+
+    def test_rejects_other_error_codes(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error("ResourceLimitExceeded", "names must be unique")
+        assert _is_resource_already_exists_error(error) is False
+
+    def test_create_resource_accepts_names_must_be_unique(self):
+        """_create_resource treats the new service wording as already-exists."""
+        from botocore.exceptions import ClientError
+        from sagemaker.core.common_utils import _create_resource
+
+        def _raise():
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ValidationException",
+                        "Message": "Pipeline names must be unique within an AWS account",
+                    }
+                },
+                "create_pipeline",
+            )
+
+        assert _create_resource(_raise) is False

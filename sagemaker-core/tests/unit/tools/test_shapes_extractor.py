@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.tools.shapes_extractor module."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -343,3 +344,94 @@ class TestGetRequiredMembers:
         result = extractor.get_required_members("TestShape")
 
         assert len(result) == 0
+
+
+class TestInstancePreferencesPipeVarOverrides:
+    """The IntPipeVar annotations on instance-preferences count members come from
+    PIPE_VAR_OVERRIDES, not the service model. If an override is dropped, codegen
+    silently narrows the member back to int and pipeline variables stop being
+    accepted -- so assert the generated type directly.
+
+    Uses a minimal in-memory model mirroring the real member -> shape wiring;
+    the packaged service JSON is not available in every test environment."""
+
+    _COUNT = {"type": "integer", "min": 1}
+    _STRING = {"type": "string"}
+    _MODEL = {
+        "TrainingInstanceCount": _COUNT,
+        "ProcessingInstanceCount": _COUNT,
+        "TrainingInstanceType": _STRING,
+        "ProcessingInstanceType": _STRING,
+        "ResourceConfig": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "TrainingInstanceType"},
+                "InstanceCount": {"shape": "TrainingInstanceCount"},
+                "SelectedInstanceCount": {"shape": "TrainingInstanceCount"},
+            },
+        },
+        "InstancePreference": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "TrainingInstanceType"},
+                "InstanceCount": {"shape": "TrainingInstanceCount"},
+            },
+        },
+        "ProcessingClusterConfig": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "ProcessingInstanceType"},
+                "InstanceCount": {"shape": "ProcessingInstanceCount"},
+                "SelectedInstanceCount": {"shape": "ProcessingInstanceCount"},
+            },
+        },
+        "ProcessingInstancePreference": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "ProcessingInstanceType"},
+                "InstanceCount": {"shape": "ProcessingInstanceCount"},
+            },
+        },
+        # Control: same integer shape, no override registered -> must stay int.
+        "UnrelatedConfig": {
+            "type": "structure",
+            "members": {"InstanceCount": {"shape": "TrainingInstanceCount"}},
+        },
+    }
+
+    @pytest.fixture
+    def extractor(self, tmp_path):
+        # Constructing the extractor regenerates shape_dag.py; point that write
+        # at a temp file so the unit test leaves the checked-in file alone.
+        with (
+            patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black"),
+            patch(
+                "sagemaker.core.tools.shapes_extractor.SHAPE_DAG_FILE_PATH",
+                str(tmp_path / "shape_dag.py"),
+            ),
+        ):
+            return ShapesExtractor(combined_shapes=self._MODEL)
+
+    @pytest.mark.parametrize(
+        "shape, member",
+        [
+            ("ResourceConfig", "instance_count"),
+            ("ResourceConfig", "selected_instance_count"),
+            ("InstancePreference", "instance_count"),
+            ("ProcessingClusterConfig", "instance_count"),
+            ("ProcessingClusterConfig", "selected_instance_count"),
+            ("ProcessingInstancePreference", "instance_count"),
+        ],
+    )
+    def test_count_members_generate_as_int_pipe_var(self, extractor, shape, member):
+        members = extractor.generate_shape_members(shape)
+        assert member in members, f"{shape}.{member} missing from generated members"
+        assert "IntPipeVar" in members[member], (
+            f"{shape}.{member} generated as {members[member]!r}; "
+            "expected IntPipeVar via PIPE_VAR_OVERRIDES"
+        )
+
+    def test_override_is_targeted_not_blanket(self, extractor):
+        members = extractor.generate_shape_members("UnrelatedConfig")
+        assert "IntPipeVar" not in members["instance_count"]
+        assert "int" in members["instance_count"]

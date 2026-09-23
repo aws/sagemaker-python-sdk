@@ -10,6 +10,7 @@ class OnlineStoreStorageTypeEnum(Enum):
     """Storage types for online store."""
     STANDARD = "Standard"
     IN_MEMORY = "InMemory"
+    STANDARD_V2 = "Standard_V2"
 
 class TableFormatEnum(Enum):
     """Offline store table formats."""

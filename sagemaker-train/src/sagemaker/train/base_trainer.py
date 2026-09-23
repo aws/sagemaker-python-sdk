@@ -153,6 +153,11 @@ class BaseTrainer(ABC):
         self.base_job_name = base_job_name
         self.tags = tags
         self.hyperparameters = hyperparameters or {}
+        # Preserve the constructor-supplied hyperparameters. The fine-tuning trainers
+        # replace ``self.hyperparameters`` with a spec-backed FineTuningOptions after
+        # this runs; they re-apply these captured values via _apply_user_hyperparameters
+        # so a dict passed at construction is not silently dropped.
+        self._constructor_hyperparameters = hyperparameters or {}
         self.output_data_config = output_data_config
         self.input_data_config = input_data_config
         self.environment = environment or {}
@@ -160,11 +165,46 @@ class BaseTrainer(ABC):
         self.base_model_name = base_model_name
         self.disable_output_compression = disable_output_compression
         self.notification_rule_arn = None
+        self.source_code = None
 
         # Set up notifications if configured
         if notifications:
             self.notification_rule_arn = self._setup_notifications(notifications)
         self._checkpoint_s3_uri = None
+
+    def _apply_user_hyperparameters(self, user_hyperparameters: Optional[Dict[str, Any]]) -> None:
+        """Apply constructor-supplied hyperparameters onto the resolved FineTuningOptions.
+
+        The fine-tuning trainers replace ``self.hyperparameters`` with a
+        ``FineTuningOptions`` built from the model's recipe override-params spec, which
+        would otherwise discard any ``hyperparameters`` dict passed at construction. This
+        re-applies those user-provided values by routing each one through
+        ``FineTuningOptions.__setattr__``, so a dict passed at construction behaves
+        exactly like the ``trainer.hyperparameters.<name> = value`` path and is validated
+        against the recipe spec:
+
+        * an unknown option name raises ``AttributeError``;
+        * an out-of-spec or off-enum value for a known name raises ``ValueError``.
+
+        Values are never silently dropped in favor of the recipe default, which would
+        otherwise launch a billable job on a configuration the caller did not set.
+
+        No-op when nothing was supplied or when ``self.hyperparameters`` is not a
+        spec-backed ``FineTuningOptions`` (e.g. ``ModelTrainer``'s plain dict).
+
+        Args:
+            user_hyperparameters: The hyperparameters dict captured from construction.
+
+        Raises:
+            AttributeError: If a supplied name is not a valid option for the recipe.
+            ValueError: If a supplied value fails the recipe spec (type/range/enum).
+        """
+        if not user_hyperparameters:
+            return
+        if not isinstance(getattr(getattr(self, "hyperparameters", None), "_specs", None), dict):
+            return
+        for name, value in user_hyperparameters.items():
+            setattr(self.hyperparameters, name, value)
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
@@ -1157,6 +1197,7 @@ class BaseTrainer(ABC):
             instance_count=compute.instance_count,
             volume_size_in_gb=compute.volume_size_in_gb,
             keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
+            training_plan_arn=compute.training_plan_arn,
         )
 
         # Build input data config (datasets resolved earlier for recipe injection)

@@ -256,3 +256,79 @@ def resolve_nova_checkpoint_uri(
         "Could not resolve the Nova checkpoint URI from any known output layout. "
         + " ".join(errors)
     )
+
+
+def validate_instance_preferences(compute) -> None:
+    """Client-side validation for Compute.instance_preferences (server remains
+    the source of truth).
+
+    - instance_preferences is mutually exclusive with the classic
+      single-cluster fields instance_type / instance_groups /
+      instance_placement_config, and with managed spot training.
+    - Instance types must not repeat across preferences.
+    - Count mode: exactly one of the top-level instance_count (applies to
+      whichever preference wins) with no per-preference instance_count, or an
+      instance_count on EVERY element with the top-level unset. Both-set,
+      partial, and neither are rejected.
+    - Training plans: the top-level (whole-job) training_plan_arn is mutually
+      exclusive with per-preference training_plan_arns.
+
+    List-size limits (max preferences, max plans per preference) are
+    deliberately NOT enforced client-side: they are server-side configurable,
+    so raising them must not require a new SDK release.
+
+    No-op when instance_preferences is not set.
+    """
+    preferences = getattr(compute, "instance_preferences", None)
+    if not preferences or isinstance(preferences, Unassigned):
+        return
+
+    def _value(obj, field):
+        value = getattr(obj, field, None)
+        if value is None or isinstance(value, Unassigned):
+            return None
+        return value
+
+    for field in ("instance_type", "instance_groups", "instance_placement_config"):
+        if _value(compute, field) is not None:
+            raise ValueError(
+                f"instance_preferences is mutually exclusive with {field}; "
+                "specify either a single fixed cluster or instance_preferences, not both."
+            )
+    # Spot is a bool: only an explicit True conflicts (False/None is the default).
+    if _value(compute, "enable_managed_spot_training") is True:
+        raise ValueError(
+            "instance_preferences is mutually exclusive with managed spot training "
+            "(enable_managed_spot_training=True)."
+        )
+
+    instance_types = [_value(p, "instance_type") for p in preferences]
+    duplicates = sorted(
+        {t for t in instance_types if t is not None and instance_types.count(t) > 1}
+    )
+    if duplicates:
+        raise ValueError(
+            "instance_preferences must not contain duplicate instance types: " f"{duplicates}."
+        )
+
+    per_preference_counts = [_value(p, "instance_count") is not None for p in preferences]
+    if _value(compute, "instance_count") is not None:
+        if any(per_preference_counts):
+            raise ValueError(
+                "The top-level instance_count and per-preference instance_count are "
+                "mutually exclusive; set the top-level instance_count (applies to "
+                "whichever preference wins) or an instance_count on every element of "
+                "instance_preferences, not both."
+            )
+    elif not all(per_preference_counts):
+        raise ValueError(
+            "When the top-level instance_count is not set, every element of "
+            "instance_preferences must set its own instance_count."
+        )
+
+    per_preference_plans = [_value(p, "training_plan_arns") for p in preferences]
+    if _value(compute, "training_plan_arn") is not None and any(per_preference_plans):
+        raise ValueError(
+            "The top-level (whole-job) training_plan_arn and per-preference "
+            "training_plan_arns are mutually exclusive; set one or the other, not both."
+        )

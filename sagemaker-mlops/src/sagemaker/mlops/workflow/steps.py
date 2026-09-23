@@ -62,6 +62,10 @@ class StepTypeEnum(Enum):
     EMR_SERVERLESS = "EMRServerless"
     FAIL = "Fail"
     AUTOML = "AutoML"
+    ENDPOINT_CONFIG = "EndpointConfig"
+    ENDPOINT = "Endpoint"
+    INFERENCE_COMPONENT = "InferenceComponent"
+    LINEAGE = "Lineage"
 
 
 class Step(Entity):

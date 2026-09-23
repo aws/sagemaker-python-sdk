@@ -75,6 +75,7 @@ of any deep test is easy to find:
 | Shallow file | Deep counterpart |
 |---|---|
 | `test_model_trainer.py` | `test_model_trainer.py` |
+| `test_instance_preferences.py` | `test_instance_preferences.py` |
 | `test_sft_trainer.py` | `test_sft_trainer_integration.py` |
 | `test_dpo_trainer.py` | `test_dpo_trainer_integration.py` |
 | `test_rlvr_trainer.py` | `test_rlvr_trainer_integration.py` |
@@ -108,6 +109,7 @@ below accounts for all of them.
 | Deep test | Shallow equivalent |
 |---|---|
 | `test_model_trainer.py` — 8 tests (tar source, py/sh entry, MPI, torchrun, HP json/yaml, custom driver) | `test_model_trainer.py` — `TestSourceCodePackaging`, `TestPayloadShaping`, `TestComputeConfiguration` |
+| `test_instance_preferences.py::test_instance_preferences_select_a_winner_and_complete` (runs to a selected winner and completion) | `test_instance_preferences.py` — `TestInstancePreferencesAccepted` (submit, Describe echo, stop) + `TestInstancePreferencesRejected` |
 | `test_sft_trainer_integration.py::test_sft_trainer_lora_complete_workflow` | `test_minimal_request_is_accepted` + `test_mlflow_resource_arn` |
 | `::test_sft_trainer_with_validation_dataset` | `test_with_validation_dataset` |
 | `::test_sft_trainer_lora_with_sequence_length` | `test_sft_trainer.py::test_sequence_length_is_accepted` |
