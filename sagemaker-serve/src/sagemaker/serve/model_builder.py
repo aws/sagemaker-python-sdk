@@ -4058,6 +4058,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 inference_ami_version=inference_ami_version,
             )
 
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config._to_request_dict()
+
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             if update_endpoint:
                 raise ValueError(
@@ -4101,6 +4105,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     production_variants=[production_variant],
                     tags=tags,
                     kms_key=kms_key,
+                    data_capture_config_dict=data_capture_config_dict,
                     vpc_config=self.vpc_config,
                     enable_network_isolation=self._enable_network_isolation,
                     role=self.role_arn,
@@ -4174,10 +4179,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             else:
                 base_endpoint_name = base_from_name(self.model_name)
                 self.endpoint_name = name_from_base(base_endpoint_name)
-
-            data_capture_config_dict = None
-            if data_capture_config is not None:
-                data_capture_config_dict = data_capture_config._to_request_dict()
 
             async_inference_config_dict = None
             if is_async:

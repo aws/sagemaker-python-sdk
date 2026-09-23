@@ -14,6 +14,7 @@ from sagemaker.core.enums import EndpointType
 from sagemaker.core.inference_config import (
     ResourceRequirements,
 )
+from sagemaker.core.model_monitor.data_capture_config import DataCaptureConfig
 
 
 class TestModelBuilderContainerDef(unittest.TestCase):
@@ -379,6 +380,68 @@ class TestModelBuilderDeployCore(unittest.TestCase):
             )
 
         self.assertIn("EnableNetworkIsolation cannot be set to True", str(context.exception))
+
+    def _ic_builder(self):
+        """Build a ModelBuilder ready to deploy an inference-component based endpoint."""
+        builder = ModelBuilder(
+            model=Mock(),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
+        builder.model_name = "test-model"
+        builder.inference_component_name = "test-ic"
+        builder._enable_network_isolation = False
+        builder._tags = []
+        return builder
+
+    def test_deploy_core_endpoint_ic_based_passes_data_capture_config(self):
+        """Test _deploy_core_endpoint forwards data_capture_config for IC based endpoints."""
+        builder = self._ic_builder()
+        data_capture_config = DataCaptureConfig(
+            enable_capture=True,
+            sampling_percentage=100,
+            destination_s3_uri="s3://bucket/prefix",
+        )
+
+        with patch("sagemaker.serve.model_builder.Endpoint.get") as mock_get:
+            mock_get.return_value = Mock(spec=Endpoint)
+            builder._deploy_core_endpoint(
+                instance_type="ml.m5.large",
+                initial_instance_count=1,
+                endpoint_name="test-ep",
+                endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+                resources=ResourceRequirements(requests={"num_cpus": 1, "memory": 1024}),
+                data_capture_config=data_capture_config,
+                wait=False,
+            )
+
+        self.mock_session.endpoint_from_production_variants.assert_called_once()
+        _, call_kwargs = self.mock_session.endpoint_from_production_variants.call_args
+        self.assertEqual(
+            call_kwargs["data_capture_config_dict"],
+            data_capture_config._to_request_dict(),
+        )
+
+    def test_deploy_core_endpoint_ic_based_without_data_capture_passes_none(self):
+        """Test _deploy_core_endpoint passes no data capture config when none is given."""
+        builder = self._ic_builder()
+
+        with patch("sagemaker.serve.model_builder.Endpoint.get") as mock_get:
+            mock_get.return_value = Mock(spec=Endpoint)
+            builder._deploy_core_endpoint(
+                instance_type="ml.m5.large",
+                initial_instance_count=1,
+                endpoint_name="test-ep",
+                endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+                resources=ResourceRequirements(requests={"num_cpus": 1, "memory": 1024}),
+                wait=False,
+            )
+
+        self.mock_session.endpoint_from_production_variants.assert_called_once()
+        _, call_kwargs = self.mock_session.endpoint_from_production_variants.call_args
+        self.assertIsNone(call_kwargs["data_capture_config_dict"])
 
 
 class TestModelBuilderDeployHelpers(unittest.TestCase):
