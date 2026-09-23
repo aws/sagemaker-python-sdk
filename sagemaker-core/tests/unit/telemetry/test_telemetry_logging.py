@@ -24,16 +24,19 @@ from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.telemetry_logging import (
     _send_telemetry_request,
     _send_telemetry_request_sync,
+    _emit_failure_telemetry,
     _telemetry_emitter,
     _construct_url,
     _get_accountId,
     _requests_helper,
     _get_region_or_default,
     _get_default_sagemaker_session,
+    STATUS_TO_CODE,
     OS_NAME_VERSION,
     PYTHON_VERSION,
     TELEMETRY_REQUEST_TIMEOUT,
 )
+from sagemaker.core.telemetry.constants import Status
 from sagemaker.core.user_agent import SDK_VERSION, process_studio_metadata_file
 
 # Try to import sagemaker-serve exceptions, skip tests if not available
@@ -889,3 +892,81 @@ class TestDefaultSessionRegion(unittest.TestCase):
             mock_boto_session.call_args_list[-1],
             unittest.mock.call(region_name=DEFAULT_AWS_REGION),
         )
+
+
+class TestEmitFailureTelemetry(unittest.TestCase):
+    """Tests for the failure-only _emit_failure_telemetry helper."""
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_emits_failure_event(self, mock_send, mock_default_session, mock_optout):
+        mock_default_session.return_value = Mock()
+        exc = ValueError("bad value")
+
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", exc)
+
+        mock_send.assert_called_once()
+        args = mock_send.call_args.args
+        assert args[0] == STATUS_TO_CODE[str(Status.FAILURE)]  # status code
+        assert args[3] == "bad value"  # failure_reason
+        assert args[4] == "ValueError"  # failure_type
+        assert "MyClass.method" in args[5]  # extra_info carries func_name
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=True
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_opt_out_suppresses_emit(self, mock_send, mock_default_session, mock_optout):
+        # A user who has opted out of telemetry must not have these events emitted.
+        mock_default_session.return_value = Mock()
+
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))
+
+        mock_send.assert_not_called()
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_no_session_does_not_emit(self, mock_send, mock_default_session, mock_optout):
+        mock_default_session.return_value = None
+
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))
+
+        mock_send.assert_not_called()
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_uses_provided_session_without_default_lookup(
+        self, mock_send, mock_default_session, mock_optout
+    ):
+        _emit_failure_telemetry(
+            Feature.MODEL_CUSTOMIZATION,
+            "MyClass.method",
+            ValueError("x"),
+            sagemaker_session=Mock(),
+        )
+
+        mock_default_session.assert_not_called()
+        mock_send.assert_called_once()
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_backend_error_is_swallowed(self, mock_send, mock_default_session, mock_optout):
+        # Telemetry is best-effort: an error while emitting must never propagate.
+        mock_default_session.return_value = Mock()
+        mock_send.side_effect = RuntimeError("telemetry backend down")
+
+        # Should not raise.
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))
