@@ -1424,10 +1424,12 @@ class HyperparameterTuner(object):
                 # List of InputData or Channel objects
                 for inp in inputs:
                     if isinstance(inp, InputData):
-                        # Convert InputData to Channel
+                        # Convert InputData to Channel. Preserve content_type so built-in
+                        # algorithms (e.g. XGBoost) know the data format (issue #5632).
                         input_data_config.append(
                             Channel(
                                 channel_name=inp.channel_name,
+                                content_type=inp.content_type,
                                 data_source=DataSource(
                                     s3_data_source=S3DataSource(
                                         s3_data_type="S3Prefix",
