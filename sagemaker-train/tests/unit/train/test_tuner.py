@@ -598,6 +598,34 @@ class TestHyperparameterTunerStaticMethods:
             definition.stopping_condition.max_wait_time_in_seconds, int
         ), "Max wait time should be set"
 
+    def test_pipeline_session_request_keeps_tuning_job_name(self):
+        """Regression for #6299 / #5776.
+
+        Under a PipelineSession the tuning request must KEEP HyperParameterTuningJobName. The
+        TuningStep strips it via trim_request_dict (dropped by default, prefix preserved when
+        use_custom_job_prefix=True); popping it here left use_custom_job_prefix nothing to preserve.
+        """
+        from unittest.mock import Mock
+        from sagemaker.core.workflow.pipeline_context import PipelineSession
+
+        pipeline_session = Mock(spec=PipelineSession)
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.sagemaker_session = pipeline_session
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+        tuner._current_job_name = "my-prefix-2026-01-01-00-00-00-000"
+
+        tuner._start_tuning_job(inputs=None)
+
+        pipeline_session._intercept_create_request.assert_called_once()
+        serialized_request = pipeline_session._intercept_create_request.call_args.args[0]
+        assert "HyperParameterTuningJobName" in serialized_request
+        assert serialized_request["HyperParameterTuningJobName"].startswith("my-prefix")
+
     def test_build_training_job_definition_includes_environment_variables(self):
         """Test that _build_training_job_definition includes environment variables.
 

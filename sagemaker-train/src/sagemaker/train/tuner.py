@@ -1290,8 +1290,10 @@ class HyperparameterTuner(object):
             from sagemaker.core.utils.utils import serialize
             from sagemaker.core.apiutils._boto_functions import to_pascal_case
 
-            # Remove job name for pipeline as it's auto-generated at execution time
-            tuning_request.pop("hyper_parameter_tuning_job_name", None)
+            # Keep hyper_parameter_tuning_job_name in the request. The TuningStep strips it via
+            # trim_request_dict, which drops it by default but preserves the base_tuning_job_name
+            # prefix when PipelineDefinitionConfig(use_custom_job_prefix=True). Popping it here
+            # unconditionally left use_custom_job_prefix nothing to preserve (issue #6299, #5776).
             # Convert snake_case to PascalCase for AWS API
             pipeline_request = {to_pascal_case(k): v for k, v in tuning_request.items()}
             serialized_request = serialize(pipeline_request)

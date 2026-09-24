@@ -254,6 +254,38 @@ def test_model_trainer_param_validation(test_case, modules_session):
         assert trainer.base_job_name == DEFAULT_BASE_NAME
 
 
+def test_pipeline_session_request_keeps_training_job_name(modules_session):
+    """Regression for #5776 / #6299.
+
+    Under a PipelineSession the request must KEEP TrainingJobName. The TrainingStep strips it via
+    trim_request_dict (dropped by default, prefix preserved when use_custom_job_prefix=True);
+    popping it here left use_custom_job_prefix nothing to preserve.
+    """
+    from unittest.mock import Mock
+    from sagemaker.core.workflow.pipeline_context import PipelineSession
+
+    session = Mock(spec=PipelineSession)
+    session.default_bucket.return_value = DEFAULT_BUCKET
+    session.default_bucket_prefix = DEFAULT_BUCKET_PREFIX
+    session.boto_region_name = DEFAULT_REGION
+    session.sagemaker_config = {}
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        base_job_name="my-prefix",
+        sagemaker_session=session,
+    )
+
+    args = trainer._create_training_job_args(input_data_config=[])
+
+    assert "TrainingJobName" in args, "TrainingJobName must survive into the pipeline request"
+    assert args["TrainingJobName"].startswith("my-prefix")
+
+
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_train_with_default_params(mock_training_job, model_trainer):
     model_trainer.train()
