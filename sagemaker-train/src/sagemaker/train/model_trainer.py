@@ -1054,8 +1054,7 @@ class ModelTrainer(BaseModel):
                 ``s3://<default_bucket_path>/<key_prefix>/<channel_name>/``
             ignore_patterns: (Optional[List[str]]) :
                 The ignore patterns to ignore specific files/folders when uploading to S3.
-                If not specified, default to:
-                ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
+                If not specified, no files are filtered and the data source is uploaded as-is.
             instance_group_names: (Optional[List[str]]) :
                 The names of the instance groups (for heterogeneous clusters) that this
                 channel's data should be assigned to. Only applied when the channel is
