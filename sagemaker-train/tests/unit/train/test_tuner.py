@@ -581,6 +581,35 @@ class TestHyperparameterTunerStaticMethods:
         assert "validation" in channel_names, "User 'validation' channel should be included"
         assert len(channel_names) == 4, "Should have exactly 4 channels"
 
+    def test_build_training_job_definition_preserves_content_type(self):
+        """Regression for #5632.
+
+        Converting an InputData to a Channel must carry over content_type, otherwise built-in
+        algorithms fail because the container doesn't know the data format.
+        """
+        from sagemaker.core.training.configs import InputData
+
+        tuner = HyperparameterTuner(
+            model_trainer=_create_mock_model_trainer(),
+            objective_metric_name="validation:auc",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(
+            [
+                InputData(
+                    channel_name="train",
+                    data_source="s3://bucket/train/train.csv",
+                    content_type="csv",
+                )
+            ]
+        )
+
+        train_channel = next(
+            ch for ch in definition.input_data_config if ch.channel_name == "train"
+        )
+        assert train_channel.content_type == "csv"
+
     def test_build_training_job_definition_includes_spot_params(self):
         """Test that _build_training_job_definition includes spot parameters."""
         tuner = HyperparameterTuner(
