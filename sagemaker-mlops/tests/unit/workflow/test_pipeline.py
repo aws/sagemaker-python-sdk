@@ -248,6 +248,60 @@ def test_pipeline_start_local_mode(mock_session, mock_step):
     mock_session.sagemaker_client.start_pipeline_execution.assert_called_once()
 
 
+def test_create_args_converts_parallelism_config_to_dict(mock_session, mock_step):
+    """Regression for #5354.
+
+    ``_create_args`` (used by create/update/upsert) must convert a ParallelismConfiguration
+    object to its request dict, because boto rejects the object with a ParamValidationError.
+    """
+    from sagemaker.mlops.workflow.parallelism_config import ParallelismConfiguration
+
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    with patch.object(pipeline, "definition", return_value="{}"):
+        kwargs = pipeline._create_args(
+            "role-arn", "desc", ParallelismConfiguration(max_parallel_execution_steps=5)
+        )
+
+    assert kwargs["ParallelismConfiguration"] == {"MaxParallelExecutionSteps": 5}
+    assert isinstance(kwargs["ParallelismConfiguration"], dict)
+
+
+def test_create_args_omits_parallelism_config_when_none(mock_session, mock_step):
+    """A None parallelism_config must not add the key (and must not raise)."""
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    with patch.object(pipeline, "definition", return_value="{}"):
+        kwargs = pipeline._create_args("role-arn", "desc", None)
+
+    assert "ParallelismConfiguration" not in kwargs
+
+
+def test_create_args_passes_through_dict_parallelism_config(mock_session, mock_step):
+    """Backwards compat for #5354: a caller who used the pre-fix ``.to_request()`` workaround
+    passes an already-converted dict; it must be forwarded unchanged, not re-converted."""
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    with patch.object(pipeline, "definition", return_value="{}"):
+        kwargs = pipeline._create_args("role-arn", "desc", {"MaxParallelExecutionSteps": 3})
+
+    assert kwargs["ParallelismConfiguration"] == {"MaxParallelExecutionSteps": 3}
+
+
+def test_pipeline_start_converts_parallelism_config_to_dict(mock_session, mock_step):
+    """Regression for #5354: start() must pass a dict to boto, not a ParallelismConfiguration."""
+    from sagemaker.mlops.workflow.parallelism_config import ParallelismConfiguration
+
+    mock_session.local_mode = False
+    mock_session.sagemaker_client.start_pipeline_execution.return_value = {
+        "PipelineExecutionArn": "arn"
+    }
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+
+    pipeline.start(parallelism_config=ParallelismConfiguration(max_parallel_execution_steps=7))
+
+    call_kwargs = mock_session.sagemaker_client.start_pipeline_execution.call_args.kwargs
+    assert call_kwargs["ParallelismConfiguration"] == {"MaxParallelExecutionSteps": 7}
+    assert isinstance(call_kwargs["ParallelismConfiguration"], dict)
+
+
 def test_pipeline_get_latest_execution_arn_none(mock_session, mock_step):
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
     mock_session.sagemaker_client.list_pipeline_executions.return_value = {
