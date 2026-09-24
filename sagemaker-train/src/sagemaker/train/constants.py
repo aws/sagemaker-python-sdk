@@ -69,6 +69,9 @@ _ALLOWED_REWARD_MODEL_IDS = {
 # ``GetFoundationModel`` (is it still in service / not past end of life). So the SDK
 # no longer needs a hand-maintained model→region map.
 
+SM_DEPENDENCIES = "sm_dependencies"
+SM_DEPENDENCIES_CONTAINER_PATH = "/opt/ml/input/data/sm_dependencies"
+
 SM_RECIPE = "recipe"
 SM_RECIPE_YAML = "recipe.yaml"
 SM_RECIPE_CONTAINER_PATH = f"/opt/ml/input/data/recipe/{SM_RECIPE_YAML}"
