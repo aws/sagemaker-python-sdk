@@ -147,4 +147,9 @@ PIPE_VAR_OVERRIDES = {
     "ProcessingInstancePreference": {
         "InstanceCount": "IntPipeVar",
     },
+    # RandomSeed accepts a pipeline variable (e.g. a ParameterInteger) so tuning pipelines
+    # can parameterize reproducibility (issue #5614 / #6171).
+    "HyperParameterTuningJobConfig": {
+        "RandomSeed": "IntPipeVar",
+    },
 }

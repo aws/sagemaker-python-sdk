@@ -106,7 +106,7 @@ class HyperparameterTuner(object):
         completion_criteria_config: Optional[TuningJobCompletionCriteria] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         model_trainer_name: Optional[str] = None,
-        random_seed: Optional[int] = None,
+        random_seed: Optional[Union[int, PipelineVariable]] = None,
         autotune: bool = False,
         hyperparameters_to_keep_static: Optional[List[str]] = None,
     ):
