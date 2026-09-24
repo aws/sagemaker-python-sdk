@@ -275,6 +275,45 @@ def test_create_args_omits_parallelism_config_when_none(mock_session, mock_step)
     assert "ParallelismConfiguration" not in kwargs
 
 
+def test_create_args_output_passes_real_boto_param_validation():
+    """End-to-end proof for #5354 against the real SageMaker service model (offline).
+
+    boto3's client-side ParamValidator (no network, no credentials) is exactly what raised the
+    reported ParamValidationError. This asserts that the raw ParallelismConfiguration object is
+    rejected by that validator, while the value produced by ``_resolve_parallelism_config`` is
+    accepted -- reproducing the bug and proving the fix at the boto layer, not just via mocks.
+    """
+    import boto3
+    from botocore import validate
+
+    from sagemaker.mlops.workflow.parallelism_config import ParallelismConfiguration
+    from sagemaker.mlops.workflow.pipeline import _resolve_parallelism_config
+
+    shape = (
+        boto3.client("sagemaker", region_name="us-west-2")
+        .meta.service_model.operation_model("CreatePipeline")
+        .input_shape
+    )
+    validator = validate.ParamValidator()
+    base = {
+        "PipelineName": "p",
+        "RoleArn": "arn:aws:iam::111111111111:role/x",
+        "PipelineDefinition": "{}",
+        "ClientRequestToken": "x" * 32,
+    }
+    cfg = ParallelismConfiguration(max_parallel_execution_steps=5)
+
+    # The raw object is what the old code passed -- boto rejects it.
+    raw_report = validator.validate({**base, "ParallelismConfiguration": cfg}, shape)
+    assert raw_report.has_errors()
+
+    # The converted value the fix passes -- boto accepts it.
+    fixed_report = validator.validate(
+        {**base, "ParallelismConfiguration": _resolve_parallelism_config(cfg)}, shape
+    )
+    assert not fixed_report.has_errors()
+
+
 def test_create_args_passes_through_dict_parallelism_config(mock_session, mock_step):
     """Backwards compat for #5354: a caller who used the pre-fix ``.to_request()`` workaround
     passes an already-converted dict; it must be forwarded unchanged, not re-converted."""
