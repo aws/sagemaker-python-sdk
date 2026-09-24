@@ -814,8 +814,10 @@ class ModelTrainer(BaseModel):
             training_request["model_package_config"] = self.model_package_config
 
         if boto3 or isinstance(self.sagemaker_session, PipelineSession):
-            if isinstance(self.sagemaker_session, PipelineSession):
-                training_request.pop("training_job_name", None)
+            # Keep training_job_name in the request. The TrainingStep strips it via
+            # trim_request_dict, which drops it by default but preserves the base_job_name
+            # prefix when PipelineDefinitionConfig(use_custom_job_prefix=True). Popping it here
+            # unconditionally left use_custom_job_prefix nothing to preserve (issue #5776, #6299).
             # Convert snake_case to PascalCase for AWS API
             pipeline_request = {to_pascal_case(k): v for k, v in training_request.items()}
             serialized_request = serialize(pipeline_request)
