@@ -307,8 +307,10 @@ class _RepackModelStep(TrainingStep):
                     custom_extractall_tarfile(t, targz_contents_dir)
 
                 shutil.copy2(fname, os.path.join(targz_contents_dir, REPACK_SCRIPT))
+                # newline="\n" forces LF endings so the bash launcher stays runnable in the
+                # Linux repack container even when written from a Windows host (see issue #3762).
                 with open(
-                    os.path.join(targz_contents_dir, REPACK_SCRIPT_LAUNCHER), "w"
+                    os.path.join(targz_contents_dir, REPACK_SCRIPT_LAUNCHER), "w", newline="\n"
                 ) as launcher_file:
                     launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
 
@@ -319,7 +321,11 @@ class _RepackModelStep(TrainingStep):
                 _save_model(self._source_dir, new_targz_path, self.sagemaker_session, kms_key=None)
         else:
             shutil.copy2(fname, os.path.join(self._source_dir, REPACK_SCRIPT))
-            with open(os.path.join(self._source_dir, REPACK_SCRIPT_LAUNCHER), "w") as launcher_file:
+            # newline="\n" forces LF endings so the bash launcher stays runnable in the
+            # Linux repack container even when written from a Windows host (see issue #3762).
+            with open(
+                os.path.join(self._source_dir, REPACK_SCRIPT_LAUNCHER), "w", newline="\n"
+            ) as launcher_file:
                 launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
 
     @property
