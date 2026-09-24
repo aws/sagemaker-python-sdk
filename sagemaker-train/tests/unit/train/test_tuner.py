@@ -261,6 +261,30 @@ class TestHyperparameterTunerInit:
 
         assert tuner.random_seed == 42
 
+    def test_random_seed_accepts_pipeline_variable(self, mock_model_trainer, hyperparameter_ranges):
+        """Regression for #5614 / #6171.
+
+        ``random_seed`` must accept a pipeline variable (e.g. a ParameterInteger). Building the
+        tuning job config assigns it to ``HyperParameterTuningJobConfig.random_seed`` under
+        ``validate_assignment=True``; when that field was typed ``Optional[int]`` this raised
+        ``ValidationError: 1 validation error for HyperParameterTuningJobConfig``.
+        """
+        from sagemaker.core.workflow.parameters import ParameterInteger
+
+        seed = ParameterInteger(name="RandomState", default_value=42)
+        tuner = HyperparameterTuner(
+            model_trainer=mock_model_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=hyperparameter_ranges,
+            max_jobs=2,
+            max_parallel_jobs=1,
+            random_seed=seed,
+        )
+
+        assert tuner.random_seed is seed
+        config = tuner._build_tuning_job_config()
+        assert config.random_seed is seed
+
     def test_init_with_autotune(self, mock_model_trainer):
         """Test initialization with autotune enabled."""
         tuner = HyperparameterTuner(
