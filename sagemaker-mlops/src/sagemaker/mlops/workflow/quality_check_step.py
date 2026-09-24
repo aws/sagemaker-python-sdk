@@ -362,6 +362,15 @@ class QualityCheckStep(Step):
                 s3_input={
                     "s3_uri": self.quality_check_config.baseline_dataset,
                     "local_path": baseline_dataset_des,
+                    # Mirror the fields _upload_and_convert_to_processing_input sets on the
+                    # non-pipeline-variable branch (issue #6206). s3_data_type is required by
+                    # ProcessingS3Input (omitting it raised a ValidationError); s3_input_mode
+                    # and s3_data_distribution_type must be set too, otherwise they stay the
+                    # Unassigned() sentinel and break pipeline.definition() serialization
+                    # (TypeError: Object of type Unassigned is not JSON serializable).
+                    "s3_data_type": "S3Prefix",
+                    "s3_input_mode": "File",
+                    "s3_data_distribution_type": "FullyReplicated",
                 },
             )
         else:
