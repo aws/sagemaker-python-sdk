@@ -363,10 +363,9 @@ class Constraints(ModelMonitoringFile):
         else:
             for feature in self.body_dict["features"]:
                 if feature["name"] == feature_name:
-                    string_constraints = feature["string_constraints"]
-                    if string_constraints.get("monitoring_config_overrides") is None:
-                        string_constraints["monitoring_config_overrides"] = {}
-                    string_constraints["monitoring_config_overrides"]["evaluate_constraints"] = flag
+                    if feature.get("monitoring_config_overrides") is None:
+                        feature["monitoring_config_overrides"] = {}
+                    feature["monitoring_config_overrides"]["evaluate_constraints"] = flag
 
 
 class ConstraintViolations(ModelMonitoringFile):
