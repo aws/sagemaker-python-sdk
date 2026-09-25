@@ -11,7 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module stores constants related to SageMaker JumpStart."""
+
 from __future__ import absolute_import
+import copy
 import logging
 import os
 from typing import Dict, Set, Type
@@ -34,7 +36,6 @@ from sagemaker.base_serializers import (
     JSONSerializer,
 )
 from sagemaker.session import Session
-
 
 JUMPSTART_LOGGER = logging.getLogger("sagemaker.jumpstart")
 
@@ -176,16 +177,73 @@ MODEL_TYPE_TO_SPECS_MAP: Dict[Type[JumpStartModelType], Type[JumpStartS3FileType
 
 MODEL_ID_LIST_WEB_URL = "https://sagemaker.readthedocs.io/en/stable/doc_utils/pretrainedmodels.html"
 
-try:
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION = Session(
-        boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
-    )
-except Exception as e:  # pylint: disable=W0703
-    DEFAULT_JUMPSTART_SAGEMAKER_SESSION = None
-    JUMPSTART_LOGGER.warning(
-        "Unable to create default JumpStart SageMaker Session due to the following error: %s.",
-        str(e),
-    )
+
+class _LazyJumpStartSagemakerSession:  # pylint: disable=too-few-public-methods
+    """Lazily-initialized proxy for the default JumpStart SageMaker Session.
+
+    Constructing a real ``Session`` eagerly creates several boto3 clients and
+    resolves AWS credentials/region. Doing that work at import time added
+    several seconds to ``import sagemaker`` even when the default session was
+    never used (see aws/sagemaker-python-sdk#4468).
+
+    This proxy defers the work until the session is first used. It:
+
+    * is truthy without initializing, so ``session or DEFAULT_...`` fallbacks
+      and ``if session:`` checks stay cheap and do not build boto3 clients;
+    * forwards attribute reads and writes to the underlying real session;
+    * forwards ``copy``/``deepcopy`` so callers that copy-and-mutate the default
+      session keep working;
+    * on the failure path (``Session(...)`` construction raises), logs a warning
+      and resolves to ``None`` so that *attribute access* then behaves exactly as
+      it would on ``None`` (an ``AttributeError``). Note the degradation is only
+      observed through attribute access: because the proxy is always truthy,
+      ``bool()``/``if session:``/``or``/``is None`` checks do not see it. In
+      practice this path is effectively unreachable -- the region is a hardcoded
+      constant and boto3 defers credential resolution to first API call, so
+      constructing the clients does not raise at import time.
+    """
+
+    __slots__ = ()
+
+    _resolved = False
+    _session = None
+
+    @classmethod
+    def _resolve(cls):
+        """Build the real Session once, caching the result (or ``None``)."""
+        if not cls._resolved:
+            cls._resolved = True
+            try:
+                cls._session = Session(boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME))
+            except Exception as e:  # pylint: disable=W0703
+                cls._session = None
+                JUMPSTART_LOGGER.warning(
+                    "Unable to create default JumpStart SageMaker Session due to the "
+                    "following error: %s.",
+                    str(e),
+                )
+        return cls._session
+
+    def __bool__(self):
+        # Truthy without initializing, so ``x or DEFAULT_...`` stays lazy.
+        return True
+
+    def __getattr__(self, name):
+        # Delegates to the real session; on the failure path this raises the
+        # same AttributeError that accessing an attribute on ``None`` would.
+        return getattr(type(self)._resolve(), name)
+
+    def __setattr__(self, name, value):
+        setattr(type(self)._resolve(), name, value)
+
+    def __copy__(self):
+        return copy.copy(type(self)._resolve())
+
+    def __deepcopy__(self, memo):
+        return copy.deepcopy(type(self)._resolve(), memo)
+
+
+DEFAULT_JUMPSTART_SAGEMAKER_SESSION = _LazyJumpStartSagemakerSession()
 
 EXTRA_MODEL_ID_TAGS = ["sm-jumpstart-id", "sagemaker-studio:jumpstart-model-id"]
 EXTRA_MODEL_VERSION_TAGS = [
