@@ -116,6 +116,45 @@ class TestLocalPipeline:
             mock_executor.assert_called_once()
             mock_executor_instance.execute.assert_called_once()
 
+    def test_executions_isolated_per_instance(self, mock_pipeline, mock_local_session):
+        """Each _LocalPipeline owns its own execution registry (issue #5572)."""
+        pipeline1 = _LocalPipeline(pipeline=mock_pipeline, local_session=mock_local_session)
+        pipeline2 = _LocalPipeline(pipeline=mock_pipeline, local_session=mock_local_session)
+
+        pipeline1._executions["exec1"] = "execution1"
+        pipeline2._executions["exec2"] = "execution2"
+
+        assert pipeline1._executions == {"exec1": "execution1"}
+        assert pipeline2._executions == {"exec2": "execution2"}
+        assert pipeline1._executions is not pipeline2._executions
+
+    def test_start_uses_service_like_execution_id(self, mock_pipeline, mock_local_session):
+        """Execution ids are 12-char uppercase alphanumerics (issue #5269)."""
+        import re
+
+        mock_pipeline.steps = []
+        mock_pipeline.parameters = []
+
+        captured = {}
+
+        def fake_execution(execution_id, **kwargs):
+            captured["execution_id"] = execution_id
+            return Mock()
+
+        with patch("sagemaker.mlops.local.pipeline.LocalPipelineExecutor") as mock_executor:
+            mock_executor.return_value.execute = Mock(return_value=Mock())
+            with patch(
+                "sagemaker.mlops.local.pipeline_entities._LocalPipelineExecution",
+                side_effect=fake_execution,
+            ):
+                local_pipeline = _LocalPipeline(
+                    pipeline=mock_pipeline, local_session=mock_local_session
+                )
+                local_pipeline.start()
+
+        execution_id = captured["execution_id"]
+        assert re.fullmatch(r"[A-Z0-9]{12}", execution_id), execution_id
+
 
 class TestLocalPipelineExecution:
     """Tests for _LocalPipelineExecution class."""
