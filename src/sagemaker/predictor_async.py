@@ -40,6 +40,9 @@ class AsyncPredictor:
             predictor (sagemaker.predictor.Predictor): General ``Predictor``
                 object has useful methods and variables. ``AsyncPredictor``
                 stands on top of it with capability for async inference.
+            name (str): Optional. Name used as the prefix of the Amazon S3 key when
+                input data is uploaded for async inference. If not specified, the
+                endpoint name is used. (Default: None)
         """
         warn_v2_deprecation(
             feature="AsyncPredictor",
@@ -174,10 +177,13 @@ class AsyncPredictor:
             my_uuid = str(uuid.uuid4())
             timestamp = sagemaker_timestamp()
             bucket = self.sagemaker_session.default_bucket()
+            # ``name`` is optional; fall back to the endpoint name so the default
+            # ``AsyncPredictor(predictor)`` construction can upload input data.
+            base_name = self.name or self.endpoint_name
             key = s3.s3_path_join(
                 self.sagemaker_session.default_bucket_prefix,
                 "async-endpoint-inputs",
-                name_from_base(self.name, short=True),
+                name_from_base(base_name, short=True),
                 "{}-{}".format(timestamp, my_uuid),
             )
 

@@ -170,6 +170,31 @@ def test_async_predict_call_with_data():
     assert result.output_path == ASYNC_OUTPUT_LOCATION
 
 
+def test_async_predict_call_with_data_and_no_name():
+    # Regression test for https://github.com/aws/sagemaker-python-sdk/issues/3210
+    sagemaker_session = empty_sagemaker_session()
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session))
+    assert predictor_async.name is None
+
+    result = predictor_async.predict_async(data=DUMMY_DATA)
+
+    _, put_kwargs = sagemaker_session.s3_client.put_object.call_args
+    assert put_kwargs["Bucket"] == BUCKET_NAME
+    assert put_kwargs["Key"].startswith("async-endpoint-inputs/{}-".format(ENDPOINT))
+    assert predictor_async._input_path == "s3://{}/{}".format(BUCKET_NAME, put_kwargs["Key"])
+    assert result.output_path == ASYNC_OUTPUT_LOCATION
+
+
+def test_async_predict_call_with_data_and_name_uses_name():
+    sagemaker_session = empty_sagemaker_session()
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session), name=ASYNC_PREDICTOR)
+
+    predictor_async.predict_async(data=DUMMY_DATA)
+
+    _, put_kwargs = sagemaker_session.s3_client.put_object.call_args
+    assert put_kwargs["Key"].startswith("async-endpoint-inputs/{}-".format(ASYNC_PREDICTOR))
+
+
 def test_async_predict_call_with_data_and_input_path():
     sagemaker_session = empty_sagemaker_session()
     predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session))
