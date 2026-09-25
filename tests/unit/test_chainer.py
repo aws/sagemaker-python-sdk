@@ -154,13 +154,8 @@ def _create_train_job(version, py_version):
         "enable_network_isolation": False,
         "environment": None,
         "experiment_config": None,
-        "debugger_hook_config": {
-            "CollectionConfigurations": [],
-            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
-        },
         "profiler_config": {
-            "DisableProfiler": False,
-            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+            "DisableProfiler": True,
         },
     }
 

@@ -693,7 +693,7 @@ def test_estimator_with_debugger_hook_config_provided_as_bool_from_direct_input(
         base_job_name="base_job_name",
         debugger_hook_config=True,
     )
-    assert estimator.debugger_hook_config == {}
+    assert isinstance(estimator.debugger_hook_config, DebuggerHookConfig)
 
 
 def test_estimator_with_debugger_hook_config_provided_as_dict_from_direct_input(
@@ -1067,8 +1067,7 @@ def test_framework_with_debugger_and_built_in_rule(sagemaker_session):
         ],
     }
     assert args["profiler_config"] == {
-        "DisableProfiler": False,
-        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "DisableProfiler": True,
     }
 
 
@@ -1226,14 +1225,10 @@ def test_framework_without_debugger_and_profiler(time, sagemaker_session):
     f.fit("s3://mydata")
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
-    assert args["debugger_hook_config"] == {
-        "CollectionConfigurations": [],
-        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
-    }
+    assert "debugger_hook_config" not in args or args["debugger_hook_config"] is None
     assert "debugger_rule_configs" not in args
     assert args["profiler_config"] == {
-        "DisableProfiler": False,
-        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "DisableProfiler": True,
     }
 
 
@@ -1296,8 +1291,7 @@ def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
         ],
     }
     assert args["profiler_config"] == {
-        "DisableProfiler": False,
-        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "DisableProfiler": True,
     }
     assert args["profiler_rule_configs"] == [
         {
@@ -1332,8 +1326,7 @@ def test_framework_with_only_profiler_rule_specified(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["profiler_config"] == {
-        "DisableProfiler": False,
-        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "DisableProfiler": True,
     }
     assert args["profiler_rule_configs"] == [
         {
@@ -2601,7 +2594,7 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
 @pytest.mark.parametrize(
     "debugger_hook_config_direct_input, sagemaker_config, expected_debugger_hook_config_output",
     [
-        (None, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
+        (None, None, None),
         (True, None, S3_OUTPUT_PATH_FROM_SESSION_S3_DEFAULT_CONFIG),
         (False, None, False),
         (HOOK_CONFIG, None, HOOK_CONFIG.s3_output_path),
@@ -2665,6 +2658,8 @@ def test_prepare_for_training_for_debugger_hook_config_value_combinations(
 
     if expected_debugger_hook_config_output is False:
         assert fw.debugger_hook_config == expected_debugger_hook_config_output
+    elif expected_debugger_hook_config_output is None:
+        assert fw.debugger_hook_config is None
     else:
         assert fw.debugger_hook_config.s3_output_path == expected_debugger_hook_config_output
 
@@ -3522,7 +3517,7 @@ NO_INPUT_TRAIN_CALL = {
     "input_config": None,
     "input_mode": "File",
     "output_config": {"S3OutputPath": OUTPUT_PATH},
-    "profiler_config": {"DisableProfiler": False, "S3OutputPath": OUTPUT_PATH},
+    "profiler_config": {"DisableProfiler": True},
     "resource_config": {
         "InstanceCount": INSTANCE_COUNT,
         "InstanceType": INSTANCE_TYPE,
@@ -3802,7 +3797,7 @@ def test_generic_to_fit_no_input(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
-    args.pop("debugger_hook_config")
+    args.pop("debugger_hook_config", None)
 
     assert args == NO_INPUT_TRAIN_CALL
 
@@ -3827,7 +3822,7 @@ def test_generic_to_fit_no_hps(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
-    args.pop("debugger_hook_config")
+    args.pop("debugger_hook_config", None)
 
     assert args == BASE_TRAIN_CALL
 
@@ -3854,7 +3849,7 @@ def test_generic_to_fit_with_hps(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
-    args.pop("debugger_hook_config")
+    args.pop("debugger_hook_config", None)
 
     assert args == HP_TRAIN_CALL
 
@@ -3887,7 +3882,7 @@ def test_generic_to_fit_with_experiment_config(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
-    args.pop("debugger_hook_config")
+    args.pop("debugger_hook_config", None)
 
     assert args == EXP_TRAIN_CALL
 
@@ -4041,7 +4036,7 @@ def test_generic_to_deploy(time, sagemaker_session):
 
     args.pop("job_name")
     args.pop("role")
-    args.pop("debugger_hook_config")
+    args.pop("debugger_hook_config", None)
 
     assert args == HP_TRAIN_CALL
 

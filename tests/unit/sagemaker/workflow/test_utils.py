@@ -94,7 +94,6 @@ def test_repack_model_step(estimator):
         "DependsOn": ["TestStep"],
         "Arguments": {
             "AlgorithmSpecification": {"TrainingInputMode": "File"},
-            "DebugHookConfig": {"CollectionConfigurations": [], "S3OutputPath": "s3://my-bucket/"},
             "InputDataConfig": [
                 {
                     "ChannelName": "training",
@@ -176,7 +175,6 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
         "Type": "Training",
         "Arguments": {
             "AlgorithmSpecification": {"TrainingInputMode": "File"},
-            "DebugHookConfig": {"CollectionConfigurations": [], "S3OutputPath": "s3://my-bucket/"},
             "InputDataConfig": [
                 {
                     "ChannelName": "training",
