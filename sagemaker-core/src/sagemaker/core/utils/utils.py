@@ -17,6 +17,8 @@ import logging
 import os
 import re
 import subprocess
+import threading
+from collections import OrderedDict
 
 from boto3.session import Session
 from botocore.config import Config
@@ -324,13 +326,90 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class SageMakerClient(metaclass=SingletonMeta):
-    """A singleton class for creating a SageMaker client."""
+class _ClientCacheMeta(type):
+    """Metaclass that caches instances per constructor arguments.
+
+    A call with no arguments returns the process-wide default instance, creating it
+    from the default credential chain if none exists yet. A call with an explicit
+    ``session``, ``region_name`` or ``config`` returns an instance built from exactly
+    those arguments, cached so repeated calls with the same objects are cheap. The
+    first instance ever created also becomes the default, so code that configures
+    ``SageMakerClient(session=...)`` once up front and then relies on bare
+    ``SageMakerClient()`` calls keeps working.
+
+    The keyed entries form a small LRU: once ``_MAX_KEYED_ENTRIES`` distinct
+    argument sets have been seen, the least recently used one is dropped, so a
+    long-lived process that mints a fresh session per unit of work does not retain
+    every session and its four boto3 clients forever. The default entry is never
+    evicted. Construction is serialized by a lock so concurrent first callers for
+    the same key share one instance.
+
+    This replaces a plain singleton, which returned whichever instance was created
+    first and silently ignored the session passed on every later call.
+    """
+
+    _DEFAULT_KEY = "default"
+    _MAX_KEYED_ENTRIES = 32
+    _instances: Dict[type, "OrderedDict[Any, Any]"] = {}
+    _lock = threading.RLock()
+
+    def __call__(cls, *args, **kwargs):
+        """Return a cached instance for these arguments, creating it if needed."""
+        key = cls._cache_key(*args, **kwargs)
+        with cls._lock:
+            cache = cls._instances.setdefault(cls, OrderedDict())
+            instance = cache.get(key)
+            if instance is not None:
+                if key != cls._DEFAULT_KEY:
+                    cache.move_to_end(key)
+                return instance
+            instance = super().__call__(*args, **kwargs)
+            cache[key] = instance
+            # The first client created in the process becomes the default used by
+            # argument-less calls, matching the previous singleton behaviour.
+            cache.setdefault(cls._DEFAULT_KEY, instance)
+            _ClientCacheMeta._evict(cache, cls._DEFAULT_KEY, cls._MAX_KEYED_ENTRIES)
+            return instance
+
+    @staticmethod
+    def _evict(cache, default_key, max_keyed_entries):
+        """Drop least recently used keyed entries beyond the cap; keep the default."""
+        keyed = [k for k in cache if k != default_key]
+        for key in keyed[: max(0, len(keyed) - max_keyed_entries)]:
+            del cache[key]
+
+
+class SageMakerClient(metaclass=_ClientCacheMeta):
+    """Cached factory for SageMaker boto3 clients.
+
+    Clients are cached per (session, region_name, config). Passing an explicit boto3
+    ``session`` always yields clients signed with that session's credentials, even if
+    a client for a different session was created earlier in the process. Calling
+    ``SageMakerClient()`` with no arguments returns the process default.
+    """
+
+    @classmethod
+    def _cache_key(cls, session: Session = None, region_name: str = None, config: Config = None):
+        """Build the cache key for a constructor call.
+
+        Sessions and configs are keyed by identity: two distinct boto3 sessions must
+        never share a client even if they look alike, because credentials live on the
+        session object. The cached instance keeps references to both, so the ids
+        cannot be recycled while the entry is alive.
+        """
+        if session is None and region_name is None and config is None:
+            return cls._DEFAULT_KEY
+        return (
+            id(session) if session is not None else None,
+            region_name,
+            id(config) if config is not None else None,
+        )
 
     @classmethod
     def reset(cls):
-        """Reset the singleton instance."""
-        SingletonMeta._instances.pop(cls, None)
+        """Drop every cached instance, including the default."""
+        with _ClientCacheMeta._lock:
+            _ClientCacheMeta._instances.pop(cls, None)
 
     def __init__(
         self,
@@ -354,7 +433,12 @@ class SageMakerClient(metaclass=SingletonMeta):
             logger.debug("No config provided. Using default config.")
             config = Config(retries={"max_attempts": 10, "mode": "standard"})
 
-        self.config = Config(user_agent_extra=get_user_agent_extra_suffix())
+        # Keep the caller's config object alive: the cache key uses its identity.
+        self._base_config = config
+        user_agent_extra = get_user_agent_extra_suffix()
+        if config.user_agent_extra:
+            user_agent_extra = f"{config.user_agent_extra} {user_agent_extra}"
+        self.config = config.merge(Config(user_agent_extra=user_agent_extra))
         self.session = session
         self.region_name = region_name
 
