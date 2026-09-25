@@ -68,7 +68,6 @@ def _tar_members(s3_client, s3_uri):
     return tarfile.open(fileobj=io.BytesIO(body), mode="r:gz").getnames()
 
 
-@pytest.mark.slow_test
 def test_build_repacks_source_code_into_artifact():
     """build() with image_uri + model artifact + source_code repacks code/ into
     the model.tar.gz. No deploy - runs in seconds."""
