@@ -12,11 +12,15 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import io
+
 import pytest
 from mock import Mock
 from sagemaker.async_inference.waiter_config import WaiterConfig
+from sagemaker.deserializers import JSONDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.predictor_async import AsyncPredictor
+from sagemaker.serializers import JSONSerializer
 from sagemaker.exceptions import AsyncInferenceModelError, PollingTimeoutError
 
 ENDPOINT = "mxnet_endpoint"
@@ -494,3 +498,62 @@ def test_list_monitors():
 
     predictor_async.list_monitors()
     predictor.list_monitors.assert_called_with()
+
+
+def _sagemaker_session_with_json_output():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.s3_client.get_waiter = Mock(name="get_waiter")
+    sagemaker_session.s3_client.get_object = Mock(
+        name="get_object",
+        return_value={
+            "Body": io.BytesIO(b'{"result": [1, 2, 3]}'),
+            "ContentType": "application/json",
+        },
+    )
+    return sagemaker_session
+
+
+def test_async_predictor_deserializer_override_is_used_for_accept_and_result():
+    sagemaker_session = _sagemaker_session_with_json_output()
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session))
+
+    predictor_async.deserializer = JSONDeserializer()
+
+    assert isinstance(predictor_async.predictor.deserializer, JSONDeserializer)
+
+    result = predictor_async.predict(
+        input_path=ASYNC_INPUT_LOCATION, waiter_config=DEFAULT_WAITER_CONFIG
+    )
+
+    _, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.call_args
+    assert kwargs["Accept"] == "application/json"
+    assert result == {"result": [1, 2, 3]}
+
+
+def test_async_predictor_serializer_override_is_used_for_upload():
+    sagemaker_session = empty_sagemaker_session()
+    predictor_async = AsyncPredictor(Predictor(ENDPOINT, sagemaker_session))
+    predictor_async.name = ASYNC_PREDICTOR
+
+    predictor_async.serializer = JSONSerializer()
+
+    assert isinstance(predictor_async.predictor.serializer, JSONSerializer)
+
+    predictor_async.predict_async(data={"hi": "there"})
+
+    _, kwargs = sagemaker_session.s3_client.put_object.call_args
+    assert kwargs["Body"] == '{"hi": "there"}'
+    assert kwargs["ContentType"] == "application/json"
+
+
+def test_async_predictor_reflects_serializers_set_on_wrapped_predictor():
+    predictor = Predictor(ENDPOINT, empty_sagemaker_session())
+    predictor_async = AsyncPredictor(predictor)
+
+    serializer = JSONSerializer()
+    deserializer = JSONDeserializer()
+    predictor.serializer = serializer
+    predictor.deserializer = deserializer
+
+    assert predictor_async.serializer is serializer
+    assert predictor_async.deserializer is deserializer
