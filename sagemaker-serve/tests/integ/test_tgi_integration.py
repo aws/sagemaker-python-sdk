@@ -31,7 +31,6 @@ ENDPOINT_NAME_PREFIX = "tgi-test-endpoint"
 
 
 @pytest.mark.slow_test
-@pytest.mark.skip_in_pr_check
 def test_tgi_build_deploy_invoke_cleanup():
     """Integration test for TGI model build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting TGI integration test...")
