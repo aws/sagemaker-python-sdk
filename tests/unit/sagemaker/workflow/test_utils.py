@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import os
 import shutil
 import tempfile
+from unittest.mock import patch
 
 import pytest
 
@@ -259,3 +260,60 @@ def create_file_tree(root, tree):
             pass
         with open(os.path.join(root, file), "a") as f:
             f.write(file)
+
+
+def test_inject_repack_launcher_opened_with_lf_newline(estimator, source_dir):
+    """Regression for #3762: launcher must be opened with newline="\\n".
+
+    On Windows, text-mode ``open(..., "w")`` translates ``\\n`` to ``\\r\\n``, which
+    corrupts the bash launcher when it later runs in the Linux repack container. This
+    asserts the fix (``newline="\\n"``) is in place independently of the test host OS.
+    """
+    real_open = open
+    launcher_open_calls = []
+
+    def tracking_open(file, mode="r", *args, **kwargs):
+        if str(file).endswith(REPACK_SCRIPT_LAUNCHER) and "w" in mode:
+            launcher_open_calls.append(kwargs.get("newline"))
+        return real_open(file, mode, *args, **kwargs)
+
+    step = _RepackModelStep(
+        name="MyRepackModelStep",
+        sagemaker_session=estimator.sagemaker_session,
+        role=estimator.role,
+        model_data=Properties(step_name="MyStep", shape_name="DescribeModelOutput"),
+        entry_point="inference.py",
+        source_dir=source_dir,
+    )
+    # The launcher is written lazily when the request is built, not at construction.
+    with patch("builtins.open", side_effect=tracking_open):
+        step.to_request()
+
+    assert launcher_open_calls, "launcher file was never opened for writing"
+    assert all(nl == "\n" for nl in launcher_open_calls), (
+        "launcher must be opened with newline='\\n' to keep LF endings, "
+        f"got {launcher_open_calls}"
+    )
+
+
+def test_inject_repack_launcher_has_lf_endings(estimator, source_dir):
+    """Regression for #3762: the written launcher must contain no CRLF endings.
+
+    NOTE: this raw-bytes check only actually catches the bug on a Windows host (on
+    Linux/mac the old code already emitted LF); the host-independent guard is
+    ``test_inject_repack_launcher_opened_with_lf_newline`` above.
+    """
+    step = _RepackModelStep(
+        name="MyRepackModelStep",
+        sagemaker_session=estimator.sagemaker_session,
+        role=estimator.role,
+        model_data=Properties(step_name="MyStep", shape_name="DescribeModelOutput"),
+        entry_point="inference.py",
+        source_dir=source_dir,
+    )
+    # The launcher is written lazily when the request is built, not at construction.
+    step.to_request()
+
+    with open(os.path.join(source_dir, REPACK_SCRIPT_LAUNCHER), "rb") as f:
+        raw = f.read()
+    assert b"\r\n" not in raw
