@@ -42,11 +42,24 @@ MOCK_ENDPOINT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test"
 class LocalSagemakerClientMock:
     def __init__(self):
         self.sagemaker_session = MOCK_SESSION
+        self._debugger_explicitly_provided = True
+        self._profiler_explicitly_provided = False
 
     @_telemetry_emitter(MOCK_FEATURE, MOCK_FUNC_NAME)
     def mock_create_model(self, mock_exception_func=None):
         if mock_exception_func:
             mock_exception_func()
+
+    @_telemetry_emitter(
+        MOCK_FEATURE,
+        MOCK_FUNC_NAME,
+        telemetry_params={
+            "debuggerExplicitlyProvided": "_debugger_explicitly_provided",
+            "profilerExplicitlyProvided": "_profiler_explicitly_provided",
+        },
+    )
+    def mock_train(self):
+        return None
 
 
 class TestTelemetryLogging(unittest.TestCase):
@@ -146,6 +159,19 @@ class TestTelemetryLogging(unittest.TestCase):
         mock_send_telemetry_request.assert_called_once_with(
             1, [1, 2], MOCK_SESSION, None, None, expected_extra_str
         )
+
+    @patch("sagemaker.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_adds_instance_params(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        mock_resolve_config.return_value = False
+
+        LocalSagemakerClientMock().mock_train()
+
+        extra = mock_send_telemetry_request.call_args.args[5]
+        assert "&x-debuggerExplicitlyProvided=true" in extra
+        assert "&x-profilerExplicitlyProvided=false" in extra
 
     @patch("sagemaker.telemetry.telemetry_logging._send_telemetry_request")
     @patch("sagemaker.telemetry.telemetry_logging.resolve_value_from_config")

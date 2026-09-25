@@ -672,6 +672,8 @@ def test_estimator_initialization_with_sagemaker_config_injection(sagemaker_sess
     assert estimator.environment == expected_environment
     assert estimator.disable_profiler == expected_disable_profiler_attribute
     assert estimator.debugger_hook_config == expected_debugger_hook_config
+    assert estimator._debugger_hook_config_explicitly_provided is False
+    assert estimator._profiler_config_explicitly_provided is False
 
 
 def test_estimator_with_debugger_hook_config_provided_as_bool_from_direct_input(
@@ -694,6 +696,7 @@ def test_estimator_with_debugger_hook_config_provided_as_bool_from_direct_input(
         debugger_hook_config=True,
     )
     assert estimator.debugger_hook_config == {}
+    assert estimator._debugger_hook_config_explicitly_provided is True
 
 
 def test_estimator_with_debugger_hook_config_provided_as_dict_from_direct_input(
@@ -715,6 +718,7 @@ def test_estimator_with_debugger_hook_config_provided_as_dict_from_direct_input(
         debugger_hook_config=HOOK_CONFIG,
     )
     assert estimator.debugger_hook_config == HOOK_CONFIG
+    assert estimator._debugger_hook_config_explicitly_provided is True
 
 
 def test_estimator_initialization_with_sagemaker_config_injection_no_kms_supported(
@@ -1351,8 +1355,11 @@ def test_framework_with_only_profiler_rule_specified(sagemaker_session):
     ]
 
 
+@patch("sagemaker.telemetry.telemetry_logging._send_telemetry_request")
 @patch("time.time", return_value=TIME)
-def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_session):
+def test_framework_with_profiler_config_without_s3_output_path(
+    time, send_telemetry_request, sagemaker_session
+):
     f = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -1361,6 +1368,7 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
         instance_type=INSTANCE_TYPE,
         profiler_config=ProfilerConfig(system_monitor_interval_millis=1000),
     )
+    assert f._profiler_config_explicitly_provided is True
     f.fit("s3://mydata")
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
@@ -1369,6 +1377,9 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         "ProfilingIntervalInMilliseconds": 1000,
     }
+    telemetry_extra = send_telemetry_request.call_args.args[5]
+    assert "&x-debuggerHookConfigExplicitlyProvided=false" in telemetry_extra
+    assert "&x-profilerConfigExplicitlyProvided=true" in telemetry_extra
 
 
 @pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)

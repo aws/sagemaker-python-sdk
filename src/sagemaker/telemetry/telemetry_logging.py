@@ -16,7 +16,7 @@ import logging
 import platform
 import sys
 from time import perf_counter
-from typing import List
+from typing import Dict, List
 import functools
 import requests
 
@@ -67,7 +67,7 @@ STATUS_TO_CODE = {
 }
 
 
-def _telemetry_emitter(feature: str, func_name: str):
+def _telemetry_emitter(feature: str, func_name: str, telemetry_params: Dict[str, str] = None):
     """Telemetry Emitter
 
     Decorator to emit telemetry logs for SageMaker Python SDK functions. This class needs
@@ -75,6 +75,11 @@ def _telemetry_emitter(feature: str, func_name: str):
     in this repo. When collecting telemetry for classes using sagemaker-core Session object,
     we should be aware of its differences, such as sagemaker_session.sagemaker_config does not
     exist in new Session class.
+
+    Args:
+        feature: Feature enum value for the telemetry event.
+        func_name: Name of the instrumented function.
+        telemetry_params: Mapping of telemetry field names to instance attribute names.
     """
 
     def decorator(func):
@@ -135,6 +140,14 @@ def _telemetry_emitter(feature: str, func_name: str):
                 # Add endpoint ARN to the extra info if available
                 if hasattr(sagemaker_session, "endpoint_arn") and sagemaker_session.endpoint_arn:
                     extra += f"&x-endpointArn={sagemaker_session.endpoint_arn}"
+
+                if telemetry_params and args:
+                    for field_name, attribute_name in telemetry_params.items():
+                        value = getattr(args[0], attribute_name, None)
+                        if isinstance(value, bool):
+                            value = str(value).lower()
+                        if value is not None:
+                            extra += f"&x-{field_name}={value}"
 
                 start_timer = perf_counter()
                 try:
