@@ -86,6 +86,51 @@ class TestAsyncPredictor(unittest.TestCase):
         self.assertEqual(result, "s3://bucket/key")
         async_predictor.s3_client.put_object.assert_called_once()
 
+    def test_upload_data_to_s3_without_name_uses_endpoint_name(self):
+        # Regression test for https://github.com/aws/sagemaker-python-sdk/issues/3210
+        self.mock_predictor.serializer.serialize.return_value = b"serialized_data"
+
+        async_predictor = AsyncPredictor(self.mock_predictor)
+        async_predictor.sagemaker_session.default_bucket.return_value = "default-bucket"
+        async_predictor.sagemaker_session.default_bucket_prefix = None
+
+        result = async_predictor._upload_data_to_s3("test_data")
+
+        self.assertIsNone(async_predictor.name)
+        key = async_predictor.s3_client.put_object.call_args.kwargs["Key"]
+        self.assertTrue(key.startswith("async-endpoint-inputs/test-endpoint-"))
+        self.assertEqual(result, "s3://default-bucket/{}".format(key))
+
+    def test_upload_data_to_s3_with_name_uses_name(self):
+        self.mock_predictor.serializer.serialize.return_value = b"serialized_data"
+
+        async_predictor = AsyncPredictor(self.mock_predictor, name="my-async")
+        async_predictor.sagemaker_session.default_bucket.return_value = "default-bucket"
+        async_predictor.sagemaker_session.default_bucket_prefix = None
+
+        async_predictor._upload_data_to_s3("test_data")
+
+        key = async_predictor.s3_client.put_object.call_args.kwargs["Key"]
+        self.assertTrue(key.startswith("async-endpoint-inputs/my-async-"))
+
+    @patch.object(AsyncPredictor, "_submit_async_request")
+    def test_predict_async_with_data_and_no_name(self, mock_submit):
+        # Regression test for https://github.com/aws/sagemaker-python-sdk/issues/3210
+        mock_submit.return_value = {
+            "OutputLocation": "s3://bucket/output",
+            "FailureLocation": "s3://bucket/failure",
+        }
+        self.mock_predictor.serializer.serialize.return_value = b"serialized_data"
+
+        async_predictor = AsyncPredictor(self.mock_predictor)
+        async_predictor.sagemaker_session.default_bucket.return_value = "default-bucket"
+        async_predictor.sagemaker_session.default_bucket_prefix = None
+
+        response = async_predictor.predict_async(data="test_data")
+
+        self.assertEqual(response.output_path, "s3://bucket/output")
+        async_predictor.s3_client.put_object.assert_called_once()
+
     def test_delete_endpoint(self):
         async_predictor = AsyncPredictor(self.mock_predictor)
         async_predictor.delete_endpoint()
