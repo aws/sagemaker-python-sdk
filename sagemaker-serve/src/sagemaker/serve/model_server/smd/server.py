@@ -55,4 +55,6 @@ class SageMakerSmdServer:
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
             "LOCAL_PYTHON": platform.python_version(),
         }
+        if secret_key:
+            env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = secret_key
         return s3_upload_path, env_vars
