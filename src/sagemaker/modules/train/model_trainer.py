@@ -717,12 +717,15 @@ class ModelTrainer(BaseModel):
             self._write_source_code_json(tmp_dir=self._temp_code_dir, source_code=self.source_code)
             self._write_distributed_json(tmp_dir=self._temp_code_dir, distributed=self.distributed)
 
-            # Create an input channel for drivers packaged by the sdk
+            # Create an input channel for drivers packaged by the sdk.
+            # Do NOT apply the user's source_code.ignore_patterns here: this directory is
+            # SDK-owned driver content (e.g. scripts/environment.py), and user patterns such as
+            # "scripts" or "environment" would strip files the container bootstrap requires,
+            # causing "sm_drivers/scripts/environment.py: No such file or directory" (issue #5493).
             sm_drivers_channel = self.create_input_data_channel(
                 channel_name=SM_DRIVERS,
                 data_source=self._temp_code_dir.name,
                 key_prefix=input_data_key_prefix,
-                ignore_patterns=self.source_code.ignore_patterns,
             )
             final_input_data_config.append(sm_drivers_channel)
 
@@ -881,8 +884,7 @@ class ModelTrainer(BaseModel):
                 ``s3://<default_bucket_path>/<key_prefix>/<channel_name>/``
             ignore_patterns: (Optional[List[str]]) :
                 The ignore patterns to ignore specific files/folders when uploading to S3.
-                If not specified, default to: ['.env', '.git', '__pycache__', '.DS_Store',
-                '.cache', '.ipynb_checkpoints'].
+                If not specified, no files are filtered and the data source is uploaded as-is.
         """
         channel = None
         if isinstance(data_source, str):

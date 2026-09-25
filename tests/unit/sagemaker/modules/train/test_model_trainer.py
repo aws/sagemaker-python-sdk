@@ -68,6 +68,7 @@ from sagemaker.modules.configs import (
     DataSource,
     MetricDefinition,
 )
+from sagemaker.modules.constants import SM_CODE, SM_DRIVERS
 from sagemaker.modules.distributed import Torchrun, SMP, MPI
 from sagemaker.modules.train.sm_recipes.utils import _load_recipes_cfg
 from sagemaker.modules.templates import EXEUCTE_DISTRIBUTED_DRIVER
@@ -252,6 +253,47 @@ def test_train_with_default_params(mock_training_job, model_trainer):
 
     training_job_instance = mock_training_job.create.return_value
     training_job_instance.wait.assert_called_once_with(logs=True)
+
+
+@patch("sagemaker.modules.train.model_trainer.TrainingJob")
+@patch("sagemaker.modules.train.model_trainer.ModelTrainer.create_input_data_channel")
+def test_sm_drivers_channel_ignores_user_ignore_patterns(
+    mock_create_input_data_channel, mock_training_job, modules_session
+):
+    """Regression for #5493.
+
+    The user's ``ignore_patterns`` apply only to their own source_dir channel. They must NOT be
+    forwarded to the SDK-owned ``sm_drivers`` driver channel -- patterns like ``"scripts"`` or
+    ``"environment"`` would strip the driver's own ``scripts/environment.py`` and break the
+    container bootstrap with "sm_drivers/scripts/environment.py: No such file or directory".
+    """
+    user_patterns = ["scripts", "environment", "data"]
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        source_code=SourceCode(
+            source_dir=DEFAULT_SOURCE_DIR,
+            entry_script="custom_script.py",
+            ignore_patterns=user_patterns,
+        ),
+        sagemaker_session=modules_session,
+    )
+
+    trainer.train()
+
+    calls_by_channel = {
+        call.kwargs.get("channel_name"): call.kwargs
+        for call in mock_create_input_data_channel.call_args_list
+    }
+    assert SM_CODE in calls_by_channel, "source_dir channel was not created"
+    assert SM_DRIVERS in calls_by_channel, "sm_drivers channel was not created"
+    # User patterns still apply to the user's own source_dir channel.
+    assert calls_by_channel[SM_CODE].get("ignore_patterns") == user_patterns
+    # ...but must NOT be applied to the SDK-owned driver channel.
+    assert calls_by_channel[SM_DRIVERS].get("ignore_patterns") is None
 
 
 @pytest.mark.parametrize(
