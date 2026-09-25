@@ -228,6 +228,7 @@ class DatasetBuilder:
             (default: None).
         _kms_key_id (str): A KMS key id. If set, will be used to encrypt the result file
             (default: None).
+        _workgroup (str): Athena workgroup name in which the query will run (default: None).
         _point_in_time_accurate_join (bool): A boolean representing if point-in-time join
             is applied to the resulting dataframe when calling "to_dataframe".
             When set to True, users can retrieve data using "row-level time travel"
@@ -264,6 +265,7 @@ class DatasetBuilder:
     _event_time_identifier_feature_name: str = None
     _included_feature_names: List[str] = None
     _kms_key_id: str = None
+    _workgroup: str = None
     _event_time_identifier_feature_type: FeatureTypeEnum = None
 
     _point_in_time_accurate_join: bool = field(default=False, init=False)
@@ -290,6 +292,7 @@ class DatasetBuilder:
         event_time_identifier_feature_name: str = None,
         included_feature_names: List[str] = None,
         kms_key_id: str = None,
+        workgroup: str = None,
         register_as_dataset: bool = False,
     ) -> "DatasetBuilder":
         """Create a DatasetBuilder for generating a Dataset.
@@ -302,6 +305,7 @@ class DatasetBuilder:
             event_time_identifier_feature_name: Required if base is DataFrame.
             included_feature_names: Features to include in output.
             kms_key_id: KMS key for encryption.
+            workgroup: Athena workgroup name (default: None).
 
         Returns:
             DatasetBuilder instance.
@@ -320,6 +324,7 @@ class DatasetBuilder:
             _event_time_identifier_feature_name=event_time_identifier_feature_name,
             _included_feature_names=included_feature_names,
             _kms_key_id=kms_key_id,
+            _workgroup=workgroup,
             _register_as_dataset=register_as_dataset,
         )
 
@@ -556,6 +561,7 @@ class DatasetBuilder:
             query_string=query_string,
             output_location=self._output_path,
             kms_key=self._kms_key_id,
+            workgroup=self._workgroup,
         )
 
     def _create_temp_table(self, temp_table_name: str, s3_folder: str):

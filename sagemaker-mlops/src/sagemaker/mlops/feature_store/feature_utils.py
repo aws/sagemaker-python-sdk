@@ -208,6 +208,7 @@ def run_athena_query(
     query_string: str,
     output_location: str,
     kms_key: str = None,
+    workgroup: str = None,
 ) -> Dict[str, Any]:
     """Execute Athena query, wait for completion, and return result.
 
@@ -218,6 +219,7 @@ def run_athena_query(
         query_string: SQL query string.
         output_location: S3 URI for query results.
         kms_key: KMS key for encryption (default: None).
+        workgroup: Athena workgroup name (default: None).
 
     Returns:
         Query execution result dict.
@@ -232,6 +234,7 @@ def run_athena_query(
         query_string=query_string,
         output_location=output_location,
         kms_key=kms_key,
+        workgroup=workgroup,
     )
     query_id = response["QueryExecutionId"]
     wait_for_athena_query(session, query_id)
