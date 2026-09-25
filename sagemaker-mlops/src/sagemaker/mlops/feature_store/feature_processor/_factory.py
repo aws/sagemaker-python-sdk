@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains static factory classes to instantiate complex objects for the FeatureProcessor."""
+
 from __future__ import absolute_import
 
 from typing import Dict

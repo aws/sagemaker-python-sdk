@@ -14,13 +14,12 @@
 
 from __future__ import absolute_import
 import logging
+import shutil
+from pathlib import Path
+from typing import List
 
 from sagemaker.serve.model_server.tgi.prepare import _copy_jumpstart_artifacts
 from sagemaker.serve.utils.local_hardware import _check_disk_space, _check_docker_disk_usage
-
-from pathlib import Path
-import shutil
-from typing import List
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -83,7 +82,7 @@ def prepare_for_mms(
     image_uri: str,
     inference_spec: InferenceSpec = None,
 ) -> str:
-    """Prepares for InferenceSpec using model_path, writes inference.py, and captures dependencies to generate secret_key.
+    """Prepares for InferenceSpec, writes inference.py, and captures dependencies for secret_key.
 
     Args:to
         model_path (str) : Argument

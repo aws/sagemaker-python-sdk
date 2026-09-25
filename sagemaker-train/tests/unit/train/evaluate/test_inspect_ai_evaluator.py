@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """InspectAIEvaluator unit tests."""
+
 from __future__ import absolute_import
 
 import os
@@ -849,8 +850,11 @@ class TestInspectAITrainerResourceChaining:
 
         return trainer
 
-    def _mock_model_package(self, model_s3_uri="s3://bucket/model/output/model.tar.gz",
-                            image_uri="123456789012.dkr.ecr.us-east-1.amazonaws.com/inference:latest"):
+    def _mock_model_package(
+        self,
+        model_s3_uri="s3://bucket/model/output/model.tar.gz",
+        image_uri="123456789012.dkr.ecr.us-east-1.amazonaws.com/inference:latest",
+    ):
         """Create a mock ModelPackage with inference specification."""
         mp = Mock()
         container = Mock()
@@ -891,7 +895,9 @@ class TestInspectAITrainerResourceChaining:
             "123456789012.dkr.ecr.us-east-1.amazonaws.com/inference:latest"
         )
 
-    def test_trainer_with_explicit_endpoint_name_skips_resolution(self, mock_artifact, mock_resolve):
+    def test_trainer_with_explicit_endpoint_name_skips_resolution(
+        self, mock_artifact, mock_resolve
+    ):
         """Test that explicit endpoint_name prevents trainer artifact resolution."""
         mock_resolve.return_value = _mock_model_resolution()
         mock_artifact.get_all.return_value = iter([])
@@ -914,7 +920,9 @@ class TestInspectAITrainerResourceChaining:
         assert evaluator._infer_scenario() == "existing_endpoint"
         assert evaluator.endpoint_name == "my-existing-endpoint"
 
-    def test_trainer_with_explicit_bedrock_model_id_skips_resolution(self, mock_artifact, mock_resolve):
+    def test_trainer_with_explicit_bedrock_model_id_skips_resolution(
+        self, mock_artifact, mock_resolve
+    ):
         """Test that explicit bedrock_model_id prevents trainer artifact resolution."""
         mock_resolve.return_value = _mock_model_resolution()
         mock_artifact.get_all.return_value = iter([])
@@ -985,7 +993,9 @@ class TestInspectAITrainerResourceChaining:
         assert evaluator._infer_scenario() == "bedrock"
         assert evaluator.model_s3_uri is None
 
-    def test_trainer_model_package_without_inference_spec_falls_back(self, mock_artifact, mock_resolve):
+    def test_trainer_model_package_without_inference_spec_falls_back(
+        self, mock_artifact, mock_resolve
+    ):
         """Test fallback when model package has no inference specification."""
         mock_resolve.return_value = _mock_model_resolution()
         mock_artifact.get_all.return_value = iter([])

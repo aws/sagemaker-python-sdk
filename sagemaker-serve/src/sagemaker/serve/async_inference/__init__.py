@@ -16,6 +16,6 @@ from __future__ import absolute_import
 
 from sagemaker.core.inference_config import AsyncInferenceConfig  # noqa: F401
 from sagemaker.serve.async_inference.waiter_config import WaiterConfig  # noqa: F401
-from sagemaker.serve.async_inference.async_inference_response import (
+from sagemaker.serve.async_inference.async_inference_response import (  # noqa: F401
     AsyncInferenceResponse,
-)  # noqa: F401
+)

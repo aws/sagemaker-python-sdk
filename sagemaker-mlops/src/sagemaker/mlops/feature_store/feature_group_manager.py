@@ -5,7 +5,7 @@
 import json
 import logging
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from pydantic import model_validator
 
@@ -13,15 +13,6 @@ import botocore.exceptions
 
 from sagemaker.core.resources import FeatureGroup
 from sagemaker.core.resources import Base
-from sagemaker.core.shapes import (
-    FeatureDefinition,
-    OfflineStoreConfig,
-    OnlineStoreConfig,
-    OnlineStoreConfigUpdate,
-    Tag,
-    ThroughputConfig,
-    ThroughputConfigUpdate,
-)
 from sagemaker.core.shapes import Unassigned
 from sagemaker.core.helper.pipeline_variable import StrPipeVar
 from sagemaker.core.s3.utils import parse_s3_url
@@ -34,7 +25,6 @@ from sagemaker.mlops.feature_store.feature_utils import (
     _ALLOWED_ICEBERG_PROPERTIES,
     _ICEBERG_PERMISSIONS_ERROR_MESSAGE,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +81,7 @@ class IcebergProperties(Base):
 
     @model_validator(mode="after")
     def validate_property_keys(self):
+        """Reject Iceberg property keys that are not in the allowed set."""
         if self.properties is None:
             return self
         invalid_keys = set(self.properties.keys()) - _ALLOWED_ICEBERG_PROPERTIES
@@ -111,17 +102,17 @@ class IcebergProperties(Base):
 
 class FeatureGroupManager(FeatureGroup):
     """FeatureGroup with extended management capabilities."""
-     # Inherit parent docstring and append our additions
+
+    # Inherit parent docstring and append our additions
     if FeatureGroup.__doc__ and __doc__:
         __doc__ = FeatureGroup.__doc__
-        
+
     # Attribute for Iceberg table properties (populated by get() when include_iceberg_properties=True)
     iceberg_properties: Optional[IcebergProperties] = None
 
     @staticmethod
     def _s3_uri_to_arn(s3_uri: str, region: Optional[str] = None) -> str:
-        """
-        Convert S3 URI to S3 ARN format for Lake Formation.
+        """Convert S3 URI to S3 ARN format for Lake Formation.
 
         Args:
             s3_uri: S3 URI in format s3://bucket/path or already an ARN
@@ -138,10 +129,10 @@ class FeatureGroupManager(FeatureGroup):
         """
         if s3_uri.startswith("arn:"):
             return s3_uri
-        
+
         # Determine partition based on region
         partition = aws_partition(region) if region else "aws"
-        
+
         bucket, key = parse_s3_url(s3_uri)
         # Reconstruct as ARN - key may be empty string
         s3_path = f"{bucket}/{key}" if key else bucket
@@ -149,8 +140,7 @@ class FeatureGroupManager(FeatureGroup):
 
     @staticmethod
     def _extract_account_id_from_arn(arn: str) -> str:
-        """
-        Extract AWS account ID from an ARN.
+        """Extract AWS account ID from an ARN.
 
         Args:
             arn: AWS ARN in format arn:aws:service:region:account:resource
@@ -170,8 +160,7 @@ class FeatureGroupManager(FeatureGroup):
     def _get_lake_formation_service_linked_role_arn(
         account_id: str, region: Optional[str] = None
     ) -> str:
-        """
-        Generate the Lake Formation service-linked role ARN for an account.
+        """Generate the Lake Formation service-linked role ARN for an account.
 
         Args:
             account_id: AWS account ID
@@ -194,8 +183,7 @@ class FeatureGroupManager(FeatureGroup):
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ):
-        """
-        Get a Lake Formation client.
+        """Get a Lake Formation client.
 
         Args:
             session: Boto3 session. If not provided, a new session will be created.
@@ -215,8 +203,7 @@ class FeatureGroupManager(FeatureGroup):
         use_service_linked_role: bool = True,
         role_arn: Optional[str] = None,
     ) -> bool:
-        """
-        Register an S3 location with Lake Formation.
+        """Register an S3 location with Lake Formation.
 
         Args:
             s3_location: S3 URI or ARN to register.
@@ -268,8 +255,7 @@ class FeatureGroupManager(FeatureGroup):
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> bool:
-        """
-        Revoke IAMAllowedPrincipal permissions from a Glue table.
+        """Revoke IAMAllowedPrincipal permissions from a Glue table.
 
         Checks for existing IAMAllowedPrincipal permissions via list_permissions
         before attempting revocation. If no permissions exist, skips the revoke call.
@@ -318,7 +304,9 @@ class FeatureGroupManager(FeatureGroup):
             },
             Permissions=["ALL"],
         )
-        logger.info(f"Disabled Lake Formation hybrid-access mode on table: {database_name}.{table_name}")
+        logger.info(
+            f"Disabled Lake Formation hybrid-access mode on table: {database_name}.{table_name}"
+        )
         return True
 
     def _grant_lake_formation_permissions(
@@ -329,8 +317,7 @@ class FeatureGroupManager(FeatureGroup):
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> bool:
-        """
-        Grant permissions to a role on a Glue table via Lake Formation.
+        """Grant permissions to a role on a Glue table via Lake Formation.
 
         Args:
             role_arn: IAM role ARN to grant permissions to.
@@ -373,7 +360,7 @@ class FeatureGroupManager(FeatureGroup):
                 )
                 return True
             raise
-    
+
     def _generate_s3_deny_statements(
         self,
         bucket_name: str,
@@ -382,8 +369,7 @@ class FeatureGroupManager(FeatureGroup):
         feature_store_role_arn: str,
         region: Optional[str] = None,
     ) -> list:
-        """
-        Generate S3 deny statements for Lake Formation governance.
+        """Generate S3 deny statements for Lake Formation governance.
 
         These statements deny S3 access to the offline store data prefix except for
         the Lake Formation role and Feature Store execution role.
@@ -414,9 +400,7 @@ class FeatureGroupManager(FeatureGroup):
                 "Principal": "*",
                 "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
                 "Resource": f"arn:{partition}:s3:::{bucket_name}/{s3_prefix}/*",
-                "Condition": {
-                    "StringNotEquals": {"aws:PrincipalArn": allowed_principals}
-                },
+                "Condition": {"StringNotEquals": {"aws:PrincipalArn": allowed_principals}},
             },
             {
                 "Sid": f"DenyFSListAccess_{sid_suffix}",
@@ -430,7 +414,6 @@ class FeatureGroupManager(FeatureGroup):
                 },
             },
         ]
-    
 
     @Base.add_validate_call
     def enable_lake_formation(
@@ -441,10 +424,9 @@ class FeatureGroupManager(FeatureGroup):
         region: Optional[str] = None,
         use_service_linked_role: bool = True,
         registration_role_arn: Optional[str] = None,
-        wait_for_active: bool = False
+        wait_for_active: bool = False,
     ) -> dict:
-        """
-        Enable Lake Formation governance for this Feature Group's offline store.
+        """Enable Lake Formation governance for this Feature Group's offline store.
 
         This method:
         1. Optionally waits for Feature Group to reach 'Created' status
@@ -587,11 +569,10 @@ class FeatureGroupManager(FeatureGroup):
                     "Re-run with hybrid_access_mode_enabled=True to keep IAMAllowedPrincipal permissions."
                 )
 
-
         results = {
             "s3_location_registered": False,
             "lf_permissions_granted": False,
-            "hybrid_access_mode_enabled": True
+            "hybrid_access_mode_enabled": True,
         }
 
         # Execute Lake Formation setup with fail-fast behavior.
@@ -697,13 +678,12 @@ class FeatureGroupManager(FeatureGroup):
         else:
             lf_role_arn = str(registration_role_arn)
 
-    
         bucket_deny_policy = self._generate_s3_deny_statements(
             bucket_name=bucket_name,
             s3_prefix=s3_prefix,
             lake_formation_role_arn=lf_role_arn,
             feature_store_role_arn=role_arn_str,
-            region=region
+            region=region,
         )
 
         policy_json = json.dumps(bucket_deny_policy, indent=2)
@@ -767,8 +747,7 @@ class FeatureGroupManager(FeatureGroup):
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Dict[str, any]:
-        """
-        Fetch the current Iceberg catalog table definition for the Feature Group's Iceberg offline store.
+        """Fetch the current Iceberg catalog table definition for the Feature Group's Iceberg offline store.
 
         Validates that the Feature Group has an Iceberg-formatted offline store
         and retrieves the table via the Iceberg catalog.
@@ -799,9 +778,7 @@ class FeatureGroupManager(FeatureGroup):
             self.offline_store_config.table_format is None
             or str(self.offline_store_config.table_format) != "Iceberg"
         ):
-            raise ValueError(
-                "Cannot update Iceberg properties: table_format must be 'Iceberg'"
-            )
+            raise ValueError("Cannot update Iceberg properties: table_format must be 'Iceberg'")
 
         # Get database and table name from data_catalog_config
         data_catalog_config = self.offline_store_config.data_catalog_config
@@ -855,8 +832,7 @@ class FeatureGroupManager(FeatureGroup):
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Dict[str, any]:
-        """
-        Update Iceberg table properties for the Feature Group's offline store.
+        """Update Iceberg table properties for the Feature Group's offline store.
 
         This method updates the Glue table properties for an Iceberg-formatted
         offline store. The Feature Group must have an offline store configured
@@ -879,9 +855,7 @@ class FeatureGroupManager(FeatureGroup):
         """
         # Validate iceberg_properties has properties to update
         if iceberg_properties is None or not iceberg_properties.properties:
-            raise ValueError(
-                "iceberg_properties must contain at least one property to update"
-            )
+            raise ValueError("iceberg_properties must contain at least one property to update")
 
         invalid_keys = set(iceberg_properties.properties.keys()) - _ALLOWED_ICEBERG_PROPERTIES
         if invalid_keys:
@@ -890,7 +864,7 @@ class FeatureGroupManager(FeatureGroup):
                 f"Allowed properties are: {_ALLOWED_ICEBERG_PROPERTIES}"
             )
 
-         # Check for no duplicate keys
+        # Check for no duplicate keys
         keys = list(iceberg_properties.properties.keys())
         duplicates = {k for k, count in Counter(keys).items() if count > 1}
         if duplicates:
@@ -963,8 +937,7 @@ class FeatureGroupManager(FeatureGroup):
         include_iceberg_properties: bool = False,
         **kwargs,
     ) -> Optional["FeatureGroup"]:
-        """
-        Get a FeatureGroup resource with optional Iceberg property retrieval.
+        """Get a FeatureGroup resource with optional Iceberg property retrieval.
 
         Accepts all parameters from FeatureGroup.get(), plus:
 
@@ -985,12 +958,9 @@ class FeatureGroupManager(FeatureGroup):
             result = feature_group._get_iceberg_properties(session=session, region=region)
             all_properties = result["properties"]
             allowed_properties = {
-                k: v for k, v in all_properties.items()
-                if k in _ALLOWED_ICEBERG_PROPERTIES
+                k: v for k, v in all_properties.items() if k in _ALLOWED_ICEBERG_PROPERTIES
             }
-            feature_group.iceberg_properties = IcebergProperties(
-                properties=allowed_properties
-            )
+            feature_group.iceberg_properties = IcebergProperties(properties=allowed_properties)
 
         return feature_group
 
@@ -1002,8 +972,7 @@ class FeatureGroupManager(FeatureGroup):
         iceberg_properties: Optional[IcebergProperties] = None,
         **kwargs,
     ) -> Optional["FeatureGroupManager"]:
-        """
-        Create a FeatureGroupManager resource with optional Lake Formation governance and Iceberg properties.
+        """Create a FeatureGroupManager resource with optional Lake Formation governance and Iceberg properties.
 
         Accepts all parameters from FeatureGroup.create(), plus:
 
@@ -1127,8 +1096,7 @@ class FeatureGroupManager(FeatureGroup):
         region: Optional[StrPipeVar] = None,
         **kwargs,
     ) -> Optional["FeatureGroup"]:
-        """
-        Update a FeatureGroup resource with optional Iceberg property updates.
+        """Update a FeatureGroup resource with optional Iceberg property updates.
 
         Accepts all parameters from FeatureGroup.update(), plus:
 

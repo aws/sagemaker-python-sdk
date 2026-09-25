@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Accessors to retrieve the model artifact S3 URI of pretrained machine learning models."""
+
 from __future__ import absolute_import
 
 import logging
@@ -21,7 +22,6 @@ from sagemaker.core.jumpstart import artifacts
 from sagemaker.core.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION
 from sagemaker.core.jumpstart.enums import JumpStartModelType
 from sagemaker.core.helper.session_helper import Session
-
 
 logger = logging.getLogger(__name__)
 

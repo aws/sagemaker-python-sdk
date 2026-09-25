@@ -20,12 +20,13 @@ This module defines:
 
 Example:
     Using Framework enum::
-    
+
         from sagemaker.serve.constants import Framework, DEFAULT_SERIALIZERS_BY_FRAMEWORK
-        
+
         # Get serializers for PyTorch
         serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
 """
+
 from __future__ import absolute_import, annotations
 
 # Standard library imports
@@ -48,7 +49,6 @@ from sagemaker.core.serializers import (
     RecordSerializer,
     TorchTensorSerializer,
 )
-
 
 # ========================================
 # Mode and Server Constants
@@ -87,21 +87,23 @@ OMNI_TASKS: Set[str] = {
 # Framework Enum
 # ========================================
 
+
 class Framework(Enum):
     """Enumeration of supported ML frameworks for ModelBuilder.
-    
+
     This enum provides standardized framework identifiers used throughout
     the ModelBuilder ecosystem for:
     - Framework detection from container images
     - Serializer/deserializer selection
     - Model server compatibility
-    
+
     Example:
         Using framework enum::
-        
+
             if detected_framework == Framework.PYTORCH:
                 serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
     """
+
     XGBOOST = "XGBoost"
     LDA = "LDA"
     PYTORCH = "PyTorch"

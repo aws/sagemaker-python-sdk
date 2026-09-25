@@ -30,6 +30,7 @@ Each test hits real AWS (S3, JumpStart hub for base-model resolution, and Bedroc
 but makes only read-only calls; none of them start a SageMaker pipeline or a
 Bedrock evaluation job.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -156,8 +157,7 @@ class TestLLMAsJudgeEvaluatorModelValidation:
         else:
             # Degraded rather than blocked — a warning must explain why.
             assert any(
-                "still in service" in record.getMessage()
-                for record in caplog.records
+                "still in service" in record.getMessage() for record in caplog.records
             ), "expected a lifecycle warning when the check degrades"
             logger.info("Retired model degraded gracefully (identity cannot verify)")
 
@@ -204,9 +204,7 @@ _BEDROCK_GETMODEL_ALLOW = [
     {"Effect": "Allow", "Action": ["bedrock:GetFoundationModel"], "Resource": "*"}
 ]
 # No bedrock grant — ``bedrock:GetFoundationModel`` is implicitly denied.
-_NO_BEDROCK_ALLOW = [
-    {"Effect": "Allow", "Action": ["sts:GetCallerIdentity"], "Resource": "*"}
-]
+_NO_BEDROCK_ALLOW = [{"Effect": "Allow", "Action": ["sts:GetCallerIdentity"], "Resource": "*"}]
 
 
 @contextmanager
@@ -265,9 +263,9 @@ def _assumed_role_session(permission_statements, label):
     last_err = None
     for _ in range(6):
         try:
-            credentials = sts.assume_role(
-                RoleArn=role_arn, RoleSessionName=f"llmaj-{label}"
-            )["Credentials"]
+            credentials = sts.assume_role(RoleArn=role_arn, RoleSessionName=f"llmaj-{label}")[
+                "Credentials"
+            ]
             break
         except ClientError as e:
             last_err = e
@@ -328,7 +326,6 @@ class TestEvaluatorModelLifecycleBedrockPermission:
                 evaluator._check_evaluator_model_lifecycle(REGION)
 
         assert any(
-            "bedrock:GetFoundationModel" in record.getMessage()
-            for record in caplog.records
+            "bedrock:GetFoundationModel" in record.getMessage() for record in caplog.records
         ), "expected a warning naming the missing bedrock:GetFoundationModel permission"
         logger.info("Unpermitted identity degraded gracefully (no block)")

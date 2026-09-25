@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Holds the BedrockModelBuilder class."""
+
 from __future__ import absolute_import
 
 import json
@@ -48,6 +49,7 @@ from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
+
 def _is_nova_model(container) -> bool:
     """Determine whether a model package container represents a Nova model.
 
@@ -69,7 +71,9 @@ def _is_nova_model(container) -> bool:
     return "nova" in recipe_name.lower() or "nova" in hub_content_name.lower()
 
 
-_BEDROCK_API_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "bedrock_api_logs")
+_BEDROCK_API_LOG_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "bedrock_api_logs"
+)
 
 
 def _log_bedrock_api_call(api_name: str, params: Dict[str, Any], response: Dict[str, Any]):
@@ -118,7 +122,17 @@ class BedrockModelBuilder:
 
     def __init__(
         self,
-        model: Optional[Union[str, ModelTrainer, BaseTrainer, MultiTurnRLTrainer, AgentRFTJob, TrainingJob, ModelPackage]] = None,
+        model: Optional[
+            Union[
+                str,
+                ModelTrainer,
+                BaseTrainer,
+                MultiTurnRLTrainer,
+                AgentRFTJob,
+                TrainingJob,
+                ModelPackage,
+            ]
+        ] = None,
     ):
         """Initialize BedrockModelBuilder.
 
@@ -330,7 +344,11 @@ class BedrockModelBuilder:
                 "or set 's3_model_artifacts' during initialization."
             )
 
-        spec = getattr(self.model_package, "inference_specification", None) if self.model_package else None
+        spec = (
+            getattr(self.model_package, "inference_specification", None)
+            if self.model_package
+            else None
+        )
         containers = getattr(spec, "containers", None) if spec else None
         container = containers[0] if containers else None
         is_nova = _is_nova_model(container) if container else False
@@ -412,9 +430,7 @@ class BedrockModelBuilder:
             merged_tags = list(model_tags) if model_tags else []
             if source_id:
                 source_tag = build_source_tag(source_id)
-                merged_tags = [
-                    t for t in merged_tags if t.get("key") != source_tag["key"]
-                ]
+                merged_tags = [t for t in merged_tags if t.get("key") != source_tag["key"]]
                 merged_tags.append(source_tag)
             if merged_tags:
                 params["modelTags"] = merged_tags
@@ -447,7 +463,11 @@ class BedrockModelBuilder:
                 mp_arn = getattr(self.model_package, "model_package_arn", None)
                 if mp_arn and isinstance(mp_arn, str):
                     oss_source_id = mp_arn
-            if not oss_source_id and self.s3_model_artifacts and isinstance(self.s3_model_artifacts, str):
+            if (
+                not oss_source_id
+                and self.s3_model_artifacts
+                and isinstance(self.s3_model_artifacts, str)
+            ):
                 oss_source_id = self.s3_model_artifacts
             if not oss_source_id:
                 logger.warning(
@@ -497,9 +517,10 @@ class BedrockModelBuilder:
                     self._imported_model_id = job_details.get("importedModelName")
                     return job_details
 
-
             # If artifacts are a tar.gz, extract to S3 first (Bedrock requires uncompressed format)
-            if self.s3_model_artifacts.endswith(".tar.gz") or self.s3_model_artifacts.endswith(".tar.gz/"):
+            if self.s3_model_artifacts.endswith(".tar.gz") or self.s3_model_artifacts.endswith(
+                ".tar.gz/"
+            ):
                 extracted_uri = self._extract_tar_gz_to_s3(self.s3_model_artifacts.rstrip("/"))
                 resolved_uri = self._resolve_hf_model_path(extracted_uri)
                 model_data_source = {"s3DataSource": {"s3Uri": resolved_uri}}
@@ -509,7 +530,6 @@ class BedrockModelBuilder:
 
             # Auto-generate job_name if not provided
             if not job_name:
-                import time
                 job_name = f"{imported_model_name or 'import'}-{int(time.time())}"
 
             # Inject the source tag into both the imported model tags and the
@@ -525,9 +545,7 @@ class BedrockModelBuilder:
                     t for t in merged_imported_tags if t.get("key") != source_tag["key"]
                 ]
                 merged_imported_tags.append(source_tag)
-                merged_job_tags = [
-                    t for t in merged_job_tags if t.get("key") != source_tag["key"]
-                ]
+                merged_job_tags = [t for t in merged_job_tags if t.get("key") != source_tag["key"]]
                 merged_job_tags.append(source_tag)
 
             params = {
@@ -555,9 +573,7 @@ class BedrockModelBuilder:
             self._wait_for_import_job_complete(job_arn)
 
             # Return the completed job details and store imported model ID
-            job_details = self._get_bedrock_client().get_model_import_job(
-                jobIdentifier=job_arn
-            )
+            job_details = self._get_bedrock_client().get_model_import_job(jobIdentifier=job_arn)
             self._imported_model_id = job_details.get("importedModelName")
             return job_details
 
@@ -710,9 +726,7 @@ class BedrockModelBuilder:
                 return
             if status == "Failed":
                 failure_reason = resp.get("failureMessage", "Unknown")
-                raise RuntimeError(
-                    f"Model import job {job_arn} failed. Reason: {failure_reason}"
-                )
+                raise RuntimeError(f"Model import job {job_arn} failed. Reason: {failure_reason}")
             time.sleep(poll_interval)
             elapsed += poll_interval
         raise RuntimeError(
@@ -756,9 +770,7 @@ class BedrockModelBuilder:
             f"{provisioned_model_arn} to become InService. Last status: {status}"
         )
 
-    def _wait_for_model_active(
-        self, model_arn: str, poll_interval: int = 60, max_wait: int = 3600
-    ):
+    def _wait_for_model_active(self, model_arn: str, poll_interval: int = 60, max_wait: int = 3600):
         """Poll Bedrock until the custom model reaches Active status.
 
         Args:
@@ -812,9 +824,7 @@ class BedrockModelBuilder:
             if status == "Active":
                 return
             if status == "Failed":
-                raise RuntimeError(
-                    f"Deployment {deployment_arn} failed."
-                )
+                raise RuntimeError(f"Deployment {deployment_arn} failed.")
             time.sleep(poll_interval)
             elapsed += poll_interval
         raise RuntimeError(
@@ -834,7 +844,7 @@ class BedrockModelBuilder:
         if isinstance(self.model, ModelPackage):
             return self.model
         if isinstance(self.model, TrainingJob):
-            arn = getattr(self.model, 'output_model_package_arn', None)
+            arn = getattr(self.model, "output_model_package_arn", None)
             if arn and isinstance(arn, str):
                 try:
                     return ModelPackage.get(arn)
@@ -854,9 +864,8 @@ class BedrockModelBuilder:
                     job_name = self.model._latest_job.job_name
                 if job_name:
                     from sagemaker.core.resources import Job
-                    job = Job.get(
-                        job_name=job_name, job_category="AgentRFT"
-                    )
+
+                    job = Job.get(job_name=job_name, job_category="AgentRFT")
                     config = json.loads(job.job_config_document) if job.job_config_document else {}
                     arn = config.get("ServiceOutput", {}).get("OutputModelPackageArn")
             if not arn:
@@ -866,17 +875,17 @@ class BedrockModelBuilder:
                 )
             return ModelPackage.get(arn)
         if isinstance(self.model, ModelTrainer):
-            mp_arn = getattr(self.model, '_latest_training_job', None)
+            mp_arn = getattr(self.model, "_latest_training_job", None)
             if mp_arn:
-                mp_arn = getattr(mp_arn, 'output_model_package_arn', None)
+                mp_arn = getattr(mp_arn, "output_model_package_arn", None)
             if mp_arn:
                 return ModelPackage.get(mp_arn)
             # No model package (e.g., HyperPod) — _get_s3_artifacts will resolve.
             return None
         if isinstance(self.model, BaseTrainer):
-            training_job = getattr(self.model, '_latest_training_job', None)
+            training_job = getattr(self.model, "_latest_training_job", None)
             if training_job:
-                mp_arn = getattr(training_job, 'output_model_package_arn', None)
+                mp_arn = getattr(training_job, "output_model_package_arn", None)
                 if mp_arn and isinstance(mp_arn, str):
                     try:
                         return ModelPackage.get(mp_arn)
@@ -1077,9 +1086,7 @@ class BedrockModelBuilder:
                 dest_key = extract_prefix + member.name
                 size_mb = member.size / (1024 * 1024)
                 extracted_count += 1
-                logger.info(
-                    "Extracting [%d]: %s (%.1f MB)", extracted_count, member.name, size_mb
-                )
+                logger.info("Extracting [%d]: %s (%.1f MB)", extracted_count, member.name, size_mb)
                 s3_client.put_object(Bucket=bucket, Key=dest_key, Body=f.read())
 
         if extracted_count == 0:

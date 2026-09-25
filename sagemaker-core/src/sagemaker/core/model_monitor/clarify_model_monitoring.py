@@ -15,6 +15,7 @@
 These classes assist with suggesting baselines and creating monitoring schedules for monitoring
 bias metrics and feature attribution of SageMaker Endpoints.
 """
+
 from __future__ import print_function, absolute_import
 
 import copy
@@ -95,7 +96,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
-        if type(self) == __class__:  # pylint: disable=unidiomatic-typecheck
+        if type(self) is __class__:  # pylint: disable=unidiomatic-typecheck
             raise TypeError(
                 "{} is abstract, please instantiate its subclasses instead.".format(
                     __class__.__name__

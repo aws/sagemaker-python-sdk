@@ -37,23 +37,22 @@ SERVE_SAGEMAKER_ENDPOINT_TIMEOUT = 15
 def test_jumpstart_build_deploy_invoke_cleanup():
     """Integration test for JumpStart model build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting JumpStart integration test...")
-    
+
     core_model = None
     core_endpoint = None
-    core_endpoint_config = None
-    
+
     try:
         # Build and deploy
         logger.info("Building and deploying JumpStart model...")
         core_model, core_endpoint = build_and_deploy()
-        
+
         # Make prediction
         logger.info("Making prediction...")
         make_prediction(core_endpoint)
-        
+
         # Test passed successfully
         logger.info("JumpStart integration test completed successfully")
-        
+
     except Exception as e:
         logger.error(f"JumpStart integration test failed: {str(e)}")
         raise
@@ -69,16 +68,18 @@ def build_and_deploy():
     # Initialize model_builder object with JumpStart configuration
     compute = Compute(instance_type="ml.g5.2xlarge")
     jumpstart_config = JumpStartConfig(model_id=MODEL_ID)
-    model_builder = ModelBuilder.from_jumpstart_config(jumpstart_config=jumpstart_config, compute=compute)
+    model_builder = ModelBuilder.from_jumpstart_config(
+        jumpstart_config=jumpstart_config, compute=compute
+    )
     unique_id = str(uuid.uuid4())[:8]
-    
+
     # Build and deploy your model. Returns SageMaker Core Model and Endpoint objects
     core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}")
     logger.info(f"Model Successfully Created: {core_model.model_name}")
 
     core_endpoint = model_builder.deploy(endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}")
     logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
-    
+
     return core_model, core_endpoint
 
 
@@ -86,20 +87,17 @@ def make_prediction(core_endpoint):
     """Make prediction using the deployed endpoint - preserving exact logic from manual test"""
     # Invoke the endpoint on a sample query:
     test_data = {"inputs": "What are falcons?", "parameters": {"max_new_tokens": 32}}
-    result = core_endpoint.invoke(
-        body=json.dumps(test_data),
-        content_type="application/json"
-    )
+    result = core_endpoint.invoke(body=json.dumps(test_data), content_type="application/json")
 
     # Decode the output of the invocation and print the result
-    prediction = json.loads(result.body.read().decode('utf-8'))
+    prediction = json.loads(result.body.read().decode("utf-8"))
     logger.info(f"Result of invoking endpoint: {prediction}")
 
 
 def cleanup_resources(core_model, core_endpoint):
     """Fully clean up model and endpoint creation - preserving exact logic from manual test"""
     core_endpoint_config = EndpointConfig.get(endpoint_config_name=core_endpoint.endpoint_name)
-   
+
     core_model.delete()
     core_endpoint.delete()
     core_endpoint_config.delete()

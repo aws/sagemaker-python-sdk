@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 """End-to-end: deploy a speculative-decoding / kernel-tuning model as an
 Inference Component via ``ModelBuilder``."""
+
 from __future__ import absolute_import
 
 import logging
@@ -20,7 +21,6 @@ import uuid
 
 import pytest
 
-from sagemaker.core.enums import EndpointType
 from sagemaker.core.helper.session_helper import Session, get_execution_role
 from sagemaker.core.inference_config import ResourceRequirements
 from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent, Model
@@ -87,7 +87,6 @@ def test_deploy_sdkt_model_as_inference_component():
         )
 
     source_model = None
-    endpoint = None
 
     try:
         # First build resolves the JumpStart container + a readable weights
@@ -109,7 +108,7 @@ def test_deploy_sdkt_model_as_inference_component():
         ic_mb.additional_model_data_sources = _additional_model_data_sources(base_s3)
         ic_mb.build(model_name=ic_model_name)
 
-        endpoint = ic_mb.deploy(
+        ic_mb.deploy(
             endpoint_name=endpoint_name,
             inference_config=ResourceRequirements(
                 requests={
@@ -214,9 +213,7 @@ def _extract_s3_uri(container):
 
 def _additional_channel_names(model):
     """Return the set of AdditionalModelDataSources channel names on a model."""
-    primary = getattr(model, "primary_container", None) or getattr(
-        model, "containers", [None]
-    )[0]
+    primary = getattr(model, "primary_container", None) or getattr(model, "containers", [None])[0]
     if primary is None:
         return set()
     sources = getattr(primary, "additional_model_data_sources", None) or []

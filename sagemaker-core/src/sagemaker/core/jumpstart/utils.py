@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains utils for JumpStart."""
+
 from __future__ import absolute_import
 
 from typing import Optional
@@ -21,7 +22,7 @@ from copy import copy
 import logging
 import os
 from functools import lru_cache, wraps
-from typing import Any, Dict, List, Set, Optional, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
@@ -54,7 +55,6 @@ from sagemaker.core.jumpstart.types import (
     JumpStartVersionedModelId,
     DeploymentConfigMetadata,
 )
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.config.config import load_sagemaker_config
 from sagemaker.core.common_utils import (
     resolve_value_from_config,
@@ -71,7 +71,7 @@ def is_pipeline_variable(var: object) -> bool:
     return isinstance(var, PipelineVariable)
 
 
-from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix
+from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix  # noqa: E402
 
 
 def get_eula_url(document: HubContentDocument, sagemaker_session: Optional[Session] = None) -> str:

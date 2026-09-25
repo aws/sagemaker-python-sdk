@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Training utilities."""
+
 from __future__ import absolute_import
 
 import io
@@ -198,8 +199,7 @@ def _read_checkpoint_uri_from_tar_gz(s3_client, s3_uri: str) -> str:
                 return checkpoint_uri
 
     raise ValueError(
-        f"'{_MANIFEST_CHECKPOINT_KEY}' not found in manifest.json within "
-        f"s3://{bucket}/{key}"
+        f"'{_MANIFEST_CHECKPOINT_KEY}' not found in manifest.json within " f"s3://{bucket}/{key}"
     )
 
 
@@ -233,15 +233,17 @@ def resolve_nova_checkpoint_uri(
     #   Serverful:  <output>/<job>/output/output.tar.gz  (manifest is inside)
     # Try each in turn and surface every failure if none resolve, so the real
     # cause is not masked by a misleading message from the last attempt.
-    hyperpod_manifest_uri = build_nova_hyperpod_manifest_s3_uri(
-        s3_output_path, training_job_name
-    )
+    hyperpod_manifest_uri = build_nova_hyperpod_manifest_s3_uri(s3_output_path, training_job_name)
     serverless_manifest_uri = build_nova_manifest_s3_uri(s3_output_path, training_job_name)
     tar_gz_uri = build_nova_output_tar_gz_s3_uri(s3_output_path, training_job_name)
 
     attempts = [
         ("HyperPod manifest.json", hyperpod_manifest_uri, read_nova_checkpoint_uri_from_manifest),
-        ("serverless manifest.json", serverless_manifest_uri, read_nova_checkpoint_uri_from_manifest),
+        (
+            "serverless manifest.json",
+            serverless_manifest_uri,
+            read_nova_checkpoint_uri_from_manifest,
+        ),
         ("serverful output.tar.gz", tar_gz_uri, _read_checkpoint_uri_from_tar_gz),
     ]
 
@@ -259,8 +261,7 @@ def resolve_nova_checkpoint_uri(
 
 
 def validate_instance_preferences(compute) -> None:
-    """Client-side validation for Compute.instance_preferences (server remains
-    the source of truth).
+    """Client-side validation for Compute.instance_preferences (server remains the source of truth).
 
     - instance_preferences is mutually exclusive with the classic
       single-cluster fields instance_type / instance_groups /

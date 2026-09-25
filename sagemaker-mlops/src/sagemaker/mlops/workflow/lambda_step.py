@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The step definitions for workflow."""
+
 from __future__ import absolute_import
 
 from typing import List, Dict, Optional, Union
@@ -156,10 +157,8 @@ class LambdaStep(Step):
             return response["FunctionArn"]
 
         if self.lambda_func.zipped_code_dir is None and self.lambda_func.script is None:
-            warnings.warn(
-                "Lambda function won't be updated because zipped_code_dir \
-                or script is not provided."
-            )
+            warnings.warn("Lambda function won't be updated because zipped_code_dir \
+                or script is not provided.")
             return self.lambda_func.function_arn
 
         response = self.lambda_func.update()

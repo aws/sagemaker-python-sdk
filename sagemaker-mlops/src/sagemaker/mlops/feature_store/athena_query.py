@@ -1,3 +1,5 @@
+"""Run Athena queries against Feature Store offline data and load the results."""
+
 import os
 import tempfile
 from dataclasses import dataclass, field
@@ -15,6 +17,7 @@ from sagemaker.mlops.feature_store.feature_utils import (
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry import Feature, _telemetry_emitter
+
 
 @dataclass
 class AthenaQuery:
@@ -112,4 +115,3 @@ class AthenaQuery:
         )
         kwargs.pop("delimiter", None)
         return pd.read_csv(output_file, delimiter=",", **kwargs)
-

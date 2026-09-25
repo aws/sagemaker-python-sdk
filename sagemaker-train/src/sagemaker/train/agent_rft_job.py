@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 
 """AgentRFTJob — wrapper around sagemaker-core Job for AgentRFT job category."""
+
 from __future__ import annotations
 
 import json
@@ -64,38 +65,47 @@ class AgentRFTJob:
 
     @property
     def job_name(self) -> str:
+        """Return the training job name."""
         return self._job.job_name
 
     @property
     def job_arn(self) -> str:
+        """Return the training job ARN."""
         return self._job.job_arn
 
     @property
     def job_status(self) -> str:
+        """Return the current job status."""
         return self._job.job_status
 
     @property
     def secondary_status(self) -> str:
+        """Return the current secondary status."""
         return self._job.secondary_status
 
     @property
     def secondary_status_transitions(self) -> list:
+        """Return the list of secondary status transitions."""
         return self._job.secondary_status_transitions
 
     @property
     def failure_reason(self) -> str | None:
+        """Return the failure reason, if any."""
         return self._job.failure_reason
 
     @property
     def creation_time(self):
+        """Return the job creation time."""
         return self._job.creation_time
 
     @property
     def last_modified_time(self):
+        """Return the job last-modified time."""
         return self._job.last_modified_time
 
     @property
     def end_time(self):
+        """Return the job end time."""
         return self._job.end_time
 
     # --- Delegated lifecycle methods ---
@@ -115,7 +125,13 @@ class AgentRFTJob:
         """
         from sagemaker.train.common_utils.job_wait import wait as _job_wait
 
-        _job_wait(self._job, poll=poll, timeout=timeout, description=self.description, max_log_lines=max_log_lines)
+        _job_wait(
+            self._job,
+            poll=poll,
+            timeout=timeout,
+            description=self.description,
+            max_log_lines=max_log_lines,
+        )
 
     def stream_logs(self, poll: int = 5, start_time=None) -> None:
         """Stream CloudWatch logs for this job in real-time.
@@ -177,7 +193,7 @@ class AgentRFTJob:
 
     @property
     def mlflow_details(self) -> dict | None:
-        """MLflow experiment/run details from ServiceOutput.
+        """Return MLflow experiment/run details from ServiceOutput.
 
         Returns dict with keys: ExperimentName, RunName, ExperimentId, RunId.
         """
@@ -210,9 +226,7 @@ class AgentRFTJob:
         if url and _is_jupyter_environment():
             from IPython.display import display as ipy_display, HTML
 
-            ipy_display(HTML(
-                f'🔗 <a href="{url}" target="_blank">Open MLflow Experiment</a>'
-            ))
+            ipy_display(HTML(f'🔗 <a href="{url}" target="_blank">Open MLflow Experiment</a>'))
         return url
 
     @property
@@ -315,6 +329,7 @@ class AgentRFTJob:
         if not rows:
             return
         metric_keys = [k for k in rows[0] if k != "step"]
+
         # Build column headers from metric names
         def _col_name(k: str) -> str:
             parts = k.split("/")

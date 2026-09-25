@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """SageMaker Experiments module for tracking experiments, trials, and runs."""
+
 from __future__ import absolute_import
 
 # Lazy imports to avoid circular dependencies during package initialization
@@ -19,6 +20,7 @@ from __future__ import absolute_import
 # from sagemaker.core.experiments.run import Run
 # etc.
 
+# pylint: disable=undefined-all-variable  # names provided via PEP 562 __getattr__
 __all__ = [
     "Experiment",
     "Run",
@@ -26,6 +28,7 @@ __all__ = [
     "_Trial",
     "_TrialComponent",
 ]
+# pylint: enable=undefined-all-variable
 
 
 def __getattr__(name):

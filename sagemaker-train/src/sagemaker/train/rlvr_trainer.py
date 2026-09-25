@@ -1,10 +1,17 @@
+"""RLVR (Reinforcement Learning from Verifiable Rewards) trainer for SageMaker fine-tuning."""
+
 import json
 import logging
 from typing import Any, Dict, List, Optional, Union
 
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
-from sagemaker.core.resources import TrainingJob, ModelPackageGroup, MlflowTrackingServer, ModelPackage
+from sagemaker.core.resources import (
+    TrainingJob,
+    ModelPackageGroup,
+    MlflowTrackingServer,
+    ModelPackage,
+)
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.core.utils.utils import serialize
@@ -15,7 +22,6 @@ from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.evaluator import Evaluator
 from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 from sagemaker.train.configs import StoppingCondition
-from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 from sagemaker.train.common_utils.finetune_utils import (
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
@@ -32,9 +38,13 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_mlflow_config,
     _create_model_package_config,
     _validate_eula_for_gated_model,
-    _validate_hyperparameter_values
+    _validate_hyperparameter_values,
 )
-from sagemaker.train.common_utils.data_utils import is_multimodal_data, load_file_content, validate_data_path_exists
+from sagemaker.train.common_utils.data_utils import (
+    is_multimodal_data,
+    load_file_content,
+    validate_data_path_exists,
+)
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
 from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
@@ -45,7 +55,7 @@ logger = logging.getLogger(__name__)
 
 
 class RLVRTrainer(BaseTrainer):
-    """Class that performs Reinforcement Learning from Verifiable Rewards (RLVR) fine-tuning on foundation models using AWS SageMaker.
+    """Class that performs Reinforcement Learning from Verifiable Rewards (RLVR) fine-tuning on foundation models.
 
     Example:
 
@@ -81,19 +91,19 @@ class RLVRTrainer(BaseTrainer):
             model_package_group="my-rlvr-models",
             custom_reward_function="arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-evaluator/1.0"
         )
-        
+
         # Create training job (non-blocking)
         training_job = trainer.train(
             training_dataset="s3://bucket/rlvr_data.jsonl",
             wait=False
         )
-        
+
         # Wait for completion
         training_job.wait()
-        
+
         # Refresh job status
         training_job.refresh()
-        
+
         # Get the fine-tuned model package ARN
         model_package_arn = training_job.output_model_package_arn
 
@@ -179,10 +189,18 @@ class RLVRTrainer(BaseTrainer):
         notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, notifications=notifications, **kwargs)
+        super().__init__(
+            base_model_name=base_model_name,
+            disable_output_compression=disable_output_compression,
+            notifications=notifications,
+            **kwargs,
+        )
 
         self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
-            model, self.base_model_name, compute, self.sagemaker_session,
+            model,
+            self.base_model_name,
+            compute,
+            self.sagemaker_session,
             resolve_fn=_resolve_model_and_name,
         )
 
@@ -218,17 +236,24 @@ class RLVRTrainer(BaseTrainer):
         self.skip_reward_validation = skip_reward_validation
 
         # Initialize fine-tuning options with beta session fallback
-        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
-                                                                     CustomizationTechnique.RLVR.value,
-                                                                     self.training_type,
-                                                                     self.sagemaker_session or TrainDefaults.get_sagemaker_session(
-                                                                     sagemaker_session=self.sagemaker_session
-                                                                    ),
-                                                                     sequence_length=self.sequence_length,
-                                                                     compute=self.compute)
+        self.hyperparameters, self._model_arn, is_gated_model = (
+            _get_fine_tuning_options_and_model_arn(
+                self._model_name,
+                CustomizationTechnique.RLVR.value,
+                self.training_type,
+                self.sagemaker_session
+                or TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
+                sequence_length=self.sequence_length,
+                compute=self.compute,
+            )
+        )
 
         # Remove constructor-handled hyperparameters
         self._process_hyperparameters()
+
+        # Re-apply any hyperparameters passed at construction (see BaseTrainer),
+        # which the FineTuningOptions rebuild above would otherwise drop.
+        self._apply_user_hyperparameters(self._constructor_hyperparameters)
 
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
@@ -237,26 +262,27 @@ class RLVRTrainer(BaseTrainer):
         """Remove hyperparameter keys that are handled by constructor inputs."""
         if self.hyperparameters:
             # Remove keys that are handled by constructor inputs
-            if hasattr(self.hyperparameters, 'data_s3_path'):
-                delattr(self.hyperparameters, 'data_s3_path')
-                self.hyperparameters._specs.pop('data_s3_path', None)
-            if hasattr(self.hyperparameters, 'reward_lambda_arn'):
-                delattr(self.hyperparameters, 'reward_lambda_arn')
-                self.hyperparameters._specs.pop('reward_lambda_arn', None)
-            if hasattr(self.hyperparameters, 'data_path'):
-                delattr(self.hyperparameters, 'data_path')
-                self.hyperparameters._specs.pop('data_path', None)
-            if hasattr(self.hyperparameters, 'validation_data_path'):
-                delattr(self.hyperparameters, 'validation_data_path')
-                self.hyperparameters._specs.pop('validation_data_path', None)
-            if hasattr(self.hyperparameters, 'output_path'):
-                delattr(self.hyperparameters, 'output_path')
-                self.hyperparameters._specs.pop('output_path', None)
+            if hasattr(self.hyperparameters, "data_s3_path"):
+                delattr(self.hyperparameters, "data_s3_path")
+                self.hyperparameters._specs.pop("data_s3_path", None)
+            if hasattr(self.hyperparameters, "reward_lambda_arn"):
+                delattr(self.hyperparameters, "reward_lambda_arn")
+                self.hyperparameters._specs.pop("reward_lambda_arn", None)
+            if hasattr(self.hyperparameters, "data_path"):
+                delattr(self.hyperparameters, "data_path")
+                self.hyperparameters._specs.pop("data_path", None)
+            if hasattr(self.hyperparameters, "validation_data_path"):
+                delattr(self.hyperparameters, "validation_data_path")
+                self.hyperparameters._specs.pop("validation_data_path", None)
+            if hasattr(self.hyperparameters, "output_path"):
+                delattr(self.hyperparameters, "output_path")
+                self.hyperparameters._specs.pop("output_path", None)
 
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="RLVRTrainer.train",
-        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS
+        + [
             ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
             ("compute", TelemetryParamType.ATTR_TYPE),
         ],
@@ -386,8 +412,15 @@ class RLVRTrainer(BaseTrainer):
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLVRTrainer.train")
     @runnable_by_pipeline
-    def train(self, training_dataset: Optional[Union[str, DataSet]] = None,
-              validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
+    def train(
+        self,
+        training_dataset: Optional[Union[str, DataSet]] = None,
+        validation_dataset: Optional[Union[str, DataSet]] = None,
+        wait: bool = True,
+        wait_timeout: Optional[int] = None,
+        poll: int = 5,
+        dry_run: bool = False,
+    ):
         """Execute the RLVR training job.
 
         Parameters:
@@ -437,7 +470,7 @@ class RLVRTrainer(BaseTrainer):
                 poll=poll,
                 dry_run=dry_run,
             )
-        elif isinstance(self.compute, TrainingJobCompute):
+        if isinstance(self.compute, TrainingJobCompute):
             return self._train_serverful_smtj(
                 training_dataset=training_dataset,
                 validation_dataset=validation_dataset,
@@ -459,22 +492,26 @@ class RLVRTrainer(BaseTrainer):
 
         logger.info(f"Training Job Name: {current_training_job_name}")
 
-        #data
-        input_data_config = _create_input_data_config(training_dataset or self.training_dataset,
-                                                     validation_dataset or self.validation_dataset
-                                                     )
+        # data
+        input_data_config = _create_input_data_config(
+            training_dataset or self.training_dataset, validation_dataset or self.validation_dataset
+        )
         channels = _convert_input_data_to_channels(input_data_config)
 
         output_config = _create_output_config(
             s3_output_path=self.s3_output_path,
             sagemaker_session=sagemaker_session,
             kms_key_id=self.kms_key_id,
-            disable_output_compression=getattr(self, 'disable_output_compression', False),
+            disable_output_compression=getattr(self, "disable_output_compression", False),
         )
 
         # Extract and validate evaluator ARN
         # If custom_reward_function is a Lambda ARN, create an Evaluator object first
-        if self.custom_reward_function and isinstance(self.custom_reward_function, str) and _is_lambda_arn(self.custom_reward_function):
+        if (
+            self.custom_reward_function
+            and isinstance(self.custom_reward_function, str)
+            and _is_lambda_arn(self.custom_reward_function)
+        ):
             lambda_arn = self.custom_reward_function
             evaluator_name = _get_unique_name(f"rlvr-reward-{self._model_name}")
             logger.info(f"Creating Evaluator from Lambda ARN: {lambda_arn}")
@@ -487,15 +524,20 @@ class RLVRTrainer(BaseTrainer):
             evaluator_arn = _extract_evaluator_arn(evaluator_obj)
             logger.info(f"Created Evaluator with ARN: {evaluator_arn}")
         else:
-            evaluator_arn = _extract_evaluator_arn(self.custom_reward_function) if self.custom_reward_function else None
-        serverless_config = _create_serverless_config(model_arn=self._model_arn,
-                                                     customization_technique=CustomizationTechnique.RLVR.value,
-                                                     training_type=self.training_type,
-                                                     accept_eula=self.accept_eula,
-                                                     evaluator_arn=evaluator_arn,
-                                                     sequence_length=self.sequence_length,
-                                                     job_type=JOB_TYPE
-                                                     )
+            evaluator_arn = (
+                _extract_evaluator_arn(self.custom_reward_function)
+                if self.custom_reward_function
+                else None
+            )
+        serverless_config = _create_serverless_config(
+            model_arn=self._model_arn,
+            customization_technique=CustomizationTechnique.RLVR.value,
+            training_type=self.training_type,
+            accept_eula=self.accept_eula,
+            evaluator_arn=evaluator_arn,
+            sequence_length=self.sequence_length,
+            job_type=JOB_TYPE,
+        )
         mlflow_config = _create_mlflow_config(
             sagemaker_session,
             mlflow_resource_arn=self.mlflow_resource_arn,
@@ -523,7 +565,7 @@ class RLVRTrainer(BaseTrainer):
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group,
             model=self.model,
-            sagemaker_session=sagemaker_session
+            sagemaker_session=sagemaker_session,
         )
 
         # Verify reward function before submitting training job
@@ -554,7 +596,7 @@ class RLVRTrainer(BaseTrainer):
             "region": sagemaker_session.boto_session.region_name,
             "tags": tags,
         }
-        
+
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
@@ -564,8 +606,7 @@ class RLVRTrainer(BaseTrainer):
         # This must come before data path validation since in pipeline mode
         # the data path may be a pipeline parameter that doesn't exist yet.
         if isinstance(sagemaker_session, PipelineSession):
-            pipeline_args = {k: v for k, v in create_args.items()
-                            if k not in ("session", "region")}
+            pipeline_args = {k: v for k, v in create_args.items() if k not in ("session", "region")}
             pipeline_args.pop("training_job_name", None)
             pipeline_request = {to_pascal_case(k): v for k, v in pipeline_args.items()}
             # Normalize Tags to PascalCase dicts. JumpStart tags come as lowercase
@@ -573,9 +614,11 @@ class RLVRTrainer(BaseTrainer):
             # Optional[List[Tag]]). Handle both.
             if "Tags" in pipeline_request and pipeline_request["Tags"]:
                 pipeline_request["Tags"] = [
-                    {"Key": t.get("key", t.get("Key")), "Value": t.get("value", t.get("Value"))}
-                    if isinstance(t, dict)
-                    else {"Key": t.key, "Value": t.value}
+                    (
+                        {"Key": t.get("key", t.get("Key")), "Value": t.get("value", t.get("Value"))}
+                        if isinstance(t, dict)
+                        else {"Key": t.key, "Value": t.value}
+                    )
                     for t in pipeline_request["Tags"]
                 ]
             serialized_request = serialize(pipeline_request)
@@ -607,11 +650,12 @@ class RLVRTrainer(BaseTrainer):
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
             from sagemaker.core.utils.exceptions import TimeoutExceededError
+
             try:
                 wait_kwargs = {}
                 if wait_timeout is not None:
-                    wait_kwargs['timeout'] = wait_timeout
-                wait_kwargs['poll'] = poll
+                    wait_kwargs["timeout"] = wait_timeout
+                wait_kwargs["poll"] = poll
                 _wait(training_job, **wait_kwargs)
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)

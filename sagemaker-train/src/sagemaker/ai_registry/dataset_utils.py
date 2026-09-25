@@ -10,15 +10,20 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Dataset wrappers and helpers for the AI Registry."""
 
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from enum import Enum
 from collections.abc import Sequence
 import json
 
+if TYPE_CHECKING:
+    from sagemaker.ai_registry.dataset import DataSet
+
 
 class CustomizationTechnique(str, Enum):
     """Customization technique for dataset."""
+
     SFT = "sft"
     DPO = "dpo"
     RLVR = "rlvr"
@@ -26,6 +31,7 @@ class CustomizationTechnique(str, Enum):
 
 class DataSetMethod(Enum):
     """Enum for DataSet method types."""
+
     UPLOADED = "uploaded"
     GENERATED = "generated"
 
@@ -38,21 +44,25 @@ class DataSetList(Sequence):
         self.next_token = next_token
 
     def __getitem__(self, index):
+        """Return the dataset at the given index."""
         return self._datasets[index]
 
     def __len__(self):
+        """Return the number of datasets."""
         return len(self._datasets)
 
     def __repr__(self):
+        """Return the repr of the underlying datasets list."""
         return repr(self._datasets)
 
     def __str__(self):
+        """Return the string form of the underlying datasets list."""
         return str(self._datasets)
 
 
 class DataSetHubContentDocument:
     """Hub content document for dataset."""
-    
+
     def __init__(
         self,
         dataset_type: Optional[str] = "AGENT_GENERATED",
@@ -76,7 +86,7 @@ class DataSetHubContentDocument:
         self.conversation_checkpoint_id = conversation_checkpoint_id
         self.dependencies = dependencies or []
         self.content_metadata = content_metadata
-    
+
     def to_json(self) -> str:
         """Convert to JSON string."""
         content = {"DatasetType": self.dataset_type}
@@ -103,5 +113,6 @@ class DataSetHubContentDocument:
 def _get_default_s3_prefix(name: str) -> str:
     """Get default S3 prefix in format datasets/{name}/{current_date_time}.jsonl."""
     from datetime import datetime
+
     current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"datasets/{name}/{current_datetime}.jsonl"

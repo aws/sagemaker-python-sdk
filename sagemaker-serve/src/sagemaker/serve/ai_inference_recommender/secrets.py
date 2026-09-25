@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Helper for creating AWS Secrets Manager secrets."""
+
 from __future__ import absolute_import
 
 import uuid
@@ -85,9 +86,11 @@ class Secret:
         )
 
     def __enter__(self) -> "Secret":
+        """Enter the context manager and return this secret."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Delete the secret on context exit if this object created it."""
         # Only auto-delete a secret this object created; never delete a
         # pre-existing secret that was merely wrapped by ARN.
         if self._created:

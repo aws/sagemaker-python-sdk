@@ -16,10 +16,10 @@ Regression test for the bug where HyperparameterTuner dropped the sm_drivers
 channel, causing the container to fall back to single-GPU execution instead
 of using torchrun for multi-GPU distributed training.
 """
+
 from __future__ import absolute_import
 
 import os
-import time
 import logging
 
 import pytest
@@ -34,9 +34,7 @@ from sagemaker.core.parameter import ContinuousParameter
 logger = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../..", "data")
-DEFAULT_CPU_IMAGE = (
-    "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py310"
-)
+DEFAULT_CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py310"
 
 TRAIN_SCRIPT_CONTENT = """\
 import os

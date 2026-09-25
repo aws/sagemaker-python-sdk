@@ -1,7 +1,7 @@
 """Unit tests for tensorflow_serving prepare.py module."""
 
 import unittest
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import patch, mock_open
 from pathlib import Path
 import tempfile
 import shutil
@@ -41,9 +41,7 @@ class TestTensorflowServingPrepare(unittest.TestCase):
         mock_get_saved.return_value = Path(self.temp_dir) / "saved_model"
 
         with patch("builtins.open", mock_open(read_data=b"test data")):
-            secret_key = prepare_for_tf_serving(
-                model_path=str(model_path), shared_libs=[], dependencies={}
-            )
+            prepare_for_tf_serving(model_path=str(model_path), shared_libs=[], dependencies={})
 
         mock_capture.assert_called_once()
         mock_move.assert_called_once()

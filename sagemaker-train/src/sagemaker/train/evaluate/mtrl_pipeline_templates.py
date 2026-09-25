@@ -51,57 +51,58 @@ _MTRL_JOB_CONFIG_SCHEMA_VERSION = "1.0.0"
 # Shared template fragments (assembled into the three exported templates).
 # --------------------------------------------------------------------------
 
+
 # Lineage: CreateEvaluationAction. ``source_type_clause`` is either
 # ``"SourceType": "Model"`` (base-only) or ``"SourceType": "ModelPackage"``.
 # ``source_uri_expr`` is a Jinja expression producing the SourceUri value.
 def _create_eval_action_step(source_uri_expr: str, source_type: str) -> str:
     return (
-        '        {\n'
+        "        {\n"
         '            "Name": "CreateEvaluationAction",\n'
         '            "Type": "Lineage",\n'
         '            "Arguments": {\n'
         '                "Actions": [\n'
-        '                    {\n'
+        "                    {\n"
         '                        "ActionName": { "Get": "Execution.PipelineExecutionId" },\n'
         '                        "ActionType": "Evaluation",\n'
         '                        "Source": {\n'
         f'                            "SourceUri": {source_uri_expr},\n'
         f'                            "SourceType": "{source_type}"\n'
-        '                        },\n'
+        "                        },\n"
         '                        "Properties": {\n'
         '                            "PipelineExecutionArn": { "Get": "Execution.PipelineExecutionArn" },\n'
         '                            "PipelineName": "{{ pipeline_name }}"\n'
-        '                        }\n'
-        '                    }\n'
-        '                ],\n'
+        "                        }\n"
+        "                    }\n"
+        "                ],\n"
         '                "Contexts": [\n'
-        '                    {\n'
+        "                    {\n"
         '                        "ContextName": { "Get": "Execution.PipelineExecutionId" },\n'
         '                        "ContextType": "PipelineExecution",\n'
         '                        "Source": { "SourceUri": { "Get": "Execution.PipelineExecutionArn" } }\n'
-        '                    }\n'
-        '                ],\n'
+        "                    }\n"
+        "                ],\n"
         '                "Associations": [\n'
-        '                    {\n'
+        "                    {\n"
         '                        "Source": { "Name": { "Get": "Execution.PipelineExecutionId" }, "Type": "Action" },\n'
-        '                        "Destination": { "Name": { "Get": "Execution.PipelineExecutionId" }, "Type": "Context" },\n'
+        '                        "Destination": { "Name": '
+        '{ "Get": "Execution.PipelineExecutionId" }, "Type": "Context" },\n'
         '                        "AssociationType": "ContributedTo"\n'
-        '                    }{% if dataset_artifact_arn %},\n'
-        '                    {\n'
+        "                    }{% if dataset_artifact_arn %},\n"
+        "                    {\n"
         '                        "Source": { "Arn": "{{ dataset_artifact_arn }}" },\n'
         '                        "Destination": {\n'
         '                            "Arn": { "Std:Join": { "On": "/", "Values": [\n'
         '                                "{{ action_arn_prefix }}",\n'
         '                                { "Get": "Execution.PipelineExecutionId" }\n'
-        '                            ] } }\n'
-        '                        },\n'
+        "                            ] } }\n"
+        "                        },\n"
         '                        "AssociationType": "ContributedTo"\n'
-        '                    }{% endif %}\n'
-        '                ]\n'
-        '            }\n'
-        '        }'
+        "                    }{% endif %}\n"
+        "                ]\n"
+        "            }\n"
+        "        }"
     )
-
 
 
 # Eval step: emits one ``Job``-typed step (base or fine-tuned). The caller
@@ -117,7 +118,7 @@ def _eval_step(step_name: str, mlflow_run_name: str, include_mpc: bool, depends_
     # Pick the context variable name based on whether this is a fine-tuned step.
     doc_var = "job_config_document_ft_str" if include_mpc else "job_config_document_str"
     return (
-        '        {\n'
+        "        {\n"
         f'            "Name": "{step_name}",\n'
         '            "Type": "Job",\n'
         f'            "DependsOn": ["{depends_on}"],\n'
@@ -126,16 +127,15 @@ def _eval_step(step_name: str, mlflow_run_name: str, include_mpc: bool, depends_
         '                "RoleArn": "{{ role_arn }}",\n'
         '                "JobConfigSchemaVersion": "1.0.0",\n'
         f'                "JobConfigDocument": {{{{ {doc_var} | tojson }}}}'
-        '{% if vpc_config %},\n'
+        "{% if vpc_config %},\n"
         '                "VpcConfig": {\n'
         '                    "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},\n'
         '                    "Subnets": {{ vpc_subnets | tojson }}\n'
-        '                }{% endif %}{% if tags %},\n'
+        "                }{% endif %}{% if tags %},\n"
         '                "Tags": {{ tags | tojson }}{% endif %}\n'
-        '            }\n'
-        '        }'
+        "            }\n"
+        "        }"
     )
-
 
 
 # Lineage: AssociateLineage. ``artifact_names`` is a list of ``(label, run_step)``
@@ -145,65 +145,65 @@ def _associate_lineage_step(artifact_entries, depends_on: str) -> str:
     associations = []
     for label, run_step in artifact_entries:
         artifacts.append(
-            '                    {\n'
+            "                    {\n"
             '                        "ArtifactName": { "Std:Join": { "On": "-", "Values": [\n'
             '                            { "Get": "Execution.PipelineExecutionId" },\n'
             f'                            "{label}"\n'
-            '                        ] } },\n'
+            "                        ] } },\n"
             '                        "ArtifactType": "EvaluationReport",\n'
-            f'                        "Source": {{ "SourceUri": {{ "Get": "Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.RunId" }} }},\n'
+            f'                        "Source": {{ "SourceUri": {{ "Get": '
+            f'"Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.RunId" }} }},\n'
             '                        "Properties": {\n'
-            f'                            "MlflowExperimentId": {{ "Get": "Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.ExperimentId" }},\n'
-            f'                            "MlflowRunName": {{ "Get": "Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.RunName" }}\n'
-            '                        }\n'
-            '                    }'
+            f'                            "MlflowExperimentId": {{ "Get": '
+            f'"Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.ExperimentId" }},\n'
+            f'                            "MlflowRunName": {{ "Get": '
+            f'"Steps.{run_step}.JobConfigDocument.ServiceOutput.MlflowDetails.RunName" }}\n'
+            "                        }\n"
+            "                    }"
         )
         associations.append(
-            '                    {\n'
+            "                    {\n"
             '                        "Source": {\n'
             '                            "Name": { "Std:Join": { "On": "-", "Values": [\n'
             '                                { "Get": "Execution.PipelineExecutionId" },\n'
             f'                                "{label}"\n'
-            '                            ] } },\n'
+            "                            ] } },\n"
             '                            "Type": "Artifact"\n'
-            '                        },\n'
+            "                        },\n"
             '                        "Destination": {\n'
             '                            "Arn": { "Std:Join": { "On": "/", "Values": [\n'
             '                                "{{ action_arn_prefix }}",\n'
             '                                { "Get": "Execution.PipelineExecutionId" }\n'
-            '                            ] } }\n'
-            '                        },\n'
+            "                            ] } }\n"
+            "                        },\n"
             '                        "AssociationType": "ContributedTo"\n'
-            '                    }'
+            "                    }"
         )
     return (
-        '        {\n'
+        "        {\n"
         '            "Name": "AssociateLineage",\n'
         '            "Type": "Lineage",\n'
         f'            "DependsOn": ["{depends_on}"],\n'
         '            "Arguments": {\n'
-        '                "Artifacts": [\n'
-        + ',\n'.join(artifacts) + '\n'
-        '                ],\n'
-        '                "Associations": [\n'
-        + ',\n'.join(associations) + '\n'
-        '                ]\n'
-        '            }\n'
-        '        }'
+        '                "Artifacts": [\n' + ",\n".join(artifacts) + "\n"
+        "                ],\n"
+        '                "Associations": [\n' + ",\n".join(associations) + "\n"
+        "                ]\n"
+        "            }\n"
+        "        }"
     )
 
 
 def _pipeline(steps) -> str:
     """Wrap a list of rendered step strings into a full pipeline definition."""
     return (
-        '{\n'
+        "{\n"
         '    "Version": "2020-12-01",\n'
         '    "Metadata": {},\n'
         '    "Parameters": [],\n'
-        '    "Steps": [\n'
-        + ',\n'.join(steps) + '\n'
-        '    ]\n'
-        '}'
+        '    "Steps": [\n' + ",\n".join(steps) + "\n"
+        "    ]\n"
+        "}"
     )
 
 
@@ -213,54 +213,76 @@ def _pipeline(steps) -> str:
 
 # Base model only: evaluate a base JumpStart / hub model without any fine-tuned
 # comparison. DAG: CreateEvaluationAction → EvaluateBaseModel → AssociateLineage.
-MTRL_TEMPLATE_BASE_MODEL_ONLY = _pipeline([
-    _create_eval_action_step(source_uri_expr='"{{ base_model_arn }}"', source_type="Model"),
-    _eval_step(step_name="EvaluateBaseModel", mlflow_run_name="base-model-eval",
-               include_mpc=False, depends_on="CreateEvaluationAction"),
-    _associate_lineage_step(
-        artifact_entries=[("base-eval-report", "EvaluateBaseModel")],
-        depends_on="EvaluateBaseModel",
-    ),
-])
+MTRL_TEMPLATE_BASE_MODEL_ONLY = _pipeline(
+    [
+        _create_eval_action_step(source_uri_expr='"{{ base_model_arn }}"', source_type="Model"),
+        _eval_step(
+            step_name="EvaluateBaseModel",
+            mlflow_run_name="base-model-eval",
+            include_mpc=False,
+            depends_on="CreateEvaluationAction",
+        ),
+        _associate_lineage_step(
+            artifact_entries=[("base-eval-report", "EvaluateBaseModel")],
+            depends_on="EvaluateBaseModel",
+        ),
+    ]
+)
 
 
 # Fine-tuned model only: evaluate a fine-tuned model without a base comparison.
 # DAG: CreateEvaluationAction → EvaluateFineTunedModel → AssociateLineage.
-MTRL_TEMPLATE_FINE_TUNED_ONLY = _pipeline([
-    _create_eval_action_step(
-        source_uri_expr='"{{ source_model_package_arn }}"',
-        source_type="ModelPackage",
-    ),
-    _eval_step(step_name="EvaluateFineTunedModel", mlflow_run_name="fine-tuned-model-eval",
-               include_mpc=True, depends_on="CreateEvaluationAction"),
-    _associate_lineage_step(
-        artifact_entries=[("fine-tuned-eval-report", "EvaluateFineTunedModel")],
-        depends_on="EvaluateFineTunedModel",
-    ),
-])
+MTRL_TEMPLATE_FINE_TUNED_ONLY = _pipeline(
+    [
+        _create_eval_action_step(
+            source_uri_expr='"{{ source_model_package_arn }}"',
+            source_type="ModelPackage",
+        ),
+        _eval_step(
+            step_name="EvaluateFineTunedModel",
+            mlflow_run_name="fine-tuned-model-eval",
+            include_mpc=True,
+            depends_on="CreateEvaluationAction",
+        ),
+        _associate_lineage_step(
+            artifact_entries=[("fine-tuned-eval-report", "EvaluateFineTunedModel")],
+            depends_on="EvaluateFineTunedModel",
+        ),
+    ]
+)
 
 
 # Comparison: evaluate both the base model and the fine-tuned model in a single
 # pipeline. Both eval steps share the same MLflow experiment but use distinct
 # run names (``base-model-eval`` / ``fine-tuned-model-eval``). DAG:
 # CreateEvaluationAction → EvaluateBaseModel → EvaluateFineTunedModel → AssociateLineage.
-MTRL_TEMPLATE = _pipeline([
-    _create_eval_action_step(
-        source_uri_expr='"{{ source_model_package_arn }}"',
-        source_type="ModelPackage",
-    ),
-    _eval_step(step_name="EvaluateBaseModel", mlflow_run_name="base-model-eval",
-               include_mpc=False, depends_on="CreateEvaluationAction"),
-    _eval_step(step_name="EvaluateFineTunedModel", mlflow_run_name="fine-tuned-model-eval",
-               include_mpc=True, depends_on="EvaluateBaseModel"),
-    _associate_lineage_step(
-        artifact_entries=[
-            ("base-eval-report", "EvaluateBaseModel"),
-            ("fine-tuned-eval-report", "EvaluateFineTunedModel"),
-        ],
-        depends_on="EvaluateFineTunedModel",
-    ),
-])
+MTRL_TEMPLATE = _pipeline(
+    [
+        _create_eval_action_step(
+            source_uri_expr='"{{ source_model_package_arn }}"',
+            source_type="ModelPackage",
+        ),
+        _eval_step(
+            step_name="EvaluateBaseModel",
+            mlflow_run_name="base-model-eval",
+            include_mpc=False,
+            depends_on="CreateEvaluationAction",
+        ),
+        _eval_step(
+            step_name="EvaluateFineTunedModel",
+            mlflow_run_name="fine-tuned-model-eval",
+            include_mpc=True,
+            depends_on="EvaluateBaseModel",
+        ),
+        _associate_lineage_step(
+            artifact_entries=[
+                ("base-eval-report", "EvaluateBaseModel"),
+                ("fine-tuned-eval-report", "EvaluateFineTunedModel"),
+            ],
+            depends_on="EvaluateFineTunedModel",
+        ),
+    ]
+)
 
 
 __all__ = [

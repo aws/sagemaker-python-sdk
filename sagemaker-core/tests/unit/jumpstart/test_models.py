@@ -11,12 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Test for JumpStart HubContentDocument Model."""
+
 from __future__ import absolute_import
 
 import json
 import os
 from sagemaker.core.jumpstart.models import HubContentDocument
-
 
 TEST_HUB_CONTENT_DOCUMENT = "hub_content_document.json"
 

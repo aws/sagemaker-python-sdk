@@ -11,30 +11,36 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for basic_script_driver module."""
+
 from __future__ import absolute_import
 
-import json
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Import the module under test
 import sys
 from pathlib import Path
 
 # Add the container_drivers path to sys.path for imports
-container_drivers_path = Path(__file__).parent.parent.parent.parent.parent / "src" / "sagemaker" / "train" / "container_drivers"
+container_drivers_path = (
+    Path(__file__).parent.parent.parent.parent.parent
+    / "src"
+    / "sagemaker"
+    / "train"
+    / "container_drivers"
+)
 sys.path.insert(0, str(container_drivers_path))
 
-from distributed_drivers.basic_script_driver import create_commands, main
+from distributed_drivers.basic_script_driver import create_commands, main  # noqa: E402
 
 
 class TestCreateCommands:
     """Test create_commands function."""
 
-    @patch.dict("os.environ", {
-        "SM_ENTRY_SCRIPT": "train.py",
-        "SM_HPS": '{"learning_rate": "0.01", "batch_size": "32"}'
-    })
+    @patch.dict(
+        "os.environ",
+        {"SM_ENTRY_SCRIPT": "train.py", "SM_HPS": '{"learning_rate": "0.01", "batch_size": "32"}'},
+    )
     @patch("distributed_drivers.basic_script_driver.get_python_executable")
     @patch("distributed_drivers.basic_script_driver.hyperparameters_to_cli_args")
     def test_creates_python_command(self, mock_hp_to_args, mock_get_python):
@@ -51,10 +57,7 @@ class TestCreateCommands:
         assert "--batch_size" in commands
         assert "32" in commands
 
-    @patch.dict("os.environ", {
-        "SM_ENTRY_SCRIPT": "train.sh",
-        "SM_HPS": '{"epochs": "10"}'
-    })
+    @patch.dict("os.environ", {"SM_ENTRY_SCRIPT": "train.sh", "SM_HPS": '{"epochs": "10"}'})
     @patch("distributed_drivers.basic_script_driver.get_python_executable")
     @patch("distributed_drivers.basic_script_driver.hyperparameters_to_cli_args")
     def test_creates_shell_command(self, mock_hp_to_args, mock_get_python):
@@ -70,10 +73,7 @@ class TestCreateCommands:
         assert "--epochs" in commands[2]
         assert "10" in commands[2]
 
-    @patch.dict("os.environ", {
-        "SM_ENTRY_SCRIPT": "train.py",
-        "SM_HPS": '{}'
-    })
+    @patch.dict("os.environ", {"SM_ENTRY_SCRIPT": "train.py", "SM_HPS": "{}"})
     @patch("distributed_drivers.basic_script_driver.get_python_executable")
     @patch("distributed_drivers.basic_script_driver.hyperparameters_to_cli_args")
     def test_handles_empty_hyperparameters(self, mock_hp_to_args, mock_get_python):
@@ -85,10 +85,7 @@ class TestCreateCommands:
 
         assert commands == ["/usr/bin/python3", "train.py"]
 
-    @patch.dict("os.environ", {
-        "SM_ENTRY_SCRIPT": "train.txt",
-        "SM_HPS": '{}'
-    })
+    @patch.dict("os.environ", {"SM_ENTRY_SCRIPT": "train.txt", "SM_HPS": "{}"})
     @patch("distributed_drivers.basic_script_driver.get_python_executable")
     @patch("distributed_drivers.basic_script_driver.hyperparameters_to_cli_args")
     def test_raises_error_for_unsupported_script_type(self, mock_hp_to_args, mock_get_python):
@@ -99,15 +96,23 @@ class TestCreateCommands:
         with pytest.raises(ValueError, match="Unsupported entry script type"):
             create_commands()
 
-    @patch.dict("os.environ", {
-        "SM_ENTRY_SCRIPT": "train.sh",
-        "SM_HPS": '{"arg_with_space": "value with spaces", "special": "value\'with\'quotes"}'
-    })
+    @patch.dict(
+        "os.environ",
+        {
+            "SM_ENTRY_SCRIPT": "train.sh",
+            "SM_HPS": '{"arg_with_space": "value with spaces", "special": "value\'with\'quotes"}',
+        },
+    )
     @patch("distributed_drivers.basic_script_driver.get_python_executable")
     @patch("distributed_drivers.basic_script_driver.hyperparameters_to_cli_args")
     def test_properly_quotes_shell_arguments(self, mock_hp_to_args, mock_get_python):
         """Test properly quotes shell arguments with special characters."""
-        mock_hp_to_args.return_value = ["--arg_with_space", "value with spaces", "--special", "value'with'quotes"]
+        mock_hp_to_args.return_value = [
+            "--arg_with_space",
+            "value with spaces",
+            "--special",
+            "value'with'quotes",
+        ]
 
         commands = create_commands()
 

@@ -310,6 +310,7 @@ class TestGitUrlSanitization:
             git_utils.git_clone_repo(malicious_git_config, entry_point)
         assert "Suspicious URL encoding detected" in str(error.value)
 
+
 class TestCredentialRedaction:
     """Test cases for credential redaction in clone error handling."""
 
@@ -378,9 +379,7 @@ class TestCredentialRedaction:
         cred_url = "https://admin:hunter2@github.com/org/repo.git"
         with patch(
             "subprocess.check_call",
-            side_effect=subprocess.CalledProcessError(
-                128, ["git", "clone", cred_url, "/tmp/dest"]
-            ),
+            side_effect=subprocess.CalledProcessError(128, ["git", "clone", cred_url, "/tmp/dest"]),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc_info:
                 git_utils._run_clone_command(cred_url, "/tmp/dest")
@@ -396,9 +395,7 @@ class TestCredentialRedaction:
         cc_url = "https://user:pass@git-codecommit.us-east-1.amazonaws.com/v1/repos/myrepo"
         with patch(
             "subprocess.check_call",
-            side_effect=subprocess.CalledProcessError(
-                128, ["git", "clone", cc_url, "/tmp/dest"]
-            ),
+            side_effect=subprocess.CalledProcessError(128, ["git", "clone", cc_url, "/tmp/dest"]),
         ):
             with pytest.raises(subprocess.CalledProcessError) as exc_info:
                 git_utils._run_clone_command(cc_url, "/tmp/dest")
@@ -431,7 +428,6 @@ class TestCredentialRedaction:
         with patch("subprocess.check_call"):
             # Should not raise
             git_utils._run_clone_command(url, "/tmp/dest")
-
 
     def test_sanitize_git_url_comprehensive_attack_scenarios(self):
         attack_scenarios = [

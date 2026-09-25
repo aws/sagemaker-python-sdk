@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains class to handle Lineage Associations"""
+
 from __future__ import absolute_import
 import logging
 from datetime import datetime
@@ -565,7 +566,7 @@ class FeatureProcessorLineageHandler:
         for feature_group_association in downstream_feature_group_associations:
             feature_group_association_set.add(feature_group_association.destination_arn)
         if len(feature_group_association_set) != 1:
-            ValueError(
+            raise ValueError(
                 f"There should only be one Feature Group as output, "
                 f"instead we got {len(feature_group_association_set)}. "
                 f"With Feature Group Versions Contexts: {feature_group_association_set}"

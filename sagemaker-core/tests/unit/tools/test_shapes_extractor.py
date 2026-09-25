@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 from sagemaker.core.tools.shapes_extractor import ShapesExtractor
 

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """ModelTrainer Tests."""
+
 from __future__ import absolute_import
 
 import shutil
@@ -18,7 +19,7 @@ import tempfile
 import json
 import os
 import yaml
-from omegaconf import OmegaConf
+import logging
 import pytest
 from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
@@ -76,7 +77,6 @@ from sagemaker.train.configs import (
     InstanceGroup,
 )
 from sagemaker.train.distributed import Torchrun, SMP, MPI
-from sagemaker.train.sm_recipes.utils import _load_recipes_cfg, _is_nova_recipe, _get_args_from_nova_recipe
 from sagemaker.train.templates import EXEUCTE_DISTRIBUTED_DRIVER
 from tests.unit import DATA_DIR
 
@@ -114,8 +114,9 @@ DEFAULT_ARGUMENTS = [
 
 @pytest.fixture(scope="module", autouse=True)
 def modules_session():
-    with patch("sagemaker.train.Session", spec=Session) as session_mock, patch(
-        "sagemaker.train.defaults.resolve_and_validate_role", return_value=DEFAULT_ROLE
+    with (
+        patch("sagemaker.train.Session", spec=Session) as session_mock,
+        patch("sagemaker.train.defaults.resolve_and_validate_role", return_value=DEFAULT_ROLE),
     ):
         session_instance = session_mock.return_value
         session_instance.default_bucket.return_value = DEFAULT_BUCKET
@@ -506,9 +507,7 @@ def _instance_group_names(channel):
 
 
 def _managed_channel_names(input_data_config):
-    return {
-        channel.channel_name: _instance_group_names(channel) for channel in input_data_config
-    }
+    return {channel.channel_name: _instance_group_names(channel) for channel in input_data_config}
 
 
 @patch("sagemaker.train.model_trainer.Session.upload_data")
@@ -1051,7 +1050,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
         ),
         session=ANY,
         role_arn=role,
-        tags=[{'key': 'key', 'value': 'value'}],
+        tags=[{"key": "key", "value": "value"}],
         stopping_condition=stopping_condition,
         output_data_config=output_data_config,
         checkpoint_config=checkpoint_config,
@@ -1482,6 +1481,7 @@ def test_input_merge(mock_training_job, modules_session):
         ),
     ]
 
+
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_metric_definitions(mock_training_job, modules_session):
     image_uri = DEFAULT_IMAGE
@@ -1535,7 +1535,7 @@ def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
             yaml.dump(recipe_data, file)
 
         # Patch TrainingJob.create to avoid Pydantic validation on session
-        with patch.object(TrainingJob, 'create', return_value=mock_training_job) as mock_create:
+        with patch.object(TrainingJob, "create", return_value=mock_training_job) as mock_create:
             trainer = ModelTrainer.from_recipe(
                 training_recipe=recipe.name,
                 role=DEFAULT_ROLE,
@@ -1623,6 +1623,7 @@ def test_nova_recipe_with_model_package_arn(modules_session):
         )
 
         from sagemaker.core.shapes import ModelPackageConfig
+
         assert isinstance(trainer.model_package_config, ModelPackageConfig)
         assert trainer.model_package_config.source_model_package_arn == mp_arn
         assert trainer.model_package_config.model_package_group_arn == mpg_arn
@@ -1658,6 +1659,7 @@ def test_nova_recipe_mp_arn_with_mpg_creates_model_package_config(modules_sessio
         )
 
         from sagemaker.core.shapes import ModelPackageConfig
+
         assert isinstance(trainer.model_package_config, ModelPackageConfig)
         assert trainer.model_package_config.source_model_package_arn == mp_arn
         assert trainer.model_package_config.model_package_group_arn == mpg_arn
@@ -1684,6 +1686,7 @@ def test_nova_recipe_model_package_config_direct_overrides_recipe(modules_sessio
 
         direct_mpg = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/direct-mpg"
         from sagemaker.core.shapes import ModelPackageConfig
+
         trainer = ModelTrainer.from_recipe(
             training_recipe=recipe.name,
             role=DEFAULT_ROLE,
@@ -1696,11 +1699,12 @@ def test_nova_recipe_model_package_config_direct_overrides_recipe(modules_sessio
         )
 
         assert trainer.model_package_config.model_package_group_arn == direct_mpg
-        assert trainer.model_package_config.source_model_package_arn == \
-            "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1"
+        assert (
+            trainer.model_package_config.source_model_package_arn
+            == "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1"
+        )
 
         os.unlink(recipe.name)
-
 
 
 def test_nova_recipe_model_package_config_direct_source_mp_overrides_recipe(modules_session):
@@ -1720,6 +1724,7 @@ def test_nova_recipe_model_package_config_direct_source_mp_overrides_recipe(modu
 
         direct_source_mp = "arn:aws:sagemaker:us-east-1:123456789012:model-package/direct-mp/2"
         from sagemaker.core.shapes import ModelPackageConfig
+
         trainer = ModelTrainer.from_recipe(
             training_recipe=recipe.name,
             role=DEFAULT_ROLE,
@@ -1733,10 +1738,13 @@ def test_nova_recipe_model_package_config_direct_source_mp_overrides_recipe(modu
         )
 
         assert trainer.model_package_config.source_model_package_arn == direct_source_mp
-        assert trainer.model_package_config.model_package_group_arn == \
-            "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg"
+        assert (
+            trainer.model_package_config.model_package_group_arn
+            == "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg"
+        )
 
         os.unlink(recipe.name)
+
 
 def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
     """Test recipe with base model name + MPG (no MP ARN)."""
@@ -1764,6 +1772,7 @@ def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
 
         assert trainer.hyperparameters["base_model"] == "nova-pro"
         from sagemaker.core.shapes import ModelPackageConfig
+
         assert isinstance(trainer.model_package_config, ModelPackageConfig)
         assert trainer.model_package_config.model_package_group_arn == mpg_arn
 
@@ -1859,13 +1868,16 @@ def test_llmft_recipe_missing_training_image_error(modules_session):
         # Clean up the temporary file
         os.unlink(recipe.name)
 
+
 def test_resolve_staging_bucket_returns_default_when_allowed(model_trainer):
     """When training role has PutObject access to default bucket, use default bucket."""
     mock_iam = MagicMock()
     mock_iam.simulate_principal_policy.return_value = {
         "EvaluationResults": [{"EvalDecision": "allowed"}]
     }
-    with patch.object(model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+    with patch.object(
+        model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET
+    ):
         with patch.object(model_trainer.sagemaker_session, "boto_session") as mock_boto:
             mock_boto.client.return_value = mock_iam
             bucket, prefix = model_trainer._resolve_staging_bucket()
@@ -1902,7 +1914,9 @@ def test_resolve_staging_bucket_returns_default_on_iam_error(model_trainer):
     """When IAM simulate call fails, gracefully returns default bucket."""
     mock_iam = MagicMock()
     mock_iam.simulate_principal_policy.side_effect = Exception("AccessDenied")
-    with patch.object(model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+    with patch.object(
+        model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET
+    ):
         with patch.object(model_trainer.sagemaker_session, "boto_session") as mock_boto:
             mock_boto.client.return_value = mock_iam
             bucket, prefix = model_trainer._resolve_staging_bucket()
@@ -2019,3 +2033,95 @@ def test_networking_intelligent_defaults_fills_subnets_on_existing(model_trainer
     assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
     # pre-existing security_group_ids are preserved.
     assert model_trainer.networking.security_group_ids == ["sg-preexisting"]
+
+
+# Actionable error guidance in train(). The original exception must always propagate
+# unchanged; the SDK only adds remediation logging for common terminal failures
+# (quota exhaustion, missing region/credentials) so users and automation stop
+# blind-retrying errors that cannot succeed.
+
+RLE_ERROR_RESPONSE = {
+    "Error": {
+        "Code": "ResourceLimitExceeded",
+        "Message": (
+            "The account-level service limit 'ml.g5.2xlarge for training job usage' is 0 "
+            "Instances, with current utilization of 0 Instances and a request delta of 1 "
+            "Instances. Please use AWS Service Quotas to request an increase for this quota."
+        ),
+    }
+}
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_resource_limit_exceeded_reraises_and_logs_guidance(
+    mock_training_job, model_trainer, caplog
+):
+    from botocore.exceptions import ClientError
+
+    mock_training_job.create.side_effect = ClientError(RLE_ERROR_RESPONSE, "CreateTrainingJob")
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(ClientError) as raised:
+            model_trainer.train()
+
+    assert raised.value.response["Error"]["Code"] == "ResourceLimitExceeded"
+    guidance = caplog.text
+    assert "Service Quotas" in guidance
+    assert "ml.g5.2xlarge for training job usage" in guidance
+    assert "Retrying will keep failing" in guidance
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_no_region_error_reraises_and_logs_guidance(mock_training_job, model_trainer, caplog):
+    from botocore.exceptions import NoRegionError
+
+    mock_training_job.create.side_effect = NoRegionError()
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(NoRegionError):
+            model_trainer.train()
+
+    assert "AWS_DEFAULT_REGION" in caplog.text
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_no_credentials_error_reraises_and_logs_guidance(
+    mock_training_job, model_trainer, caplog
+):
+    from botocore.exceptions import NoCredentialsError
+
+    mock_training_job.create.side_effect = NoCredentialsError()
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(NoCredentialsError):
+            model_trainer.train()
+
+    assert "aws configure" in caplog.text
+
+
+def test_log_actionable_client_error_access_denied(caplog):
+    from botocore.exceptions import ClientError
+    from sagemaker.train.model_trainer import _log_actionable_client_error
+
+    error = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": "User is not authorized"}},
+        "CreateTrainingJob",
+    )
+    with caplog.at_level(logging.ERROR):
+        _log_actionable_client_error(error)
+
+    assert "iam:PassRole" in caplog.text
+
+
+def test_log_actionable_client_error_other_codes_stay_silent(caplog):
+    from botocore.exceptions import ClientError
+    from sagemaker.train.model_trainer import _log_actionable_client_error
+
+    error = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "1 validation error detected"}},
+        "CreateTrainingJob",
+    )
+    with caplog.at_level(logging.ERROR):
+        _log_actionable_client_error(error)
+
+    assert caplog.text == ""

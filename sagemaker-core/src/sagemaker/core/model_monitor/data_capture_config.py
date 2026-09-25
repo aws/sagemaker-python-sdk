@@ -15,6 +15,7 @@
 Codes are used for configuring capture, collection, and storage, for prediction requests and
 responses for models hosted on SageMaker Endpoints.
 """
+
 from __future__ import print_function, absolute_import
 
 from sagemaker.core import s3

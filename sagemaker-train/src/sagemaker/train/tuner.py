@@ -74,6 +74,8 @@ logger = logging.getLogger(__name__)
 
 
 class WarmStartTypes(Enum):
+    """Types of warm start supported for hyperparameter tuning jobs."""
+
     IDENTICAL_DATA_AND_ALGORITHM = "IdenticalDataAndAlgorithm"
     TRANSFER_LEARNING = "TransferLearning"
 
@@ -264,7 +266,8 @@ class HyperparameterTuner(object):
         """Override the instance configuration of the model_trainers used by the tuner.
 
         Args:
-            instance_configs (List[HyperParameterTuningInstanceConfig] or Dict[str, List[HyperParameterTuningInstanceConfig]):
+            instance_configs (List[HyperParameterTuningInstanceConfig] or
+                Dict[str, List[HyperParameterTuningInstanceConfig]):
                 The InstanceConfigs to use as an override for the instance configuration
                 of the model_trainer. ``None`` will remove the override.
         """
@@ -486,11 +489,8 @@ class HyperparameterTuner(object):
         from tempfile import TemporaryDirectory
 
         from sagemaker.train.constants import (
-            SM_CODE,
             SM_DRIVERS,
             SM_DRIVERS_LOCAL_PATH,
-            DEFAULT_CONTAINER_ENTRYPOINT,
-            DEFAULT_CONTAINER_ARGUMENTS,
         )
 
         source_code = model_trainer.source_code
@@ -563,9 +563,7 @@ class HyperparameterTuner(object):
                             fpath = os.path.join(root, f)
                             arcname = os.path.relpath(fpath, source_code.source_dir)
                             tar.add(fpath, arcname=arcname)
-                s3_client = session.boto_session.client(
-                    "s3", region_name=session.boto_region_name
-                )
+                s3_client = session.boto_session.client("s3", region_name=session.boto_region_name)
                 s3_client.upload_file(tar_path, bucket, s3_key)
                 model_trainer.hyperparameters["sagemaker_submit_directory"] = (
                     f"s3://{bucket}/{s3_key}"
@@ -1075,7 +1073,8 @@ class HyperparameterTuner(object):
             tags (Optional[Tags]): List of tags for labeling the tuning job (default: None).
                 For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            warm_start_config (sagemaker.core.shapes.HyperParameterTuningJobWarmStartConfig): A ``HyperParameterTuningJobWarmStartConfig`` object that
+            warm_start_config (sagemaker.core.shapes.HyperParameterTuningJobWarmStartConfig):
+                A ``HyperParameterTuningJobWarmStartConfig`` object that
                 has been initialized with the configuration defining the nature of warm start
                 tuning job.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
@@ -1378,7 +1377,6 @@ class HyperparameterTuner(object):
             OutputDataConfig,
             ResourceConfig,
             StoppingCondition,
-            Channel,
             DataSource,
             S3DataSource,
         )
@@ -1474,9 +1472,7 @@ class HyperparameterTuner(object):
 
         # Pass through the full OutputDataConfig from ModelTrainer so that
         # kms_key_id, compression_type, and any other fields are preserved.
-        output_config = model_trainer.output_data_config or OutputDataConfig(
-            s3_output_path=None
-        )
+        output_config = model_trainer.output_data_config or OutputDataConfig(s3_output_path=None)
 
         # Build resource config
         resource_config = ResourceConfig(

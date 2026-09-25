@@ -15,6 +15,7 @@
 Covers deploying a fine-tuned Nova model to SageMaker endpoints (via
 ModelBuilder) and to Amazon Bedrock custom models (via BedrockModelBuilder).
 """
+
 from __future__ import absolute_import
 
 import boto3
@@ -202,7 +203,9 @@ class TestModelCustomizationFromTrainingJob:
         assert model_builder.image_uri is not None
         assert model_builder.instance_type is not None
 
-    def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
+    def test_deploy_from_training_job(
+        self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session
+    ):
         """Test deploying a Nova model from a training job, invoking it, and reusing it.
 
         For Nova models, this verifies:
@@ -236,18 +239,20 @@ class TestModelCustomizationFromTrainingJob:
         # The endpoint should carry the model-source tag that powers resource reuse.
         sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
         endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
-        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in endpoint_tags}, (
-            f"Endpoint {endpoint.endpoint_arn} missing model-source tag for reuse"
-        )
+        assert MODEL_SOURCE_TAG_KEY in {
+            t["Key"] for t in endpoint_tags
+        }, f"Endpoint {endpoint.endpoint_arn} missing model-source tag for reuse"
 
         time.sleep(10)  # brief buffer for inference component readiness
 
         invoke_response = endpoint.invoke(
-            body=json.dumps({
-                "messages": [
-                    {"role": "user", "content": [{"type": "text", "text": "What is 7+7?"}]}
-                ]
-            }),
+            body=json.dumps(
+                {
+                    "messages": [
+                        {"role": "user", "content": [{"type": "text", "text": "What is 7+7?"}]}
+                    ]
+                }
+            ),
             content_type="application/json",
             accept="application/json",
         )
@@ -275,9 +280,9 @@ class TestModelCustomizationFromTrainingJob:
         # Verify the reused endpoint has the model-source tag
         sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
         endpoint2_tags = sm_client.list_tags(ResourceArn=endpoint2.endpoint_arn).get("Tags", [])
-        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in endpoint2_tags}, (
-            f"Reused endpoint {endpoint2.endpoint_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
-        )
+        assert MODEL_SOURCE_TAG_KEY in {
+            t["Key"] for t in endpoint2_tags
+        }, f"Reused endpoint {endpoint2.endpoint_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
 
     def test_fetch_endpoint_names_for_base_model(self, training_job_name, sagemaker_session):
         """Test fetching endpoint names for base model."""
@@ -313,9 +318,9 @@ class TestModelCustomizationFromTrainingJob:
         # Verify the model-source tag is actually present on the reused model
         sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
         tags = sm_client.list_tags(ResourceArn=model.model_arn).get("Tags", [])
-        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in tags}, (
-            f"Reused model {model.model_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
-        )
+        assert MODEL_SOURCE_TAG_KEY in {
+            t["Key"] for t in tags
+        }, f"Reused model {model.model_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
 
 
 @pytest.mark.us_east_1
@@ -341,7 +346,9 @@ class TestModelCustomizationFromModelPackage:
         assert model.model_arn is not None
         assert model_builder._fetch_model_package_arn() is not None
 
-    def test_deploy_from_model_package(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
+    def test_deploy_from_model_package(
+        self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session
+    ):
         """Deploy a Nova model via the training-job path and validate the endpoint."""
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(
@@ -418,9 +425,7 @@ class TestTrainerIntegration:
     def test_sft_trainer_build(self, training_job_name, sagemaker_session):
         """Test building a model from a Nova SFTTrainer object."""
 
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
         trainer = SFTTrainer(
             model=NOVA_MODEL_ID,
@@ -444,9 +449,7 @@ class TestTrainerIntegration:
     def test_rlvr_trainer_build(self, training_job_name, sagemaker_session):
         """Test building a model from a Nova RLVRTrainer object."""
 
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
         trainer = RLVRTrainer(
             model=NOVA_MODEL_ID,
@@ -487,6 +490,7 @@ class TestNovaBedrockDeployment:
     def bedrock_runtime(self):
         """Bedrock runtime client with retries for not-yet-ready custom models."""
         from botocore.config import Config
+
         config = Config(retries={"total_max_attempts": 10, "mode": "standard"})
         return boto3.client("bedrock-runtime", region_name=AWS_REGION, config=config)
 
@@ -552,14 +556,16 @@ class TestNovaBedrockDeployment:
         )
         assert deployment.get("status") == "Active"
 
-    def test_nova_bedrock_custom_model_tagged_for_reuse(self, deployed_nova_model, training_job_name, role_arn, bedrock_client):
+    def test_nova_bedrock_custom_model_tagged_for_reuse(
+        self, deployed_nova_model, training_job_name, role_arn, bedrock_client
+    ):
         """The Nova custom model should carry the model-source tag and be discoverable via reuse."""
 
         model_arn = deployed_nova_model["model_arn"]
         tags = bedrock_client.list_tags_for_resource(resourceARN=model_arn).get("tags", [])
-        assert MODEL_SOURCE_TAG_KEY in {t["key"] for t in tags}, (
-            f"Custom model {model_arn} missing model-source tag for reuse"
-        )
+        assert MODEL_SOURCE_TAG_KEY in {
+            t["key"] for t in tags
+        }, f"Custom model {model_arn} missing model-source tag for reuse"
 
         # Verify reuse: a second deploy with reuse_resources=True should find the
         # existing model instead of creating a new one.
@@ -575,9 +581,9 @@ class TestNovaBedrockDeployment:
         )
 
         reused_model_arn = response2.get("modelArn") or response2.get("importedModelArn")
-        assert reused_model_arn == model_arn, (
-            f"Expected reuse to return {model_arn}, got {reused_model_arn}"
-        )
+        assert (
+            reused_model_arn == model_arn
+        ), f"Expected reuse to return {model_arn}, got {reused_model_arn}"
 
     @pytest.mark.slow
     def test_nova_bedrock_invoke(self, deployed_nova_model, bedrock_runtime):
@@ -586,13 +592,13 @@ class TestNovaBedrockDeployment:
 
         response = bedrock_runtime.invoke_model(
             modelId=deployment_arn,
-            body=json.dumps({
-                "schemaVersion": "messages-v1",
-                "messages": [
-                    {"role": "user", "content": [{"text": "What is 7+7?"}]}
-                ],
-                "inferenceConfig": {"maxTokens": 100, "temperature": 0.0, "topP": 0.9},
-            }),
+            body=json.dumps(
+                {
+                    "schemaVersion": "messages-v1",
+                    "messages": [{"role": "user", "content": [{"text": "What is 7+7?"}]}],
+                    "inferenceConfig": {"maxTokens": 100, "temperature": 0.0, "topP": 0.9},
+                }
+            ),
             contentType="application/json",
             accept="application/json",
         )
@@ -630,6 +636,6 @@ class TestNovaBedrockDeployment:
 
         reused_model_arn = response2.get("modelArn") or response2.get("importedModelArn")
 
-        assert reused_model_arn == existing_model_arn, (
-            f"Expected reuse to return {existing_model_arn}, got {reused_model_arn}"
-        )
+        assert (
+            reused_model_arn == existing_model_arn
+        ), f"Expected reuse to return {existing_model_arn}, got {reused_model_arn}"

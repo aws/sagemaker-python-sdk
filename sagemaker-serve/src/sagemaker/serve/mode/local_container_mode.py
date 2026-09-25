@@ -121,7 +121,7 @@ class LocalContainerMode(
         container_timeout_seconds: int,
         secret_key: str,
         container_config: Dict,
-        ping_fn = None,
+        ping_fn=None,
         env_vars: Dict[str, str] = None,
         model_path: str = None,
         jumpstart: bool = False,
@@ -240,7 +240,7 @@ class LocalContainerMode(
 
     def _pull_image(self, image: str):
         """Pull image with proper error handling and early failure detection."""
-        
+
         # Check if Docker is available first
         try:
             self.client = _get_docker_client()
@@ -250,7 +250,7 @@ class LocalContainerMode(
                 f"Docker is not available or not running. Please ensure Docker is installed and running. "
                 f"Error: {e}"
             ) from e
-        
+
         # Handle ECR authentication for ECR images
         if self._is_ecr_image(image):
             try:
@@ -266,10 +266,10 @@ class LocalContainerMode(
                 # embedded elsewhere in the image URI).
                 ecr_uri = self._ecr_registry_host(image)
                 login_command = ["docker", "login", "-u", username, "-p", password, ecr_uri]
-                
-                result = subprocess.run(login_command, check=True, capture_output=True, text=True)
+
+                subprocess.run(login_command, check=True, capture_output=True, text=True)
                 logger.info("Successfully authenticated with ECR")
-                
+
             except subprocess.CalledProcessError as e:
                 error_msg = f"ECR authentication failed: {e.stderr if e.stderr else str(e)}"
                 logger.error(error_msg)
@@ -278,7 +278,7 @@ class LocalContainerMode(
                 error_msg = f"ECR authentication error: {str(e)}"
                 logger.error(error_msg)
                 raise RuntimeError(error_msg) from e
-        
+
         # Pull the image
         try:
             logger.info("Pulling image %s from repository...", image)
@@ -308,4 +308,3 @@ class LocalContainerMode(
         never disagree.
         """
         return self._ecr_registry_host(image) is not None
-

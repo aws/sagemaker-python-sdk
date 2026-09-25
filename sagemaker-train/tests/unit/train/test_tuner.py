@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for tuner module."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -32,7 +33,6 @@ from sagemaker.core.shapes import (
     DataSource,
     S3DataSource,
 )
-
 
 # ---------------------------------------------------------------------------
 # Factory functions for creating test objects (reduces fixture duplication)
@@ -643,9 +643,9 @@ class TestHyperparameterTunerStaticMethods:
 
         definition = tuner._build_training_job_definition(None)
 
-        assert isinstance(definition.environment, Unassigned), (
-            "Environment should be Unassigned when model_trainer.environment is None"
-        )
+        assert isinstance(
+            definition.environment, Unassigned
+        ), "Environment should be Unassigned when model_trainer.environment is None"
 
     def test_build_training_job_definition_with_empty_environment(self):
         """Test that _build_training_job_definition passes through empty environment.
@@ -664,9 +664,7 @@ class TestHyperparameterTunerStaticMethods:
 
         definition = tuner._build_training_job_definition(None)
 
-        assert definition.environment == {}, (
-            "Empty dict environment should be passed through as-is"
-        )
+        assert definition.environment == {}, "Empty dict environment should be passed through as-is"
 
     def test_build_training_job_definition_passes_through_output_data_config(self):
         """Test that _build_training_job_definition passes through the full OutputDataConfig.
@@ -692,15 +690,15 @@ class TestHyperparameterTunerStaticMethods:
 
         definition = tuner._build_training_job_definition(None)
 
-        assert definition.output_data_config is mock_trainer.output_data_config, (
-            "output_data_config should be the same object from ModelTrainer"
-        )
+        assert (
+            definition.output_data_config is mock_trainer.output_data_config
+        ), "output_data_config should be the same object from ModelTrainer"
         assert definition.output_data_config.kms_key_id == (
             "arn:aws:kms:us-west-2:123456789012:key/abc123"
         ), "kms_key_id should be preserved"
-        assert definition.output_data_config.compression_type == "NONE", (
-            "compression_type should be preserved"
-        )
-        assert definition.output_data_config.s3_output_path == "s3://bucket/output", (
-            "s3_output_path should be preserved"
-        )
+        assert (
+            definition.output_data_config.compression_type == "NONE"
+        ), "compression_type should be preserved"
+        assert (
+            definition.output_data_config.s3_output_path == "s3://bucket/output"
+        ), "s3_output_path should be preserved"

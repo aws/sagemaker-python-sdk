@@ -14,12 +14,14 @@ from __future__ import absolute_import
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from botocore.exceptions import ClientError
 
 from sagemaker.core.training.configs import HyperPodCompute
 from sagemaker.train.common_utils.constants import AUTH_ERROR_CODES
 
+if TYPE_CHECKING:
+    import pandas
 
 logger = logging.getLogger(__name__)
 
@@ -234,8 +236,7 @@ def parse_metrics_from_logs(
         import pandas
     except ImportError:
         raise ImportError(
-            "pandas is required for metric extraction. "
-            "Install it with: pip install pandas\n"
+            "pandas is required for metric extraction. " "Install it with: pip install pandas\n"
         )
 
     technique = customization_technique.upper()

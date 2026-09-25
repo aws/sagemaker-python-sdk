@@ -17,7 +17,7 @@ FILE_NAME = os.path.join(
 
 class TestGeneratedShape(unittest.TestCase):
     def test_generated_shapes_have_pydantic_enabled(self):
-        # This test ensures that all main shapes inherit Base which inherits BaseModel, thereby forcing pydantic validiation
+        # This test ensures that all main shapes inherit Base which inherits BaseModel, thereby forcing pydantic validiation  # noqa: E501
         assert issubclass(Base, BaseModel)
         assert (
             self._fetch_number_of_classes_in_file_not_inheriting_a_class(FILE_NAME, "Base") == 1

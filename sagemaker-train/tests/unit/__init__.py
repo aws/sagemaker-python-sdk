@@ -14,8 +14,6 @@ from __future__ import absolute_import
 
 import os
 
-from mock.mock import Mock
-
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 """
 from sagemaker.config import (

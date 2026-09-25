@@ -37,7 +37,9 @@ def role():
     return get_execution_role()
 
 
-def test_pipeline_with_train_and_registry(sagemaker_session, pipeline_session, role, sklearn_latest_version):
+def test_pipeline_with_train_and_registry(
+    sagemaker_session, pipeline_session, role, sklearn_latest_version
+):
     region = sagemaker_session.boto_region_name
     bucket = sagemaker_session.default_bucket()
     prefix = f"integ-test-v3-pipeline-{uuid.uuid4().hex[:8]}"

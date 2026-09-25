@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.23.0 (2026-09-24)
+
+### New Features
+
+- feat(serve): update SDK to use latest LMI v29 image for sdk v3.x (#6301)
+
+### Bug Fixes
+
+- fix(serve): use the correct AMI when on cu130 to avoid crashes at launch (#6281)
+
+### Tests
+
+- fix PR check tests (#6272)
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
 ## v1.22.1 (2026-09-17)
 
 ### Bug Fixes

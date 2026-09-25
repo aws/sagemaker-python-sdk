@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 
 """MultiTurnRLTrainer — trainer for Agentic Reinforcement Fine-Tuning (Multi-Turn RL) jobs."""
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,6 @@ from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.custom_agent_lambda import CustomAgentLambda
 from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.base_trainer import BaseTrainer
-from sagemaker.train.common import CustomizationTechnique
 from sagemaker.train.common_utils.finetune_utils import (
     _get_default_s3_output_path,
     _get_fine_tuning_options_and_model_arn,
@@ -56,7 +56,6 @@ from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 logger = logging.getLogger(__name__)
 
 
-
 # ARN patterns
 BEDROCK_AGENT_CORE_ARN_PATTERN = re.compile(
     r"^arn:aws[a-z-]*:bedrock-agentcore:[a-z0-9-]+:[0-9]{12}:runtime/[a-zA-Z0-9_-]+$"
@@ -66,17 +65,15 @@ LAMBDA_ARN_PATTERN = re.compile(
     r"(:\$LATEST|:[a-zA-Z0-9-_]+)?$"
 )
 S3_URI_PATTERN = re.compile(r"^s3://[^/]+(/.*)?$")
-MLFLOW_APP_ARN_PATTERN = re.compile(
-    r"^arn:[a-z0-9-.]+:sagemaker:[^:]+:[^:]+:mlflow-app/.+$"
-)
+MLFLOW_APP_ARN_PATTERN = re.compile(r"^arn:[a-z0-9-.]+:sagemaker:[^:]+:[^:]+:mlflow-app/.+$")
 
 # Pattern for bare Bedrock AgentCore runtime IDs (not full ARNs).
 AGENT_RUNTIME_ID_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,99}-[a-zA-Z0-9]{10}$")
 
 MAX_HYPERPARAMETERS = 50
-# Intentionlly hardcode this version for each PySDK version. 
+# Intentionlly hardcode this version for each PySDK version.
 # If we need upgrade the schema version, it should upgrade PySDK version as well.
-JOB_CONFIG_SCHEMA_VERSION = "1.0.0" 
+JOB_CONFIG_SCHEMA_VERSION = "1.0.0"
 JOB_CATEGORY = "AgentRFT"
 MTRL_TECHNIQUE = "MTRL"
 
@@ -106,9 +103,7 @@ def _resolve_agent_runtime_arn(agent_runtime_id: str, session=None) -> str:
         return arn
     except Exception as e:
         if "agentRuntimeArn" not in str(e):
-            raise ValueError(
-                f"Failed to resolve agent runtime ID '{agent_runtime_id}': {e}"
-            ) from e
+            raise ValueError(f"Failed to resolve agent runtime ID '{agent_runtime_id}': {e}") from e
         raise
 
 
@@ -135,8 +130,7 @@ class MultiTurnRLTrainer(BaseTrainer):
     Uses CreateJob API (not CreateTrainingJob) with a JobConfigDocument JSON string.
 
     Example:
-
-    .. code:: python
+        .. code:: python
 
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
@@ -262,6 +256,10 @@ class MultiTurnRLTrainer(BaseTrainer):
         )
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
         self._process_hyperparameters()
+
+        # Re-apply any hyperparameters passed at construction (see BaseTrainer),
+        # which the FineTuningOptions rebuild above would otherwise drop.
+        self._apply_user_hyperparameters(self._constructor_hyperparameters)
         self._latest_job: AgentRFTJob | None = None
 
     @_telemetry_emitter(
@@ -299,15 +297,15 @@ class MultiTurnRLTrainer(BaseTrainer):
         )
         role = TrainDefaults.get_role(role=self.role, sagemaker_session=sagemaker_session)
 
-        current_job_name = _get_unique_name(
-            self.base_job_name or f"{self._model_name}-mtrl"
-        )
+        current_job_name = _get_unique_name(self.base_job_name or f"{self._model_name}-mtrl")
         logger.info(f"Job Name: {current_job_name}")
 
         self._final_hyperparameters = self.hyperparameters.to_dict()
 
         # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
-        self._final_hyperparameters = self._apply_recipe_to_hyperparameters(self._final_hyperparameters)
+        self._final_hyperparameters = self._apply_recipe_to_hyperparameters(
+            self._final_hyperparameters
+        )
 
         _validate_hyperparameter_values(self._final_hyperparameters)
 
@@ -342,7 +340,6 @@ class MultiTurnRLTrainer(BaseTrainer):
         agent_rft_job = AgentRFTJob.from_job(job)
         logger.info(f"Created Job: {agent_rft_job.job_arn}")
 
-        hp = self._final_hyperparameters
         agent_rft_job.description = f"Multi-turn RFT training using {self._model_name}"
 
         if wait:
@@ -404,9 +401,7 @@ class MultiTurnRLTrainer(BaseTrainer):
         stream_log_loop(streamer, poll, _get_status)
 
     @classmethod
-    @_telemetry_emitter(
-        feature=Feature.MODEL_CUSTOMIZATION, func_name="MultiTurnRLTrainer.attach"
-    )
+    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="MultiTurnRLTrainer.attach")
     def attach(cls, job_name: str, session=None) -> AgentRFTJob:
         """Attach to an existing Agentic RFT job by name.
 
@@ -472,9 +467,7 @@ class MultiTurnRLTrainer(BaseTrainer):
         if isinstance(data, str) and S3_URI_PATTERN.match(data):
             return {
                 "ChannelName": channel_name,
-                "DataSource": {
-                    "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": data}
-                },
+                "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": data}},
             }
         # Assume DataSet ARN string
         return {
@@ -643,7 +636,9 @@ class MultiTurnRLTrainer(BaseTrainer):
                 "VPC config requires both non-empty 'security_group_ids' and 'subnets'."
             )
 
-    def _get_or_create_mpg(self, value, default_name: str, session, managed_configuration=None) -> str:
+    def _get_or_create_mpg(
+        self, value, default_name: str, session, managed_configuration=None
+    ) -> str:
         """Resolve an existing ModelPackageGroup or auto-create one.
 
         If ``value`` is provided (object or string), validates it exists and returns its ARN.
@@ -682,9 +677,7 @@ class MultiTurnRLTrainer(BaseTrainer):
                 mpg = ModelPackageGroup.create(**create_kwargs)
                 logger.info("Created ModelPackageGroup: %s", mpg.model_package_group_arn)
             except Exception as e:
-                raise ValueError(
-                    f"Failed to create ModelPackageGroup '{default_name}': {e}"
-                ) from e
+                raise ValueError(f"Failed to create ModelPackageGroup '{default_name}': {e}") from e
         return mpg.model_package_group_arn
 
     def _resolve_model_package_group(self, model, output_model_package_group, session):
@@ -710,6 +703,7 @@ class MultiTurnRLTrainer(BaseTrainer):
         managed_config = None
         if _is_nova_model(self._model_name):
             from sagemaker.core.shapes import ManagedConfiguration
+
             managed_config = ManagedConfiguration(managed_storage_type="Restricted")
 
         return self._get_or_create_mpg(
@@ -729,6 +723,7 @@ class MultiTurnRLTrainer(BaseTrainer):
         managed_config = None
         if not intermediate_checkpoint_mpg and _is_nova_model(self._model_name):
             from sagemaker.core.shapes import ManagedConfiguration
+
             managed_config = ManagedConfiguration(managed_storage_type="Restricted")
 
         arn = self._get_or_create_mpg(

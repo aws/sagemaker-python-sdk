@@ -1,3 +1,7 @@
+from unittest.mock import patch
+
+import pytest
+
 from sagemaker.train.common import FineTuningOptions
 
 
@@ -6,22 +10,26 @@ class TestFineTuningOptionsToDict:
 
     def test_to_dict_skips_none_values(self):
         """None-valued hyperparameters should be omitted from to_dict output."""
-        options = FineTuningOptions({
-            "learning_rate": {"default": 0.0002, "type": "float"},
-            "resume_from_path": {"default": None, "type": "string"},
-            "global_batch_size": {"default": 64, "type": "integer"},
-        })
+        options = FineTuningOptions(
+            {
+                "learning_rate": {"default": 0.0002, "type": "float"},
+                "resume_from_path": {"default": None, "type": "string"},
+                "global_batch_size": {"default": 64, "type": "integer"},
+            }
+        )
         result = options.to_dict()
         assert "resume_from_path" not in result
         assert result == {"learning_rate": "0.0002", "global_batch_size": "64"}
 
     def test_to_dict_includes_non_none_values(self):
         """Non-None values should be included as strings."""
-        options = FineTuningOptions({
-            "learning_rate": {"default": 0.001, "type": "float"},
-            "max_epochs": {"default": 3, "type": "integer"},
-            "model_name": {"default": "my-model", "type": "string"},
-        })
+        options = FineTuningOptions(
+            {
+                "learning_rate": {"default": 0.001, "type": "float"},
+                "max_epochs": {"default": 3, "type": "integer"},
+                "model_name": {"default": "my-model", "type": "string"},
+            }
+        )
         result = options.to_dict()
         assert result == {
             "learning_rate": "0.001",
@@ -31,32 +39,35 @@ class TestFineTuningOptionsToDict:
 
     def test_to_dict_empty_string_is_included(self):
         """Empty string is a valid value and should not be skipped."""
-        options = FineTuningOptions({
-            "mlflow_run_id": {"default": "", "type": "string"},
-        })
+        options = FineTuningOptions(
+            {
+                "mlflow_run_id": {"default": "", "type": "string"},
+            }
+        )
         result = options.to_dict()
         assert result == {"mlflow_run_id": ""}
 
     def test_to_dict_after_user_sets_none_to_value(self):
         """If user overrides a None default with a real value, it should appear."""
-        options = FineTuningOptions({
-            "resume_from_path": {"default": None, "type": "string"},
-        })
+        options = FineTuningOptions(
+            {
+                "resume_from_path": {"default": None, "type": "string"},
+            }
+        )
         options.resume_from_path = "/path/to/checkpoint"
         result = options.to_dict()
         assert result == {"resume_from_path": "/path/to/checkpoint"}
 
     def test_to_dict_all_none_returns_empty(self):
         """If all values are None, to_dict should return empty dict."""
-        options = FineTuningOptions({
-            "param_a": {"default": None, "type": "string"},
-            "param_b": {"default": None, "type": "string"},
-        })
+        options = FineTuningOptions(
+            {
+                "param_a": {"default": None, "type": "string"},
+                "param_b": {"default": None, "type": "string"},
+            }
+        )
         result = options.to_dict()
         assert result == {}
-
-
-import pytest
 
 
 class TestValidateLengthConstraints:
@@ -129,3 +140,69 @@ class TestValidateLengthConstraints:
         )
         object.__setattr__(opts, "dataset_max_len", 999999)
         opts.validate_length_constraints()  # unknown ceiling -> no raise
+
+
+class TestFineTuningOptionsValidationTelemetry:
+    """Failure-only telemetry emitted from FineTuningOptions.__setattr__.
+
+    A single FAILURE event (via the core _emit_failure_telemetry helper) is emitted
+    when a caller sets an invalid option name or an out-of-spec value, and NOTHING is
+    emitted on the happy path (valid sets, internal sets, or construction).
+    """
+
+    _SPECS = {
+        "learning_rate": {"default": 1e-4, "type": "float", "min": 1e-7, "max": 1.0},
+        "num_epochs": {"default": 3, "type": "integer", "min": 1, "max": 100},
+    }
+
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_invalid_option_name_emits_failure(self, mock_emit):
+        options = FineTuningOptions(self._SPECS)
+        with pytest.raises(AttributeError):
+            options.not_a_real_param = 5
+
+        mock_emit.assert_called_once()
+        args = mock_emit.call_args[0]
+        assert args[1] == "FineTuningOptions.__setattr__"  # func_name
+        assert isinstance(args[2], AttributeError)  # exc
+
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_out_of_range_value_emits_failure(self, mock_emit):
+        options = FineTuningOptions(self._SPECS)
+        with pytest.raises(ValueError):
+            options.learning_rate = 999.0  # exceeds max=1.0
+
+        mock_emit.assert_called_once()
+        assert isinstance(mock_emit.call_args[0][2], ValueError)
+
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_wrong_type_value_emits_failure(self, mock_emit):
+        options = FineTuningOptions(self._SPECS)
+        with pytest.raises(ValueError):
+            options.num_epochs = "three"  # not an integer
+
+        mock_emit.assert_called_once()
+        assert isinstance(mock_emit.call_args[0][2], ValueError)
+
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_valid_set_does_not_emit(self, mock_emit):
+        options = FineTuningOptions(self._SPECS)
+        options.learning_rate = 1e-3  # within range -> no telemetry
+        assert options.learning_rate == 1e-3
+        mock_emit.assert_not_called()
+
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_construction_does_not_emit(self, mock_emit):
+        # __init__ sets defaults via super().__setattr__ and internal _-prefixed attrs,
+        # none of which should emit telemetry.
+        FineTuningOptions(self._SPECS)
+        mock_emit.assert_not_called()
+
+    @patch("sagemaker.train.common._emit_failure_telemetry")
+    def test_emits_model_customization_feature(self, mock_emit):
+        from sagemaker.core.telemetry.constants import Feature
+
+        options = FineTuningOptions(self._SPECS)
+        with pytest.raises(AttributeError):
+            options.bogus = 1
+        assert mock_emit.call_args[0][0] == Feature.MODEL_CUSTOMIZATION

@@ -13,8 +13,7 @@
 """Unit tests for batch_api_helper module"""
 
 import json
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.train.aws_batch.batch_api_helper import (
     _submit_service_job,
@@ -31,13 +30,10 @@ from .conftest import (
     REASON,
     BATCH_TAGS,
     TRAINING_TAGS,
-    TRAINING_TAGS_CONVERTED,
-    MERGED_TAGS,
     DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
     TIMEOUT_CONFIG,
     SCHEDULING_PRIORITY,
     SHARE_IDENTIFIER,
-    QUOTA_SHARE_NAME,
     SUBMIT_SERVICE_JOB_RESP,
     DESCRIBE_SERVICE_JOB_RESP_RUNNING,
     LIST_SERVICE_JOB_RESP_EMPTY,
@@ -192,9 +188,7 @@ class TestTerminateServiceJob:
         result = _terminate_service_job(JOB_ID, REASON)
 
         assert result == {}
-        mock_client.terminate_service_job.assert_called_once_with(
-            jobId=JOB_ID, reason=REASON
-        )
+        mock_client.terminate_service_job.assert_called_once_with(jobId=JOB_ID, reason=REASON)
 
     @patch("sagemaker.train.aws_batch.batch_api_helper.get_batch_boto_client")
     def test_terminate_service_job_default_reason(self, mock_get_client):
@@ -265,7 +259,7 @@ class TestListServiceJob:
 
         filters = [{"name": "JOB_NAME", "values": [JOB_NAME]}]
         gen = _list_service_job(JOB_QUEUE, filters=filters)
-        result = next(gen)
+        next(gen)
 
         call_kwargs = mock_client.list_service_jobs.call_args[1]
         assert call_kwargs["filters"] == filters
@@ -278,7 +272,7 @@ class TestListServiceJob:
         mock_get_client.return_value = mock_client
 
         gen = _list_service_job(JOB_QUEUE, job_status=JOB_STATUS_RUNNING)
-        result = next(gen)
+        next(gen)
 
         call_kwargs = mock_client.list_service_jobs.call_args[1]
         assert call_kwargs["jobStatus"] == JOB_STATUS_RUNNING

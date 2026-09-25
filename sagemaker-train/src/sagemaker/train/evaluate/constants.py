@@ -8,6 +8,7 @@ from enum import Enum
 from sagemaker.core.image_uris import _registry_from_region, config_for_framework
 from typing import Optional
 
+
 class EvalType(Enum):
     """Enumeration of supported evaluation types."""
 
@@ -110,7 +111,10 @@ def _get_nova_inference_image_uri(region: str) -> Optional[str]:
     escrow_account = _NOVA_ESCROW_ACCOUNTS.get(region)
     if not escrow_account:
         return None
-    return f"{escrow_account}.dkr.ecr.{region}.amazonaws.com/nova-inference-repo:SM-Inference-latest"
+    return (
+        f"{escrow_account}.dkr.ecr.{region}.amazonaws.com/nova-inference-repo:SM-Inference-latest"
+    )
+
 
 # Region → Bedrock cross-region inference profile prefix.
 # Scoped to regions where InspectAI is available (Nova LLMAJ requires both).

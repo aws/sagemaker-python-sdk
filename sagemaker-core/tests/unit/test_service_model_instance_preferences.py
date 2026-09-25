@@ -28,6 +28,7 @@ regeneration/edit drift:
   ``InstanceCount`` (mutually exclusive with ``InstancePreferences``,
   enforced server-side).
 """
+
 from __future__ import absolute_import
 
 import json

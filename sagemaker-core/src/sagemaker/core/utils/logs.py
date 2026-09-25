@@ -1,3 +1,5 @@
+"""CloudWatch Logs client helpers for streaming SageMaker job logs."""
+
 import botocore
 
 from boto3.session import Session
@@ -8,9 +10,7 @@ from sagemaker.core.utils.utils import SingletonMeta
 
 
 class CloudWatchLogsClient(metaclass=SingletonMeta):
-    """
-    A singleton class for creating a CloudWatchLogs client.
-    """
+    """A singleton class for creating a CloudWatchLogs client."""
 
     client: botocore.client = None
 
@@ -25,6 +25,8 @@ class CloudWatchLogsClient(metaclass=SingletonMeta):
 
 
 class LogStreamHandler:
+    """Handler for reading a single CloudWatch log stream."""
+
     log_group_name: str = None
     log_stream_name: str = None
     stream_id: int = None
@@ -38,13 +40,13 @@ class LogStreamHandler:
         self.stream_id = stream_id
 
     def get_latest_log_events(self) -> Generator[Tuple[str, dict], None, None]:
-        """
-        This method gets all the latest log events for this stream that exist at this moment in time.
+        """This method gets all the latest log events for this stream that exist at this moment in time.
 
         cw_client.get_log_events() always returns a nextForwardToken even if the current batch of events is empty.
         You can keep calling cw_client.get_log_events() with the same token until a new batch of log events exist.
 
-        API Reference: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/logs/client/get_log_events.html
+        API Reference:
+        https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/logs/client/get_log_events.html
 
         Returns:
             Generator[tuple[str, dict], None, None]: Generator that yields a tuple that consists for two values
@@ -78,6 +80,8 @@ class LogStreamHandler:
 
 
 class MultiLogStreamHandler:
+    """Handler for reading multiple CloudWatch log streams."""
+
     log_group_name: str = None
     log_stream_name_prefix: str = None
     expected_stream_count: int = None
@@ -93,8 +97,7 @@ class MultiLogStreamHandler:
         self.cw_client = CloudWatchLogsClient().client
 
     def get_latest_log_events(self) -> Generator[Tuple[str, dict], None, None]:
-        """
-        This method gets all the latest log events from each stream that exist at this moment.
+        """This method gets all the latest log events from each stream that exist at this moment.
 
         Returns:
              Generator[tuple[str, dict], None, None]: Generator that yields a tuple that consists for two values
@@ -113,8 +116,7 @@ class MultiLogStreamHandler:
             yield from stream.get_latest_log_events()
 
     def ready(self) -> bool:
-        """
-        Checks whether or not MultiLogStreamHandler is ready to serve new log events at this moment.
+        """Checks whether or not MultiLogStreamHandler is ready to serve new log events at this moment.
 
         If self.streams is already set, return True.
         Otherwise, check if the current number of log streams in the log group match the exptected stream count.

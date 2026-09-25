@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Provides utilities for custom boto type objects."""
+
 from __future__ import absolute_import
 
 from sagemaker.core.apiutils import _boto_functions, _utils
@@ -219,10 +220,25 @@ class Record(ApiObject):
         )
         return self
 
+    # Lineage entity creation methods that participate in pipeline step
+    # composition. Requests for these are routed through the session's
+    # ``_intercept_create_request`` seam, so a ``PipelineSession`` captures them
+    # as step arguments while a plain ``Session`` calls the service. Used by
+    # ``sagemaker.mlops.workflow.LineageStep``.
+    _PIPELINE_CAPTURABLE_METHODS = frozenset(
+        {"create_action", "create_artifact", "create_context", "add_association"}
+    )
+
     def _invoke_api(self, boto_method, boto_method_members):
         """Invoke a SageMaker API."""
         api_values = {k: v for k, v in vars(self).items() if k in boto_method_members}
         api_kwargs = self.to_boto(api_values)
-        api_method = getattr(self.sagemaker_session.sagemaker_client, boto_method)
-        api_boto_response = api_method(**api_kwargs)
-        return self.with_boto(api_boto_response)
+
+        def submit(request):
+            api_method = getattr(self.sagemaker_session.sagemaker_client, boto_method)
+            return self.with_boto(api_method(**request))
+
+        if boto_method in self._PIPELINE_CAPTURABLE_METHODS:
+            return self.sagemaker_session._intercept_create_request(api_kwargs, submit, boto_method)
+
+        return submit(api_kwargs)

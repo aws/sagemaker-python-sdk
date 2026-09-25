@@ -11,16 +11,19 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """ModelTrainer class module."""
+
 from __future__ import absolute_import
 
 from enum import Enum
 import os
 import json
+import re
 import shutil
 from tempfile import TemporaryDirectory
 from typing import Optional, List, Union, Dict, Any, ClassVar
 import yaml
 
+from botocore.exceptions import ClientError, NoCredentialsError, NoRegionError
 from graphene.utils.str_converters import to_camel_case, to_snake_case
 from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core import resources
@@ -102,7 +105,7 @@ from sagemaker.train.templates import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train import logger
+from sagemaker.core.utils.utils import logger
 from sagemaker.train.sm_recipes.utils import (
     _get_args_from_recipe,
     _determine_device_type,
@@ -126,6 +129,42 @@ class Mode(Enum):
 
     LOCAL_CONTAINER = "LOCAL_CONTAINER"
     SAGEMAKER_TRAINING_JOB = "SAGEMAKER_TRAINING_JOB"
+
+
+def _log_actionable_client_error(client_error: "ClientError") -> None:
+    """Log remediation guidance for common CreateTrainingJob service errors.
+
+    This never swallows the error: the caller always re-raises the original
+    exception. It only adds guidance so the failure is actionable without
+    guesswork. ResourceLimitExceeded in particular is not retryable until the
+    quota is raised, so blind retry loops keep failing.
+
+    Args:
+        client_error (ClientError): The error raised by the CreateTrainingJob call.
+    """
+    error = getattr(client_error, "response", None) or {}
+    error_code = error.get("Error", {}).get("Code", "")
+    error_message = error.get("Error", {}).get("Message", "")
+    if error_code == "ResourceLimitExceeded":
+        quota_match = re.search(r"service limit '([^']+)'", error_message)
+        quota_hint = f" ('{quota_match.group(1)}')" if quota_match else ""
+        logger.error(
+            "CreateTrainingJob was rejected because a SageMaker service quota%s "
+            "is insufficient in this account and Region. Retrying will keep "
+            "failing until the quota is raised. Request an increase in the "
+            "Service Quotas console: "
+            "https://console.aws.amazon.com/servicequotas/home/services/sagemaker/quotas "
+            "(or via 'aws service-quotas request-service-quota-increase "
+            "--service-code sagemaker'). Alternatively, use a different instance "
+            "type or reduce the instance count.",
+            quota_hint,
+        )
+    elif error_code in ("AccessDeniedException", "AccessDenied"):
+        logger.error(
+            "CreateTrainingJob was denied by IAM. Verify that your caller identity "
+            "and the training role have the sagemaker:CreateTrainingJob and "
+            "iam:PassRole permissions for the role passed to the ModelTrainer."
+        )
 
 
 class ModelTrainer(BaseModel):
@@ -552,11 +591,13 @@ class ModelTrainer(BaseModel):
 
         if self.training_image:
             from sagemaker.core.helper.pipeline_variable import PipelineVariable
+
             if isinstance(self.training_image, PipelineVariable):
-                logger.info("Training image URI: (PipelineVariable - resolved at pipeline execution)")
+                logger.info(
+                    "Training image URI: (PipelineVariable - resolved at pipeline execution)"
+                )
             else:
                 logger.info(f"Training image URI: {self.training_image}")
-    
 
     def _create_training_job_args(
         self,
@@ -564,6 +605,7 @@ class ModelTrainer(BaseModel):
         boto3: bool = False,
     ) -> Dict[str, Any]:
         """Create the training job arguments.
+
         Args:
             input_data_config (Optional[List[Union[Channel, InputData]]]):
             input_data_config (Optional[List[Union[Channel, InputData]]]):
@@ -615,7 +657,9 @@ class ModelTrainer(BaseModel):
             )
             final_input_data_config.append(recipe_channel)
             if self._is_nova_recipe or self._is_llmft_recipe:
-                self.hyperparameters.update({"sagemaker_recipe_local_path": SM_RECIPE_CONTAINER_PATH})
+                self.hyperparameters.update(
+                    {"sagemaker_recipe_local_path": SM_RECIPE_CONTAINER_PATH}
+                )
 
         if final_input_data_config:
             final_input_data_config = self._get_input_data_config(
@@ -642,7 +686,9 @@ class ModelTrainer(BaseModel):
         container_arguments = None
         if self.source_code:
             if self.training_mode == Mode.LOCAL_CONTAINER:
-                self._temp_code_dir = TemporaryDirectory(prefix=os.path.join(self.local_container_root + "/"))
+                self._temp_code_dir = TemporaryDirectory(
+                    prefix=os.path.join(self.local_container_root + "/")
+                )
             else:
                 self._temp_code_dir = TemporaryDirectory()
             # Copy everything under container_drivers/ to a temporary directory
@@ -651,6 +697,7 @@ class ModelTrainer(BaseModel):
             # Copy the CodeArtifact-aware install_requirements script from sagemaker-core
             # so it's available in the container at /opt/ml/input/data/sm_drivers/scripts/
             import sagemaker.core.utils.install_requirements as _ir_mod
+
             shutil.copy2(
                 _ir_mod.__file__,
                 os.path.join(self._temp_code_dir.name, "scripts", "install_requirements.py"),
@@ -723,14 +770,16 @@ class ModelTrainer(BaseModel):
         if self.tags:
             tags_as_dicts = []
             for tag in self.tags:
-                if hasattr(tag, 'model_dump'):
+                if hasattr(tag, "model_dump"):
                     tags_as_dicts.append(tag.model_dump())
                 elif isinstance(tag, dict):
                     tags_as_dicts.append(tag)
                 else:
                     # Fallback for any other tag-like object
-                    tags_as_dicts.append({"key": getattr(tag, 'key', ''), "value": getattr(tag, 'value', '')})
-        
+                    tags_as_dicts.append(
+                        {"key": getattr(tag, "key", ""), "value": getattr(tag, "value", "")}
+                    )
+
         # Build training request with snake_case keys (Python SDK convention)
         training_request = {
             "training_job_name": current_training_job_name,
@@ -771,9 +820,8 @@ class ModelTrainer(BaseModel):
             pipeline_request = {to_pascal_case(k): v for k, v in training_request.items()}
             serialized_request = serialize(pipeline_request)
             return serialized_request
-        
-        return training_request
 
+        return training_request
 
     @_telemetry_emitter(
         feature=Feature.MODEL_TRAINER,
@@ -831,11 +879,30 @@ class ModelTrainer(BaseModel):
             if isinstance(self.sagemaker_session, PipelineSession):
                 self.sagemaker_session._intercept_create_request(training_request, None, "train")
                 return
-        
-            training_job = TrainingJob.create(
-                session=self.sagemaker_session.boto_session,
-                **training_request
-            )
+
+            try:
+                training_job = TrainingJob.create(
+                    session=self.sagemaker_session.boto_session, **training_request
+                )
+            except ClientError as ce:
+                _log_actionable_client_error(ce)
+                raise
+            except NoRegionError:
+                logger.error(
+                    "No AWS Region configured. Set one before calling train(): export "
+                    "AWS_DEFAULT_REGION=<region>, add 'region = <region>' to ~/.aws/config, "
+                    "or pass a boto session with a region to the ModelTrainer's "
+                    "sagemaker_session."
+                )
+                raise
+            except NoCredentialsError:
+                logger.error(
+                    "No AWS credentials found. Configure credentials before calling train(): "
+                    "run 'aws configure' or 'aws sso login', set the AWS_ACCESS_KEY_ID/"
+                    "AWS_SECRET_ACCESS_KEY environment variables, or use an IAM role. See "
+                    "https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html"
+                )
+                raise
             self._latest_training_job = training_job
 
             if wait:
@@ -846,9 +913,7 @@ class ModelTrainer(BaseModel):
                 )
 
         else:
-            if self.compute is not None and getattr(
-                self.compute, "instance_preferences", None
-            ):
+            if self.compute is not None and getattr(self.compute, "instance_preferences", None):
                 raise ValueError(
                     "Local mode training does not support 'instance_preferences'. "
                     "Set a single 'instance_type' on Compute for local mode."
@@ -860,7 +925,9 @@ class ModelTrainer(BaseModel):
                 image=training_request["algorithm_specification"].training_image,
                 container_root=self.local_container_root,
                 sagemaker_session=self.sagemaker_session,
-                container_entrypoint=training_request["algorithm_specification"].container_entrypoint,
+                container_entrypoint=training_request[
+                    "algorithm_specification"
+                ].container_entrypoint,
                 container_arguments=training_request["algorithm_specification"].container_arguments,
                 input_data_config=training_request["input_data_config"],
                 hyper_parameters=training_request["hyper_parameters"],
@@ -870,7 +937,7 @@ class ModelTrainer(BaseModel):
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
 
-    def _resolve_staging_bucket(self) -> tuple[str,str]:
+    def _resolve_staging_bucket(self) -> tuple[str, str]:
         """Resolve the S3 bucket and key prefix for staging training artifacts.
 
         Uses iam:SimulatePrincipalPolicy to check whether the training role
@@ -887,7 +954,8 @@ class ModelTrainer(BaseModel):
         if not self.role:
             logger.debug(
                 "No training role specified; skipping bucket access check. "
-                "Using default bucket '%s' for artifact staging.", default_bucket
+                "Using default bucket '%s' for artifact staging.",
+                default_bucket,
             )
             return default_bucket, None
 
@@ -901,10 +969,11 @@ class ModelTrainer(BaseModel):
             decisions = result.get("EvaluationResults", [])
             if decisions and decisions[0].get("EvalDecision") != "allowed":
                 # Training role can't access default bucket — fall back to output path
-                if self.output_data_config and hasattr(self.output_data_config, 's3_output_path'):
+                if self.output_data_config and hasattr(self.output_data_config, "s3_output_path"):
                     output_path = self.output_data_config.s3_output_path
                     if output_path and output_path.startswith("s3://"):
                         from urllib.parse import urlparse
+
                         parsed = urlparse(output_path)
                         if parsed.netloc:
                             prefix = parsed.path.strip("/")
@@ -982,7 +1051,8 @@ class ModelTrainer(BaseModel):
                 ``s3://<default_bucket_path>/<key_prefix>/<channel_name>/``
             ignore_patterns: (Optional[List[str]]) :
                 The ignore patterns to ignore specific files/folders when uploading to S3.
-                If not specified, default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
+                If not specified, default to:
+                ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
             instance_group_names: (Optional[List[str]]) :
                 The names of the instance groups (for heterogeneous clusters) that this
                 channel's data should be assigned to. Only applied when the channel is
@@ -1048,7 +1118,9 @@ class ModelTrainer(BaseModel):
                         key_prefix = f"{self.sagemaker_session.default_bucket_prefix}/{key_prefix}"
                     # Resolve staging bucket based on training role permissions
                     staging_bucket, staging_prefix = self._resolve_staging_bucket()
-                    effective_prefix = f"{staging_prefix}/{key_prefix}" if staging_prefix else key_prefix
+                    effective_prefix = (
+                        f"{staging_prefix}/{key_prefix}" if staging_prefix else key_prefix
+                    )
                     if ignore_patterns and _is_valid_path(data_source, path_type="Directory"):
                         tmp_dir = TemporaryDirectory()
                         copied_path = os.path.join(
@@ -1410,7 +1482,9 @@ class ModelTrainer(BaseModel):
         )
 
         # Merge ModelPackageConfig: recipe dict + direct Pydantic param (direct wins)
-        direct_mpc_dict = model_package_config.model_dump(exclude_unset=True) if model_package_config else {}
+        direct_mpc_dict = (
+            model_package_config.model_dump(exclude_unset=True) if model_package_config else {}
+        )
         merged = {**recipe_mpc_dict, **direct_mpc_dict}
         if merged:
             model_trainer.model_package_config = ModelPackageConfig(**merged)
@@ -1437,7 +1511,7 @@ class ModelTrainer(BaseModel):
             ValueError: If recipe resolution fails.
             AttributeError: If called on a ModelTrainer not created via from_recipe().
         """
-        if not hasattr(self, '_training_recipe'):
+        if not hasattr(self, "_training_recipe"):
             raise AttributeError(
                 "get_resolved_recipe() is only available on ModelTrainer instances "
                 "created via ModelTrainer.from_recipe()."
@@ -1445,13 +1519,11 @@ class ModelTrainer(BaseModel):
 
         if self._resolved_recipe_cache is not None:
             import copy
+
             return copy.deepcopy(self._resolved_recipe_cache)
 
         from omegaconf import OmegaConf
-        from sagemaker.train.sm_recipes.utils import (
-            _load_base_recipe,
-            _register_custom_resolvers,
-        )
+        from sagemaker.train.sm_recipes.utils import _register_custom_resolvers
         import copy
 
         recipe = _load_base_recipe(
@@ -1587,7 +1659,11 @@ class ModelTrainer(BaseModel):
                 "Set a single ``instance_type`` in Compute for JumpStart models."
             )
         if compute and document.SupportedTrainingInstanceTypes:
-            if compute.instance_type not in document.SupportedTrainingInstanceTypes:
+            # Optional[List] is guarded by the enclosing ``if``; pylint cannot see that.
+            if (
+                compute.instance_type
+                not in document.SupportedTrainingInstanceTypes  # pylint: disable=unsupported-membership-test
+            ):
                 raise ValueError(
                     "Training is not supported for model ID with instance type: "
                     f" {compute.instance_type}.\n"
@@ -1831,23 +1907,25 @@ class ModelTrainer(BaseModel):
         return self
 
     def with_metric_definitions(
-        self,
-        metric_definitions: List[MetricDefinition]
+        self, metric_definitions: List[MetricDefinition]
     ) -> "ModelTrainer":  # noqa: D412
         """Set the metric definitions for the training job.
+
         Example:
-        .. code:: python
-            from sagemaker.modules.train import ModelTrainer
-            from sagemaker.modules.configs import MetricDefinition
-            metric_definitions = [
-                MetricDefinition(
-                    name="loss",
-                    regex="Loss: (.*?)",
-                )
-            ]
-            model_trainer = ModelTrainer(
-                ...
-            ).with_metric_definitions(metric_definitions)
+            .. code:: python
+
+                from sagemaker.modules.train import ModelTrainer
+                from sagemaker.modules.configs import MetricDefinition
+                metric_definitions = [
+                    MetricDefinition(
+                        name="loss",
+                        regex="Loss: (.*?)",
+                    )
+                ]
+                model_trainer = ModelTrainer(
+                    ...
+                ).with_metric_definitions(metric_definitions)
+
         Args:
             metric_definitions (List[MetricDefinition]):
                 The metric definitions for the training job.

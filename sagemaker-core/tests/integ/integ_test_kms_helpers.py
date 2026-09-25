@@ -20,6 +20,7 @@ keys have a mandatory 7-day minimum deletion window (schedule_key_deletion), so
 per-run create/delete is not practical. The persistent shared key approach avoids
 accumulating orphaned keys and unnecessary costs.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -27,8 +28,7 @@ import json
 from sagemaker.core.common_utils import aws_partition, sts_regional_endpoint
 
 PRINCIPAL_TEMPLATE = (
-    '["{account_id}", "{role_arn}", '
-    '"arn:{partition}:iam::{account_id}:role/{sagemaker_role}"] '
+    '["{account_id}", "{role_arn}", ' '"arn:{partition}:iam::{account_id}:role/{sagemaker_role}"] '
 )
 
 KEY_ALIAS = "SageMakerTestKMSKey"

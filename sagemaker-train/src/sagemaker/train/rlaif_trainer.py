@@ -1,8 +1,15 @@
+"""RLAIF (Reinforcement Learning from AI Feedback) trainer for SageMaker fine-tuning."""
+
 from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
-from sagemaker.core.resources import TrainingJob, ModelPackageGroup, MlflowTrackingServer, ModelPackage
+from sagemaker.core.resources import (
+    TrainingJob,
+    ModelPackageGroup,
+    MlflowTrackingServer,
+    ModelPackage,
+)
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.core.utils.utils import serialize
@@ -14,7 +21,6 @@ from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.evaluator import Evaluator
 from sagemaker.train.configs import StoppingCondition
 from sagemaker.train.common_utils.finetune_utils import (
-    _get_beta_session,
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
     _extract_evaluator_arn,
@@ -26,7 +32,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_mlflow_config,
     _create_model_package_config,
     _validate_eula_for_gated_model,
-    _validate_hyperparameter_values
+    _validate_hyperparameter_values,
 )
 from sagemaker.train.common_utils.data_utils import is_multimodal_data, validate_data_path_exists
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
@@ -38,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class RLAIFTrainer(BaseTrainer):
-    """Class that performs Reinforcement Learning from AI Feedback (RLAIF) fine-tuning on foundation models using AWS SageMaker.
+    """Class that performs Reinforcement Learning from AI Feedback (RLAIF) fine-tuning on foundation models.
 
     Example:
 
@@ -65,19 +71,19 @@ class RLAIFTrainer(BaseTrainer):
             reward_model_id="reward-model-id",
             reward_prompt="summarize"
         )
-        
+
         # Create training job (non-blocking)
         training_job = trainer.train(
             training_dataset="s3://bucket/rlaif_data.jsonl",
             wait=False
         )
-        
+
         # Wait for completion
         training_job.wait()
-        
+
         # Refresh job status
         training_job.refresh()
-        
+
         # Get the fine-tuned model package ARN
         model_package_arn = training_job.output_model_package_arn
 
@@ -97,7 +103,8 @@ class RLAIFTrainer(BaseTrainer):
         reward_prompt (Union[str, Evaluator]):
             The reward prompt or evaluator for AI feedback generation.
             Can be a prompt string or Evaluator object.
-            For Builtin metric prompts refer: https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation-metrics.html
+            For Builtin metric prompts refer:
+            https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation-metrics.html
         mlflow_resource_arn (Optional[Union[str, MlflowTrackingServer]]):
             The MLflow tracking server ARN for experiment tracking.
             If not specified, uses default MLflow experience.
@@ -164,8 +171,9 @@ class RLAIFTrainer(BaseTrainer):
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
 
         self.training_type = training_type
-        self.model_package_group = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group)
+        self.model_package_group = _validate_and_resolve_model_package_group(
+            model, model_package_group
+        )
         self.reward_model_id = self._validate_reward_model_id(reward_model_id)
         self.reward_prompt = reward_prompt
         self.mlflow_resource_arn = mlflow_resource_arn
@@ -181,19 +189,26 @@ class RLAIFTrainer(BaseTrainer):
         self.is_multimodal = is_multimodal
 
         # Initialize fine-tuning options with beta session fallback
-        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(
-            self._model_name,
-            CustomizationTechnique.RLAIF.value,
-            self.training_type,
-            self.sagemaker_session or TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
-            sequence_length=self.sequence_length
+        self.hyperparameters, self._model_arn, is_gated_model = (
+            _get_fine_tuning_options_and_model_arn(
+                self._model_name,
+                CustomizationTechnique.RLAIF.value,
+                self.training_type,
+                self.sagemaker_session
+                or TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
+                sequence_length=self.sequence_length,
+            )
         )
-        
+
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
-        
+
         # Process reward_prompt parameter
         self._process_hyperparameters()
+
+        # Re-apply any hyperparameters passed at construction (see BaseTrainer),
+        # which the FineTuningOptions rebuild above would otherwise drop.
+        self._apply_user_hyperparameters(self._constructor_hyperparameters)
 
     def _validate_reward_model_id(self, reward_model_id):
         """Validate reward_model_id is one of the allowed values."""
@@ -205,29 +220,42 @@ class RLAIFTrainer(BaseTrainer):
                 f"Invalid reward_model_id '{reward_model_id}'. "
                 f"Available models are: {list(_ALLOWED_REWARD_MODEL_IDS.keys())}"
             )
-        
+
         # Check region compatibility
-        session = self.sagemaker_session if hasattr(self, 'sagemaker_session') and self.sagemaker_session else TrainDefaults.get_sagemaker_session()
+        session = (
+            self.sagemaker_session
+            if hasattr(self, "sagemaker_session") and self.sagemaker_session
+            else TrainDefaults.get_sagemaker_session()
+        )
         current_region = session.boto_region_name
         allowed_regions = _ALLOWED_REWARD_MODEL_IDS[reward_model_id]
-        
+
         if current_region not in allowed_regions:
             raise ValueError(
                 f"Reward model '{reward_model_id}' is not available in region '{current_region}'. "
                 f"Available regions for this model: {allowed_regions}"
             )
-        
+
         return reward_model_id
-        
+
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="RLAIFTrainer.train",
-        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS
+        + [
             ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
         ],
     )
     @runnable_by_pipeline
-    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
+    def train(
+        self,
+        training_dataset: Optional[Union[str, DataSet]] = None,
+        validation_dataset: Optional[Union[str, DataSet]] = None,
+        wait: bool = True,
+        wait_timeout: Optional[int] = None,
+        poll: int = 5,
+        dry_run: bool = False,
+    ):
         """Execute the RLAIF training job.
 
         Parameters:
@@ -263,19 +291,19 @@ class RLAIFTrainer(BaseTrainer):
 
         logger.info(f"Training Job Name: {current_training_job_name}")
 
-        #data
-        input_data_config = _create_input_data_config(training_dataset or self.training_dataset,
-                                                     validation_dataset or self.validation_dataset
-                                                     )
+        # data
+        input_data_config = _create_input_data_config(
+            training_dataset or self.training_dataset, validation_dataset or self.validation_dataset
+        )
         channels = _convert_input_data_to_channels(input_data_config)
 
         output_config = _create_output_config(
             s3_output_path=self.s3_output_path,
             sagemaker_session=sagemaker_session,
-            kms_key_id=self.kms_key_id
+            kms_key_id=self.kms_key_id,
         )
 
-        evaluator_arn = getattr(self, '_evaluator_arn', None)
+        evaluator_arn = getattr(self, "_evaluator_arn", None)
         serverless_config = _create_serverless_config(
             model_arn=self._model_arn,
             customization_technique=CustomizationTechnique.RLAIF.value,
@@ -283,7 +311,7 @@ class RLAIFTrainer(BaseTrainer):
             accept_eula=self.accept_eula,
             evaluator_arn=evaluator_arn,
             sequence_length=self.sequence_length,
-            job_type=JOB_TYPE
+            job_type=JOB_TYPE,
         )
 
         mlflow_config = _create_mlflow_config(
@@ -310,7 +338,7 @@ class RLAIFTrainer(BaseTrainer):
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group,
             model=self.model,
-            sagemaker_session=sagemaker_session
+            sagemaker_session=sagemaker_session,
         )
 
         vpc_config = self.networking if self.networking else None
@@ -334,7 +362,7 @@ class RLAIFTrainer(BaseTrainer):
             "region": sagemaker_session.boto_session.region_name,
             "tags": tags,
         }
-        
+
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
@@ -344,8 +372,7 @@ class RLAIFTrainer(BaseTrainer):
         # This must come before data path validation since in pipeline mode
         # the data path may be a pipeline parameter that doesn't exist yet.
         if isinstance(sagemaker_session, PipelineSession):
-            pipeline_args = {k: v for k, v in create_args.items()
-                            if k not in ("session", "region")}
+            pipeline_args = {k: v for k, v in create_args.items() if k not in ("session", "region")}
             pipeline_args.pop("training_job_name", None)
             pipeline_request = {to_pascal_case(k): v for k, v in pipeline_args.items()}
             # Normalize Tags to PascalCase dicts. JumpStart tags come as lowercase
@@ -353,9 +380,11 @@ class RLAIFTrainer(BaseTrainer):
             # Optional[List[Tag]]). Handle both.
             if "Tags" in pipeline_request and pipeline_request["Tags"]:
                 pipeline_request["Tags"] = [
-                    {"Key": t.get("key", t.get("Key")), "Value": t.get("value", t.get("Value"))}
-                    if isinstance(t, dict)
-                    else {"Key": t.key, "Value": t.value}
+                    (
+                        {"Key": t.get("key", t.get("Key")), "Value": t.get("value", t.get("Value"))}
+                        if isinstance(t, dict)
+                        else {"Key": t.key, "Value": t.value}
+                    )
                     for t in pipeline_request["Tags"]
                 ]
             serialized_request = serialize(pipeline_request)
@@ -387,11 +416,12 @@ class RLAIFTrainer(BaseTrainer):
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
             from sagemaker.core.utils.exceptions import TimeoutExceededError
-            try :
+
+            try:
                 wait_kwargs = {}
                 if wait_timeout is not None:
-                    wait_kwargs['timeout'] = wait_timeout
-                wait_kwargs['poll'] = poll
+                    wait_kwargs["timeout"] = wait_timeout
+                wait_kwargs["poll"] = poll
                 _wait(training_job, **wait_kwargs)
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
@@ -401,27 +431,31 @@ class RLAIFTrainer(BaseTrainer):
 
     def _process_hyperparameters(self):
         """Update hyperparameters based on constructor inputs and process reward_prompt."""
-        if not self.hyperparameters or not hasattr(self.hyperparameters, '_specs') or not self.hyperparameters._specs:
+        if (
+            not self.hyperparameters
+            or not hasattr(self.hyperparameters, "_specs")
+            or not self.hyperparameters._specs
+        ):
             return
-        
+
         # Remove keys that are handled by constructor inputs
-        if hasattr(self.hyperparameters, 'output_path'):
-            delattr(self.hyperparameters, 'output_path')
-            self.hyperparameters._specs.pop('output_path', None)
-        if hasattr(self.hyperparameters, 'data_path'):
-            delattr(self.hyperparameters, 'data_path')
-            self.hyperparameters._specs.pop('data_path', None)
-        if hasattr(self.hyperparameters, 'validation_data_path'):
-            delattr(self.hyperparameters, 'validation_data_path')
-            self.hyperparameters._specs.pop('validation_data_path', None)
-        
+        if hasattr(self.hyperparameters, "output_path"):
+            delattr(self.hyperparameters, "output_path")
+            self.hyperparameters._specs.pop("output_path", None)
+        if hasattr(self.hyperparameters, "data_path"):
+            delattr(self.hyperparameters, "data_path")
+            self.hyperparameters._specs.pop("data_path", None)
+        if hasattr(self.hyperparameters, "validation_data_path"):
+            delattr(self.hyperparameters, "validation_data_path")
+            self.hyperparameters._specs.pop("validation_data_path", None)
+
         # Update judge_model_id if reward_model_id is provided
-        if hasattr(self, 'reward_model_id') and self.reward_model_id:
+        if hasattr(self, "reward_model_id") and self.reward_model_id:
             judge_model_value = f"bedrock/{self.reward_model_id}"
             self.hyperparameters.judge_model_id = judge_model_value
-        
+
         # Process reward_prompt parameter
-        if hasattr(self, 'reward_prompt') and self.reward_prompt:
+        if hasattr(self, "reward_prompt") and self.reward_prompt:
             if isinstance(self.reward_prompt, str):
                 # Resolution order:
                 #   1. Preset template name -> resolved locally against the recipe's
@@ -437,9 +471,9 @@ class RLAIFTrainer(BaseTrainer):
                     self._process_non_builtin_reward_prompt()
             else:
                 # Handle evaluator object
-                if hasattr(self.hyperparameters, 'judge_prompt_template'):
-                    delattr(self.hyperparameters, 'judge_prompt_template')
-                    self.hyperparameters._specs.pop('judge_prompt_template', None)
+                if hasattr(self.hyperparameters, "judge_prompt_template"):
+                    delattr(self.hyperparameters, "judge_prompt_template")
+                    self.hyperparameters._specs.pop("judge_prompt_template", None)
 
                 evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
                 self._evaluator_arn = evaluator_arn
@@ -476,16 +510,18 @@ class RLAIFTrainer(BaseTrainer):
         """
         if reward_prompt.startswith("Builtin"):
             return True
-        enum_keys = {self._normalize_template_name(e) for e in self._get_judge_prompt_template_enum()}
+        enum_keys = {
+            self._normalize_template_name(e) for e in self._get_judge_prompt_template_enum()
+        }
         return self._normalize_template_name(reward_prompt) in enum_keys
 
     def _process_non_builtin_reward_prompt(self):
         """Process non-preset reward prompt (ARN or hub content name)."""
         # Remove judge_prompt_template for non-preset prompts
-        if hasattr(self.hyperparameters, 'judge_prompt_template'):
-            delattr(self.hyperparameters, 'judge_prompt_template')
-            self.hyperparameters._specs.pop('judge_prompt_template', None)
-            
+        if hasattr(self.hyperparameters, "judge_prompt_template"):
+            delattr(self.hyperparameters, "judge_prompt_template")
+            self.hyperparameters._specs.pop("judge_prompt_template", None)
+
         if self.reward_prompt.startswith("arn:aws:sagemaker:"):
             # Validate and assign ARN
             evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
@@ -493,21 +529,21 @@ class RLAIFTrainer(BaseTrainer):
         else:
             try:
                 session = TrainDefaults.get_sagemaker_session(
-            sagemaker_session=self.sagemaker_session
-        )
+                    sagemaker_session=self.sagemaker_session
+                )
                 hub_content = _get_hub_content_metadata(
                     hub_name=get_sagemaker_hub_name(),
                     hub_content_type="JsonDoc",
                     hub_content_name=self.reward_prompt,
                     session=session.boto_session,
-                    region=session.boto_session.region_name
+                    region=session.boto_session.region_name,
                 )
                 # Store ARN for evaluator_arn
                 self._evaluator_arn = hub_content.hub_content_arn
             except Exception as e:
-                raise ValueError(f"Custom prompt '{self.reward_prompt}' not found in HubContent: {e}")
-        
-
+                raise ValueError(
+                    f"Custom prompt '{self.reward_prompt}' not found in HubContent: {e}"
+                )
 
     def _update_judge_prompt_template_direct(self, reward_prompt):
         """Resolve a preset reward prompt name to the recipe's judge_prompt_template value.
@@ -521,7 +557,7 @@ class RLAIFTrainer(BaseTrainer):
 
         if not available_templates:
             # If no enum found, use the current value as the only available option
-            current_value = getattr(self.hyperparameters, 'judge_prompt_template', None)
+            current_value = getattr(self.hyperparameters, "judge_prompt_template", None)
             if current_value:
                 available_templates = [current_value]
             else:
@@ -536,7 +572,7 @@ class RLAIFTrainer(BaseTrainer):
             if self._normalize_template_name(template) == template_name:
                 matching_template = template
                 break
-        
+
         if matching_template:
             self.hyperparameters.judge_prompt_template = matching_template
         else:
@@ -548,4 +584,3 @@ class RLAIFTrainer(BaseTrainer):
                 f"or with the 'Builtin.' prefix). "
                 f"Alternatively pass an evaluator ARN or a registered HubContent prompt name."
             )
-

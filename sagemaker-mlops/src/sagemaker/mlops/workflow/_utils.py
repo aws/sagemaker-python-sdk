@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Scrapper utilities to support repacking of models."""
+
 from __future__ import absolute_import
 
 import logging
@@ -21,6 +22,7 @@ import tempfile
 from typing import List, Union, Optional, TYPE_CHECKING
 from sagemaker.core import image_uris
 from sagemaker.core.training.configs import InputData
+
 # Lazy import to avoid circular dependency
 if TYPE_CHECKING:
     pass
@@ -60,34 +62,37 @@ python _repack_model.py \
 
 # Static list of regions where Experiments (Eureka) is Generally Available.
 # Note: Experiments is not expanding to new regions, so this list is static.
-EUREKA_GA_REGIONS = frozenset([
-    "us-east-1",       # iad (N. Virginia)
-    "us-east-2",       # cmh (Ohio)
-    "us-west-1",       # sfo (N. California)
-    "us-west-2",       # pdx (Oregon)
-    "ca-central-1",    # yul (Montreal)
-    "eu-west-1",       # dub (Dublin)
-    "eu-west-2",       # lhr (London)
-    "eu-west-3",       # cdg (Paris)
-    "eu-central-1",    # fra (Frankfurt)
-    "eu-north-1",      # arn (Stockholm)
-    "eu-south-1",      # mxp (Milan)
-    "eu-south-2",      # zaz (Spain)
-    "ap-northeast-1",  # nrt (Tokyo)
-    "ap-northeast-2",  # icn (Seoul)
-    "ap-northeast-3",  # kix (Osaka)
-    "ap-southeast-1",  # sin (Singapore)
-    "ap-southeast-2",  # syd (Sydney)
-    "ap-southeast-3",  # cgk (Jakarta)
-    "ap-south-1",      # bom (Mumbai)
-    "ap-east-1",       # hkg (Hong Kong)
-    "sa-east-1",       # gru (São Paulo)
-    "af-south-1",      # cpt (Cape Town)
-    "me-south-1",      # bah (Bahrain)
-    "il-central-1",    # tlv (Tel Aviv)
-    "cn-north-1",      # bjs (Beijing)
-    "cn-northwest-1",  # zhy (Ningxia)
-])
+EUREKA_GA_REGIONS = frozenset(
+    [
+        "us-east-1",  # iad (N. Virginia)
+        "us-east-2",  # cmh (Ohio)
+        "us-west-1",  # sfo (N. California)
+        "us-west-2",  # pdx (Oregon)
+        "ca-central-1",  # yul (Montreal)
+        "eu-west-1",  # dub (Dublin)
+        "eu-west-2",  # lhr (London)
+        "eu-west-3",  # cdg (Paris)
+        "eu-central-1",  # fra (Frankfurt)
+        "eu-north-1",  # arn (Stockholm)
+        "eu-south-1",  # mxp (Milan)
+        "eu-south-2",  # zaz (Spain)
+        "ap-northeast-1",  # nrt (Tokyo)
+        "ap-northeast-2",  # icn (Seoul)
+        "ap-northeast-3",  # kix (Osaka)
+        "ap-southeast-1",  # sin (Singapore)
+        "ap-southeast-2",  # syd (Sydney)
+        "ap-southeast-3",  # cgk (Jakarta)
+        "ap-south-1",  # bom (Mumbai)
+        "ap-east-1",  # hkg (Hong Kong)
+        "sa-east-1",  # gru (São Paulo)
+        "af-south-1",  # cpt (Cape Town)
+        "me-south-1",  # bah (Bahrain)
+        "il-central-1",  # tlv (Tel Aviv)
+        "cn-north-1",  # bjs (Beijing)
+        "cn-northwest-1",  # zhy (Ningxia)
+    ]
+)
+
 
 class _RepackModelStep(TrainingStep):
     """Repacks model artifacts with custom inference entry points.
@@ -177,42 +182,46 @@ class _RepackModelStep(TrainingStep):
 
         # Prepare source directory with repack scripts
         self._prepare_for_repacking()
-        
+
         # Handle requirements.txt like ModelTrainer
-        requirements_file = self._requirements if self._requirements and self._requirements.endswith('.txt') else None
+        requirements_file = (
+            self._requirements
+            if self._requirements and self._requirements.endswith(".txt")
+            else None
+        )
 
         # Configure ModelTrainer components for repacking
         from sagemaker.core.training.configs import SourceCode, Compute, Networking
-        
+
         source_code = SourceCode(
             source_dir=self._source_dir,
             entry_script=REPACK_SCRIPT_LAUNCHER,
             requirements=requirements_file,
         )
-        
+
         compute = Compute(
             instance_type=kwargs.pop("instance_type", None) or INSTANCE_TYPE,
         )
-        
+
         networking = None
         if subnets or security_group_ids:
             networking = Networking(
                 subnets=subnets,
                 security_group_ids=security_group_ids,
             )
-        
+
         # Get region-appropriate sklearn inference image
         training_image = image_uris.retrieve(
             framework="sklearn",
             region=self.sagemaker_session.boto_region_name,
             version=FRAMEWORK_VERSION,
             image_scope="inference",
-            instance_type=compute.instance_type
+            instance_type=compute.instance_type,
         )
-        
+
         # Lazy import to avoid circular dependency
         from sagemaker.train import ModelTrainer
-        
+
         repacker = ModelTrainer(
             training_image=training_image,
             source_code=source_code,
@@ -228,7 +237,7 @@ class _RepackModelStep(TrainingStep):
             },
             **kwargs,
         )
-        
+
         inputs = [InputData(channel_name="training", data_source=self._model_data)]
 
         # Initialize the parent TrainingStep with the ModelTrainer configuration

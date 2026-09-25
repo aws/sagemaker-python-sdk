@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The various types of metrics configurations that can be specified in FrameworkProfile."""
+
 from __future__ import absolute_import
 
 from sagemaker.core.debugger.profiler_constants import (

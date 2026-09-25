@@ -75,12 +75,8 @@ class TestNovaHostingConfigResolution(unittest.TestCase):
         ), patch.object(ModelBuilder, "_fetch_model_package", return_value=mp):
             cfg = mb._get_nova_hosting_config()
 
-        self.assertEqual(
-            cfg["image_uri"], "111.dkr.ecr.us-east-1.amazonaws.com/custom:tag"
-        )
-        self.assertEqual(
-            cfg["env_vars"], {"CONTEXT_LENGTH": "999", "MAX_CONCURRENCY": "3"}
-        )
+        self.assertEqual(cfg["image_uri"], "111.dkr.ecr.us-east-1.amazonaws.com/custom:tag")
+        self.assertEqual(cfg["env_vars"], {"CONTEXT_LENGTH": "999", "MAX_CONCURRENCY": "3"})
         self.assertEqual(cfg["instance_type"], "ml.p5.48xlarge")
 
     def test_top_level_hosting_configs_used_when_no_recipe_match(self):
@@ -104,9 +100,7 @@ class TestNovaHostingConfigResolution(unittest.TestCase):
         ), patch.object(ModelBuilder, "_fetch_model_package", return_value=mp):
             cfg = mb._get_nova_hosting_config()
 
-        self.assertEqual(
-            cfg["image_uri"], "222.dkr.ecr.us-east-1.amazonaws.com/top:tag"
-        )
+        self.assertEqual(cfg["image_uri"], "222.dkr.ecr.us-east-1.amazonaws.com/top:tag")
 
     def test_hardcoded_fallback_when_hub_has_no_hosting_config(self):
         """Hardcoded escrow config is used when the hub doc has no hosting config."""
@@ -141,15 +135,11 @@ class TestNovaHostingConfigResolution(unittest.TestCase):
             "RecipeCollection": [
                 {
                     "Name": "r",
-                    "HostingConfigs": [
-                        {"Profile": "Default", "InstanceType": "ml.p5.48xlarge"}
-                    ],
+                    "HostingConfigs": [{"Profile": "Default", "InstanceType": "ml.p5.48xlarge"}],
                 }
             ]
         }
-        mp = _make_model_package(
-            recipe_name="r", hub_content_name="nova-textgeneration-pro"
-        )
+        mp = _make_model_package(recipe_name="r", hub_content_name="nova-textgeneration-pro")
         with patch.object(
             ModelBuilder, "_fetch_hub_document_for_custom_model", return_value=hub_doc
         ), patch.object(ModelBuilder, "_fetch_model_package", return_value=mp):
@@ -180,17 +170,13 @@ class TestNovaHostingConfigResolution(unittest.TestCase):
                 }
             ]
         }
-        mp = _make_model_package(
-            recipe_name="r", hub_content_name="nova-textgeneration-lite"
-        )
+        mp = _make_model_package(recipe_name="r", hub_content_name="nova-textgeneration-lite")
         with patch.object(
             ModelBuilder, "_fetch_hub_document_for_custom_model", return_value=hub_doc
         ), patch.object(ModelBuilder, "_fetch_model_package", return_value=mp):
             cfg = mb._get_nova_hosting_config(instance_type="ml.g6.48xlarge")
 
-        self.assertEqual(
-            cfg["image_uri"], "333.dkr.ecr.us-east-1.amazonaws.com/b:tag"
-        )
+        self.assertEqual(cfg["image_uri"], "333.dkr.ecr.us-east-1.amazonaws.com/b:tag")
         self.assertEqual(cfg["instance_type"], "ml.g6.48xlarge")
 
     def test_unsupported_instance_type_raises(self):

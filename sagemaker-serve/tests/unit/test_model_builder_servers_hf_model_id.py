@@ -1,4 +1,5 @@
-"""Unit tests: HF_MODEL_ID is not overwritten when user provides it."""
+"""Unit tests for Hugging Face ModelBuilder server configuration."""
+
 from __future__ import annotations
 
 from typing import Dict, List, Optional
@@ -12,23 +13,13 @@ from sagemaker.serve.model_builder_servers import (
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 
-
 S3_PATH = "s3://my-bucket/models/Qwen/"
 DEFAULT_MODEL = "Qwen/Qwen3-VL-4B-Instruct"
 
 _MOD = "sagemaker.serve.model_builder_servers"
-_DJL_PREP = (
-    "sagemaker.serve.model_server"
-    ".djl_serving.prepare._create_dir_structure"
-)
-_TGI_PREP = (
-    "sagemaker.serve.model_server"
-    ".tgi.prepare._create_dir_structure"
-)
-_MMS_PREP = (
-    "sagemaker.serve.model_server"
-    ".multi_model_server.prepare._create_dir_structure"
-)
+_DJL_PREP = "sagemaker.serve.model_server" ".djl_serving.prepare._create_dir_structure"
+_TGI_PREP = "sagemaker.serve.model_server" ".tgi.prepare._create_dir_structure"
+_MMS_PREP = "sagemaker.serve.model_server" ".multi_model_server.prepare._create_dir_structure"
 
 
 def _create_mock_builder(
@@ -38,9 +29,7 @@ def _create_mock_builder(
     """Create a mock builder with common attributes set."""
     builder = MagicMock(spec=_ModelBuilderServers)
     builder.model = model
-    builder.env_vars = (
-        env_vars if env_vars is not None else {}
-    )
+    builder.env_vars = env_vars if env_vars is not None else {}
     builder.model_path = "/tmp/test_model_path"
     builder.mode = Mode.SAGEMAKER_ENDPOINT
     builder.model_server = ModelServer.DJL_SERVING
@@ -61,16 +50,10 @@ def _create_mock_builder(
     builder.hf_model_config = {}
     builder.model_data_download_timeout = None
     builder._user_provided_instance_type = True
-    builder._is_jumpstart_model_id = Mock(
-        return_value=False
-    )
+    builder._is_jumpstart_model_id = Mock(return_value=False)
     builder._auto_detect_image_uri = Mock()
-    builder._prepare_for_mode = Mock(
-        return_value=("s3://model-data", None)
-    )
-    builder._create_model = Mock(
-        return_value=Mock()
-    )
+    builder._prepare_for_mode = Mock(return_value=("s3://model-data", None))
+    builder._create_model = Mock(return_value=Mock())
     builder._optimizing = False
     builder._validate_djl_serving_sample_data = Mock()
     builder._validate_tgi_serving_sample_data = Mock()
@@ -79,12 +62,8 @@ def _create_mock_builder(
     builder._save_inference_spec = Mock()
     builder._prepare_for_triton = Mock()
     builder._auto_detect_image_for_triton = Mock()
-    builder.get_huggingface_model_metadata = Mock(
-        return_value={"pipeline_tag": "text-generation"}
-    )
-    builder.role_arn = (
-        "arn:aws:iam::123456789012:role/SageMakerRole"
-    )
+    builder.get_huggingface_model_metadata = Mock(return_value={"pipeline_tag": "text-generation"})
+    builder.role_arn = "arn:aws:iam::123456789012:role/SageMakerRole"
     return builder
 
 
@@ -97,9 +76,7 @@ def mock_builder() -> MagicMock:
 @pytest.fixture
 def mock_builder_with_s3() -> MagicMock:
     """Mock builder with user-provided S3 HF_MODEL_ID."""
-    return _create_mock_builder(
-        env_vars={"HF_MODEL_ID": S3_PATH}
-    )
+    return _create_mock_builder(env_vars={"HF_MODEL_ID": S3_PATH})
 
 
 # -- Patch targets for each server type ----------------------
@@ -114,12 +91,12 @@ _DJL_PATCHES: List[str] = [
 ]
 
 _DJL_RETURN_VALUES = [
-    1,          # tensor_parallel_degree
-    1,          # gpu_info
-    None,       # nb_instance
+    1,  # tensor_parallel_degree
+    1,  # gpu_info
+    None,  # nb_instance
     ({}, 256),  # djl_configurations
-    {},         # hf_model_config
-    None,       # _create_dir_structure
+    {},  # hf_model_config
+    None,  # _create_dir_structure
 ]
 
 _TGI_PATCHES: List[str] = [
@@ -132,12 +109,12 @@ _TGI_PATCHES: List[str] = [
 ]
 
 _TGI_RETURN_VALUES = [
-    1,          # tensor_parallel_degree
-    1,          # gpu_info
-    None,       # nb_instance
+    1,  # tensor_parallel_degree
+    1,  # gpu_info
+    None,  # nb_instance
     ({}, 256),  # tgi_configurations
-    {},         # hf_model_config
-    None,       # _create_dir_structure
+    {},  # hf_model_config
+    None,  # _create_dir_structure
 ]
 
 _TEI_PATCHES: List[str] = [
@@ -148,7 +125,7 @@ _TEI_PATCHES: List[str] = [
 
 _TEI_RETURN_VALUES = [
     None,  # nb_instance
-    {},    # hf_model_config
+    {},  # hf_model_config
     None,  # _create_dir_structure
 ]
 
@@ -171,7 +148,7 @@ _MMS_PATCHES: List[str] = [
 
 _MMS_RETURN_VALUES = [
     None,  # nb_instance
-    {},    # hf_model_config
+    {},  # hf_model_config
     None,  # _create_dir_structure
 ]
 
@@ -257,9 +234,7 @@ def test_preserves_user_provided_hf_model_id(
     builder.model_server = server_type
     patchers = _apply_patches(patch_targets, patch_rvs)
     try:
-        getattr(
-            _ModelBuilderServers, build_method
-        )(builder)
+        getattr(_ModelBuilderServers, build_method)(builder)
     finally:
         _stop_patches(patchers)
     assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
@@ -282,14 +257,106 @@ def test_sets_default_hf_model_id_when_not_provided(
     builder.model_server = server_type
     patchers = _apply_patches(patch_targets, patch_rvs)
     try:
-        getattr(
-            _ModelBuilderServers, build_method
-        )(builder)
+        getattr(_ModelBuilderServers, build_method)(builder)
     finally:
         _stop_patches(patchers)
-    assert (
-        builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
+    assert builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
+
+
+class TestCuda13AmiResolution:
+    """CUDA 13 serving images select compatible host drivers at deployment."""
+
+    def test_selects_cuda_13_ami_for_vllm_omni(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """The deploy-time G5 instance overrides the M5 instance used at build time."""
+        builder = mock_builder
+        builder.instance_type = "ml.m5.large"
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-vllm-omni:0.20.0-gpu-py312-cu130-amzn2023"
+        )
+
+        result = _ModelBuilderServers._resolve_inference_ami_version(
+            builder,
+            instance_type="ml.g5.2xlarge",
+            inference_ami_version=None,
+        )
+
+        assert result == "al2023-ami-sagemaker-inference-gpu-4-1"
+
+    def test_recognizes_image_tag_ending_in_cu130(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """A cu130 token remains detectable without a trailing tag component."""
+        builder = mock_builder
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-vllm:0.21.0-gpu-py312-cu130"
+        )
+
+        result = _ModelBuilderServers._resolve_inference_ami_version(
+            builder,
+            instance_type="ml.g5.2xlarge",
+            inference_ami_version=None,
+        )
+
+        assert result == "al2023-ami-sagemaker-inference-gpu-4-1"
+
+    @pytest.mark.parametrize(
+        "image_uri, instance_type",
+        [
+            (
+                "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+                "huggingface-vllm:0.17.0-gpu-py312-cu129-ubuntu22.04",
+                "ml.g5.2xlarge",
+            ),
+            (
+                "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+                "huggingface-vllm:0.21.0-gpu-py312-cu130-ubuntu22.04",
+                "ml.m5.large",
+            ),
+        ],
+        ids=["non-cu130-image", "unsupported-instance-family"],
     )
+    def test_leaves_ami_unset_outside_compatibility_gate(
+        self,
+        mock_builder: MagicMock,
+        image_uri: str,
+        instance_type: str,
+    ) -> None:
+        """Images and instances outside the compatibility gate retain the default."""
+        builder = mock_builder
+        builder.image_uri = image_uri
+
+        result = _ModelBuilderServers._resolve_inference_ami_version(
+            builder,
+            instance_type=instance_type,
+            inference_ami_version=None,
+        )
+
+        assert result is None
+
+    def test_preserves_explicit_inference_ami(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """An explicit deployment AMI takes precedence over automatic selection."""
+        builder = mock_builder
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-vllm:0.21.0-gpu-py312-cu130-ubuntu22.04"
+        )
+
+        result = _ModelBuilderServers._resolve_inference_ami_version(
+            builder,
+            instance_type="ml.g5.2xlarge",
+            inference_ami_version="custom-inference-ami",
+        )
+
+        assert result == "custom-inference-ami"
 
 
 # -----------------------------------------------------------
@@ -305,18 +372,12 @@ class TestBuildForTransformersHfModelId:
         """User S3 URI is preserved."""
         builder = mock_builder_with_s3
         builder.model_server = ModelServer.MMS
-        patchers = _apply_patches(
-            _MMS_PATCHES, _MMS_RETURN_VALUES
-        )
+        patchers = _apply_patches(_MMS_PATCHES, _MMS_RETURN_VALUES)
         try:
-            _ModelBuilderServers._build_for_transformers(
-                builder
-            )
+            _ModelBuilderServers._build_for_transformers(builder)
         finally:
             _stop_patches(patchers)
-        assert (
-            builder.env_vars["HF_MODEL_ID"] == S3_PATH
-        )
+        assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
 
     def test_sets_default_when_not_provided(
         self,
@@ -325,19 +386,12 @@ class TestBuildForTransformersHfModelId:
         """HF_MODEL_ID defaults to self.model."""
         builder = mock_builder
         builder.model_server = ModelServer.MMS
-        patchers = _apply_patches(
-            _MMS_PATCHES, _MMS_RETURN_VALUES
-        )
+        patchers = _apply_patches(_MMS_PATCHES, _MMS_RETURN_VALUES)
         try:
-            _ModelBuilderServers._build_for_transformers(
-                builder
-            )
+            _ModelBuilderServers._build_for_transformers(builder)
         finally:
             _stop_patches(patchers)
-        assert (
-            builder.env_vars["HF_MODEL_ID"]
-            == DEFAULT_MODEL
-        )
+        assert builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
 
     @patch(f"{_MOD}.prepare_for_mms")
     @patch(f"{_MOD}.save_pkl")
@@ -361,22 +415,12 @@ class TestBuildForTransformersHfModelId:
         _mock_mms: Mock,
     ) -> None:
         """User HF_MODEL_ID preserved with inference_spec."""
-        builder = _create_mock_builder(
-            env_vars={"HF_MODEL_ID": S3_PATH}
-        )
+        builder = _create_mock_builder(env_vars={"HF_MODEL_ID": S3_PATH})
         builder.model_server = ModelServer.MMS
         builder.model_data_download_timeout = None
         builder.model = None
         builder.inference_spec = Mock()
-        builder.inference_spec.get_model.return_value = (
-            "some-hf-model-id"
-        )
-        builder._is_jumpstart_model_id = Mock(
-            return_value=False
-        )
-        _ModelBuilderServers._build_for_transformers(
-            builder
-        )
-        assert (
-            builder.env_vars["HF_MODEL_ID"] == S3_PATH
-        )
+        builder.inference_spec.get_model.return_value = "some-hf-model-id"
+        builder._is_jumpstart_model_id = Mock(return_value=False)
+        _ModelBuilderServers._build_for_transformers(builder)
+        assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
