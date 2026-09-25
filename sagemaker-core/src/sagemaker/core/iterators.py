@@ -176,7 +176,15 @@ class LineIterator(BaseIterator):
                 chunk = next(self.byte_iterator)
             except StopIteration:
                 if self.read_pos < self.buffer.getbuffer().nbytes:
-                    continue
+                    # Stream ended with a trailing partial line (no "\n").
+                    # `continue` alone would spin forever here: byte_iterator
+                    # is already exhausted, so it keeps raising StopIteration
+                    # and read_pos/buffer never change. Return the remainder
+                    # once, so the next call correctly raises StopIteration.
+                    self.buffer.seek(self.read_pos)
+                    remainder = self.buffer.read()
+                    self.read_pos += len(remainder)
+                    return remainder
                 raise
             if "PayloadPart" not in chunk:
                 # handle API response errors and force terminate.
