@@ -1,0 +1,218 @@
+name: AI Code Review (Internal, SageMaker team)
+
+# Internal-only AI code review. Unlike ai-code-review.yml (which posts public
+# inline comments), this workflow keeps ALL model output inside AWS account
+# 303192504279: the diff is uploaded to a private S3 bucket, a CodeBuild project
+# runs the reviewer against the INTERNAL knowledge base, and the report is
+# written back to S3. The only thing that ever reaches GitHub is a single marker
+# comment with a console link — never the report body, never retrieved KB
+# content (this repo is public, so workflow logs and comments are public).
+#
+# Fork safety: same pull_request_target + collaborator gate as
+# ai-code-review.yml. Fork/external PRs require maintainer approval via the
+# `manual-approval` environment before any role or secret is exposed. This job
+# never checks out or executes fork code — it only fetches the diff via the API.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, ready_for_review, reopened]
+    paths:
+      - 'sagemaker-train/**'
+      - 'sagemaker-serve/**'
+      - 'sagemaker-mlops/**'
+      - 'sagemaker-core/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write        # OIDC federation to assume the internal trigger role
+  pull-requests: write   # upsert the single marker comment
+  contents: read
+
+jobs:
+  # Identical gate to ai-code-review.yml / pr-checks-master.yml: collaborators
+  # auto-approve, everyone else requires manual approval via the
+  # `manual-approval` environment.
+  collab-check:
+    runs-on: ubuntu-latest
+    outputs:
+      approval-env: ${{ steps.collab-check.outputs.result }}
+    steps:
+      - name: Collaborator Check
+        uses: actions/github-script@v7
+        id: collab-check
+        with:
+          github-token: ${{ secrets.COLLAB_CHECK_TOKEN }}
+          result-encoding: string
+          script: |
+            try {
+              const res = await github.rest.repos.checkCollaborator({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: "${{ github.event.pull_request.user.login }}",
+              });
+              console.log("Verified ${{ github.event.pull_request.user.login }} is a repo collaborator. Auto approving AI review.")
+              return res.status == "204" ? "auto-approve" : "manual-approval"
+            } catch (error) {
+              console.log("${{ github.event.pull_request.user.login }} is not a collaborator. Requiring manual approval to run AI review.")
+              return "manual-approval"
+            }
+
+  wait-for-approval:
+    runs-on: ubuntu-latest
+    needs: [collab-check]
+    environment: ${{ needs.collab-check.outputs.approval-env }}
+    steps:
+      - run: echo "Approved — starting internal AI code review."
+
+  review-internal:
+    runs-on: ubuntu-latest
+    needs: [wait-for-approval]
+    steps:
+      # Fetch the PR diff via the API (does not execute any fork code) and build
+      # a small metadata JSON. No checkout of fork head code anywhere in this job.
+      - name: Fetch PR diff and build metadata
+        id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # PR-authored strings go through env, never interpolated into run:.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/pulls/$PR_NUMBER" \
+            -H "Accept: application/vnd.github.v3.diff" > /tmp/pr.diff
+          BYTES=$(wc -c < /tmp/pr.diff)
+          echo "bytes=$BYTES" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          SHA7="${HEAD_SHA:0:7}"
+          echo "sha7=$SHA7" >> "$GITHUB_OUTPUT"
+          # Build meta JSON with jq so PR-authored values are safely encoded,
+          # not spliced into the file as raw text.
+          jq -n \
+            --arg pr "$PR_NUMBER" \
+            --arg head "$HEAD_SHA" \
+            --arg base "$BASE_SHA" \
+            --arg title "$PR_TITLE" \
+            --arg author "$PR_AUTHOR" \
+            --arg url "$PR_URL" \
+            '{pr_number: ($pr|tonumber), head_sha: $head, base_sha: $base, title: $title, author: $author, html_url: $url}' \
+            > /tmp/pr.meta.json
+          echo "PR diff: $BYTES bytes"
+
+      - name: Configure AWS Credentials
+        if: steps.diff.outputs.bytes != '0'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.INTERNAL_REVIEW_ROLE }}
+          aws-region: us-west-2
+
+      # Upload diff + meta to the private internal-reviews bucket. The trigger
+      # role can ONLY PutObject under input/ (no Get, no List), so a compromised
+      # workflow cannot read any internal review back out.
+      - name: Upload diff and metadata to S3
+        if: steps.diff.outputs.bytes != '0'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ steps.diff.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          BUCKET=pysdk-internal-reviews-303192504279
+          PREFIX="input/pr-${PR_NUMBER}/${HEAD_SHA}"
+          aws s3 cp /tmp/pr.diff "s3://${BUCKET}/${PREFIX}.diff"
+          aws s3 cp /tmp/pr.meta.json "s3://${BUCKET}/${PREFIX}.meta.json"
+          echo "diff_key=${PREFIX}.diff" >> "$GITHUB_ENV"
+          echo "meta_key=${PREFIX}.meta.json" >> "$GITHUB_ENV"
+
+      # Start the CodeBuild project that runs the internal reviewer. All model
+      # invocation, KB retrieval, and report writing happen inside CodeBuild in
+      # the AWS account; nothing comes back to this runner except the build id.
+      - name: Start internal review build
+        id: build
+        if: steps.diff.outputs.bytes != '0'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ steps.diff.outputs.head_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          BUILD_ID=$(aws codebuild start-build \
+            --project-name pysdk-internal-ai-review \
+            --environment-variables-override \
+              "name=PR_NUMBER,value=${PR_NUMBER},type=PLAINTEXT" \
+              "name=HEAD_SHA,value=${HEAD_SHA},type=PLAINTEXT" \
+              "name=BASE_SHA,value=${BASE_SHA},type=PLAINTEXT" \
+              "name=DIFF_KEY,value=${diff_key},type=PLAINTEXT" \
+              "name=META_KEY,value=${meta_key},type=PLAINTEXT" \
+            --query 'build.id' --output text)
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "Started CodeBuild ${BUILD_ID}"
+
+      # Poll for completion (every 30s, up to 25 min). Only the build STATUS and
+      # id are read here — never any report or KB content.
+      - name: Poll for build completion
+        id: poll
+        if: steps.diff.outputs.bytes != '0'
+        env:
+          BUILD_ID: ${{ steps.build.outputs.build_id }}
+        run: |
+          set -euo pipefail
+          STATUS=IN_PROGRESS
+          for i in $(seq 1 50); do
+            STATUS=$(aws codebuild batch-get-builds --ids "$BUILD_ID" \
+              --query 'builds[0].buildStatus' --output text)
+            echo "poll $i: $STATUS"
+            if [ "$STATUS" != "IN_PROGRESS" ]; then
+              break
+            fi
+            sleep 30
+          done
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          # Region-agnostic console URL for the specific build (no report content).
+          BUILD_UUID="${BUILD_ID##*:}"
+          echo "build_url=https://us-west-2.console.aws.amazon.com/codesuite/codebuild/303192504279/projects/pysdk-internal-ai-review/build/${BUILD_ID}" >> "$GITHUB_OUTPUT"
+
+      # Upsert exactly ONE marker comment. The comment carries only a console
+      # link — never the report body or any retrieved KB content (this repo is
+      # public). Uses gh api to find an existing marker comment and PATCH it, or
+      # POST a new one.
+      - name: Upsert internal-review marker comment
+        if: steps.diff.outputs.bytes != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ steps.diff.outputs.head_sha }}
+          SHA7: ${{ steps.diff.outputs.sha7 }}
+          STATUS: ${{ steps.poll.outputs.status }}
+          BUILD_URL: ${{ steps.poll.outputs.build_url }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- pysdk-internal-ai-review -->'
+          CONSOLE_URL="https://us-west-2.console.aws.amazon.com/s3/object/pysdk-internal-reviews-303192504279?region=us-west-2&prefix=reports/pr-${PR_NUMBER}/${HEAD_SHA}.md"
+          if [ "$STATUS" = "SUCCEEDED" ]; then
+            BODY="${MARKER}
+          🔒 **Internal AI review** (SageMaker team, internal use only) completed for \`${SHA7}\`. Team members: open the report in AWS account 303192504279 → ${CONSOLE_URL}"
+          else
+            BODY="${MARKER}
+          🔒 **Internal AI review** (SageMaker team, internal use only) did not complete for \`${SHA7}\`. Build: ${BUILD_URL}"
+          fi
+          # Find an existing marker comment (paginate all issue comments).
+          EXISTING=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | startswith("'"${MARKER}"'")) | .id' | head -n1 || true)
+          if [ -n "$EXISTING" ]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${EXISTING}" \
+              -f body="$BODY" >/dev/null
+            echo "Updated marker comment ${EXISTING}"
+          else
+            gh api --method POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              -f body="$BODY" >/dev/null
+            echo "Posted new marker comment"
+          fi
