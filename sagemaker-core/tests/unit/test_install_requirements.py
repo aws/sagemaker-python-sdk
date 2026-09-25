@@ -29,6 +29,8 @@ from sagemaker.core.utils.install_requirements import (
 
 _MODULE = "sagemaker.core.utils.install_requirements"
 
+UV_PATH = "/usr/bin/uv"
+
 VALID_ARN = "arn:aws:codeartifact:us-west-2:123456789012:repository/my-domain/my-repo"
 PARSED = ("us-west-2", "123456789012", "my-domain", "my-repo")
 FAKE_TOKEN = "fake-auth-token"
@@ -63,8 +65,12 @@ def mock_boto3_ca():
         yield factory, client
 
 
-def _pip_cmd(*extra):
-    return [sys.executable, "-m", "pip", "install", "-r", "reqs.txt", *extra]
+def _uv_cmd(requirements="reqs.txt"):
+    return [UV_PATH, "pip", "install", "--system", "-r", requirements]
+
+
+def _pip_config_set_cmd(index=EXPECTED_INDEX):
+    return [sys.executable, "-m", "pip", "config", "set", "global.index-url", index]
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +111,8 @@ class TestConfigurePipAuto:
 
     def test_boto3_success(self, ca_env, mock_boto3_ca):
         factory, client = mock_boto3_ca
-        result = configure_pip()
+        with mock.patch("subprocess.check_call") as mock_call:
+            result = configure_pip()
 
         factory.assert_called_once_with("codeartifact", region_name="us-west-2")
         client.get_authorization_token.assert_called_once_with(
@@ -115,6 +122,9 @@ class TestConfigurePipAuto:
             domain="my-domain", domainOwner="123456789012", repository="my-repo", format="pypi"
         )
         assert result == EXPECTED_INDEX
+        # boto3 path also persists the index to pip config so the uv bootstrap
+        # (and any other pip call) inherits CodeArtifact in isolated environments.
+        mock_call.assert_called_once_with(_pip_config_set_cmd())
 
     def test_falls_back_to_cli_when_no_boto3(self, ca_env):
         with mock.patch(f"{_MODULE}._get_index_boto3", side_effect=ImportError):
@@ -150,8 +160,15 @@ class TestConfigurePipBoto3Only:
 
     def test_does_not_try_cli(self, ca_env, mock_boto3_ca):
         with mock.patch(f"{_MODULE}._login_awscli") as mock_cli:
-            configure_pip(auth_method=CodeArtifactAuthMethod.BOTO3)
+            with mock.patch("subprocess.check_call"):
+                configure_pip(auth_method=CodeArtifactAuthMethod.BOTO3)
         mock_cli.assert_not_called()
+
+    def test_writes_pip_config(self, ca_env, mock_boto3_ca):
+        """boto3 path persists the index to pip config for the uv bootstrap."""
+        with mock.patch("subprocess.check_call") as mock_call:
+            configure_pip(auth_method=CodeArtifactAuthMethod.BOTO3)
+        mock_call.assert_called_once_with(_pip_config_set_cmd())
 
 
 # ---------------------------------------------------------------------------
@@ -181,44 +198,102 @@ class TestConfigurePipCliOnly:
 # ---------------------------------------------------------------------------
 class TestInstallRequirements:
     def test_without_codeartifact(self):
+        """No CA, uv present, no pip index config → bare uv install, clean env."""
         with mock.patch.dict("os.environ", {}, clear=True):
-            with mock.patch("subprocess.check_call") as mock_call:
-                install_requirements("reqs.txt")
-        mock_call.assert_called_once_with(_pip_cmd())
+            with mock.patch(f"{_MODULE}.shutil.which", return_value=UV_PATH):
+                with mock.patch(f"{_MODULE}._pip_config_get", return_value=None):
+                    with mock.patch("subprocess.check_call") as mock_call:
+                        install_requirements("reqs.txt")
+        mock_call.assert_called_once_with(_uv_cmd(), env=mock.ANY)
+        assert "UV_INDEX_URL" not in mock_call.call_args.kwargs["env"]
 
-    def test_with_codeartifact_index(self):
-        with mock.patch(f"{_MODULE}.configure_pip", return_value=EXPECTED_INDEX):
-            with mock.patch("subprocess.check_call") as mock_call:
-                install_requirements("reqs.txt")
-        mock_call.assert_called_once_with(_pip_cmd("-i", EXPECTED_INDEX))
+    def test_with_codeartifact_index_sets_uv_index_url(self):
+        """boto3 index URL is propagated to uv via UV_INDEX_URL."""
+        with mock.patch.dict("os.environ", {}, clear=True):
+            with mock.patch(f"{_MODULE}.configure_pip", return_value=EXPECTED_INDEX):
+                with mock.patch(f"{_MODULE}.shutil.which", return_value=UV_PATH):
+                    with mock.patch(f"{_MODULE}._pip_config_get", return_value=None):
+                        with mock.patch("subprocess.check_call") as mock_call:
+                            install_requirements("reqs.txt")
+        mock_call.assert_called_once_with(_uv_cmd(), env=mock.ANY)
+        assert mock_call.call_args.kwargs["env"]["UV_INDEX_URL"] == EXPECTED_INDEX
 
-    def test_with_cli_fallback_no_index_flag(self):
-        with mock.patch(f"{_MODULE}.configure_pip", return_value=None):
-            with mock.patch("subprocess.check_call") as mock_call:
-                install_requirements("reqs.txt")
-        mock_call.assert_called_once_with(_pip_cmd())
+    def test_cli_fallback_index_recovered_from_pip_config(self):
+        """CLI login returns no index but writes pip.conf → recovered into UV_INDEX_URL."""
+
+        def fake_pip_config(_exe, key):
+            return EXPECTED_INDEX if key == "global.index-url" else None
+
+        with mock.patch.dict("os.environ", {}, clear=True):
+            with mock.patch(f"{_MODULE}.configure_pip", return_value=None):
+                with mock.patch(f"{_MODULE}.shutil.which", return_value=UV_PATH):
+                    with mock.patch(f"{_MODULE}._pip_config_get", side_effect=fake_pip_config):
+                        with mock.patch("subprocess.check_call") as mock_call:
+                            install_requirements("reqs.txt")
+        assert mock_call.call_args.kwargs["env"]["UV_INDEX_URL"] == EXPECTED_INDEX
+
+    def test_extra_index_and_trusted_host_propagated(self):
+        """extra-index-url and trusted-host from pip config flow to uv env vars."""
+
+        def fake_pip_config(_exe, key):
+            return {
+                "global.index-url": "https://primary/simple/",
+                "global.extra-index-url": "https://extra/simple/",
+                "global.trusted-host": "extra",
+            }.get(key)
+
+        with mock.patch.dict("os.environ", {}, clear=True):
+            with mock.patch(f"{_MODULE}.configure_pip", return_value=None):
+                with mock.patch(f"{_MODULE}.shutil.which", return_value=UV_PATH):
+                    with mock.patch(f"{_MODULE}._pip_config_get", side_effect=fake_pip_config):
+                        with mock.patch("subprocess.check_call") as mock_call:
+                            install_requirements("reqs.txt")
+        env = mock_call.call_args.kwargs["env"]
+        assert env["UV_INDEX_URL"] == "https://primary/simple/"
+        assert env["UV_EXTRA_INDEX_URL"] == "https://extra/simple/"
+        assert env["UV_INSECURE_HOST"] == "extra"
+
+    def test_bootstraps_uv_when_missing(self):
+        """uv absent → pip install uv, then uv install."""
+        with mock.patch.dict("os.environ", {}, clear=True):
+            with mock.patch(
+                f"{_MODULE}.shutil.which", side_effect=[None, UV_PATH]
+            ):
+                with mock.patch(f"{_MODULE}._pip_config_get", return_value=None):
+                    with mock.patch("subprocess.check_call") as mock_call:
+                        install_requirements("reqs.txt", python_executable="/usr/bin/python3")
+        bootstrap_call = mock.call(["/usr/bin/python3", "-m", "pip", "install", "uv"])
+        install_call = mock.call(_uv_cmd(), env=mock.ANY)
+        mock_call.assert_has_calls([bootstrap_call, install_call])
 
     def test_custom_python_executable(self):
         with mock.patch.dict("os.environ", {}, clear=True):
-            with mock.patch("subprocess.check_call") as mock_call:
-                install_requirements("reqs.txt", python_executable="/usr/bin/python3")
-        mock_call.assert_called_once_with(
-            ["/usr/bin/python3", "-m", "pip", "install", "-r", "reqs.txt"]
-        )
+            with mock.patch(f"{_MODULE}.shutil.which", return_value=UV_PATH):
+                with mock.patch(f"{_MODULE}._pip_config_get", return_value=None):
+                    with mock.patch("subprocess.check_call") as mock_call:
+                        install_requirements("reqs.txt", python_executable="/usr/bin/python3")
+        mock_call.assert_called_once_with(_uv_cmd(), env=mock.ANY)
 
-    def test_pip_failure_propagates(self):
+    def test_install_failure_propagates(self):
         with mock.patch.dict("os.environ", {}, clear=True):
-            with mock.patch(
-                "subprocess.check_call", side_effect=subprocess.CalledProcessError(1, "pip")
-            ):
-                with pytest.raises(subprocess.CalledProcessError):
-                    install_requirements("reqs.txt")
+            with mock.patch(f"{_MODULE}.shutil.which", return_value=UV_PATH):
+                with mock.patch(f"{_MODULE}._pip_config_get", return_value=None):
+                    with mock.patch(
+                        "subprocess.check_call",
+                        side_effect=subprocess.CalledProcessError(1, "uv"),
+                    ):
+                        with pytest.raises(subprocess.CalledProcessError):
+                            install_requirements("reqs.txt")
 
     def test_auth_method_passed_through(self):
         with mock.patch(f"{_MODULE}.configure_pip", return_value=None) as mock_configure:
-            with mock.patch("subprocess.check_call"):
-                install_requirements("reqs.txt", auth_method=CodeArtifactAuthMethod.BOTO3)
-        mock_configure.assert_called_once_with(auth_method=CodeArtifactAuthMethod.BOTO3)
+            with mock.patch(f"{_MODULE}.shutil.which", return_value=UV_PATH):
+                with mock.patch(f"{_MODULE}._pip_config_get", return_value=None):
+                    with mock.patch("subprocess.check_call"):
+                        install_requirements("reqs.txt", auth_method=CodeArtifactAuthMethod.BOTO3)
+        mock_configure.assert_called_once_with(
+            auth_method=CodeArtifactAuthMethod.BOTO3, python_executable=sys.executable
+        )
 
 
 # ---------------------------------------------------------------------------
