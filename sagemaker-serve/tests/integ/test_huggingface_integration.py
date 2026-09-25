@@ -31,6 +31,7 @@ ENDPOINT_NAME_PREFIX = "hf-test-endpoint"
 
 
 @pytest.mark.slow_test
+@pytest.mark.skip_in_pr_check
 def test_huggingface_build_deploy_invoke_cleanup():
     """Integration test for HuggingFace model build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting HuggingFace integration test...")

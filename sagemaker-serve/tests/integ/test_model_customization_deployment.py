@@ -325,6 +325,7 @@ class TestModelCustomizationFromModelPackage:
         assert model is not None
         assert model.model_arn is not None
 
+    @pytest.mark.skip_in_pr_check
     def test_deploy_from_model_package(
         self, model_package_arn, cleanup_endpoints, sagemaker_session
     ):

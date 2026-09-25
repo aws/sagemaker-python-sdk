@@ -31,6 +31,7 @@ ENDPOINT_NAME_PREFIX = "tei-test-endpoint"
 
 
 @pytest.mark.slow_test
+@pytest.mark.skip_in_pr_check
 def test_tei_build_deploy_invoke_cleanup():
     """Integration test for TEI model build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting TEI integration test...")
