@@ -327,8 +327,7 @@ class SingletonMeta(type):
 
 
 class _ClientCacheMeta(type):
-    """
-    Metaclass that caches instances per constructor arguments.
+    """Metaclass that caches instances per constructor arguments.
 
     A call with no arguments returns the process-wide default instance, creating it
     from the default credential chain if none exists yet. A call with an explicit
@@ -381,8 +380,7 @@ class _ClientCacheMeta(type):
 
 
 class SageMakerClient(metaclass=_ClientCacheMeta):
-    """
-    Cached factory for SageMaker boto3 clients.
+    """Cached factory for SageMaker boto3 clients.
 
     Clients are cached per (session, region_name, config). Passing an explicit boto3
     ``session`` always yields clients signed with that session's credentials, even if
