@@ -123,6 +123,7 @@ class TestServerfulComputeMapping:
         trainer = _ConcreteTrainer()
         trainer.compute = MagicMock(
             instance_type="ml.p4d.24xlarge",
+            instance_preferences=None,
             instance_count=4,
             volume_size_in_gb=300,
             keep_alive_period_in_seconds=1200,
@@ -142,6 +143,7 @@ class TestServerfulComputeMapping:
         trainer = _ConcreteTrainer()
         trainer.compute = MagicMock(
             instance_type="ml.p5.48xlarge",
+            instance_preferences=None,
             instance_count=2,
             volume_size_in_gb=500,
             keep_alive_period_in_seconds=0,
@@ -161,6 +163,7 @@ class TestServerfulComputeMapping:
         trainer = _ConcreteTrainer()
         trainer.compute = MagicMock(
             instance_type="ml.p4d.24xlarge",
+            instance_preferences=None,
             instance_count=1,
             volume_size_in_gb=30,
             keep_alive_period_in_seconds=0,

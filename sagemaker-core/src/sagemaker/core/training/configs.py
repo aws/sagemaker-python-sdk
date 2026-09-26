@@ -171,6 +171,10 @@ class Compute(shapes.ResourceConfig):
     def _model_validator(self) -> "Compute":
         """Convert Unassigned values to None and validate instance_preferences."""
         converted = convert_unassigned_to_none(self)
+        # Nested preferences keep Unassigned() on unset fields, which model_dump
+        # flags per element; normalise them the same way as the top level.
+        for preference in converted.instance_preferences or ():
+            convert_unassigned_to_none(preference)
         validate_instance_preferences(converted)
         return converted
 
