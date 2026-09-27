@@ -240,6 +240,15 @@ class _LazyJumpStartSagemakerSession:  # pylint: disable=too-few-public-methods
     def __setattr__(self, name, value):
         setattr(type(self)._resolve(), name, value)
 
+    def __delattr__(self, name):
+        # Forwarded so that ``unittest.mock.patch`` tears down cleanly. For a
+        # class-level attribute mock records ``is_local=False``, sets the mock
+        # via ``__setattr__`` (creating an instance attribute on the real
+        # session) and restores by calling ``delattr``. Without this method the
+        # teardown raises ``AttributeError`` and leaves the mock installed on
+        # the process-wide session.
+        delattr(type(self)._resolve(), name)
+
     def __copy__(self):
         return copy.copy(type(self)._resolve())
 

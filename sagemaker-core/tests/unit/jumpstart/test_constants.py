@@ -90,3 +90,49 @@ def test_failed_build_degrades_to_none_contract(caplog):
         assert _LazyJumpStartSagemakerSession._resolve() is None
         with pytest.raises(AttributeError):
             _ = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION.boto_region_name
+
+
+def test_mock_patch_of_class_level_attribute_tears_down_cleanly():
+    """``mock.patch`` on a class-level session method must restore the original and
+    leave nothing behind on the process-wide session.
+
+    mock records ``is_local=False`` for a class-level attribute (it is absent from
+    the instance ``__dict__``) and restores it by calling ``delattr``, so the proxy
+    must forward ``__delattr__``. Without that forwarding the teardown raises
+    ``AttributeError`` and the mock leaks into every later test in the same worker.
+    """
+
+    class FakeSession:
+        """Stands in for ``Session``: ``read_s3_file`` is a class-level attribute."""
+
+        def read_s3_file(self):
+            return "real"
+
+    fake = FakeSession()
+    with patch.object(constants, "Session", return_value=fake):
+        proxy = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+        assert proxy.read_s3_file() == "real"
+
+        with patch.object(proxy, "read_s3_file", return_value="mocked"):
+            assert proxy.read_s3_file() == "mocked"
+
+        # Teardown must restore the class method and leave no shadowing instance
+        # attribute behind on the shared session.
+        assert proxy.read_s3_file() == "real"
+        assert "read_s3_file" not in fake.__dict__
+
+
+def test_mock_patch_of_instance_level_attribute_tears_down_cleanly():
+    """The instance-attribute path (``is_local=True``, restored via ``setattr``)
+    must keep working -- guards against a regression in ``__setattr__`` forwarding."""
+
+    class FakeSession:
+        def __init__(self):
+            self.sagemaker_client = "real-client"
+
+    fake = FakeSession()
+    with patch.object(constants, "Session", return_value=fake):
+        proxy = constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION
+        with patch.object(proxy, "sagemaker_client", "mock-client"):
+            assert proxy.sagemaker_client == "mock-client"
+        assert proxy.sagemaker_client == "real-client"
