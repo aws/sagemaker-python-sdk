@@ -211,9 +211,46 @@ class ModelStep(ConfigurableRetryStep):
         """A Properties object representing the appropriate SageMaker response data model."""
         return self._properties
 
+    @staticmethod
+    def _repack_inputs_for(model):
+        """Return the repack inputs for ``model`` mapped to _RepackModelStep's params.
+
+        Handles both a v3 ``ModelBuilder`` (what ``ModelBuilder.register()``/``.build()``
+        place into the pipeline context) and a legacy ``sagemaker.core.resources.Model``.
+        A ``ModelBuilder`` exposes these under different names (``role_arn``,
+        ``s3_model_data_url``, ``model_name``) and carries its inference requirements on
+        its ``source_code``; normalize them here. See GH #5828 / #5829.
+        """
+        from sagemaker.serve.model_builder import ModelBuilder
+
+        if isinstance(model, ModelBuilder):
+            source_code = getattr(model, "source_code", None)
+            requirements = getattr(source_code, "requirements", None) if source_code else None
+            return {
+                "name": getattr(model, "model_name", None),
+                "sagemaker_session": model.sagemaker_session,
+                "role": getattr(model, "role_arn", None),
+                "model_data": getattr(model, "s3_model_data_url", None),
+                "entry_point": getattr(model, "entry_point", None),
+                "source_dir": getattr(model, "source_dir", None),
+                "requirements": requirements,
+            }
+        # Legacy sagemaker.core.resources.Model path.
+        return {
+            "name": getattr(model, "name", None),
+            "sagemaker_session": getattr(model, "sagemaker_session", None),
+            "role": getattr(model, "role", None),
+            "model_data": getattr(model, "model_data", None),
+            "entry_point": getattr(model, "entry_point", None),
+            "source_dir": getattr(model, "source_dir", None),
+            "requirements": getattr(model, "requirements", None),
+        }
+
     def _append_repack_model_step(self):
         """Create and append a `_RepackModelStep` for the runtime repack"""
-        if isinstance(self._model, Model):
+        from sagemaker.serve.model_builder import ModelBuilder
+
+        if isinstance(self._model, (Model, ModelBuilder)):
             model_list = [self._model]
         else:
             logger.warning("No models to repack")
@@ -224,27 +261,25 @@ class ModelStep(ConfigurableRetryStep):
         security_group_ids, subnets = self._resolve_repack_model_step_vpc_configs()
 
         for i, model in enumerate(model_list):
+            # need_runtime_repack holds the id() of the original model/builder object,
+            # so the membership test must run against ``model`` itself, not a wrapper.
             runtime_repack_flg = (
                 self._need_runtime_repack and id(model) in self._need_runtime_repack
             )
             if runtime_repack_flg:
-                name_base = model.name or i
+                fields = self._repack_inputs_for(model)
+                name_base = fields["name"] or i
                 repack_model_step = _RepackModelStep(
                     name="{}-{}-{}".format(self.name, _REPACK_MODEL_NAME_BASE, name_base),
                     sagemaker_session=(
                         self._repack_model_step_settings.pop("sagemaker_session", None)
-                        or self._model.sagemaker_session
-                        or model.sagemaker_session
+                        or fields["sagemaker_session"]
                     ),
-                    role=(
-                        self._repack_model_step_settings.pop("role", None)
-                        or self._model.role
-                        or model.role
-                    ),
-                    model_data=model.model_data,
-                    entry_point=model.entry_point,
-                    source_dir=model.source_dir,
-                    dependencies=model.dependencies,
+                    role=(self._repack_model_step_settings.pop("role", None) or fields["role"]),
+                    model_data=fields["model_data"],
+                    entry_point=fields["entry_point"],
+                    source_dir=fields["source_dir"],
+                    requirements=fields["requirements"],
                     subnets=subnets,
                     security_group_ids=security_group_ids,
                     description=(
@@ -253,14 +288,6 @@ class ModelStep(ConfigurableRetryStep):
                     ),
                     depends_on=self.depends_on,
                     retry_policies=self._repack_model_retry_policies,
-                    output_path=(
-                        self._repack_model_step_settings.pop("output_path", None)
-                        or self._runtime_repack_output_prefix
-                    ),
-                    output_kms_key=(
-                        self._repack_model_step_settings.pop("output_kms_key", None)
-                        or model.model_kms_key
-                    ),
                     **self._repack_model_step_settings,
                 )
                 self.steps.append(repack_model_step)
@@ -296,9 +323,10 @@ class ModelStep(ConfigurableRetryStep):
             subnets = self._repack_model_step_settings.pop("subnets", None)
             return security_group_ids, subnets
 
-        if self._model.vpc_config:
-            security_group_ids = self._model.vpc_config.get("SecurityGroupIds", None)
-            subnets = self._model.vpc_config.get("Subnets", None)
+        vpc_config = getattr(self._model, "vpc_config", None)
+        if vpc_config:
+            security_group_ids = vpc_config.get("SecurityGroupIds", None)
+            subnets = vpc_config.get("Subnets", None)
             return security_group_ids, subnets
 
         return None, None
