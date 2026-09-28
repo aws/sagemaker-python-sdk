@@ -18,6 +18,7 @@ from enum import Enum
 import os
 import json
 import re
+import shlex
 import shutil
 from tempfile import TemporaryDirectory
 from typing import Optional, List, Union, Dict, Any, ClassVar
@@ -1269,8 +1270,20 @@ class ModelTrainer(BaseModel):
                     "Both 'command' and 'entry_script' are provided in the SourceCode. "
                     "Defaulting to 'command'."
                 )
-            base_command = source_code.command.split()
-            base_command = " ".join(base_command)
+            command_parts = source_code.command.split()
+            if source_code.args:
+                # Shell-quote each arg so values with spaces or special characters are
+                # passed through as single, literal arguments to the executed command.
+                command_parts.extend(shlex.quote(str(arg)) for arg in source_code.args)
+            base_command = " ".join(command_parts)
+            if self.hyperparameters:
+                logger.warning(
+                    "Hyperparameters are set but are not passed as command-line arguments "
+                    "when 'command' is used in the SourceCode. They are available inside the "
+                    "training container via the 'SM_HPS' environment variable, e.g. "
+                    "`hps = json.loads(os.environ['SM_HPS'])`. To pass arguments to your "
+                    "'command', use the SourceCode 'args' field."
+                )
 
         install_requirements = ""
         if source_code.requirements:
