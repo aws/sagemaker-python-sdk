@@ -10125,7 +10125,7 @@ class DataCaptureConfigSummary(Base):
     capture_status: StrPipeVar
     current_sampling_percentage: int
     destination_s3_uri: StrPipeVar
-    kms_key_id: StrPipeVar
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
 class DebugRuleEvaluationStatus(Base):
