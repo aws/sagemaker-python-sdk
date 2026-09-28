@@ -5,6 +5,7 @@ or disable its propagation, and it must install a NullHandler on the top-level
 ``sagemaker`` logger so records are safely discarded until the application configures
 logging.
 """
+
 import logging
 
 from sagemaker.core.config.config_utils import get_sagemaker_config_logger
