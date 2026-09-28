@@ -99,6 +99,7 @@ def remote(
     use_torchrun: bool = False,
     use_mpirun: bool = False,
     nproc_per_node: Optional[int] = None,
+    training_plan_arn: str = None,
 ):
     """Decorator for running the annotated function as a SageMaker training job.
 
@@ -234,6 +235,10 @@ def remote(
           latency than over using SageMaker managed warm pools alone by caching the package source
           downloaded in the previous runs.
 
+        training_plan_arn (str): The Amazon Resource Name (ARN) of the training plan to use for
+          this job. Training plans provide reserved capacity for training jobs. Defaults to
+          ``None``.
+
         max_retry_attempts (int): The max number of times the job is retried on
           ``InternalServerFailure`` Error from SageMaker service. Defaults to 1.
 
@@ -340,6 +345,7 @@ def remote(
             use_torchrun=use_torchrun,
             use_mpirun=use_mpirun,
             nproc_per_node=nproc_per_node,
+            training_plan_arn=training_plan_arn,
         )
 
         @functools.wraps(func)
@@ -558,6 +564,7 @@ class RemoteExecutor(object):
         use_torchrun: bool = False,
         use_mpirun: bool = False,
         nproc_per_node: Optional[int] = None,
+        training_plan_arn: str = None,
     ):
         """Constructor for RemoteExecutor
 
@@ -690,6 +697,10 @@ class RemoteExecutor(object):
               up latency than over using SageMaker managed warm pools alone by caching the package
               source downloaded in the previous runs.
 
+            training_plan_arn (str): The Amazon Resource Name (ARN) of the training plan to use
+              for this job. Training plans provide reserved capacity for training jobs. Defaults
+              to ``None``.
+
             max_parallel_jobs (int): Maximum number of jobs that run in parallel. Defaults to 1.
 
             max_retry_attempts (int): The max number of times the job is retried on
@@ -812,6 +823,7 @@ class RemoteExecutor(object):
             use_torchrun=use_torchrun,
             use_mpirun=use_mpirun,
             nproc_per_node=nproc_per_node,
+            training_plan_arn=training_plan_arn,
         )
 
         self._state_condition = threading.Condition()
