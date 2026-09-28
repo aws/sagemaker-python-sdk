@@ -13,7 +13,7 @@ _sagemaker_root_logger = _logging.getLogger("sagemaker")
 if not any(isinstance(_h, _logging.NullHandler) for _h in _sagemaker_root_logger.handlers):
     _sagemaker_root_logger.addHandler(_logging.NullHandler())
 
-enable_textual_rich_console_and_traceback()
+enable_textual_rich_console_and_traceback()  # opt-in; no-op unless SAGEMAKER_ENABLE_RICH_LOGGING is set
 
 # Install the meta-path finder that gives actionable migration guidance for v2
 # modules removed in v3. sagemaker-core is the universal dependency of every v3
