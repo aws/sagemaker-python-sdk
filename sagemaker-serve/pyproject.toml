@@ -27,7 +27,7 @@ dependencies = [
     "boto3>=1.42.2,<2.0",
     "botocore>=1.35.75,<2.0",
     "deepdiff",
-    "mlflow",
+    "mlflow-skinny",
     "sagemaker_schema_inference_artifacts",
     "pytest",
     "tqdm",
@@ -39,6 +39,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Full MLflow. The client only needs the tracking/registry APIs from mlflow-skinny;
+# the full MLflow model-flavor loaders (mlflow.pyfunc/sklearn/pytorch/...) are used
+# only by the container-side inference handlers that run inside the DLC. Install this
+# extra to pull in the full MLflow package locally.
+full = ["mlflow"]
 test = [
     "pytest",
     "pytest-cov",
