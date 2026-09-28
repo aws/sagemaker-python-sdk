@@ -1037,6 +1037,7 @@ class ModelTrainer(BaseModel):
         key_prefix: Optional[str] = None,
         ignore_patterns: Optional[List[str]] = None,
         instance_group_names: Optional[List[str]] = None,
+        kms_key: Optional[str] = None,
     ) -> Channel:
         """Create an input data channel for the training job.
 
@@ -1060,8 +1061,15 @@ class ModelTrainer(BaseModel):
                 channel's data should be assigned to. Only applied when the channel is
                 built from a URI/local-path data source (not a caller-supplied
                 ``S3DataSource``/``FileSystemDataSource``, which the caller controls).
+            kms_key (Optional[str]): The Amazon Web Services KMS key id (or ARN/alias) to use for
+                server-side encryption when uploading local data to S3. If not specified, the
+                ``kms_key_id`` of this trainer's ``output_data_config`` is used (mirroring the V2
+                ``Estimator`` behavior of encrypting staged user code with the output KMS key).
+                Only applied when ``data_source`` is a local file path.
         """
         from sagemaker.core.helper.pipeline_variable import PipelineVariable
+
+        upload_extra_args = self._resolve_upload_extra_args(kms_key)
 
         # Pass the field only when provided, so it stays unset (Unassigned) by default.
         instance_group_kwargs = (
@@ -1138,12 +1146,14 @@ class ModelTrainer(BaseModel):
                             path=copied_path,
                             bucket=staging_bucket,
                             key_prefix=effective_prefix,
+                            extra_args=upload_extra_args,
                         )
                     else:
                         s3_uri = self.sagemaker_session.upload_data(
                             path=data_source,
                             bucket=staging_bucket,
                             key_prefix=effective_prefix,
+                            extra_args=upload_extra_args,
                         )
                     channel = Channel(
                         channel_name=channel_name,
@@ -1171,6 +1181,22 @@ class ModelTrainer(BaseModel):
         else:
             raise ValueError(f"Unsupported data_source type: {type(data_source)}")
         return channel
+
+    def _resolve_upload_extra_args(self, kms_key: Optional[str] = None) -> Optional[dict]:
+        """Build S3 ``ExtraArgs`` for encrypting local source/data uploads with KMS.
+
+        Uses the explicit ``kms_key`` if given, otherwise falls back to the
+        ``kms_key_id`` on this trainer's ``output_data_config`` (V2 ``Estimator`` parity:
+        staged user code is encrypted with the output KMS key). Returns ``None`` when no
+        usable string key is configured, so behavior is unchanged by default (GH #5956).
+        A pipeline-variable key is ignored here because uploads happen at SDK compile time.
+        """
+        resolved_key = kms_key
+        if resolved_key is None and self.output_data_config is not None:
+            resolved_key = getattr(self.output_data_config, "kms_key_id", None)
+        if isinstance(resolved_key, str) and resolved_key:
+            return {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": resolved_key}
+        return None
 
     def _get_input_data_config(
         self,
