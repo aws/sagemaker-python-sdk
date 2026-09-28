@@ -4,6 +4,7 @@ These lock in that importing the SDK does not override sys.excepthook or restyle
 process-global rich console unless the user explicitly opts in via
 SAGEMAKER_ENABLE_RICH_LOGGING (or a force=True call).
 """
+
 import os
 from unittest.mock import patch
 
@@ -45,9 +46,10 @@ def test_disabled_by_default_is_noop():
     # or install rich tracebacks (no sys.excepthook override).
     with patch.dict(os.environ, {}, clear=False):
         os.environ.pop(RICH_LOGGING_OPT_IN_ENV_VAR, None)
-        with patch.object(utils, "reconfigure") as mock_reconfigure, patch.object(
-            utils, "install"
-        ) as mock_install:
+        with (
+            patch.object(utils, "reconfigure") as mock_reconfigure,
+            patch.object(utils, "install") as mock_install,
+        ):
             enable_textual_rich_console_and_traceback()
             mock_reconfigure.assert_not_called()
             mock_install.assert_not_called()
@@ -56,9 +58,10 @@ def test_disabled_by_default_is_noop():
 
 def test_enabled_when_opted_in_via_env():
     with patch.dict(os.environ, {RICH_LOGGING_OPT_IN_ENV_VAR: "true"}):
-        with patch.object(utils, "reconfigure") as mock_reconfigure, patch.object(
-            utils, "install"
-        ) as mock_install:
+        with (
+            patch.object(utils, "reconfigure") as mock_reconfigure,
+            patch.object(utils, "install") as mock_install,
+        ):
             enable_textual_rich_console_and_traceback()
             mock_reconfigure.assert_called_once()
             mock_install.assert_called_once()
@@ -68,9 +71,10 @@ def test_enabled_when_opted_in_via_env():
 def test_force_enables_regardless_of_env():
     with patch.dict(os.environ, {}, clear=False):
         os.environ.pop(RICH_LOGGING_OPT_IN_ENV_VAR, None)
-        with patch.object(utils, "reconfigure") as mock_reconfigure, patch.object(
-            utils, "install"
-        ) as mock_install:
+        with (
+            patch.object(utils, "reconfigure") as mock_reconfigure,
+            patch.object(utils, "install") as mock_install,
+        ):
             enable_textual_rich_console_and_traceback(force=True)
             mock_reconfigure.assert_called_once()
             mock_install.assert_called_once()
@@ -78,9 +82,10 @@ def test_force_enables_regardless_of_env():
 
 def test_enable_is_idempotent_when_opted_in():
     with patch.dict(os.environ, {RICH_LOGGING_OPT_IN_ENV_VAR: "1"}):
-        with patch.object(utils, "reconfigure") as mock_reconfigure, patch.object(
-            utils, "install"
-        ) as mock_install:
+        with (
+            patch.object(utils, "reconfigure") as mock_reconfigure,
+            patch.object(utils, "install") as mock_install,
+        ):
             enable_textual_rich_console_and_traceback()
             enable_textual_rich_console_and_traceback()
             # The one-shot latch prevents re-installing on the second call.

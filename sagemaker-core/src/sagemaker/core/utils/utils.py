@@ -154,9 +154,7 @@ def is_rich_logging_enabled() -> bool:
     Returns:
         bool: True if rich console/traceback output has been opted into.
     """
-    return (
-        os.environ.get(RICH_LOGGING_OPT_IN_ENV_VAR, "").strip().lower() in _TRUTHY_ENV_VALUES
-    )
+    return os.environ.get(RICH_LOGGING_OPT_IN_ENV_VAR, "").strip().lower() in _TRUTHY_ENV_VALUES
 
 
 textual_rich_console_and_traceback_enabled = False
