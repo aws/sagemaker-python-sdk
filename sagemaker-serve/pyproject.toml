@@ -74,7 +74,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
 markers = [
-    "skip_in_pr_check: mark a test that is excluded from PR check runs. Long-running or hang-prone tests that would otherwise push the run past the CodeBuild timeout; they run in a dedicated scheduled CI run instead.",
+    "slow_test: mark a test that is excluded from PR check runs. Long-running or hang-prone tests that would otherwise push the run past the CodeBuild timeout; they run in a dedicated scheduled CI run instead.",
 ]
 
 [tool.black]
