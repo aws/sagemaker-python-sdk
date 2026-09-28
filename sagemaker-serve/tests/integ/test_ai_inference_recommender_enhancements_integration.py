@@ -14,6 +14,7 @@
 ``list_benchmarks`` / ``list_recommendations`` filtering, ``deploy`` from a
 recommendation row (``mb.recommendations.best``), and ``compare_benchmarks``.
 """
+
 from __future__ import absolute_import
 
 import logging
@@ -94,7 +95,6 @@ def test_list_benchmarks_and_recommendations_plumbing():
     logger.info("Non-matching filters correctly returned empty lists.")
 
 
-@pytest.mark.slow_test
 @pytest.mark.gpu_intensive
 def test_recommendation_deploy_best_and_compare_e2e():
     """Full flow across all three enhancements, sharing one rec job + endpoint:

@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for dataset_builder.py"""
+
 import datetime
 import pytest
 from unittest.mock import Mock, patch, MagicMock
@@ -152,11 +153,13 @@ class TestDatasetBuilder:
 
     @pytest.fixture
     def sample_dataframe(self):
-        return pd.DataFrame({
-            "id": [1, 2, 3],
-            "value": [1.1, 2.2, 3.3],
-            "event_time": ["2024-01-01", "2024-01-02", "2024-01-03"],
-        })
+        return pd.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "value": [1.1, 2.2, 3.3],
+                "event_time": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            }
+        )
 
     def test_initialization_with_dataframe(self, mock_session, sample_dataframe):
         builder = DatasetBuilder(
@@ -394,7 +397,9 @@ class TestDatasetBuilderRegisterAsDataset:
     def test_collect_source_fg_arns_with_merged_fg(self, mock_session, mock_feature_group):
         """Collects base + merged FG ARNs."""
         merged_fg = MagicMock(spec=FeatureGroup)
-        merged_fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/orders-fg"
+        merged_fg.feature_group_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:feature-group/orders-fg"
+        )
 
         builder = DatasetBuilder(
             _sagemaker_session=mock_session,
@@ -459,7 +464,9 @@ class TestDatasetBuilderRegisterAsDataset:
             assert call_kwargs["content_metadata"]["SourceFeatureGroups"] == [
                 "arn:aws:sagemaker:us-west-2:123456789012:feature-group/customers-fg"
             ]
-            assert call_kwargs["content_metadata"]["ExtractionMethod"] == "FeatureStoreDatasetBuilder"
+            assert (
+                call_kwargs["content_metadata"]["ExtractionMethod"] == "FeatureStoreDatasetBuilder"
+            )
             assert call_kwargs["content_metadata"]["AthenaQueryExecutionId"] == "abc-123"
             assert call_kwargs["sagemaker_session"] == mock_session
             assert call_kwargs["wait"] is False
@@ -520,3 +527,77 @@ class TestDatasetBuilderRegisterAsDataset:
             )
             # Should NOT call DataSet.create since no FG ARNs
             mock_create.assert_not_called()
+
+    def test_to_csv_from_feature_group_invokes_register_when_enabled(
+        self, mock_session, mock_feature_group
+    ):
+        """_to_csv_from_feature_group calls _register_as_hub_content_dataset when the
+        register_as_dataset flag is set. This guards the wiring: the helper existed but
+        was previously never invoked from the CSV extraction path."""
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=mock_feature_group,
+            _output_path="s3://bucket/output",
+            _register_as_dataset=True,
+        )
+
+        base_fg = MagicMock()
+        base_fg.event_time_identifier_feature.feature_type = FeatureTypeEnum.STRING
+        athena_result = {
+            "QueryExecution": {
+                "QueryExecutionId": "abc-123",
+                "ResultConfiguration": {"OutputLocation": "s3://bucket/output/result.csv"},
+                "Query": "SELECT *",
+            }
+        }
+
+        with patch(
+            "sagemaker.mlops.feature_store.dataset_builder.construct_feature_group_to_be_merged",
+            return_value=base_fg,
+        ), patch.object(
+            DatasetBuilder, "_construct_query_string", return_value="SELECT *"
+        ), patch.object(
+            DatasetBuilder, "_run_query", return_value=athena_result
+        ), patch.object(
+            DatasetBuilder, "_register_as_hub_content_dataset"
+        ) as mock_register:
+            csv_path, _ = builder._to_csv_from_feature_group()
+
+        assert csv_path == "s3://bucket/output/result.csv"
+        mock_register.assert_called_once_with("s3://bucket/output/result.csv", "abc-123")
+
+    def test_to_csv_from_feature_group_skips_register_when_disabled(
+        self, mock_session, mock_feature_group
+    ):
+        """_to_csv_from_feature_group does NOT register a Dataset when the flag is unset
+        (default behavior — no extra CreateHubContent call, no extra permissions)."""
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=mock_feature_group,
+            _output_path="s3://bucket/output",
+            _register_as_dataset=False,
+        )
+
+        base_fg = MagicMock()
+        base_fg.event_time_identifier_feature.feature_type = FeatureTypeEnum.STRING
+        athena_result = {
+            "QueryExecution": {
+                "QueryExecutionId": "abc-123",
+                "ResultConfiguration": {"OutputLocation": "s3://bucket/output/result.csv"},
+                "Query": "SELECT *",
+            }
+        }
+
+        with patch(
+            "sagemaker.mlops.feature_store.dataset_builder.construct_feature_group_to_be_merged",
+            return_value=base_fg,
+        ), patch.object(
+            DatasetBuilder, "_construct_query_string", return_value="SELECT *"
+        ), patch.object(
+            DatasetBuilder, "_run_query", return_value=athena_result
+        ), patch.object(
+            DatasetBuilder, "_register_as_hub_content_dataset"
+        ) as mock_register:
+            builder._to_csv_from_feature_group()
+
+        mock_register.assert_not_called()

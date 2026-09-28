@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Functions for generating ECR image URIs for pre-built SageMaker Docker images."""
+
 from __future__ import absolute_import
 
 import json
@@ -279,6 +280,15 @@ def retrieve(
 
     if repo == f"{framework}-inference-graviton":
         container_version = f"{container_version}-sagemaker"
+
+    # Some images encode the accelerator directly in the tag (e.g. the amzn2023
+    # "<version>-cu133-amzn2023-sagemaker" tag has no "gpu" token), so the standard
+    # cpu/gpu processor token must not be appended. The processor is still used
+    # above to select the container_version; drop it from the tag when the version
+    # config opts out via "processor_in_tag": false.
+    if not version_config.get("processor_in_tag", True):
+        processor = None
+
     _validate_instance_deprecation(framework, instance_type, version)
 
     tag = _get_image_tag(

@@ -19,6 +19,7 @@ without consuming compute. No training jobs are submitted.
 A small sample dataset is uploaded to the SageMaker default bucket
 during test setup and cleaned up afterward.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -34,10 +35,8 @@ from sagemaker.train.common import TrainingType
 from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator
 from sagemaker.core.training.configs import TrainingJobCompute
 
-
 MODEL_PACKAGE_GROUP = (
-    "arn:aws:sagemaker:us-west-2:729646638167:"
-    "model-package-group/sdk-test-finetuned-models"
+    "arn:aws:sagemaker:us-west-2:729646638167:" "model-package-group/sdk-test-finetuned-models"
 )
 MODEL_ID = "meta-textgeneration-llama-3-2-1b-instruct"
 DATASET_KEY = "dry-run-integ-test/sample_train.jsonl"
@@ -53,14 +52,18 @@ def valid_dataset(sagemaker_session):
     resp = s3.list_objects_v2(Bucket=bucket, Prefix=DATASET_KEY, MaxKeys=1)
     if resp.get("KeyCount", 0) == 0:
         samples = [
-            {"messages": [
-                {"role": "user", "content": [{"text": "What is 2+2?"}]},
-                {"role": "assistant", "content": [{"text": "4"}]},
-            ]},
-            {"messages": [
-                {"role": "user", "content": [{"text": "Capital of France?"}]},
-                {"role": "assistant", "content": [{"text": "Paris"}]},
-            ]},
+            {
+                "messages": [
+                    {"role": "user", "content": [{"text": "What is 2+2?"}]},
+                    {"role": "assistant", "content": [{"text": "4"}]},
+                ]
+            },
+            {
+                "messages": [
+                    {"role": "user", "content": [{"text": "Capital of France?"}]},
+                    {"role": "assistant", "content": [{"text": "Paris"}]},
+                ]
+            },
         ]
         body = "\n".join(json.dumps(s) for s in samples)
         s3.put_object(Bucket=bucket, Key=DATASET_KEY, Body=body.encode("utf-8"))
@@ -231,6 +234,7 @@ class TestEvaluateDryRun:
 
     def test_benchmark_evaluate_dry_run_returns_none(self, sagemaker_session):
         from sagemaker.train.evaluate import get_benchmarks
+
         Benchmark = get_benchmarks()
 
         evaluator = BenchMarkEvaluator(

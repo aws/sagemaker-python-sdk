@@ -17,6 +17,7 @@ evaluation, ``HyperPodCompute`` for cluster evaluation) and the two methods that
 consume it: ``_write_and_submit_smtj_recipe`` (serverful) and
 ``_submit_hyperpod_eval_job`` (HyperPod).
 """
+
 from __future__ import absolute_import
 
 from types import SimpleNamespace
@@ -28,7 +29,6 @@ from sagemaker.core.training.configs import Compute, HyperPodCompute
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.evaluate.base_evaluator import BaseEvaluator
-
 
 DEFAULT_MODEL = "llama3-2-1b-instruct"
 DEFAULT_S3_OUTPUT = "s3://my-bucket/outputs"
@@ -45,9 +45,7 @@ def mock_session():
     session = MagicMock()
     session.boto_region_name = "us-west-2"
     session.boto_session = MagicMock()
-    session.get_caller_identity_arn.return_value = (
-        "arn:aws:iam::123456789012:role/test-role"
-    )
+    session.get_caller_identity_arn.return_value = "arn:aws:iam::123456789012:role/test-role"
     return session
 
 
@@ -116,7 +114,9 @@ def _bare_evaluator(compute):
     evaluator = BaseEvaluator.__new__(BaseEvaluator)
     object.__setattr__(evaluator, "compute", compute)
     object.__setattr__(evaluator, "sagemaker_session", MagicMock())
-    object.__setattr__(evaluator, "training_image", "123.dkr.ecr.us-west-2.amazonaws.com/img:latest")
+    object.__setattr__(
+        evaluator, "training_image", "123.dkr.ecr.us-west-2.amazonaws.com/img:latest"
+    )
     object.__setattr__(evaluator, "s3_output_path", DEFAULT_S3_OUTPUT)
     object.__setattr__(evaluator, "base_eval_name", "eval")
     object.__setattr__(evaluator, "recipe", "recipe-name")
@@ -185,11 +185,11 @@ class TestSubmitHyperpodEvalJob:
     """``_submit_hyperpod_eval_job`` reads cluster config from the ``compute`` field."""
 
     @patch("sagemaker.train.evaluate.base_evaluator.validate_hyperpod_compute")
-    @patch("sagemaker.train.evaluate.base_evaluator.TrainDefaults.verify_hyperpod_caller_permissions")
+    @patch(
+        "sagemaker.train.evaluate.base_evaluator.TrainDefaults.verify_hyperpod_caller_permissions"
+    )
     @patch("subprocess.run")
-    def test_uses_compute_cluster_and_parses_job_name(
-        self, mock_run, mock_verify, mock_validate
-    ):
+    def test_uses_compute_cluster_and_parses_job_name(self, mock_run, mock_verify, mock_validate):
         compute = HyperPodCompute(
             cluster_name="my-cluster",
             instance_type="ml.p5.48xlarge",
@@ -215,7 +215,9 @@ class TestSubmitHyperpodEvalJob:
         assert '"recipes.run.replicas": 2' in overrides
 
     @patch("sagemaker.train.evaluate.base_evaluator.validate_hyperpod_compute")
-    @patch("sagemaker.train.evaluate.base_evaluator.TrainDefaults.verify_hyperpod_caller_permissions")
+    @patch(
+        "sagemaker.train.evaluate.base_evaluator.TrainDefaults.verify_hyperpod_caller_permissions"
+    )
     @patch("subprocess.run")
     def test_missing_cluster_name_raises(self, mock_run, mock_verify, mock_validate):
         compute = HyperPodCompute(cluster_name="", instance_type="ml.p5.48xlarge")
@@ -249,12 +251,14 @@ def _submit_overrides(evaluator):
     """Drive _submit_hyperpod_eval_job and return the parsed override dict."""
     import json
 
-    with patch("sagemaker.train.evaluate.base_evaluator.validate_hyperpod_compute"), \
-         patch(
-             "sagemaker.train.evaluate.base_evaluator.TrainDefaults."
-             "verify_hyperpod_caller_permissions"
-         ), \
-         patch("subprocess.run") as mock_run:
+    with (
+        patch("sagemaker.train.evaluate.base_evaluator.validate_hyperpod_compute"),
+        patch(
+            "sagemaker.train.evaluate.base_evaluator.TrainDefaults."
+            "verify_hyperpod_caller_permissions"
+        ),
+        patch("subprocess.run") as mock_run,
+    ):
         mock_run.side_effect = [
             SimpleNamespace(stdout="", stderr=""),  # connect-cluster
             SimpleNamespace(stdout="NAME: eval-job-123\n", stderr=""),  # start-job
@@ -297,10 +301,7 @@ class TestSubmitHyperpodEvalCheckpointResolution:
 
         overrides = _submit_overrides(evaluator)
 
-        assert (
-            overrides["recipes.run.model_name_or_path"]
-            == "s3://bucket/job/output/model.tar.gz"
-        )
+        assert overrides["recipes.run.model_name_or_path"] == "s3://bucket/job/output/model.tar.gz"
 
     def test_trainer_without_training_job_falls_back_to_model_info(self):
         evaluator = _bare_evaluator(self._COMPUTE)

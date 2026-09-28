@@ -14,6 +14,7 @@
 
 These utils may be used inside or outside the config module.
 """
+
 from __future__ import absolute_import
 from collections import deque
 

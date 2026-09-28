@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Implements iterators for deserializing data returned from an inference streaming endpoint."""
+
 from __future__ import absolute_import
 
 from abc import ABC, abstractmethod
@@ -183,7 +184,7 @@ class LineIterator(BaseIterator):
                 # print and move on to next response byte
                 print("Unknown event type:" + chunk)
                 continue
-            
+
             # Check buffer size before writing to prevent unbounded memory consumption
             chunk_size = len(chunk["PayloadPart"]["Bytes"])
             current_size = self.buffer.getbuffer().nbytes
@@ -192,6 +193,6 @@ class LineIterator(BaseIterator):
                     f"Line buffer exceeded maximum size of {_MAX_BUFFER_SIZE} bytes. "
                     f"No newline found in stream."
                 )
-            
+
             self.buffer.seek(0, io.SEEK_END)
             self.buffer.write(chunk["PayloadPart"]["Bytes"])

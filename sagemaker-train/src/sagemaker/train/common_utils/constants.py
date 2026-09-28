@@ -12,20 +12,21 @@
 # language governing permissions and limitations under the License.
 """Constants used across training utilities modules."""
 
+
 class _MLflowConstants:
     """Constants related to MLflow functionality."""
-    
+
     # ARN patterns and prefixes
-    SAGEMAKER_ARN_PREFIX = 'arn:aws:sagemaker:'
-    
+    SAGEMAKER_ARN_PREFIX = "arn:aws:sagemaker:"
+
     # Metric names
-    TOTAL_LOSS_METRIC = 'total_loss'
-    LOSS_METRIC_KEYWORDS = ('loss',)
-    EPOCH_KEYWORD = 'epoch'
-    
+    TOTAL_LOSS_METRIC = "total_loss"
+    LOSS_METRIC_KEYWORDS = ("loss",)
+    EPOCH_KEYWORD = "epoch"
+
     # MLflow run tags
-    MLFLOW_RUN_NAME_TAG = 'mlflow.runName'
-    
+    MLFLOW_RUN_NAME_TAG = "mlflow.runName"
+
     # Error messages
     SAGEMAKER_MLFLOW_REQUIRED_MSG = (
         "sagemaker-mlflow package is required for SageMaker ARN support. "
@@ -35,44 +36,44 @@ class _MLflowConstants:
 
 class _TrainingJobConstants:
     """Constants related to training job monitoring."""
-    
+
     # Status values
     TERMINAL_STATUSES = ["Completed", "Failed", "Stopped"]
     TRAINING_STATUS = "Training"
     COMPLETED_STATUS = "Completed"
     FAILED_STATUS = "Failed"
-    
+
     # Default values
     DEFAULT_POLL_INTERVAL = 3
-    DEFAULT_AWS_REGION = 'us-west-2'
+    DEFAULT_AWS_REGION = "us-west-2"
     DEFAULT_PROGRESS_WAIT_TIME = 20
-    
+
     # UI constants
-    JUPYTER_KERNEL_APP = 'IPKernelApp'
+    JUPYTER_KERNEL_APP = "IPKernelApp"
     PANEL_WIDTH_RATIO = 0.8
     DEFAULT_PANEL_WIDTH = 80
     PROGRESS_BAR_SEGMENTS = 20
     PROGRESS_BAR_DIVISOR = 5
-    
+
     # Display messages and formatting
     TRAINING_COMPLETED_MSG = "✓ Training completed! View metrics in MLflow: {}"
     MLFLOW_URL_ERROR_MSG = "Could not get MLflow URL: {}"
     LOSS_METRICS_HEADER = "\n------------ Loss Metrics by Epoch ------------"
     LOSS_METRICS_FOOTER = "----------------------------------------------"
     STATUS_SEPARATOR = "\n--------------------------------------\n"
-    
+
     # Progress indicators
     COMPLETED_CHECK = "✓"
     RUNNING_CHECK = "⋯"
     RUNNING_DURATION = "Running..."
-    
+
     # Hardcoded server name (should be made configurable in production)
-    DEFAULT_MLFLOW_SERVER = 'mmlu-eval-experiment'
+    DEFAULT_MLFLOW_SERVER = "mmlu-eval-experiment"
 
 
 class _ValidationConstants:
     """Constants for input validation."""
-    
+
     # Error messages
     EMPTY_TRACKING_URI_MSG = "tracking_uri cannot be empty"
     EMPTY_EXPERIMENT_NAME_MSG = "experiment_name cannot be empty"
@@ -82,7 +83,7 @@ class _ValidationConstants:
     EMPTY_REGION_MSG = "region cannot be empty"
     POSITIVE_POLL_MSG = "Poll interval must be positive"
     POSITIVE_TIMEOUT_MSG = "Timeout must be positive or None"
-    
+
     # Validation patterns
     MIN_POLL_INTERVAL = 1
     MIN_TIMEOUT = 1
@@ -90,7 +91,7 @@ class _ValidationConstants:
 
 class _ErrorConstants:
     """Constants for error handling and messages."""
-    
+
     # MLflow errors
     MLFLOW_INIT_ERROR = "Failed to initialize MLflow metrics utility: {}"
     EXPERIMENT_NOT_FOUND = "Experiment '{}' not found"
@@ -102,14 +103,15 @@ class _ErrorConstants:
     LOSS_METRICS_EPOCH_ERROR = "Failed to get loss metrics by epoch: {}"
     TOTAL_LOSS_ERROR = "Failed to get most recent total loss: {}"
     NO_RUNS_FOUND = "No runs found for experiment '{}'{}"
-    
+
     # Endpoint errors
     NO_TRACKING_URL = "No tracking server URL found for server '{}'"
     ENDPOINT_RETRIEVAL_ERROR = "Failed to retrieve tracking server endpoint: {}"
     RESOURCE_NOT_FOUND_ERROR = "MLflow tracking server '{}' not found in region '{}'"
-    
+
     # General error prefixes
     ERROR_PREFIX = "[ERROR] Exception: {}: {}"
+
 
 # Minimum MLflow version required for MTRL training
 MIN_MLFLOW_VERSION = "3.10"

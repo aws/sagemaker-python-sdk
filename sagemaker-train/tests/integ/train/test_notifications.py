@@ -32,6 +32,7 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_notifications.py -v -s
 """
+
 from __future__ import absolute_import
 
 import json
@@ -106,25 +107,25 @@ def sqs_subscriber(sm_session):
     logger.info(f"Created SQS queue: {queue_url}")
 
     # Get queue ARN
-    attrs = sqs_client.get_queue_attributes(
-        QueueUrl=queue_url, AttributeNames=["QueueArn"]
-    )
+    attrs = sqs_client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
     queue_arn = attrs["Attributes"]["QueueArn"]
 
     # Allow SNS to send messages to this queue
-    policy = json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Sid": "AllowSNSPublish",
-            "Effect": "Allow",
-            "Principal": {"Service": "sns.amazonaws.com"},
-            "Action": "sqs:SendMessage",
-            "Resource": queue_arn,
-            "Condition": {
-                "ArnEquals": {"aws:SourceArn": SNS_TOPIC_ARN}
-            },
-        }],
-    })
+    policy = json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "AllowSNSPublish",
+                    "Effect": "Allow",
+                    "Principal": {"Service": "sns.amazonaws.com"},
+                    "Action": "sqs:SendMessage",
+                    "Resource": queue_arn,
+                    "Condition": {"ArnEquals": {"aws:SourceArn": SNS_TOPIC_ARN}},
+                }
+            ],
+        }
+    )
     sqs_client.set_queue_attributes(
         QueueUrl=queue_url,
         Attributes={"Policy": policy},
@@ -196,9 +197,9 @@ def test_notifications_creates_eventbridge_rule_and_cleanup(
     )
 
     # Verify notification rule ARN was set
-    assert sft_trainer.notification_rule_arn is not None, (
-        "Expected notification_rule_arn to be set after trainer construction"
-    )
+    assert (
+        sft_trainer.notification_rule_arn is not None
+    ), "Expected notification_rule_arn to be set after trainer construction"
     rule_arn = sft_trainer.notification_rule_arn
     logger.info(f"EventBridge rule created: {rule_arn}")
 
@@ -209,6 +210,7 @@ def test_notifications_creates_eventbridge_rule_and_cleanup(
     # Try extracting rule name from ARN format: arn:aws:events:region:account:rule/rule-name
     if "/rule/" in rule_arn:
         rule_name = rule_arn.split("/rule/")[-1]
+    logger.debug(f"Resolved rule name: {rule_name}")
 
     rules_response = events_client.list_rules(NamePrefix="sm-pysdk-job-notif")
     rule_names = [r["Name"] for r in rules_response["Rules"]]
@@ -216,9 +218,9 @@ def test_notifications_creates_eventbridge_rule_and_cleanup(
 
     # Find our rule
     matching_rules = [r for r in rules_response["Rules"] if r["Arn"] == rule_arn]
-    assert len(matching_rules) == 1, (
-        f"Expected exactly 1 rule matching ARN {rule_arn}, found {len(matching_rules)}"
-    )
+    assert (
+        len(matching_rules) == 1
+    ), f"Expected exactly 1 rule matching ARN {rule_arn}, found {len(matching_rules)}"
     rule = matching_rules[0]
     assert rule["State"] == "ENABLED"
     logger.info(f"Rule verified: {rule['Name']} (State={rule['State']})")
@@ -229,9 +231,9 @@ def test_notifications_creates_eventbridge_rule_and_cleanup(
     assert len(targets) >= 1, "Expected at least 1 target on the rule"
 
     sns_targets = [t for t in targets if t["Arn"] == SNS_TOPIC_ARN]
-    assert len(sns_targets) == 1, (
-        f"Expected SNS topic {SNS_TOPIC_ARN} as target, got: {[t['Arn'] for t in targets]}"
-    )
+    assert (
+        len(sns_targets) == 1
+    ), f"Expected SNS topic {SNS_TOPIC_ARN} as target, got: {[t['Arn'] for t in targets]}"
     logger.info(f"Target verified: {sns_targets[0]['Arn']}")
 
     # Submit a training job (serverless, non-blocking)
@@ -261,13 +263,13 @@ def test_notifications_creates_eventbridge_rule_and_cleanup(
         time.sleep(15)
 
     logger.info(
-        f"Job final status: {training_job.training_job_status} "
-        f"(expected 'Stopped' or 'Failed')"
+        f"Job final status: {training_job.training_job_status} " f"(expected 'Stopped' or 'Failed')"
     )
     # The job should be Stopped (or Failed if it never started)
-    assert training_job.training_job_status in ("Stopped", "Failed"), (
-        f"Unexpected final status: {training_job.training_job_status}"
-    )
+    assert training_job.training_job_status in (
+        "Stopped",
+        "Failed",
+    ), f"Unexpected final status: {training_job.training_job_status}"
 
     # Poll SQS queue for the notification message
     sqs_client = sm_session.boto_session.client("sqs", region_name=REGION)
@@ -302,19 +304,16 @@ def test_notifications_creates_eventbridge_rule_and_cleanup(
 
             if training_job.training_job_name in body:
                 notification_received = True
-                logger.info(
-                    f"Notification matched! Job={job_name}, Status={status}"
-                )
+                logger.info(f"Notification matched! Job={job_name}, Status={status}")
 
                 # Verify the message content
-                assert training_job.training_job_name == job_name or \
-                    training_job.training_job_name in body, (
-                    f"Expected job name '{training_job.training_job_name}' in message"
-                )
-                assert status in ("Stopped", "Failed") or \
-                    "Stopped" in body or "Failed" in body, (
-                    f"Expected 'Stopped' or 'Failed' status in message, got: {body}"
-                )
+                assert (
+                    training_job.training_job_name == job_name
+                    or training_job.training_job_name in body
+                ), f"Expected job name '{training_job.training_job_name}' in message"
+                assert (
+                    status in ("Stopped", "Failed") or "Stopped" in body or "Failed" in body
+                ), f"Expected 'Stopped' or 'Failed' status in message, got: {body}"
                 break
 
             # Delete processed message
@@ -339,7 +338,7 @@ def test_notifications_creates_eventbridge_rule_and_cleanup(
     # Verify rule is gone
     rules_after = events_client.list_rules(NamePrefix="sm-pysdk-job-notif")
     remaining_arns = [r["Arn"] for r in rules_after["Rules"]]
-    assert rule_arn not in remaining_arns, (
-        f"Rule {rule_arn} should have been deleted but still exists"
-    )
+    assert (
+        rule_arn not in remaining_arns
+    ), f"Rule {rule_arn} should have been deleted but still exists"
     logger.info("Cleanup verified: rule no longer exists")

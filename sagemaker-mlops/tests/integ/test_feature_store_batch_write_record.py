@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Integration tests for BatchWriteRecord via ingest_dataframe(use_batch_write_record=True)."""
+
 import time
 
 import pytest
@@ -92,9 +93,7 @@ class TestBatchWriteRecordIntegration:
         """Exactly 25 records — single batch boundary."""
         df = pd.DataFrame(
             {
-                "RecordIdentifier": [
-                    f"integ-b25-{i}-{int(time.time())}" for i in range(25)
-                ],
+                "RecordIdentifier": [f"integ-b25-{i}-{int(time.time())}" for i in range(25)],
                 "EventTime": [timestamp] * 25,
                 "Feature1": [f"val-{i}" for i in range(25)],
             }
@@ -113,9 +112,7 @@ class TestBatchWriteRecordIntegration:
         """26 records — splits into 2 batches (25+1)."""
         df = pd.DataFrame(
             {
-                "RecordIdentifier": [
-                    f"integ-b26-{i}-{int(time.time())}" for i in range(26)
-                ],
+                "RecordIdentifier": [f"integ-b26-{i}-{int(time.time())}" for i in range(26)],
                 "EventTime": [timestamp] * 26,
                 "Feature1": [f"val-{i}" for i in range(26)],
             }
@@ -130,9 +127,7 @@ class TestBatchWriteRecordIntegration:
         )
         assert mgr.failed_rows == []
 
-    def test_batch_write_verify_with_get_record(
-        self, feature_group, feature_group_name, timestamp
-    ):
+    def test_batch_write_verify_with_get_record(self, feature_group, feature_group_name, timestamp):
         """Write via BatchWriteRecord, verify with GetRecord."""
         rid = f"integ-bwr-verify-{int(time.time())}"
         df = pd.DataFrame(
@@ -155,9 +150,7 @@ class TestBatchWriteRecordIntegration:
         time.sleep(2)
         record = feature_group.get_record(record_identifier_value_as_string=rid)
         assert record is not None
-        val = next(
-            fv.value_as_string for fv in record.record if fv.feature_name == "Feature1"
-        )
+        val = next(fv.value_as_string for fv in record.record if fv.feature_name == "Feature1")
         assert val == "verify-value"
 
     def test_batch_write_null_skipped(self, feature_group, feature_group_name, timestamp):
@@ -186,9 +179,7 @@ class TestBatchWriteRecordIntegration:
         names = [fv.feature_name for fv in record.record]
         assert "Feature1" not in names
 
-    def test_batch_write_partial_failure(
-        self, feature_group, feature_group_name, timestamp
-    ):
+    def test_batch_write_partial_failure(self, feature_group, feature_group_name, timestamp):
         """10 records, row 5 missing RecordIdentifier — only row 5 fails."""
         records = []
         for i in range(10):
@@ -230,9 +221,7 @@ class TestBatchWriteRecordIntegration:
         """PutRecord path produces same outcome for comparison."""
         df = pd.DataFrame(
             {
-                "RecordIdentifier": [
-                    f"integ-put-{i}-{int(time.time())}" for i in range(5)
-                ],
+                "RecordIdentifier": [f"integ-put-{i}-{int(time.time())}" for i in range(5)],
                 "EventTime": [timestamp] * 5,
                 "Feature1": [f"val-{i}" for i in range(5)],
             }
@@ -247,9 +236,7 @@ class TestBatchWriteRecordIntegration:
         )
         assert mgr.failed_rows == []
 
-    def test_putrecord_partial_failure_same(
-        self, feature_group, feature_group_name, timestamp
-    ):
+    def test_putrecord_partial_failure_same(self, feature_group, feature_group_name, timestamp):
         """PutRecord partial failure — same row 5 fails."""
         records = []
         for i in range(10):

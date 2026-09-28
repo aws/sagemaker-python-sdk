@@ -33,9 +33,7 @@ FEATURE_GROUP_MOCK.creation_time = FEATURE_GROUP["CreationTime"]
 
 
 def test_retrieve_feature_group_context_arns():
-    with patch.object(
-        FeatureGroup, "get", return_value=FEATURE_GROUP_MOCK
-    ) as fg_get_method:
+    with patch.object(FeatureGroup, "get", return_value=FEATURE_GROUP_MOCK) as fg_get_method:
         with patch.object(
             Context, "load", side_effect=[CONTEXT_MOCK_01, CONTEXT_MOCK_02]
         ) as context_load:
@@ -49,13 +47,14 @@ def test_retrieve_feature_group_context_arns():
     assert result.name == FEATURE_GROUP_NAME
     assert result.pipeline_context_arn == "context-arn-fep"
     assert result.pipeline_version_context_arn == "context-arn-fep-ver"
-    fg_get_method.assert_called_once_with(feature_group_name=FEATURE_GROUP_NAME, session=SAGEMAKER_SESSION_MOCK.boto_session)
+    fg_get_method.assert_called_once_with(
+        feature_group_name=FEATURE_GROUP_NAME, session=SAGEMAKER_SESSION_MOCK.boto_session
+    )
     creation_time_str = FEATURE_GROUP_MOCK.creation_time.strftime("%s")
     context_load.assert_has_calls(
         [
             call(
-                context_name=f"{FEATURE_GROUP_NAME}-{creation_time_str}"
-                f"-feature-group-pipeline",
+                context_name=f"{FEATURE_GROUP_NAME}-{creation_time_str}" f"-feature-group-pipeline",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             ),
             call(

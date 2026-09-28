@@ -309,9 +309,7 @@ class TestNovaSmiValidationIntegrationWithFetchConfig(unittest.TestCase):
         builder._fetch_model_package_arn = Mock(
             return_value="arn:aws:sagemaker:us-east-1:123456789012:model-package/test"
         )
-        builder._fetch_hub_document_for_custom_model = Mock(
-            return_value={"RecipeCollection": []}
-        )
+        builder._fetch_hub_document_for_custom_model = Mock(return_value={"RecipeCollection": []})
 
         return builder
 

@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.23.0 (2026-09-24)
+
+### New Features
+
+- feat(pipeline): add inference and lineage step types (#6224)
+
+### Tests
+
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v1.22.1 (2026-09-17)
+
+- Update module dependencies
+
+
+## v1.22.0 (2026-09-14)
+
+### New Features
+
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(feature-store): register HubContent Dataset from DatasetBuilder CSV paths (#6212)
+
+### Tests
+
+- test(mlops): add PipelineSession integration coverage for V3 trainers (#6235)
+
 ## v1.21.0 (2026-08-25)
 
 ### Bug Fixes

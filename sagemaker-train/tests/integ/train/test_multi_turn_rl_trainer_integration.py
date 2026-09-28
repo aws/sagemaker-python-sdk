@@ -15,9 +15,9 @@
 These tests run against real SageMaker services in prod us-west-2.
 Requires valid AWS credentials with appropriate permissions.
 """
+
 from __future__ import annotations
 
-import os
 import time
 
 import boto3
@@ -38,8 +38,9 @@ def _get_account_id():
         _ACCOUNT_ID = boto_session.client("sts").get_caller_identity()["Account"]
     return _ACCOUNT_ID
 
+
 AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS"
-#BASE_MODEL = "openai-reasoning-gpt-oss-20b"
+# BASE_MODEL = "openai-reasoning-gpt-oss-20b"
 BASE_MODEL = "mock-oss-test"
 EXISTING_JOB_NAME = "mock-oss-test-mtrl-20260616153024"
 
@@ -144,7 +145,6 @@ class TestMultiTurnRLTrainerLambdaAgent:
         assert job.output_model_package_arn is not None
 
 
-
 class TestMultiTurnRLTrainerAttach:
     """Test attaching to existing MTRL jobs."""
 
@@ -164,10 +164,12 @@ class TestMultiTurnRLTrainerAttach:
     @pytest.mark.skip(reason="GPU resource intensive — run manually")
     def test_get_all_jobs(self, sagemaker_session):
         """Test listing all MTRL jobs."""
-        jobs = list(AgentRFTJob.get_all(
-            session=sagemaker_session.boto_session,
-            status_equals="Completed",
-        ))
+        jobs = list(
+            AgentRFTJob.get_all(
+                session=sagemaker_session.boto_session,
+                status_equals="Completed",
+            )
+        )
         assert len(jobs) > 0
         assert all(j.job_status == "Completed" for j in jobs)
 
@@ -177,9 +179,7 @@ class TestMultiTurnRLTrainerListModels:
 
     def test_list_supported_models(self, sagemaker_session):
         """Test that list_supported_models returns models from the hub."""
-        result = MultiTurnRLTrainer.list_supported_models(
-            session=sagemaker_session.boto_session
-        )
+        result = MultiTurnRLTrainer.list_supported_models(session=sagemaker_session.boto_session)
         assert isinstance(result, list)
         assert len(result) > 0
 
@@ -189,6 +189,3 @@ class TestMultiTurnRLTrainerListModels:
             session=sagemaker_session.boto_session
         )
         assert isinstance(runtimes, list)
-
-
-

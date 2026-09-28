@@ -25,6 +25,7 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_cpt_hyperpod.py -v -s
 """
+
 from __future__ import absolute_import
 
 import json
@@ -127,9 +128,7 @@ def training_resources(sagemaker_session_us_east_1):
 # TODO: Remove dry-run when capacity is available in future
 @pytest.mark.gpu_intensive
 @pytest.mark.us_east_1
-def test_cpt_trainer_nova_micro_hyperpod_dryrun(
-    sagemaker_session_us_east_1, training_resources
-):
+def test_cpt_trainer_nova_micro_hyperpod_dryrun(sagemaker_session_us_east_1, training_resources):
     """Test CPTTrainer with Nova Micro model on HyperPod (no data mixing).
 
     This end-to-end test submits a real CPT job to HyperPod without DataMixingConfig.
@@ -166,9 +165,10 @@ def test_cpt_trainer_nova_micro_hyperpod_dryrun(
         # Verify the job exists on the cluster via hyperpod get-job
         get_job_result = subprocess.run(
             ["hyperpod", "get-job", "--job-name", job_name],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
-        assert get_job_result.returncode == 0, (
-            f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}"
-        )
+        assert (
+            get_job_result.returncode == 0
+        ), f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}"
         logger.info(f"Verified job '{job_name}' exists on the cluster.")

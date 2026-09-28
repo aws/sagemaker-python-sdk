@@ -138,10 +138,19 @@ class CPTTrainer(BaseTrainer):
         notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(training_image=training_image, base_model_name=base_model_name, disable_output_compression=disable_output_compression, notifications=notifications, **kwargs)
+        super().__init__(
+            training_image=training_image,
+            base_model_name=base_model_name,
+            disable_output_compression=disable_output_compression,
+            notifications=notifications,
+            **kwargs,
+        )
 
         self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
-            model, self.base_model_name, compute, self.sagemaker_session,
+            model,
+            self.base_model_name,
+            compute,
+            self.sagemaker_session,
             resolve_fn=_resolve_model_and_name,
         )
         self.training_type = TrainingType.FULL
@@ -186,7 +195,8 @@ class CPTTrainer(BaseTrainer):
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="CPTTrainer.train",
-        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS
+        + [
             ("compute", TelemetryParamType.ATTR_TYPE),
             ("data_mixing_config", TelemetryParamType.ATTR_EXISTS),
         ],
@@ -214,7 +224,7 @@ class CPTTrainer(BaseTrainer):
             poll (int):
                 Polling interval in seconds. Defaults to 5.
             dry_run (bool):
-                If True, runs validation without submitting a job. 
+                If True, runs validation without submitting a job.
                 Returns None on success, raises on validation failure.
                 Defaults to False.
 

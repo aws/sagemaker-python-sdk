@@ -1,4 +1,5 @@
 """Shared telemetry param lists for sagemaker-train classes."""
+
 from sagemaker.core.telemetry.telemetry_logging import TelemetryParamType
 
 # Common params for SFT, DPO, RLVR, RLAIF trainers

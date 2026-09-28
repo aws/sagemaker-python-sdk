@@ -1,5 +1,58 @@
 # Changelog
 
+## v2.23.0 (2026-09-24)
+
+### Bug Fixes
+
+- fix(core): recognize new duplicate-name wording; actionable train() errors (#6256)
+- fix(core): keep environment variable names intact when parsing private hub model documents (#6204)
+- fix: migrate llama-cpp-arm64 to cpu processor schema and align image_uri unit tests (#6290)
+
+### Other
+
+- change: update image_uri_configs 09-23-2026 (#6308)
+- change: update image_uri_configs 09-22-2026 (#6304)
+- add: metadata for huggingface vllm v0.29 (#6300)
+
+### Tests
+
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v2.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix(jumpstart): name JumpStart in the content bucket error (#6243)
+- fix(core): send NextToken when Hub.list_models pages through hub contents (#6263)
+
+### Other
+
+- add: metadata for hf-vllm 0.22.1, 0.25.1, 0.26, 0.27.1 and 0.28 (#6060)
+- add sklearn 1.9-0 image URI config (#6037)
+
+
+## v2.22.0 (2026-09-14)
+
+### New Features
+
+- feat(core): add InstancePreferences for multi-instance-type training and processing (#6249)
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+- fix(core): resolve default training role from sagemaker config (#6228)
+
+### Other
+
+- change(core): add image URI configs for DLC serving frameworks and Amazon Linux 2023 PyTorch (#6220)
+- change(core): add image URI configs for vLLM and SGLang (#6218)
+- ci(core): add botocore-sync workflows (#6226)
+- change(core): add TensorFlow inference 2.20 and training 2.21 image URI configs (#6230)
+- change(core): add Ray/llama-cpp CPU images and device-selectable DLC serving configs (#6229)
+- change(core): refresh generated image URI configs (55c2a9bd)
+
 ## v2.21.0 (2026-08-25)
 
 ### Bug Fixes

@@ -1,5 +1,9 @@
 # Shallow (submit-then-stop) integration tests
 
+> **Adding or changing a test? Follow [SOP.md](./SOP.md).** This README explains why
+> the suite is shaped the way it is; the SOP is the step-by-step procedure, including
+> how to run the suite locally.
+
 These tests add fast acceptance coverage on the PR gate. They run in their own
 `fast-integ-tests` job, **alongside** the existing `integ-tests` CodeBuild suite,
 which is unchanged. The deep suites still run on the scheduled CI-health workflows.
@@ -7,6 +11,12 @@ which is unchanged. The deep suites still run on the scheduled CI-health workflo
 What this suite changes about the gate is not which job runs, but what the existing
 one selects: the `gpu_intensive` marks added here deselect the deep tests that
 submit a job and wait for it, and this suite covers those code paths instead.
+
+`integ-tests` does not rerun this suite. It invokes pytest through tox over the
+whole `tests/integ` tree, which would otherwise sweep this directory in and submit
+every job here a second time on the same commit. `tox.ini` passes
+`--ignore=tests/integ/train/shallow` to keep that from happening; `fast-integ-tests`
+calls pytest directly, so the ignore does not apply to it.
 
 > **Where this runs.** The `fast-integ-tests` job in `pr-checks-master.yml` does not
 > execute this suite on the GitHub runner — it starts the CodeBuild project
@@ -19,7 +29,7 @@ submit a job and wait for it, and this suite covers those code paths instead.
 > — which is nearly all of them — without exposing those credentials to PR code.
 >
 > **Consequence for editing this suite:** the marker selection above (`-n 8`,
-> `--dist loadfile`, `-m "not gpu_intensive and not us_east_1"`) lives in
+> `-m "not gpu_intensive and not us_east_1"`) lives in
 > `createCIShallowIntegBuildSpec` in the `SageMakerMLFPySDKInfraCDK` package, not in
 > this repo. Adding a file under `shallow/` is picked up automatically, but changing
 > *how* the suite is invoked means a change there, which deploys through a pipeline
@@ -65,6 +75,7 @@ of any deep test is easy to find:
 | Shallow file | Deep counterpart |
 |---|---|
 | `test_model_trainer.py` | `test_model_trainer.py` |
+| `test_instance_preferences.py` | `test_instance_preferences.py` |
 | `test_sft_trainer.py` | `test_sft_trainer_integration.py` |
 | `test_dpo_trainer.py` | `test_dpo_trainer_integration.py` |
 | `test_rlvr_trainer.py` | `test_rlvr_trainer_integration.py` |
@@ -98,6 +109,7 @@ below accounts for all of them.
 | Deep test | Shallow equivalent |
 |---|---|
 | `test_model_trainer.py` — 8 tests (tar source, py/sh entry, MPI, torchrun, HP json/yaml, custom driver) | `test_model_trainer.py` — `TestSourceCodePackaging`, `TestPayloadShaping`, `TestComputeConfiguration` |
+| `test_instance_preferences.py::test_instance_preferences_select_a_winner_and_complete` (runs to a selected winner and completion) | `test_instance_preferences.py` — `TestInstancePreferencesAccepted` (submit, Describe echo, stop) + `TestInstancePreferencesRejected` |
 | `test_sft_trainer_integration.py::test_sft_trainer_lora_complete_workflow` | `test_minimal_request_is_accepted` + `test_mlflow_resource_arn` |
 | `::test_sft_trainer_with_validation_dataset` | `test_with_validation_dataset` |
 | `::test_sft_trainer_lora_with_sequence_length` | `test_sft_trainer.py::test_sequence_length_is_accepted` |
@@ -368,6 +380,9 @@ The cap is enforced in the harness rather than per test, so a newly added test i
 capped by default instead of by remembering to opt in.
 
 ## Writing a new test
+
+The harness API, for reference. For the full procedure — where the test goes, markers,
+running it locally, the pre-submit checklist — see [SOP.md](./SOP.md).
 
 Use the harness; do not call `trainer.train()` directly.
 

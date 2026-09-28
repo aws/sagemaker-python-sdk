@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock
 
 from sagemaker.core.iterators import (
     handle_stream_errors,

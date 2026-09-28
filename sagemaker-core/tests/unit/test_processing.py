@@ -2035,3 +2035,260 @@ class TestFrameworkProcessorS3SourceDir:
                     wait=False,
                 )
                 assert processor.latest_job == mock_job
+
+
+class TestProcessorInstancePreferences:
+    """Instance Preferences (multi-instance-type) support on Processor."""
+
+    def test_uniform_count_mode_emits_preferences_and_shared_count(self, mock_session):
+        """Uniform mode: top-level instance_count applies to whichever type wins."""
+        preferences = [
+            {"InstanceType": "ml.m5.4xlarge"},
+            {"InstanceType": "ml.m5.2xlarge"},
+        ]
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_count=2,
+            instance_preferences=preferences,
+            volume_size_in_gb=100,
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "job-name"
+        args = processor._get_process_args([], [], None)
+        cluster_config = args["resources"]["ClusterConfig"]
+        assert cluster_config["InstancePreferences"] == preferences
+        assert cluster_config["InstanceCount"] == 2
+        assert cluster_config["VolumeSizeInGB"] == 100
+        # the classic single-type key is not emitted in instance-preferences mode
+        assert "InstanceType" not in cluster_config
+
+    def test_per_preference_count_mode_omits_top_level_count(self, mock_session):
+        """Per-preference mode: every element carries its count; top-level unset."""
+        preferences = [
+            {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+            {"InstanceType": "ml.m5.2xlarge", "InstanceCount": 4},
+        ]
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_preferences=preferences,
+            volume_size_in_gb=100,
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "job-name"
+        args = processor._get_process_args([], [], None)
+        cluster_config = args["resources"]["ClusterConfig"]
+        assert cluster_config["InstancePreferences"] == preferences
+        assert "InstanceCount" not in cluster_config
+        assert "InstanceType" not in cluster_config
+
+    def test_get_process_args_classic_single_type_unchanged(self, mock_session):
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_type="ml.m5.xlarge",
+            instance_count=2,
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "job-name"
+        args = processor._get_process_args([], [], None)
+        cluster_config = args["resources"]["ClusterConfig"]
+        assert cluster_config["InstanceType"] == "ml.m5.xlarge"
+        assert cluster_config["InstanceCount"] == 2
+        assert "InstancePreferences" not in cluster_config
+
+    def test_instance_preferences_mutually_exclusive_with_instance_type(self, mock_session):
+        with pytest.raises(ValueError, match="mutually exclusive with instance_type"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_type="ml.m5.xlarge",
+                instance_count=1,
+                instance_preferences=[{"InstanceType": "ml.m5.4xlarge", "InstanceCount": 1}],
+                sagemaker_session=mock_session,
+            )
+
+    def test_uniform_count_rejected_with_per_preference_counts(self, mock_session):
+        """V4: reject when both the uniform and any per-preference count are set."""
+        with pytest.raises(ValueError, match="top-level instance_count and per-preference"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_count=2,
+                instance_preferences=[
+                    {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+                    {"InstanceType": "ml.m5.2xlarge"},
+                ],
+                sagemaker_session=mock_session,
+            )
+
+    def test_partial_per_preference_counts_rejected(self, mock_session):
+        """V4: without a uniform count, EVERY element must set InstanceCount."""
+        with pytest.raises(ValueError, match="every element"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_preferences=[
+                    {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+                    {"InstanceType": "ml.m5.2xlarge"},
+                ],
+                sagemaker_session=mock_session,
+            )
+
+    def test_no_count_at_all_rejected(self, mock_session):
+        """V4: neither a uniform count nor per-preference counts is invalid."""
+        with pytest.raises(ValueError, match="every element"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_preferences=[
+                    {"InstanceType": "ml.m5.4xlarge"},
+                    {"InstanceType": "ml.m5.2xlarge"},
+                ],
+                sagemaker_session=mock_session,
+            )
+
+    def test_duplicate_instance_types_rejected(self, mock_session):
+        with pytest.raises(ValueError, match="duplicate instance types"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_count=1,
+                instance_preferences=[
+                    {"InstanceType": "ml.m5.4xlarge"},
+                    {"InstanceType": "ml.m5.4xlarge"},
+                ],
+                sagemaker_session=mock_session,
+            )
+
+
+class TestScriptAndSparkProcessorInstancePreferences:
+    """instance_preferences plumbs through the ScriptProcessor/Spark subclass chain."""
+
+    _PREFS = [
+        {"InstanceType": "ml.m5.xlarge", "InstanceCount": 1},
+        {"InstanceType": "ml.m4.xlarge", "InstanceCount": 2},
+    ]
+
+    def test_script_processor_forwards_instance_preferences(self, mock_session):
+        from sagemaker.core.processing import ScriptProcessor
+
+        processor = ScriptProcessor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            command=["python3"],
+            instance_preferences=self._PREFS,
+            sagemaker_session=mock_session,
+        )
+        assert processor.instance_preferences == self._PREFS
+        assert processor.instance_type is None
+
+    def test_script_processor_validation_applies(self, mock_session):
+        from sagemaker.core.processing import ScriptProcessor
+
+        with pytest.raises(ValueError, match="mutually exclusive with instance_type"):
+            ScriptProcessor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                command=["python3"],
+                instance_type="ml.m5.xlarge",
+                instance_count=1,
+                instance_preferences=self._PREFS,
+                sagemaker_session=mock_session,
+            )
+
+    def test_pyspark_processor_forwards_instance_preferences(self, mock_session):
+        from sagemaker.core.spark.processing import PySparkProcessor
+
+        mock_session.boto_region_name = "us-west-2"
+        processor = PySparkProcessor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_preferences=self._PREFS,
+            sagemaker_session=mock_session,
+        )
+        assert processor.instance_preferences == self._PREFS
+        assert processor.instance_type is None
+
+    def test_pyspark_image_resolution_requires_candidate_agreement(self, mock_session):
+        from sagemaker.core.spark import processing as spark_processing
+
+        mock_session.boto_region_name = "us-west-2"
+        # Agreement: every candidate resolves to the same image -> used.
+        with patch.object(
+            spark_processing.image_uris, "retrieve", return_value="resolved-uri"
+        ) as mock_retrieve:
+            processor = spark_processing.PySparkProcessor(
+                role="arn:aws:iam::123456789012:role/role",
+                framework_version="3.5",
+                instance_preferences=self._PREFS,
+                sagemaker_session=mock_session,
+            )
+        assert processor.image_uri == "resolved-uri"
+        called_types = {c.kwargs["instance_type"] for c in mock_retrieve.call_args_list}
+        assert called_types == {"ml.m5.xlarge", "ml.m4.xlarge"}
+
+    def test_pyspark_image_resolution_rejects_divergent_candidates(self, mock_session):
+        from sagemaker.core.spark import processing as spark_processing
+
+        mock_session.boto_region_name = "us-west-2"
+        # Divergence: candidates resolve to different images -> explicit image_uri required.
+        with patch.object(
+            spark_processing.image_uris, "retrieve", side_effect=["cpu-uri", "gpu-uri"]
+        ):
+            with pytest.raises(ValueError, match="pass image_uri explicitly"):
+                spark_processing.PySparkProcessor(
+                    role="arn:aws:iam::123456789012:role/role",
+                    framework_version="3.5",
+                    instance_preferences=self._PREFS,
+                    sagemaker_session=mock_session,
+                )
+
+    def test_pyspark_unresolvable_candidate_names_it(self, mock_session):
+        from sagemaker.core.spark import processing as spark_processing
+
+        mock_session.boto_region_name = "us-west-2"
+        # Real behavior: Spark has no GPU image, so retrieve raises for GPU
+        # candidates; the error must name the candidate and the remedy.
+        with patch.object(
+            spark_processing.image_uris,
+            "retrieve",
+            side_effect=["cpu-uri", ValueError("Unsupported processor: gpu")],
+        ):
+            with pytest.raises(
+                ValueError, match=r"candidate ml\.m4\.xlarge.*pass image_uri explicitly"
+            ):
+                spark_processing.PySparkProcessor(
+                    role="arn:aws:iam::123456789012:role/role",
+                    framework_version="3.5",
+                    instance_preferences=self._PREFS,
+                    sagemaker_session=mock_session,
+                )
+
+    def test_pyspark_degenerate_preferences_reach_base_validation(self, mock_session):
+        from sagemaker.core.spark import processing as spark_processing
+
+        mock_session.boto_region_name = "us-west-2"
+        # No InstanceType on any element: must NOT crash in image resolution;
+        # the base Processor validation owns the reject.
+        with patch.object(spark_processing.image_uris, "retrieve", return_value="uri"):
+            with pytest.raises(ValueError):
+                spark_processing.PySparkProcessor(
+                    role="arn:aws:iam::123456789012:role/role",
+                    framework_version="3.5",
+                    instance_preferences=[{}],
+                    sagemaker_session=mock_session,
+                )
+
+    def test_sparkjar_processor_forwards_instance_preferences(self, mock_session):
+        from sagemaker.core.spark.processing import SparkJarProcessor
+
+        mock_session.boto_region_name = "us-west-2"
+        processor = SparkJarProcessor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_preferences=self._PREFS,
+            sagemaker_session=mock_session,
+        )
+        assert processor.instance_preferences == self._PREFS

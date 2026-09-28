@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for tuner module."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -32,7 +33,6 @@ from sagemaker.core.shapes import (
     DataSource,
     S3DataSource,
 )
-
 
 # ---------------------------------------------------------------------------
 # Factory functions for creating test objects (reduces fixture duplication)
@@ -260,6 +260,30 @@ class TestHyperparameterTunerInit:
         )
 
         assert tuner.random_seed == 42
+
+    def test_random_seed_accepts_pipeline_variable(self, mock_model_trainer, hyperparameter_ranges):
+        """Regression for #5614 / #6171.
+
+        ``random_seed`` must accept a pipeline variable (e.g. a ParameterInteger). Building the
+        tuning job config assigns it to ``HyperParameterTuningJobConfig.random_seed`` under
+        ``validate_assignment=True``; when that field was typed ``Optional[int]`` this raised
+        ``ValidationError: 1 validation error for HyperParameterTuningJobConfig``.
+        """
+        from sagemaker.core.workflow.parameters import ParameterInteger
+
+        seed = ParameterInteger(name="RandomState", default_value=42)
+        tuner = HyperparameterTuner(
+            model_trainer=mock_model_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=hyperparameter_ranges,
+            max_jobs=2,
+            max_parallel_jobs=1,
+            random_seed=seed,
+        )
+
+        assert tuner.random_seed is seed
+        config = tuner._build_tuning_job_config()
+        assert config.random_seed is seed
 
     def test_init_with_autotune(self, mock_model_trainer):
         """Test initialization with autotune enabled."""
@@ -643,9 +667,9 @@ class TestHyperparameterTunerStaticMethods:
 
         definition = tuner._build_training_job_definition(None)
 
-        assert isinstance(definition.environment, Unassigned), (
-            "Environment should be Unassigned when model_trainer.environment is None"
-        )
+        assert isinstance(
+            definition.environment, Unassigned
+        ), "Environment should be Unassigned when model_trainer.environment is None"
 
     def test_build_training_job_definition_with_empty_environment(self):
         """Test that _build_training_job_definition passes through empty environment.
@@ -664,9 +688,7 @@ class TestHyperparameterTunerStaticMethods:
 
         definition = tuner._build_training_job_definition(None)
 
-        assert definition.environment == {}, (
-            "Empty dict environment should be passed through as-is"
-        )
+        assert definition.environment == {}, "Empty dict environment should be passed through as-is"
 
     def test_build_training_job_definition_passes_through_output_data_config(self):
         """Test that _build_training_job_definition passes through the full OutputDataConfig.
@@ -692,15 +714,15 @@ class TestHyperparameterTunerStaticMethods:
 
         definition = tuner._build_training_job_definition(None)
 
-        assert definition.output_data_config is mock_trainer.output_data_config, (
-            "output_data_config should be the same object from ModelTrainer"
-        )
+        assert (
+            definition.output_data_config is mock_trainer.output_data_config
+        ), "output_data_config should be the same object from ModelTrainer"
         assert definition.output_data_config.kms_key_id == (
             "arn:aws:kms:us-west-2:123456789012:key/abc123"
         ), "kms_key_id should be preserved"
-        assert definition.output_data_config.compression_type == "NONE", (
-            "compression_type should be preserved"
-        )
-        assert definition.output_data_config.s3_output_path == "s3://bucket/output", (
-            "s3_output_path should be preserved"
-        )
+        assert (
+            definition.output_data_config.compression_type == "NONE"
+        ), "compression_type should be preserved"
+        assert (
+            definition.output_data_config.s3_output_path == "s3://bucket/output"
+        ), "s3_output_path should be preserved"

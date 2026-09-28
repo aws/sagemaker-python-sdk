@@ -1,4 +1,5 @@
 """Unit tests for IamRoleResolver (explicit, opt-in IAM role creation)."""
+
 import json
 import logging
 from unittest.mock import MagicMock, patch
@@ -199,8 +200,9 @@ class TestCreateExecutionRole:
             "Role": {"Arn": "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"}
         }
         mock_iam.create_policy.return_value = {"Policy": {"Arn": "arn:aws:iam::1:policy/p"}}
-        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
-            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        with (
+            patch("sagemaker.core.helper.iam_role_resolver.time.sleep"),
+            caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"),
         ):
             resolver.create_execution_role(role_type="training")  # default s3="*"
         assert any("ALL S3 buckets" in r.getMessage() for r in caplog.records)
@@ -211,8 +213,9 @@ class TestCreateExecutionRole:
             "Role": {"Arn": "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"}
         }
         mock_iam.create_policy.return_value = {"Policy": {"Arn": "arn:aws:iam::1:policy/p"}}
-        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
-            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        with (
+            patch("sagemaker.core.helper.iam_role_resolver.time.sleep"),
+            caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"),
         ):
             resolver.create_execution_role(
                 role_type="training", s3_resource="my-bucket", kms_resource="my-key"

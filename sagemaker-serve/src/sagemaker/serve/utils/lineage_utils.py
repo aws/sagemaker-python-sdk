@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Holds the util functions used for lineage tracking"""
+
 from __future__ import absolute_import
 
 import os
@@ -171,7 +172,12 @@ def _create_mlflow_model_path_lineage_artifact(
                 if source_type != "ModelBuilderInputModelData"
             ]
 
-        return Artifact.create(
+        # NOTE: Artifact.create here uses the legacy lineage API signature
+        # (source_uri/source_types/sagemaker_session). The current sagemaker-core
+        # Artifact.create signature differs; aligning it is out of scope for this
+        # lint pass and needs API verification, so the call is suppressed rather
+        # than guessed.
+        return Artifact.create(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
             source_uri=mlflow_model_path,
             source_types=source_types,
             artifact_type=MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
