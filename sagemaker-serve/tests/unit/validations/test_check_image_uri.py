@@ -1,4 +1,6 @@
 import unittest
+from sagemaker.core.workflow.functions import Join
+from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.serve.validations.check_image_uri import (
     is_1p_image_uri,
     all_accounts,
@@ -72,6 +74,23 @@ class TestCheckImageUri(unittest.TestCase):
         # Verify some known AWS accounts are in the set
         self.assertIn("763104351884", all_accounts)
         self.assertIn("246618743249", all_accounts)
+
+    def test_is_1p_image_uri_pipeline_variable_returns_false(self):
+        # A pipeline variable is only resolved at execution time, so it must not be
+        # sliced (TypeError, #5760); it is treated as not 1P, even if its default
+        # value would be a 1P image.
+        image_uri = ParameterString(
+            name="ServingImageUri",
+            default_value="763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch:latest",
+        )
+        self.assertFalse(is_1p_image_uri(image_uri))
+
+    def test_is_1p_image_uri_pipeline_function_returns_false(self):
+        image_uri = Join(on="", values=["763104351884", ParameterString(name="Suffix")])
+        self.assertFalse(is_1p_image_uri(image_uri))
+
+    def test_is_1p_image_uri_none_returns_false(self):
+        self.assertFalse(is_1p_image_uri(None))
 
 
 if __name__ == "__main__":
