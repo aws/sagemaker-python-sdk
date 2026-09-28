@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import copy
 import os
 import re
+import typing
 
 import pytest
 from mock import Mock, patch
@@ -42,6 +43,7 @@ from sagemaker.tuner import (
     create_transfer_learning_tuner,
     HyperparameterTuner,
 )
+from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.workflow.functions import JsonGet, Join
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
@@ -2230,3 +2232,41 @@ def test_create_tuner_with_grid_search_strategy():
 
     assert tuner is not None
     assert tuner.max_jobs is None
+
+
+def test_hyperparameter_ranges_annotation_allows_pipeline_variable_keys():
+    """Regression for #5243.
+
+    The ``hyperparameter_ranges`` key type must allow PipelineVariable (e.g. a pipeline
+    ParameterString), not only ``str``, since the tuner accepts pipeline variables as
+    hyperparameter names. This asserts the resolved annotation, so it fails if the type
+    is narrowed back to ``Dict[str, ParameterRange]``.
+    """
+    annotation = HyperparameterTuner.__init__.__annotations__["hyperparameter_ranges"]
+
+    key_type, value_type = typing.get_args(annotation)
+    key_options = typing.get_args(key_type)  # (str, PipelineVariable)
+
+    assert str in key_options, f"str must remain a valid key type, got {key_options}"
+    assert (
+        PipelineVariable in key_options
+    ), f"PipelineVariable must be an allowed key type, got {key_options}"
+    assert value_type is ParameterRange
+
+
+def test_init_with_pipeline_variable_hyperparameter_key(estimator):
+    """A pipeline ParameterString used as a hyperparameter-range key is accepted (#5243).
+
+    NOTE: this is a runtime sanity check, not the regression guard -- annotations are not
+    enforced at runtime, so this passes with or without the fix. The guard against
+    re-narrowing the type is test_hyperparameter_ranges_annotation_allows_pipeline_variable_keys.
+    """
+    hparam_name = ParameterString(name="HParamName", default_value="hparam")
+
+    tuner = HyperparameterTuner(
+        estimator=estimator,
+        objective_metric_name=OBJECTIVE_METRIC_NAME,
+        hyperparameter_ranges={hparam_name: CategoricalParameter([1, 2])},
+    )
+
+    assert hparam_name in tuner._hyperparameter_ranges
