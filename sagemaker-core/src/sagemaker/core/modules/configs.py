@@ -104,6 +104,12 @@ class SourceCode(BaseConfig):
         command (Optional[str]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        git_config (Optional[dict]):
+            Git configuration used to clone the repository that contains the source code, including
+            ``repo``, ``branch``, ``commit``, ``2FA_enabled``, ``username``, ``password`` and
+            ``token``. Only ``repo`` is required. When provided, the repository is cloned and
+            ``source_dir``/``entry_script`` are resolved relative to the clone; a local
+            ``source_dir`` cannot be combined with ``git_config``.
         ignore_patterns: (Optional[List[str]]) :
             The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
             default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
@@ -113,6 +119,7 @@ class SourceCode(BaseConfig):
     requirements: Optional[str] = None
     entry_script: Optional[str] = None
     command: Optional[str] = None
+    git_config: Optional[dict] = None
     ignore_patterns: Optional[List[str]] = [
         ".env",
         ".git",

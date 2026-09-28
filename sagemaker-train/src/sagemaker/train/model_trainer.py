@@ -80,6 +80,7 @@ from sagemaker.train.utils import (
     _is_valid_s3_uri,
     safe_serialize,
 )
+from sagemaker.core.git_utils import git_clone_repo, _validate_git_config
 from sagemaker.train.types import DataSourceType
 from sagemaker.train.constants import (
     SM_CODE,
@@ -480,6 +481,31 @@ class ModelTrainer(BaseModel):
     def _validate_source_code(self, source_code: Optional[SourceCode]):
         """Validate the source code configuration."""
         if source_code:
+            if source_code.git_config:
+                # When ``git_config`` is provided, ``source_dir``/``entry_script``/``requirements``
+                # are resolved relative to the cloned repository at train time.
+                if not source_code.entry_script:
+                    raise ValueError(
+                        "'entry_script' must be provided in 'source_code' when 'git_config' is "
+                        "set. It is resolved relative to the cloned Git repository."
+                    )
+                # A local or S3 ``source_dir`` is mutually exclusive with ``git_config``: with
+                # ``git_config`` the source lives in the repo, so ``source_dir`` (when given) must
+                # be a path relative to the repository root -- not an absolute local path, an S3
+                # URI, or a packaged tar.gz.
+                source_dir = source_code.source_dir
+                if source_dir and (
+                    os.path.isabs(source_dir)
+                    or source_dir.lower().startswith("s3://")
+                    or source_dir.endswith(".tar.gz")
+                ):
+                    raise ValueError(
+                        "'git_config' and a local or S3 'source_dir' are mutually exclusive. "
+                        "When 'git_config' is provided, 'source_dir' must be a relative path "
+                        "to a directory within the Git repository."
+                    )
+                _validate_git_config(source_code.git_config)
+                return
             if source_code.requirements or source_code.entry_script:
                 source_dir = source_code.source_dir
                 requirements = source_code.requirements
@@ -709,21 +735,46 @@ class ModelTrainer(BaseModel):
                 driver_dir = os.path.join(self._temp_code_dir.name, "distributed_drivers")
                 shutil.copytree(distributed_driver_dir, driver_dir, dirs_exist_ok=True)
 
+            # Work on a copy so a git_config clone does not permanently mutate the user's
+            # ``source_code`` (``train()`` is re-callable and must re-clone on each call).
+            source_code = self.source_code
+
+            # If git_config is provided, clone the repository and resolve source_dir/entry_script
+            # to point at the local clone so the source code channel and train script use it.
+            if source_code.git_config:
+                source_code = source_code.model_copy(deep=True)
+                updated_paths = git_clone_repo(
+                    git_config=source_code.git_config,
+                    entry_point=source_code.entry_script,
+                    source_dir=source_code.source_dir,
+                    dependencies=None,
+                )
+                if updated_paths["source_dir"]:
+                    source_code.source_dir = updated_paths["source_dir"]
+                else:
+                    # No source_dir was provided: entry_point was resolved to an absolute path
+                    # within the clone. Use its parent directory as the source directory.
+                    source_code.source_dir = os.path.dirname(updated_paths["entry_point"])
+                    source_code.entry_script = os.path.basename(updated_paths["entry_point"])
+                # Drop git_config now that the repo is cloned so credentials are never serialized
+                # into the source_code.json that is uploaded to the container.
+                source_code.git_config = None
+
             # If source code is provided, create a channel for the source code
             # The source code will be mounted at /opt/ml/input/data/code in the container
-            if self.source_code.source_dir:
+            if source_code.source_dir:
                 source_code_channel = self.create_input_data_channel(
                     channel_name=SM_CODE,
-                    data_source=self.source_code.source_dir,
+                    data_source=source_code.source_dir,
                     key_prefix=input_data_key_prefix,
-                    ignore_patterns=self.source_code.ignore_patterns,
+                    ignore_patterns=source_code.ignore_patterns,
                     instance_group_names=managed_channel_instance_group_names,
                 )
                 final_input_data_config.append(source_code_channel)
 
             self._prepare_train_script(
                 tmp_dir=self._temp_code_dir,
-                source_code=self.source_code,
+                source_code=source_code,
                 distributed=self.distributed,
             )
 
@@ -731,7 +782,7 @@ class ModelTrainer(BaseModel):
                 mp_parameters = self.distributed.smp._to_mp_hyperparameters()
                 string_hyper_parameters.update(mp_parameters)
 
-            self._write_source_code_json(tmp_dir=self._temp_code_dir, source_code=self.source_code)
+            self._write_source_code_json(tmp_dir=self._temp_code_dir, source_code=source_code)
             self._write_distributed_json(tmp_dir=self._temp_code_dir, distributed=self.distributed)
 
             # Create an input channel for drivers packaged by the sdk.
