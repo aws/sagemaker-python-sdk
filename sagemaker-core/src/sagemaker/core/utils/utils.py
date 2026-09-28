@@ -194,23 +194,28 @@ def get_rich_handler():
 
 
 def get_textual_rich_logger(name: str, log_level: str = "INFO") -> logging.Logger:
-    """Get a logger with textual rich handler.
+    """Get a logger, attaching a rich handler only when rich logging is opted in.
+
+    Rich logging (a ``RichHandler`` on the root logger via ``logging.basicConfig``,
+    plus the themed console/traceback) is opt-in, so that importing the SDK does not
+    reconfigure the root logger or change process-wide log formatting/level. When the
+    user has not opted in (see :func:`is_rich_logging_enabled`), this returns the named
+    logger without configuring handlers or levels, leaving logging to the application.
 
     Args:
         name (str): The name of the logger
-        log_level (str): The log level to set.
+        log_level (str): The log level to set when rich logging is enabled.
             Accepted values are: "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL".
             Defaults to the value of "INFO".
 
     Return:
-        logging.Logger: A textial rich logger.
+        logging.Logger: The requested logger.
     """
     enable_textual_rich_console_and_traceback()
-    handler = get_rich_handler()
-    logging.basicConfig(level=getattr(logging, log_level), handlers=[handler])
-    logger = logging.getLogger(name)
-
-    return logger
+    if is_rich_logging_enabled():
+        handler = get_rich_handler()
+        logging.basicConfig(level=getattr(logging, log_level), handlers=[handler])
+    return logging.getLogger(name)
 
 
 logger = get_textual_rich_logger(__name__)

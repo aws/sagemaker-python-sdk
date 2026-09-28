@@ -91,3 +91,24 @@ def test_enable_is_idempotent_when_opted_in():
             # The one-shot latch prevents re-installing on the second call.
             mock_reconfigure.assert_called_once()
             mock_install.assert_called_once()
+
+
+def test_get_logger_does_not_call_basicconfig_when_opted_out():
+    # Getting a module logger must not reconfigure the root logger by default.
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop(RICH_LOGGING_OPT_IN_ENV_VAR, None)
+        with patch.object(utils.logging, "basicConfig") as mock_basic_config:
+            returned = utils.get_textual_rich_logger("sagemaker.core.test.optout")
+            mock_basic_config.assert_not_called()
+            assert returned is utils.logging.getLogger("sagemaker.core.test.optout")
+
+
+def test_get_logger_calls_basicconfig_when_opted_in():
+    with patch.dict(os.environ, {RICH_LOGGING_OPT_IN_ENV_VAR: "1"}):
+        with (
+            patch.object(utils, "reconfigure"),
+            patch.object(utils, "install"),
+            patch.object(utils.logging, "basicConfig") as mock_basic_config,
+        ):
+            utils.get_textual_rich_logger("sagemaker.core.test.optin")
+            mock_basic_config.assert_called_once()
