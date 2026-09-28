@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import pytest
 import os
+import tarfile
 import tempfile
 from unittest.mock import Mock, patch
 
@@ -317,6 +318,114 @@ class TestRepackModelStep:
                             content = f.read()
                             assert "#!/bin/bash" in content
                             assert "python _repack_model.py" in content
+
+                        # Regression for issue #3762: the launcher is a bash script that runs
+                        # in a Linux container, so it must use LF endings. NOTE: this raw-bytes
+                        # check only actually catches the bug on a Windows host (on Linux/mac the
+                        # old code already emitted LF); the host-independent guard is
+                        # test_inject_repack_launcher_opened_with_lf_newline below.
+                        with open(launcher_path, "rb") as f:
+                            raw = f.read()
+                        assert b"\r\n" not in raw
+
+    def test_inject_repack_launcher_opened_with_lf_newline(self, mock_session, temp_entry_point):
+        """Regression for #3762: launcher must be opened with newline="\\n".
+
+        On Windows, text-mode ``open(..., "w")`` translates ``\\n`` to ``\\r\\n``, which
+        corrupts the bash launcher when it later runs in the Linux repack container. This
+        asserts the fix (``newline="\\n"``) is in place independently of the test host OS.
+        """
+        real_open = open
+        launcher_open_calls = []
+
+        def tracking_open(file, mode="r", *args, **kwargs):
+            if str(file).endswith(REPACK_SCRIPT_LAUNCHER) and "w" in mode:
+                launcher_open_calls.append(kwargs.get("newline"))
+            return real_open(file, mode, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+                with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                    with patch(
+                        "sagemaker.mlops.workflow._utils.TrainingStep.__init__"
+                    ) as mock_super:
+                        with patch("builtins.open", side_effect=tracking_open):
+                            mock_retrieve.return_value = "sklearn-image:latest"
+                            mock_trainer_instance = Mock()
+                            mock_trainer_instance.train = Mock(return_value=Mock())
+                            mock_trainer.return_value = mock_trainer_instance
+                            mock_super.return_value = None
+
+                            _RepackModelStep(
+                                name="repack-step",
+                                sagemaker_session=mock_session,
+                                role="arn:aws:iam::123456789012:role/SageMakerRole",
+                                model_data="s3://bucket/model.tar.gz",
+                                entry_point=temp_entry_point,
+                                source_dir=temp_dir,
+                            )
+
+        assert launcher_open_calls, "launcher file was never opened for writing"
+        assert all(nl == "\n" for nl in launcher_open_calls), (
+            "launcher must be opened with newline='\\n' to keep LF endings, "
+            f"got {launcher_open_calls}"
+        )
+
+    def test_inject_repack_launcher_opened_with_lf_newline_s3_source_dir(
+        self, mock_session, temp_entry_point
+    ):
+        """Regression for #3762 on the S3 source_dir branch.
+
+        The S3 path downloads, extracts, and rewrites the source tarball; the launcher it
+        writes into the extracted dir must also use ``newline="\\n"``. Mirrors
+        ``test_inject_repack_launcher_opened_with_lf_newline`` for the other code branch.
+        """
+        real_open = open
+        launcher_open_calls = []
+
+        def tracking_open(file, mode="r", *args, **kwargs):
+            if str(file).endswith(REPACK_SCRIPT_LAUNCHER) and "w" in mode:
+                launcher_open_calls.append(kwargs.get("newline"))
+            return real_open(file, mode, *args, **kwargs)
+
+        def fake_download(source_dir, dest_path, session):
+            # Write a minimal valid .tar.gz so the real tarfile extraction succeeds.
+            with tempfile.TemporaryDirectory() as seed:
+                seed_file = os.path.join(seed, "dummy.txt")
+                with real_open(seed_file, "w") as fh:
+                    fh.write("seed")
+                with tarfile.open(dest_path, "w:gz") as t:
+                    t.add(seed_file, arcname="dummy.txt")
+
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
+                    with patch(
+                        "sagemaker.mlops.workflow._utils.download_file_from_url",
+                        side_effect=fake_download,
+                    ):
+                        with patch("sagemaker.mlops.workflow._utils._save_model"):
+                            with patch("builtins.open", side_effect=tracking_open):
+                                mock_retrieve.return_value = "sklearn-image:latest"
+                                mock_trainer_instance = Mock()
+                                mock_trainer_instance.train = Mock(return_value=Mock())
+                                mock_trainer.return_value = mock_trainer_instance
+                                mock_super.return_value = None
+
+                                _RepackModelStep(
+                                    name="repack-step",
+                                    sagemaker_session=mock_session,
+                                    role="arn:aws:iam::123456789012:role/SageMakerRole",
+                                    model_data="s3://bucket/model.tar.gz",
+                                    entry_point=temp_entry_point,
+                                    source_dir="s3://bucket/source.tar.gz",
+                                )
+
+        assert launcher_open_calls, "launcher file was never opened for writing (S3 branch)"
+        assert all(nl == "\n" for nl in launcher_open_calls), (
+            "launcher must be opened with newline='\\n' to keep LF endings, "
+            f"got {launcher_open_calls}"
+        )
 
     def test_properties_returns_parent_properties(self, mock_session, temp_entry_point):
         """Test properties returns parent class properties."""

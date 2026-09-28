@@ -106,7 +106,7 @@ class HyperparameterTuner(object):
         completion_criteria_config: Optional[TuningJobCompletionCriteria] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         model_trainer_name: Optional[str] = None,
-        random_seed: Optional[int] = None,
+        random_seed: Optional[Union[int, PipelineVariable]] = None,
         autotune: bool = False,
         hyperparameters_to_keep_static: Optional[List[str]] = None,
     ):
@@ -172,7 +172,8 @@ class HyperparameterTuner(object):
             model_trainer_name (str): A unique name to identify a model_trainer within the
                 hyperparameter tuning job, when more than one model_trainer is used with
                 the same tuning job (default: None).
-            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+            random_seed (int or PipelineVariable): An initial value used to initialize a pseudo-random
+                number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
             autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
@@ -1081,7 +1082,8 @@ class HyperparameterTuner(object):
                 Can be either 'Auto' or 'Off' (default: 'Off'). If set to 'Off', early stopping
                 will not be attempted. If set to 'Auto', early stopping of some training jobs may
                 happen, but is not guaranteed to.
-            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+            random_seed (int or PipelineVariable): An initial value used to initialize a pseudo-random
+                number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
             autotune (bool): Whether the parameter ranges or other unset settings of a tuning job

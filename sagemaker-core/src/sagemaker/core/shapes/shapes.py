@@ -7438,7 +7438,7 @@ class HyperParameterTuningJobConfig(Base):
     parameter_ranges: Optional[ParameterRanges] = Unassigned()
     training_job_early_stopping_type: Optional[StrPipeVar] = Unassigned()
     tuning_job_completion_criteria: Optional[TuningJobCompletionCriteria] = Unassigned()
-    random_seed: Optional[int] = Unassigned()
+    random_seed: Optional[IntPipeVar] = Unassigned()
 
 
 class HyperParameterAlgorithmSpecification(Base):

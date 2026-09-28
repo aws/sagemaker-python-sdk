@@ -52,6 +52,8 @@ from sagemaker.train.constants import (
     SOURCE_CODE_JSON,
     TRAIN_SCRIPT,
     SM_RECIPE_CONTAINER_PATH,
+    SM_CODE,
+    SM_DRIVERS,
 )
 from sagemaker.train.configs import (
     Compute,
@@ -252,6 +254,47 @@ def test_model_trainer_param_validation(test_case, modules_session):
         assert trainer.output_data_config == DEFAULT_OUTPUT_DATA_CONFIG
         assert trainer.stopping_condition == DEFAULT_STOPPING_CONDITION
         assert trainer.base_job_name == DEFAULT_BASE_NAME
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+@patch("sagemaker.train.model_trainer.ModelTrainer.create_input_data_channel")
+def test_sm_drivers_channel_ignores_user_ignore_patterns(
+    mock_create_input_data_channel, mock_training_job, modules_session
+):
+    """Regression for #5493.
+
+    The user's ``ignore_patterns`` apply only to their own source_dir channel. They must NOT be
+    forwarded to the SDK-owned ``sm_drivers`` driver channel -- patterns like ``"scripts"`` or
+    ``"environment"`` would strip the driver's own ``scripts/environment.py`` and break the
+    container bootstrap with "sm_drivers/scripts/environment.py: No such file or directory".
+    """
+    user_patterns = ["scripts", "environment", "data"]
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        source_code=SourceCode(
+            source_dir=DEFAULT_SOURCE_DIR,
+            entry_script="custom_script.py",
+            ignore_patterns=user_patterns,
+        ),
+        sagemaker_session=modules_session,
+    )
+
+    trainer.train()
+
+    calls_by_channel = {
+        call.kwargs.get("channel_name"): call.kwargs
+        for call in mock_create_input_data_channel.call_args_list
+    }
+    assert SM_CODE in calls_by_channel, "source_dir channel was not created"
+    assert SM_DRIVERS in calls_by_channel, "sm_drivers channel was not created"
+    # User patterns still apply to the user's own source_dir channel.
+    assert calls_by_channel[SM_CODE].get("ignore_patterns") == user_patterns
+    # ...but must NOT be applied to the SDK-owned driver channel.
+    assert calls_by_channel[SM_DRIVERS].get("ignore_patterns") is None
 
 
 @patch("sagemaker.train.model_trainer.TrainingJob")
@@ -472,6 +515,58 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
             assert channel.data_source.file_system_data_source == test_case["data_source"]
         else:
             assert channel.data_source.s3_data_source.s3_uri == expected_s3_uri
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_encrypts_uploads_with_output_kms_key(
+    mock_default_bucket, mock_upload_data
+):
+    """GH #5956: local source uploads are encrypted with output_data_config.kms_key_id."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=OutputDataConfig(
+            s3_output_path=f"s3://{DEFAULT_BUCKET}/out",
+            kms_key_id="my-kms-key",
+        ),
+    )
+    trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+    assert mock_upload_data.call_args.kwargs["extra_args"] == {
+        "ServerSideEncryption": "aws:kms",
+        "SSEKMSKeyId": "my-kms-key",
+    }
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_explicit_kms_key_overrides(
+    mock_default_bucket, mock_upload_data, model_trainer
+):
+    """An explicit kms_key argument takes precedence over output_data_config."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+    model_trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR, kms_key="explicit-key")
+    assert mock_upload_data.call_args.kwargs["extra_args"] == {
+        "ServerSideEncryption": "aws:kms",
+        "SSEKMSKeyId": "explicit-key",
+    }
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_no_kms_by_default(
+    mock_default_bucket, mock_upload_data, model_trainer
+):
+    """Default (no kms_key_id) leaves uploads unencrypted -> extra_args None (unchanged)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+    model_trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+    assert mock_upload_data.call_args.kwargs["extra_args"] is None
 
 
 def test_create_input_data_channel_with_instance_group_names(model_trainer):
@@ -874,7 +969,7 @@ def test_remote_debug_config(mock_training_job, modules_session):
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_session):
-    def mock_upload_data(path, bucket, key_prefix):
+    def mock_upload_data(path, bucket, key_prefix, extra_args=None):
         return f"s3://{bucket}/{key_prefix}"
 
     modules_session.upload_data.side_effect = mock_upload_data
@@ -1152,7 +1247,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
 # def test_model_trainer_local_full_init(
 #     mock_download_folder, mock_unique_name, mock_local_container, modules_session
 # ):
-#     def mock_upload_data(path, bucket, key_prefix):
+#     def mock_upload_data(path, bucket, key_prefix, extra_args=None):
 #         return f"s3://{bucket}/{key_prefix}"
 
 #     modules_session.upload_data.side_effect = mock_upload_data
@@ -1406,7 +1501,7 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_model_trainer_default_paths(mock_training_job, mock_unique_name, modules_session):
-    def mock_upload_data(path, bucket, key_prefix):
+    def mock_upload_data(path, bucket, key_prefix, extra_args=None):
         return f"s3://{bucket}/{key_prefix}"
 
     unique_name = "base-job-0123456789"
@@ -1510,7 +1605,7 @@ def test_metric_definitions(mock_training_job, modules_session):
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.core.resources.TrainingJob")
 def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
-    def mock_upload_data(path, bucket, key_prefix):
+    def mock_upload_data(path, bucket, key_prefix, extra_args=None):
         if os.path.isfile(path):
             file_name = os.path.basename(path)
             return f"s3://{bucket}/{key_prefix}/{file_name}"
@@ -1782,7 +1877,7 @@ def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_llmft_recipe(mock_training_job, mock_unique_name, modules_session):
-    def mock_upload_data(path, bucket, key_prefix):
+    def mock_upload_data(path, bucket, key_prefix, extra_args=None):
         if os.path.isfile(path):
             file_name = os.path.basename(path)
             return f"s3://{bucket}/{key_prefix}/{file_name}"

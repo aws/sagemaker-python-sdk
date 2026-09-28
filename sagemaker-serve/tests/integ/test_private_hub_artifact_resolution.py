@@ -154,7 +154,6 @@ def execution_role():
     return f"arn:aws:iam::{account_id}:role/Admin"
 
 
-@pytest.mark.slow_test
 def test_from_jumpstart_config_derives_hub_arn(private_hub, sagemaker_session):
     """Verify from_jumpstart_config correctly derives hub_arn from hub_name."""
     js_config = JumpStartConfig(
@@ -176,7 +175,6 @@ def test_from_jumpstart_config_derives_hub_arn(private_hub, sagemaker_session):
     logger.info("hub_arn correctly derived: %s", mb.hub_arn)
 
 
-@pytest.mark.slow_test
 def test_build_resolves_artifacts_via_private_hub(private_hub, execution_role, sagemaker_session):
     """Verify build() resolves model data through the private hub."""
     js_config = JumpStartConfig(
@@ -388,7 +386,6 @@ def _deploy_and_assert_hub_access_config(
                 logger.warning("Cleanup failed for %s: %s", kwargs, e)
 
 
-@pytest.mark.slow_test
 def test_deploy_with_no_s3_execution_role(private_hub, no_s3_execution_role, sagemaker_session):
     """E2E: deploy from a private hub with an execution role that has ZERO
     S3 permissions. Passes only when the SDK attaches HubAccessConfig to
@@ -406,7 +403,6 @@ def test_deploy_with_no_s3_execution_role(private_hub, no_s3_execution_role, sag
     )
 
 
-@pytest.mark.slow_test
 def test_deploy_with_aliased_hub_content_name(
     private_hub, aliased_model_reference, no_s3_execution_role, sagemaker_session
 ):
