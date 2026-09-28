@@ -2220,3 +2220,71 @@ def test_log_actionable_client_error_other_codes_stay_silent(caplog):
         _log_actionable_client_error(error)
 
     assert caplog.text == ""
+
+
+def test_output_data_returns_output_tar_gz_uri(model_trainer):
+    """output_data derives the output.tar.gz S3 URI from the completed job."""
+    from sagemaker.core.shapes import OutputDataConfig as CoreOutputDataConfig
+
+    model_trainer._latest_training_job = TrainingJob(
+        training_job_name="my-training-job",
+        output_data_config=CoreOutputDataConfig(
+            s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}"
+        ),
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_strips_trailing_slash(model_trainer):
+    """A trailing slash on s3_output_path must not produce a double slash."""
+    from sagemaker.core.shapes import OutputDataConfig as CoreOutputDataConfig
+
+    model_trainer._latest_training_job = TrainingJob(
+        training_job_name="my-training-job",
+        output_data_config=CoreOutputDataConfig(
+            s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/"
+        ),
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_falls_back_to_trainer_output_config(model_trainer):
+    """When the job resource has no output_data_config, fall back to the trainer's."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+
+    assert model_trainer.output_data == (
+        f"{DEFAULT_OUTPUT_DATA_CONFIG.s3_output_path}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_raises_when_no_training_job(model_trainer):
+    """Accessing output_data before training raises a clear error."""
+    assert model_trainer._latest_training_job is None
+    with pytest.raises(ValueError, match="No training job"):
+        _ = model_trainer.output_data
+
+
+def test_output_data_raises_when_no_output_path(model_trainer):
+    """output_data raises if no S3 output path can be resolved."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+    model_trainer.output_data_config = None
+    with pytest.raises(ValueError, match="output S3 path"):
+        _ = model_trainer.output_data
+
+
+def test_output_data_strips_trailing_slash_on_fallback(model_trainer):
+    """The trailing slash is also normalized when using the trainer fallback."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+    model_trainer.output_data_config = OutputDataConfig(
+        s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/"
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )
