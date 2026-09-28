@@ -63,7 +63,6 @@ def _additional_model_data_sources(s3_uri):
     ]
 
 
-@pytest.mark.slow_test
 @pytest.mark.gpu_intensive
 def test_deploy_sdkt_model_as_inference_component():
     """A model carrying SD/KT AdditionalModelDataSources deploys as an
