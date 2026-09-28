@@ -137,12 +137,49 @@ def get_textual_rich_theme() -> Theme:
     )
 
 
+RICH_LOGGING_OPT_IN_ENV_VAR = "SAGEMAKER_ENABLE_RICH_LOGGING"
+
+_TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
+def is_rich_logging_enabled() -> bool:
+    """Whether the user opted in to sagemaker-core's rich console and tracebacks.
+
+    Reconfiguring the global rich console and calling ``rich.traceback.install()``
+    override ``sys.excepthook`` and restyle the process-global console, so they are
+    opt-in: merely importing the SDK must not change tracebacks or console styling.
+    Enable by setting the ``SAGEMAKER_ENABLE_RICH_LOGGING`` environment variable to
+    one of ``1``/``true``/``yes``/``on`` (case-insensitive).
+
+    Returns:
+        bool: True if rich console/traceback output has been opted into.
+    """
+    return (
+        os.environ.get(RICH_LOGGING_OPT_IN_ENV_VAR, "").strip().lower() in _TRUTHY_ENV_VALUES
+    )
+
+
 textual_rich_console_and_traceback_enabled = False
 
 
-def enable_textual_rich_console_and_traceback():
-    """Reconfigure the global textual rich console with the customized theme and enable textual rich error traceback"""
+def enable_textual_rich_console_and_traceback(force: bool = False):
+    """Reconfigure the global rich console and install rich error tracebacks.
+
+    This overrides ``sys.excepthook`` (via ``rich.traceback.install``) and restyles
+    the process-global rich console. Because those are process-wide side effects, it
+    is opt-in and a no-op unless the user opts in via the
+    ``SAGEMAKER_ENABLE_RICH_LOGGING`` environment variable
+    (see :func:`is_rich_logging_enabled`) or the caller passes ``force=True``. This
+    keeps ``import sagemaker`` free of global traceback/console side effects by
+    default.
+
+    Args:
+        force (bool): Enable regardless of the environment variable, for callers
+            that explicitly want rich output. Defaults to False.
+    """
     global textual_rich_console_and_traceback_enabled
+    if not (force or is_rich_logging_enabled()):
+        return
     if not textual_rich_console_and_traceback_enabled:
         theme = get_textual_rich_theme()
         reconfigure(theme=theme)

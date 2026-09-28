@@ -3,7 +3,7 @@
 from sagemaker.core.utils.utils import enable_textual_rich_console_and_traceback
 from sagemaker.core.deprecations import register_removed_module_finder
 
-enable_textual_rich_console_and_traceback()
+enable_textual_rich_console_and_traceback()  # opt-in; no-op unless SAGEMAKER_ENABLE_RICH_LOGGING is set
 
 # Install the meta-path finder that gives actionable migration guidance for v2
 # modules removed in v3. sagemaker-core is the universal dependency of every v3
