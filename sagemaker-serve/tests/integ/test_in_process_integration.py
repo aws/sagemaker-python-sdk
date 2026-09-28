@@ -50,7 +50,6 @@ class MathInferenceSpec(InferenceSpec):
         return {"result": result, "operation": f"multiply by {factor}"}
 
 
-@pytest.mark.slow_test
 def test_in_process_build_deploy_invoke_cleanup():
     """Integration test for In-Process mode build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting In-Process integration test...")
