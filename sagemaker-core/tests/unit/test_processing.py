@@ -1399,6 +1399,91 @@ class TestFrameworkProcessorPackAndUpload:
                     assert any("runproc.sh" in uri for uri in upload_uris)
                     assert mock_upload.call_count == 2
 
+    def test_pack_and_upload_code_falls_back_to_output_kms_key(self, mock_session):
+        """kms_key falls back to output_kms_key for ALL artifacts, incl. sourcedir.tar.gz.
+
+        Regression test for #4874: the source bundle is packaged and uploaded by
+        ``_package_code`` before the helper scripts. Previously the fallback was
+        computed after that call, so ``sourcedir.tar.gz`` (the largest, most sensitive
+        artifact) was uploaded unencrypted while install_requirements.py / runproc.sh
+        were encrypted. All three must use the resolved key.
+        """
+        kms_key_arn = "arn:aws:kms:us-west-2:123456789012:key/output-key"
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            output_kms_key=kms_key_arn,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            with patch.object(
+                processor, "_package_code", return_value="s3://bucket/code/sourcedir.tar.gz"
+            ) as mock_package_code:
+                with patch(
+                    "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                    return_value="s3://bucket/runproc.sh",
+                ) as mock_upload:
+                    processor._pack_and_upload_code(
+                        code=entry_point,
+                        source_dir=None,
+                        requirements=None,
+                        job_name=None,
+                        inputs=None,
+                        kms_key=None,
+                    )
+
+        # The source bundle upload (via _package_code) must receive the resolved key.
+        assert mock_package_code.call_args.kwargs["kms_key"] == kms_key_arn
+        # install_requirements.py and runproc.sh must use the same resolved key.
+        upload_kms = [call.kwargs.get("kms_key") for call in mock_upload.call_args_list]
+        assert upload_kms, "expected helper-script uploads"
+        assert all(k == kms_key_arn for k in upload_kms)
+
+    def test_pack_and_upload_code_explicit_kms_key_wins(self, mock_session):
+        """An explicitly passed kms_key overrides output_kms_key for every artifact."""
+        output_kms = "arn:aws:kms:us-west-2:123456789012:key/output-key"
+        explicit_kms = "arn:aws:kms:us-west-2:123456789012:key/explicit-key"
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            output_kms_key=output_kms,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            with patch.object(
+                processor, "_package_code", return_value="s3://bucket/code/sourcedir.tar.gz"
+            ) as mock_package_code:
+                with patch(
+                    "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                    return_value="s3://bucket/runproc.sh",
+                ) as mock_upload:
+                    processor._pack_and_upload_code(
+                        code=entry_point,
+                        source_dir=None,
+                        requirements=None,
+                        job_name=None,
+                        inputs=None,
+                        kms_key=explicit_kms,
+                    )
+
+        assert mock_package_code.call_args.kwargs["kms_key"] == explicit_kms
+        upload_kms = [call.kwargs.get("kms_key") for call in mock_upload.call_args_list]
+        assert upload_kms and all(k == explicit_kms for k in upload_kms)
+
 
 class TestProcessingInputOutputHelpers:
     def test_processing_input_with_app_managed(self):

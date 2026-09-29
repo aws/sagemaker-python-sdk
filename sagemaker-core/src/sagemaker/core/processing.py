@@ -1428,6 +1428,14 @@ class FrameworkProcessor(ScriptProcessor):
         if job_name is None:
             job_name = self._generate_current_job_name(job_name)
 
+        # Resolve the KMS key once, before any upload, so every artifact this method
+        # produces -- the source bundle, install_requirements.py and runproc.sh -- is
+        # encrypted with the same key. An explicitly passed kms_key always wins; when it
+        # is not set we fall back to the configured output_kms_key. This must happen
+        # before _package_code so sourcedir.tar.gz (the largest, most sensitive artifact)
+        # is not left unencrypted (issue #4874).
+        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
+
         # Package and upload code
         s3_payload = self._package_code(
             entry_point=code,
@@ -1435,7 +1443,7 @@ class FrameworkProcessor(ScriptProcessor):
             dependencies=dependencies,
             requirements=requirements,
             job_name=job_name,
-            kms_key=kms_key,
+            kms_key=evaluated_kms_key,
         )
 
         inputs = self._patch_inputs_with_payload(inputs, s3_payload)
@@ -1471,7 +1479,6 @@ class FrameworkProcessor(ScriptProcessor):
         # Upload install_requirements helper
         import sagemaker.core.utils.install_requirements as _ir_mod
 
-        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         with open(_ir_mod.__file__, "r") as _ir_file:
             _ir_body = _ir_file.read()
         s3.S3Uploader.upload_string_as_file_body(
