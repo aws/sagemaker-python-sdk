@@ -1,5 +1,9 @@
+import io
 import unittest
 from unittest.mock import Mock, patch
+
+from sagemaker.core.deserializers import JSONDeserializer
+from sagemaker.core.serializers import JSONSerializer
 from sagemaker.serve.predictor_async import AsyncPredictor
 
 
@@ -105,6 +109,79 @@ class TestAsyncPredictor(unittest.TestCase):
         async_predictor = AsyncPredictor(self.mock_predictor)
         async_predictor.disable_data_capture()
         self.mock_predictor.disable_data_capture.assert_called_once()
+
+
+class _StubPredictor:
+    """Minimal predictor exposing the attributes ``AsyncPredictor`` relies on."""
+
+    def __init__(self, sagemaker_session, serializer, deserializer):
+        self.endpoint_name = "test-endpoint"
+        self.sagemaker_session = sagemaker_session
+        self.serializer = serializer
+        self.deserializer = deserializer
+
+    @property
+    def accept(self):
+        return self.deserializer.ACCEPT
+
+    def _handle_response(self, response):
+        return self.deserializer.deserialize(response["Body"], response["ContentType"])
+
+
+class TestAsyncPredictorSerializerOverrides(unittest.TestCase):
+    """Overrides set on AsyncPredictor must reach the request and the result (issue #3100)."""
+
+    def setUp(self):
+        self.sagemaker_session = Mock()
+        self.sagemaker_session.default_bucket.return_value = "bucket"
+        self.sagemaker_session.default_bucket_prefix = None
+        self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.return_value = {
+            "OutputLocation": "s3://bucket/output",
+        }
+        self.sagemaker_session.s3_client.get_object.return_value = {
+            "Body": io.BytesIO(b'{"result": [1, 2, 3]}'),
+            "ContentType": "application/json",
+        }
+        default_deserializer = Mock()
+        default_deserializer.ACCEPT = ("*/*",)
+        self.predictor = _StubPredictor(self.sagemaker_session, Mock(), default_deserializer)
+
+    def test_deserializer_override_is_used_for_accept_and_result(self):
+        async_predictor = AsyncPredictor(self.predictor)
+
+        async_predictor.deserializer = JSONDeserializer()
+
+        self.assertIsInstance(self.predictor.deserializer, JSONDeserializer)
+
+        result = async_predictor.predict(input_path="s3://bucket/input")
+
+        _, kwargs = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.call_args
+        self.assertEqual(kwargs["Accept"], "application/json")
+        self.assertEqual(result, {"result": [1, 2, 3]})
+
+    def test_serializer_override_is_used_for_upload(self):
+        async_predictor = AsyncPredictor(self.predictor, name="test")
+
+        async_predictor.serializer = JSONSerializer()
+
+        self.assertIsInstance(self.predictor.serializer, JSONSerializer)
+
+        async_predictor.predict_async(data={"hi": "there"})
+
+        _, kwargs = self.sagemaker_session.s3_client.put_object.call_args
+        self.assertEqual(kwargs["Body"], '{"hi": "there"}')
+        self.assertEqual(kwargs["ContentType"], "application/json")
+
+    def test_reflects_serializers_set_on_wrapped_predictor(self):
+        async_predictor = AsyncPredictor(self.predictor)
+
+        serializer = JSONSerializer()
+        deserializer = JSONDeserializer()
+        self.predictor.serializer = serializer
+        self.predictor.deserializer = deserializer
+
+        self.assertIs(async_predictor.serializer, serializer)
+        self.assertIs(async_predictor.deserializer, deserializer)
 
 
 if __name__ == "__main__":

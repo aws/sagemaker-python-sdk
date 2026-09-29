@@ -52,13 +52,39 @@ class AsyncPredictor:
         else:
             self.s3_client = self.sagemaker_session.s3_client
 
-        self.serializer = predictor.serializer
-        self.deserializer = predictor.deserializer
         self.name = name
         self._endpoint_config_name = None
         self._model_names = None
         self._context = None
         self._input_path = None
+
+    @property
+    def serializer(self):
+        """The serializer used to encode request data uploaded to Amazon S3.
+
+        Reads from and writes to the wrapped predictor, so it always stays in
+        sync with the serializer the underlying predictor uses.
+        """
+        return self.predictor.serializer
+
+    @serializer.setter
+    def serializer(self, serializer):
+        """Set the serializer on the wrapped predictor."""
+        self.predictor.serializer = serializer
+
+    @property
+    def deserializer(self):
+        """The deserializer used to decode the async inference result.
+
+        Reads from and writes to the wrapped predictor, so the ``Accept`` header
+        and the decoding of the Amazon S3 output both honor the configured value.
+        """
+        return self.predictor.deserializer
+
+    @deserializer.setter
+    def deserializer(self, deserializer):
+        """Set the deserializer on the wrapped predictor."""
+        self.predictor.deserializer = deserializer
 
     def predict(
         self,
