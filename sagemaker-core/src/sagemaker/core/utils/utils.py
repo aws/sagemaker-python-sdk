@@ -137,12 +137,47 @@ def get_textual_rich_theme() -> Theme:
     )
 
 
+RICH_LOGGING_OPT_IN_ENV_VAR = "SAGEMAKER_ENABLE_RICH_LOGGING"
+
+_TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
+def is_rich_logging_enabled() -> bool:
+    """Whether the user opted in to sagemaker-core's rich console and tracebacks.
+
+    Reconfiguring the global rich console and calling ``rich.traceback.install()``
+    override ``sys.excepthook`` and restyle the process-global console, so they are
+    opt-in: merely importing the SDK must not change tracebacks or console styling.
+    Enable by setting the ``SAGEMAKER_ENABLE_RICH_LOGGING`` environment variable to
+    one of ``1``/``true``/``yes``/``on`` (case-insensitive).
+
+    Returns:
+        bool: True if rich console/traceback output has been opted into.
+    """
+    return os.environ.get(RICH_LOGGING_OPT_IN_ENV_VAR, "").strip().lower() in _TRUTHY_ENV_VALUES
+
+
 textual_rich_console_and_traceback_enabled = False
 
 
-def enable_textual_rich_console_and_traceback():
-    """Reconfigure the global textual rich console with the customized theme and enable textual rich error traceback"""
+def enable_textual_rich_console_and_traceback(force: bool = False):
+    """Reconfigure the global rich console and install rich error tracebacks.
+
+    This overrides ``sys.excepthook`` (via ``rich.traceback.install``) and restyles
+    the process-global rich console. Because those are process-wide side effects, it
+    is opt-in and a no-op unless the user opts in via the
+    ``SAGEMAKER_ENABLE_RICH_LOGGING`` environment variable
+    (see :func:`is_rich_logging_enabled`) or the caller passes ``force=True``. This
+    keeps ``import sagemaker`` free of global traceback/console side effects by
+    default.
+
+    Args:
+        force (bool): Enable regardless of the environment variable, for callers
+            that explicitly want rich output. Defaults to False.
+    """
     global textual_rich_console_and_traceback_enabled
+    if not (force or is_rich_logging_enabled()):
+        return
     if not textual_rich_console_and_traceback_enabled:
         theme = get_textual_rich_theme()
         reconfigure(theme=theme)
@@ -159,23 +194,28 @@ def get_rich_handler():
 
 
 def get_textual_rich_logger(name: str, log_level: str = "INFO") -> logging.Logger:
-    """Get a logger with textual rich handler.
+    """Get a logger, attaching a rich handler only when rich logging is opted in.
+
+    Rich logging (a ``RichHandler`` on the root logger via ``logging.basicConfig``,
+    plus the themed console/traceback) is opt-in, so that importing the SDK does not
+    reconfigure the root logger or change process-wide log formatting/level. When the
+    user has not opted in (see :func:`is_rich_logging_enabled`), this returns the named
+    logger without configuring handlers or levels, leaving logging to the application.
 
     Args:
         name (str): The name of the logger
-        log_level (str): The log level to set.
+        log_level (str): The log level to set when rich logging is enabled.
             Accepted values are: "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL".
             Defaults to the value of "INFO".
 
     Return:
-        logging.Logger: A textial rich logger.
+        logging.Logger: The requested logger.
     """
     enable_textual_rich_console_and_traceback()
-    handler = get_rich_handler()
-    logging.basicConfig(level=getattr(logging, log_level), handlers=[handler])
-    logger = logging.getLogger(name)
-
-    return logger
+    if is_rich_logging_enabled():
+        handler = get_rich_handler()
+        logging.basicConfig(level=getattr(logging, log_level), handlers=[handler])
+    return logging.getLogger(name)
 
 
 logger = get_textual_rich_logger(__name__)

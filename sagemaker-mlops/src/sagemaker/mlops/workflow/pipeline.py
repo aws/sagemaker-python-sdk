@@ -281,7 +281,10 @@ class Pipeline:
             }
 
         update_args(
-            kwargs, PipelineDescription=description, ParallelismConfiguration=parallelism_config
+            kwargs,
+            PipelineDescription=description,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
         )
         return kwargs
 
@@ -466,7 +469,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
-            ParallelismConfiguration=parallelism_config,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
             SelectiveExecutionConfig=selective_execution_config,
             MlflowExperimentName=mlflow_experiment_name,
             PipelineVersionId=pipeline_version_id,
@@ -965,6 +969,20 @@ def _map_lambda_outputs(steps: List[Step]):
                     lambda_output_map[output.output_name] = step.name
 
     return lambda_output_map
+
+
+def _resolve_parallelism_config(parallelism_config):
+    """Normalize a parallelism_config into the request dict boto expects.
+
+    boto's create/update/start pipeline APIs expect ``ParallelismConfiguration`` as a dict
+    (``{"MaxParallelExecutionSteps": int}``), not a ``ParallelismConfiguration`` object
+    (issue #5354). This converts the object via ``to_request()``. A dict is passed through
+    unchanged so callers who adopted the pre-fix ``.to_request()`` workaround keep working,
+    and ``None`` is returned as-is so ``update_args`` can drop the key.
+    """
+    if isinstance(parallelism_config, ParallelismConfiguration):
+        return parallelism_config.to_request()
+    return parallelism_config
 
 
 def update_args(args: Dict[str, Any], **kwargs):

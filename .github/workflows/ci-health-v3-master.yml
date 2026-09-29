@@ -8,6 +8,11 @@ on:
 permissions:
     id-token: write # This is required for requesting the JWT
 
+# Credentials are requested for 6h (the GithubActionsRole max session duration)
+# so the aws-codebuild-run-build step can keep polling for the whole build. The
+# canary CodeBuild timeout is set just under this (5.5h in CDK) so a hung build
+# is recorded by CodeBuild as TIMED_OUT (counted in FailedBuilds) instead of the
+# GitHub job being cancelled first.
 jobs:
   unit-test-v3:
     runs-on: ubuntu-latest
@@ -21,7 +26,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
           aws-region: us-west-2
-          role-duration-seconds: 10800
+          role-duration-seconds: 21600
       - name: Run Unit Tests V3 for ${{ matrix.submodule }}
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
@@ -31,8 +36,13 @@ jobs:
             SUBMODULE
         env:
           SUBMODULE: ${{ matrix.submodule }}
+  # Per-submodule integ canaries. These also cover the us-west-2 gpu_intensive
+  # tests (train, serve) and, in sagemaker-serve, the Bedrock import_model tests
+  # (run in a dedicated serial step inside the canary buildspec because the
+  # "Concurrent model import jobs" quota is fixed at 1).
   canaries-v3-master:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -43,7 +53,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
           aws-region: us-west-2
-          role-duration-seconds: 10800
+          role-duration-seconds: 21600
       - name: Run Canaries V3 master for ${{ matrix.submodule }}
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
@@ -53,24 +63,9 @@ jobs:
             SUBMODULE
         env:
           SUBMODULE: ${{ matrix.submodule }}
-  # GPU integ tests against the master source. Two region jobs trigger the same
-  # CodeBuild project name (deployed in both regions); only the region/creds and
-  # the region-override buildspec differ. Their results are AND-ed with
-  # import-model in report-result into a single per-run pass/fail metric.
-  gpu-integ-tests-master:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
-          aws-region: us-west-2
-          role-duration-seconds: 10800
-      - name: Run GPU Integ Tests (master)
-        uses: aws-actions/aws-codebuild-run-build@v1
-        with:
-          project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests-master
-          source-version: refs/heads/master
+  # us_east_1-marked GPU integ tests against the master source. These run in the
+  # separate us-east-1 (Nova) account, so they cannot be part of the us-west-2
+  # canaries. Their result is reported to us-west-2 by report-result.
   gpu-integ-tests-master-us-east-1:
     runs-on: ubuntu-latest
     steps:
@@ -79,39 +74,21 @@ jobs:
         with:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_US_EAST_1_ARN }}
           aws-region: us-east-1
-          role-duration-seconds: 10800
+          role-duration-seconds: 21600
       - name: Run GPU Integ Tests (master, us-east-1)
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests-master
           source-version: refs/heads/master
-  # Bedrock model-import integ tests. Run serially (concurrency 1) in their own
-  # CodeBuild project because the "Concurrent model import jobs" Bedrock quota is
-  # fixed at 1 and not raisable; running them in parallel (as PR checks did)
-  # makes them collide and flake. us-west-2 only (no us_east_1-marked tests).
-  # Folded into the master run-level pass/fail metric alongside the GPU jobs.
-  import-model-integ-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
-          aws-region: us-west-2
-          role-duration-seconds: 10800
-      - name: Run Bedrock Model-Import Integ Tests
-        uses: aws-actions/aws-codebuild-run-build@v1
-        with:
-          project-name: sagemaker-python-sdk-ci-health-import-model-integ-tests
-          source-version: refs/heads/master
-  # Run-level result: the master GPU run is successful only if the us-west-2,
-  # us-east-1, and import-model jobs all succeeded. Emits GpuIntegMasterRunFailure
-  # = 1 (failed) / 0 (succeeded) to CloudWatch in us-west-2. The CDK alarm
+  # Run-level result for the us-east-1 GPU job. Its CodeBuild FailedBuilds metric
+  # lives in the us-east-1 account, which the us-west-2 CIHealthCompositeAlarm-V3
+  # cannot see, so the result is re-emitted to us-west-2 as
+  # GpuIntegMasterRunFailure = 1 (failed) / 0 (succeeded). The CDK alarm
   # (GpuIntegMasterRunAlarm) sums this over a UTC day; it is folded into
   # CIHealthCompositeAlarm-V3, which owns ticketing. Only scheduled runs emit the
   # metric (manual workflow_dispatch runs are excluded).
   report-result:
-    needs: [gpu-integ-tests-master, gpu-integ-tests-master-us-east-1, import-model-integ-tests]
+    needs: [gpu-integ-tests-master-us-east-1]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -129,14 +106,12 @@ jobs:
             echo "Not a scheduled run (${{ github.event_name }}); skipping metric emission."
             exit 0
           fi
-          if [ "${{ needs.gpu-integ-tests-master.result }}" == "success" ] && \
-             [ "${{ needs.gpu-integ-tests-master-us-east-1.result }}" == "success" ] && \
-             [ "${{ needs.import-model-integ-tests.result }}" == "success" ]; then
+          if [ "${{ needs.gpu-integ-tests-master-us-east-1.result }}" == "success" ]; then
             value=0
-            echo "All master GPU/import jobs succeeded; emitting GpuIntegMasterRunFailure=0"
+            echo "us-east-1 master GPU job succeeded; emitting GpuIntegMasterRunFailure=0"
           else
             value=1
-            echo "At least one master GPU/import job did not succeed; emitting GpuIntegMasterRunFailure=1"
+            echo "us-east-1 master GPU job did not succeed; emitting GpuIntegMasterRunFailure=1"
           fi
           aws cloudwatch put-metric-data \
             --namespace GpuIntegRunMetrics \
