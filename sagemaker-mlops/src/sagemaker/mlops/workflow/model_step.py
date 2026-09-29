@@ -18,6 +18,7 @@ import logging
 from typing import Union, List, Dict, Optional
 
 from sagemaker.core.resources import Model
+from sagemaker.core.shapes import OutputDataConfig
 from sagemaker.mlops.workflow._utils import _RepackModelStep
 from sagemaker.core.workflow.pipeline_context import PipelineSession, _ModelStepArguments
 from sagemaker.mlops.workflow.retry import RetryPolicy, SageMakerJobStepRetryPolicy
@@ -234,6 +235,7 @@ class ModelStep(ConfigurableRetryStep):
                 "entry_point": getattr(model, "entry_point", None),
                 "source_dir": getattr(model, "source_dir", None),
                 "requirements": requirements,
+                "model_kms_key": getattr(model, "model_kms_key", None),
             }
         # Legacy sagemaker.core.resources.Model path.
         return {
@@ -244,12 +246,18 @@ class ModelStep(ConfigurableRetryStep):
             "entry_point": getattr(model, "entry_point", None),
             "source_dir": getattr(model, "source_dir", None),
             "requirements": getattr(model, "requirements", None),
+            "model_kms_key": getattr(model, "model_kms_key", None),
         }
 
     def _append_repack_model_step(self):
         """Create and append a `_RepackModelStep` for the runtime repack"""
         from sagemaker.serve.model_builder import ModelBuilder
 
+        # ModelBuilder is what ModelBuilder.register()/.build() put into the pipeline
+        # context. The core ``Model`` arm is legacy/duck-typed: no v3 @runnable_by_pipeline
+        # path produces one, and sagemaker.core.resources.Model has no sagemaker_session /
+        # role / entry_point (GH #5829), so it is kept only for objects that happen to
+        # expose those attributes rather than as a supported v3 entry point.
         if isinstance(self._model, (Model, ModelBuilder)):
             model_list = [self._model]
         else:
@@ -269,6 +277,20 @@ class ModelStep(ConfigurableRetryStep):
             if runtime_repack_flg:
                 fields = self._repack_inputs_for(model)
                 name_base = fields["name"] or i
+                # Send the repacked artifact to the location ModelBuilder computed from the
+                # user's bucket / code_location, encrypted with their model KMS key. These
+                # reach ModelTrainer via _RepackModelStep's **kwargs. Without this the
+                # repacked tarball silently lands in ModelTrainer's default bucket with no
+                # CMK, which breaks accounts with a mandated bucket or SSE-KMS policy.
+                # setdefault so an explicit repack_model_step_settings override wins.
+                if self._runtime_repack_output_prefix or fields["model_kms_key"]:
+                    self._repack_model_step_settings.setdefault(
+                        "output_data_config",
+                        OutputDataConfig(
+                            s3_output_path=self._runtime_repack_output_prefix,
+                            kms_key_id=fields["model_kms_key"],
+                        ),
+                    )
                 repack_model_step = _RepackModelStep(
                     name="{}-{}-{}".format(self.name, _REPACK_MODEL_NAME_BASE, name_base),
                     sagemaker_session=(
