@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Utilities for working with FeatureGroups and FeatureStores."""
+
 import logging
 import os
 import time
@@ -30,7 +31,6 @@ from sagemaker.mlops.feature_store.ingestion_manager_pandas import IngestionMana
 from sagemaker.mlops.feature_store.inputs import TargetStoreEnum
 
 from sagemaker.core.utils import unique_name_from_base
-
 
 logger = logging.getLogger(__name__)
 
@@ -62,16 +62,33 @@ _DTYPE_TO_FEATURE_TYPE_MAP = {
 }
 
 _INTEGER_TYPES = {
-    "int_", "int8", "int16", "int32", "int64",
-    "uint8", "uint16", "uint32", "uint64",
+    "int_",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
     # pandas nullable integer dtypes
-    "Int8", "Int16", "Int32", "Int64",
-    "UInt8", "UInt16", "UInt32", "UInt64",
+    "Int8",
+    "Int16",
+    "Int32",
+    "Int64",
+    "UInt8",
+    "UInt16",
+    "UInt32",
+    "UInt64",
 }
 _FLOAT_TYPES = {
-    "float_", "float16", "float32", "float64",
+    "float_",
+    "float16",
+    "float32",
+    "float64",
     # pandas nullable float dtypes
-    "Float32", "Float64",
+    "Float32",
+    "Float64",
 }
 _STRING_TYPES = {"object", "string"}
 
@@ -89,16 +106,16 @@ _ALLOWED_ICEBERG_PROPERTIES = {
     "write.delete.granularity",
     "history.expire.max-ref-age-ms",
     "read.split.open-file-cost",
-    "write.target-file-size-bytes"
+    "write.target-file-size-bytes",
 }
 
-_ICEBERG_PERMISSIONS_ERROR_MESSAGE = (                                                                                                                                                                                                                                                         
-      "If this feature group uses Lake Formation governance, ensure you have "                                                                                                                                                                                                                   
-      "SELECT, DESCRIBE, and ALTER permissions on the table in Lake Formation, "                                                                                                                                                                                                                 
-      "in addition to IAM permissions.\n"                                                                                                                                                                                                                                                        
-      "If this feature group uses IAM governance, ensure your role has "                                                                                                                                                                                                                         
-      "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."
-  )
+_ICEBERG_PERMISSIONS_ERROR_MESSAGE = (
+    "If this feature group uses Lake Formation governance, ensure you have "
+    "SELECT, DESCRIBE, and ALTER permissions on the table in Lake Formation, "
+    "in addition to IAM permissions.\n"
+    "If this feature group uses IAM governance, ensure your role has "
+    "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."
+)
 
 # UpdateRecord supports at most 100 features per call.
 MAX_UPDATE_RECORD_FEATURES = 100
@@ -174,7 +191,9 @@ def wait_for_athena_query(session: Session, query_execution_id: str, poll: int =
         poll: Polling interval in seconds (default: 5).
     """
     while True:
-        state = get_query_execution(session, query_execution_id)["QueryExecution"]["Status"]["State"]
+        state = get_query_execution(session, query_execution_id)["QueryExecution"]["Status"][
+            "State"
+        ]
         if state in ("SUCCEEDED", "FAILED"):
             logger.info("Query %s %s.", query_execution_id, state.lower())
             break
@@ -351,10 +370,11 @@ def get_session_from_role(region: str, assume_role: str = None) -> Session:
 
 # --- FeatureDefinition Functions ---
 
+
 def _is_collection_column(series: Series, sample_size: int = 1000) -> bool:
     """Check if column contains list/set values."""
     sample = series.head(sample_size).dropna()
-    return sample.apply(lambda x: isinstance(x, (list, set))).any()
+    return bool(sample.apply(lambda x: isinstance(x, (list, set))).any())
 
 
 def _generate_feature_definition(
@@ -404,6 +424,7 @@ def load_feature_definitions_from_dataframe(
 
 
 # --- FeatureGroup Functions ---
+
 
 def create_athena_query(feature_group_name: str, session: Session):
     """Create an AthenaQuery for a FeatureGroup.
@@ -528,7 +549,11 @@ def ingest_dataframe(
     for fd in fg.feature_definitions:
         collection_type = getattr(fd, "collection_type", None)
         # Handle Unassigned, empty string, or None as None
-        if isinstance(collection_type, Unassigned) or collection_type == "" or collection_type is None:
+        if (
+            isinstance(collection_type, Unassigned)
+            or collection_type == ""
+            or collection_type is None
+        ):
             collection_type = None
         feature_definitions[fd.feature_name] = {
             "FeatureType": fd.feature_type,
@@ -929,6 +954,7 @@ def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
     """
     data.rename(columns=lambda x: x.replace(" ", "_").replace(".", "").lower()[:62], inplace=True)
     return data
+
 
 def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
     """Cast properly pandas object types to strings

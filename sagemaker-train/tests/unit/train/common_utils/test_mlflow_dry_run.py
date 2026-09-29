@@ -11,10 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for MLflow dry_run behavior in _resolve_mlflow_resource_arn."""
+
 import logging
 from unittest.mock import Mock, patch, MagicMock
 
-import pytest
 
 from sagemaker.train.common_utils.finetune_utils import (
     _resolve_mlflow_resource_arn,
@@ -28,9 +28,7 @@ class TestResolveMlflowDryRunSkipsCreation:
     @patch("sagemaker.train.common_utils.finetune_utils._create_mlflow_app")
     @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
     @patch("sagemaker.train.common_utils.finetune_utils._get_prod_sm_client")
-    def test_no_apps_dry_run_skips_creation(
-        self, mock_client, mock_domain, mock_create_app
-    ):
+    def test_no_apps_dry_run_skips_creation(self, mock_client, mock_domain, mock_create_app):
         """dry_run=True with zero apps returns None without calling _create_mlflow_app."""
         mock_paginator = MagicMock()
         mock_paginator.paginate.return_value = [{"Summaries": []}]
@@ -47,9 +45,7 @@ class TestResolveMlflowDryRunSkipsCreation:
     @patch("sagemaker.train.common_utils.finetune_utils._create_mlflow_app")
     @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
     @patch("sagemaker.train.common_utils.finetune_utils._get_prod_sm_client")
-    def test_no_apps_non_dry_run_creates_app(
-        self, mock_client, mock_domain, mock_create_app
-    ):
+    def test_no_apps_non_dry_run_creates_app(self, mock_client, mock_domain, mock_create_app):
         """Without dry_run, zero apps triggers _create_mlflow_app."""
         mock_paginator = MagicMock()
         mock_paginator.paginate.return_value = [{"Summaries": []}]
@@ -67,9 +63,7 @@ class TestResolveMlflowDryRunSkipsCreation:
     @patch("sagemaker.train.common_utils.finetune_utils._create_mlflow_app")
     @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
     @patch("sagemaker.train.common_utils.finetune_utils._get_prod_sm_client")
-    def test_creating_app_dry_run_skips_wait(
-        self, mock_client, mock_domain, mock_create_app
-    ):
+    def test_creating_app_dry_run_skips_wait(self, mock_client, mock_domain, mock_create_app):
         """dry_run=True with an app in 'Creating' state returns ARN without waiting."""
         creating_app = {
             "Arn": "arn:aws:sagemaker:us-east-1:123:mlflow-app/creating",
@@ -109,9 +103,7 @@ class TestResolveMlflowDryRunSkipsCreation:
 
         mock_session = Mock()
 
-        result = _resolve_mlflow_resource_arn(
-            mock_session, min_mlflow_version="3.10", dry_run=True
-        )
+        result = _resolve_mlflow_resource_arn(mock_session, min_mlflow_version="3.10", dry_run=True)
 
         assert result == "arn:aws:sagemaker:us-east-1:123:mlflow-app/old"
         mock_upgrade.assert_not_called()

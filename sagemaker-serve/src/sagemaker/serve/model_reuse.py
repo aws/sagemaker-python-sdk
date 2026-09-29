@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Model source tag-based resource reuse utilities."""
+
 from __future__ import annotations
 
 import hashlib
@@ -299,6 +300,7 @@ def _find_imported_model_arn_by_tag(bedrock_client, tag_value: str) -> Optional[
 # {Completed, InProgress, Failed} for statusEquals.
 _IMPORT_JOB_IN_PROGRESS_STATUSES = {"InProgress"}
 
+
 def _find_in_progress_import_job_by_tag(bedrock_client, tag_value: str) -> Optional[str]:
     """Return the job ARN of an in-progress import job carrying the source tag.
 
@@ -325,8 +327,7 @@ def _bedrock_resource_has_tag(bedrock_client, resource_arn: str, tag_value: str)
     """Return True if the Bedrock resource carries the source tag with tag_value."""
     tags = bedrock_client.list_tags_for_resource(resourceARN=resource_arn).get("tags", [])
     return any(
-        tag.get("key") == MODEL_SOURCE_TAG_KEY and tag.get("value") == tag_value
-        for tag in tags
+        tag.get("key") == MODEL_SOURCE_TAG_KEY and tag.get("value") == tag_value for tag in tags
     )
 
 
@@ -360,9 +361,7 @@ def _find_resource_arn_by_tagging_api(
         pagination_token = ""
         while True:
             kwargs = {
-                "TagFilters": [
-                    {"Key": MODEL_SOURCE_TAG_KEY, "Values": [tag_value]}
-                ],
+                "TagFilters": [{"Key": MODEL_SOURCE_TAG_KEY, "Values": [tag_value]}],
                 "ResourceTypeFilters": [resource_type],
             }
             if pagination_token:
@@ -460,8 +459,7 @@ def _sagemaker_resource_has_tag(sagemaker_client, resource_arn: str, tag_value: 
     """Return True if the SageMaker resource carries the source tag with tag_value."""
     tags = sagemaker_client.list_tags(ResourceArn=resource_arn).get("Tags", [])
     return any(
-        tag.get("Key") == MODEL_SOURCE_TAG_KEY and tag.get("Value") == tag_value
-        for tag in tags
+        tag.get("Key") == MODEL_SOURCE_TAG_KEY and tag.get("Value") == tag_value for tag in tags
     )
 
 
@@ -487,7 +485,9 @@ def _resolve_ready_arn(
         return resource_arn
 
     if status in _FAILED_STATUSES:
-        logger.warning("Found resource %s in Failed status. Proceeding to create new.", resource_arn)
+        logger.warning(
+            "Found resource %s in Failed status. Proceeding to create new.", resource_arn
+        )
         return None
 
     if status in _CREATING_STATUSES:
@@ -500,7 +500,9 @@ def _resolve_ready_arn(
         )
         return _poll_until_ready(client, resource_arn, status_checker, poll_interval, max_wait)
 
-    logger.warning("Resource %s has unexpected status '%s'. Proceeding to create new.", resource_arn, status)
+    logger.warning(
+        "Resource %s has unexpected status '%s'. Proceeding to create new.", resource_arn, status
+    )
     return None
 
 
@@ -520,7 +522,9 @@ def _poll_until_ready(
         try:
             status = status_checker(client, resource_arn)
         except Exception as e:
-            logger.warning("Could not check resource status during poll: %s. Proceeding without.", e)
+            logger.warning(
+                "Could not check resource status during poll: %s. Proceeding without.", e
+            )
             return None
 
         logger.info(
@@ -549,9 +553,7 @@ def _poll_until_ready(
             )
             return None
 
-    raise TimeoutError(
-        f"Resource {resource_arn} did not become ready within {max_wait} seconds."
-    )
+    raise TimeoutError(f"Resource {resource_arn} did not become ready within {max_wait} seconds.")
 
 
 def build_source_tag(source_id: str) -> dict:

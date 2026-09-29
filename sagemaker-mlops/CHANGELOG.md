@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.23.0 (2026-09-24)
+
+### New Features
+
+- feat(pipeline): add inference and lineage step types (#6224)
+
+### Tests
+
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v1.22.1 (2026-09-17)
+
+- Update module dependencies
+
+
 ## v1.22.0 (2026-09-14)
 
 ### New Features

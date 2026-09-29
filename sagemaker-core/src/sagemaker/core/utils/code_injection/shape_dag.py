@@ -1,3 +1,5 @@
+"""Generated shape dependency graph used for serialization."""
+
 SHAPE_DAG = {
     "AIBenchmarkEndpoint": {
         "members": [

@@ -1,10 +1,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for feature_utils.py"""
+
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
-import numpy as np
 
 from sagemaker.mlops.feature_store.feature_utils import (
     load_feature_definitions_from_dataframe,
@@ -13,22 +13,19 @@ from sagemaker.mlops.feature_store.feature_utils import (
     ingest_dataframe,
     get_session_from_role,
     _is_collection_column,
-    _generate_feature_definition,
-)
-from sagemaker.mlops.feature_store.feature_definition import (
-    FeatureDefinition,
-    ListCollectionType,
 )
 
 
 class TestLoadFeatureDefinitionsFromDataframe:
     @pytest.fixture
     def sample_dataframe(self):
-        return pd.DataFrame({
-            "id": pd.Series([1, 2, 3], dtype="int64"),
-            "value": pd.Series([1.1, 2.2, 3.3], dtype="float64"),
-            "name": pd.Series(["a", "b", "c"], dtype="string"),
-        })
+        return pd.DataFrame(
+            {
+                "id": pd.Series([1, 2, 3], dtype="int64"),
+                "value": pd.Series([1.1, 2.2, 3.3], dtype="float64"),
+                "name": pd.Series(["a", "b", "c"], dtype="string"),
+            }
+        )
 
     def test_infers_integral_type(self, sample_dataframe):
         defs = load_feature_definitions_from_dataframe(sample_dataframe)
@@ -51,27 +48,19 @@ class TestLoadFeatureDefinitionsFromDataframe:
 
     @pytest.mark.parametrize(
         "dtype",
-        ["Int8", "Int16", "Int32", "Int64",
-         "UInt8", "UInt16", "UInt32", "UInt64"],
+        ["Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64"],
     )
-    def test_infers_integral_type_with_pandas_nullable_int(
-        self, dtype
-    ):
-        df = pd.DataFrame(
-            {"id": pd.Series([1, 2, 3], dtype=dtype)}
-        )
+    def test_infers_integral_type_with_pandas_nullable_int(self, dtype):
+        df = pd.DataFrame({"id": pd.Series([1, 2, 3], dtype=dtype)})
         defs = load_feature_definitions_from_dataframe(df)
         assert defs[0].feature_type == "Integral"
 
     @pytest.mark.parametrize(
-        "dtype", ["Float32", "Float64"],
+        "dtype",
+        ["Float32", "Float64"],
     )
-    def test_infers_fractional_type_with_pandas_nullable_float(
-        self, dtype
-    ):
-        df = pd.DataFrame(
-            {"value": pd.Series([1.1, 2.2, 3.3], dtype=dtype)}
-        )
+    def test_infers_fractional_type_with_pandas_nullable_float(self, dtype):
+        df = pd.DataFrame({"value": pd.Series([1.1, 2.2, 3.3], dtype=dtype)})
         defs = load_feature_definitions_from_dataframe(df)
         assert defs[0].feature_type == "Fractional"
 
@@ -81,11 +70,13 @@ class TestLoadFeatureDefinitionsFromDataframe:
         assert defs[0].feature_type == "String"
 
     def test_infers_correct_types_after_convert_dtypes(self):
-        df = pd.DataFrame({
-            "id": [1, 2, 3],
-            "price": [1.1, 2.2, 3.3],
-            "name": ["a", "b", "c"],
-        }).convert_dtypes()
+        df = pd.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "price": [1.1, 2.2, 3.3],
+                "name": ["a", "b", "c"],
+            }
+        ).convert_dtypes()
         defs = load_feature_definitions_from_dataframe(df)
         id_def = next(d for d in defs if d.feature_name == "id")
         price_def = next(d for d in defs if d.feature_name == "price")
@@ -97,45 +88,35 @@ class TestLoadFeatureDefinitionsFromDataframe:
     def test_infers_correct_types_with_mixed_nullable_and_numpy_dtypes(
         self,
     ):
-        df = pd.DataFrame({
-            "numpy_int": pd.Series([1, 2, 3], dtype="int64"),
-            "nullable_float": pd.Series(
-                [1.1, 2.2, 3.3], dtype="Float64"
-            ),
-            "nullable_int": pd.Series(
-                [10, 20, 30], dtype="Int64"
-            ),
-            "numpy_float": pd.Series(
-                [0.1, 0.2, 0.3], dtype="float64"
-            ),
-        })
+        df = pd.DataFrame(
+            {
+                "numpy_int": pd.Series([1, 2, 3], dtype="int64"),
+                "nullable_float": pd.Series([1.1, 2.2, 3.3], dtype="Float64"),
+                "nullable_int": pd.Series([10, 20, 30], dtype="Int64"),
+                "numpy_float": pd.Series([0.1, 0.2, 0.3], dtype="float64"),
+            }
+        )
         defs = load_feature_definitions_from_dataframe(df)
 
-        result = next(
-            d for d in defs if d.feature_name == "numpy_int"
-        )
+        result = next(d for d in defs if d.feature_name == "numpy_int")
         assert result.feature_type == "Integral"
 
-        result = next(
-            d for d in defs if d.feature_name == "nullable_float"
-        )
+        result = next(d for d in defs if d.feature_name == "nullable_float")
         assert result.feature_type == "Fractional"
 
-        result = next(
-            d for d in defs if d.feature_name == "nullable_int"
-        )
+        result = next(d for d in defs if d.feature_name == "nullable_int")
         assert result.feature_type == "Integral"
 
-        result = next(
-            d for d in defs if d.feature_name == "numpy_float"
-        )
+        result = next(d for d in defs if d.feature_name == "numpy_float")
         assert result.feature_type == "Fractional"
 
     def test_collection_type_with_in_memory_storage(self):
-        df = pd.DataFrame({
-            "id": pd.Series([1, 2], dtype="int64"),
-            "tags": pd.Series([["a", "b"], ["c"]], dtype="object"),
-        })
+        df = pd.DataFrame(
+            {
+                "id": pd.Series([1, 2], dtype="int64"),
+                "tags": pd.Series([["a", "b"], ["c"]], dtype="object"),
+            }
+        )
         defs = load_feature_definitions_from_dataframe(df, online_storage_type="InMemory")
         tags_def = next(d for d in defs if d.feature_name == "tags")
         assert tags_def.collection_type == "List"
@@ -144,15 +125,15 @@ class TestLoadFeatureDefinitionsFromDataframe:
 class TestIsCollectionColumn:
     def test_list_column_returns_true(self):
         series = pd.Series([[1, 2], [3, 4], [5]])
-        assert _is_collection_column(series) == True
+        assert _is_collection_column(series) is True
 
     def test_scalar_column_returns_false(self):
         series = pd.Series([1, 2, 3])
-        assert _is_collection_column(series) == False
+        assert _is_collection_column(series) is False
 
     def test_empty_series(self):
         series = pd.Series([], dtype="object")
-        assert _is_collection_column(series) == False
+        assert _is_collection_column(series) is False
 
 
 class TestAsHiveDdl:
@@ -272,16 +253,12 @@ class TestIngestDataframeRegion:
         df = pd.DataFrame({"id": [1, 2, 3]})
         ingest_dataframe("my-fg", df, region="eu-west-1")
 
-        mock_fg_class.get.assert_called_once_with(
-            feature_group_name="my-fg", region="eu-west-1"
-        )
+        mock_fg_class.get.assert_called_once_with(feature_group_name="my-fg", region="eu-west-1")
         assert mock_manager_class.call_args[1]["region"] == "eu-west-1"
 
     @patch("sagemaker.mlops.feature_store.feature_utils.IngestionManagerPandas")
     @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
-    def test_region_defaults_to_none(
-        self, mock_fg_class, mock_manager_class, mock_feature_group
-    ):
+    def test_region_defaults_to_none(self, mock_fg_class, mock_manager_class, mock_feature_group):
         mock_fg_class.get.return_value = mock_feature_group
 
         df = pd.DataFrame({"id": [1, 2, 3]})
@@ -422,7 +399,7 @@ class TestGetFeatureGroupAsDataframe:
 
         from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
 
-        result = get_feature_group_as_dataframe(
+        get_feature_group_as_dataframe(
             feature_group_name="test-fg",
             athena_bucket="s3://bucket/path",
             region="us-east-1",
@@ -430,7 +407,9 @@ class TestGetFeatureGroupAsDataframe:
             latest_ingestion=False,
         )
 
-        mock_get_session.assert_called_once_with(region="us-east-1", assume_role="arn:aws:iam::123:role/MyRole")
+        mock_get_session.assert_called_once_with(
+            region="us-east-1", assume_role="arn:aws:iam::123:role/MyRole"
+        )
 
     def test_raises_when_no_session_or_region(self):
         from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
@@ -463,7 +442,9 @@ class TestGetFeatureGroupAsDataframe:
         mock_fg = MagicMock()
         mock_athena_query = MagicMock()
         mock_athena_query.table_name = "my_table"
-        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1, 2], "event_time": [123, 123]})
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame(
+            {"id": [1, 2], "event_time": [123, 123]}
+        )
         mock_fg.athena_query.return_value = mock_athena_query
         mock_fg_class.return_value = mock_fg
 
@@ -495,7 +476,7 @@ class TestGetFeatureGroupAsDataframe:
 
         from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
 
-        result = get_feature_group_as_dataframe(
+        get_feature_group_as_dataframe(
             feature_group_name="test-fg",
             athena_bucket="s3://bucket/path",
             session=mock_session,
@@ -579,7 +560,9 @@ class TestGetFeatureGroupAsDataframe:
             na_values=["NA"],
         )
 
-        mock_athena_query.as_dataframe.assert_called_once_with(dtype={"id": "int32"}, na_values=["NA"])
+        mock_athena_query.as_dataframe.assert_called_once_with(
+            dtype={"id": "int32"}, na_values=["NA"]
+        )
 
 
 class TestPrepareFgFromDataframeOrFile:
@@ -588,21 +571,23 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
-        df = pd.DataFrame({
-            "id": [1, 2, 3],
-            "value": [1.1, 2.2, 3.3],
-        })
-        
+
+        df = pd.DataFrame(
+            {
+                "id": [1, 2, 3],
+                "value": [1.1, 2.2, 3.3],
+            }
+        )
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         result = prepare_fg_from_dataframe_or_file(
             dataframe_or_path=df,
             feature_group_name="test-fg",
             session=mock_session,
             verbose=False,
         )
-        
+
         mock_fg_class.assert_called_once()
         assert result == mock_fg
         assert "record_id" in df.columns
@@ -614,18 +599,18 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"id": [1, 2], "value": [1.1, 2.2]})
         mock_read_csv.return_value = df
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         result = prepare_fg_from_dataframe_or_file(
             dataframe_or_path="/path/to/file.csv",
             feature_group_name="test-fg",
             session=mock_session,
         )
-        
+
         mock_read_csv.assert_called_once()
         assert result == mock_fg
 
@@ -636,23 +621,23 @@ class TestPrepareFgFromDataframeOrFile:
         mock_get_session.return_value = mock_session
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"id": [1, 2]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         prepare_fg_from_dataframe_or_file(
             dataframe_or_path=df,
             feature_group_name="test-fg",
             region="us-east-1",
             role="arn:aws:iam::123:role/MyRole",
         )
-        
+
         mock_get_session.assert_called_once_with(region="us-east-1")
 
     def test_raises_on_invalid_type(self):
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         with pytest.raises(Exception, match="Invalid type"):
             prepare_fg_from_dataframe_or_file(
                 dataframe_or_path=123,
@@ -662,9 +647,9 @@ class TestPrepareFgFromDataframeOrFile:
 
     def test_raises_when_no_session_or_region(self):
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         df = pd.DataFrame({"id": [1, 2]})
-        
+
         with pytest.raises(Exception, match="Session or role and region must be specified"):
             prepare_fg_from_dataframe_or_file(
                 dataframe_or_path=df,
@@ -676,17 +661,17 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"value": [1.1, 2.2, 3.3]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         prepare_fg_from_dataframe_or_file(
             dataframe_or_path=df,
             feature_group_name="test-fg",
             session=mock_session,
         )
-        
+
         assert "record_id" in df.columns
         assert list(df["record_id"]) == [0, 1, 2]
 
@@ -695,29 +680,29 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"my_id": [10, 20, 30], "value": [1.1, 2.2, 3.3]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         prepare_fg_from_dataframe_or_file(
             dataframe_or_path=df,
             feature_group_name="test-fg",
             session=mock_session,
             record_id="my_id",
         )
-        
+
         assert "my_id" in df.columns
         assert "record_id" not in df.columns
 
     @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
     def test_raises_on_duplicate_record_ids(self, mock_fg_class):
         mock_session = MagicMock()
-        
+
         df = pd.DataFrame({"my_id": [1, 1, 2], "value": [1.1, 2.2, 3.3]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         with pytest.raises(Exception, match="duplicated rows"):
             prepare_fg_from_dataframe_or_file(
                 dataframe_or_path=df,
@@ -733,17 +718,17 @@ class TestPrepareFgFromDataframeOrFile:
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
         mock_time.time.return_value = 1234567890.5
-        
+
         df = pd.DataFrame({"id": [1, 2]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         prepare_fg_from_dataframe_or_file(
             dataframe_or_path=df,
             feature_group_name="test-fg",
             session=mock_session,
         )
-        
+
         assert "data_as_of_date" in df.columns
         assert all(df["data_as_of_date"] == 1234567891.0)
 
@@ -752,18 +737,18 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"id": [1, 2], "timestamp": [100, 200]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         prepare_fg_from_dataframe_or_file(
             dataframe_or_path=df,
             feature_group_name="test-fg",
             session=mock_session,
             event_id="timestamp",
         )
-        
+
         assert "timestamp" in df.columns
         assert "data_as_of_date" not in df.columns
 
@@ -772,17 +757,17 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"My Column": [1, 2], "Value.Test": [1.1, 2.2]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         prepare_fg_from_dataframe_or_file(
             dataframe_or_path=df,
             feature_group_name="test-fg",
             session=mock_session,
         )
-        
+
         assert "my_column" in df.columns
         assert "valuetest" in df.columns
 
@@ -791,12 +776,12 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"id": [1, 2]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
         import logging
-        
+
         with patch("sagemaker.mlops.feature_store.feature_utils.logger") as mock_logger:
             prepare_fg_from_dataframe_or_file(
                 dataframe_or_path=df,
@@ -804,7 +789,7 @@ class TestPrepareFgFromDataframeOrFile:
                 session=mock_session,
                 verbose=True,
             )
-            
+
             mock_logger.setLevel.assert_called_with(logging.INFO)
 
     @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
@@ -812,12 +797,12 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"id": [1, 2]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
         import logging
-        
+
         with patch("sagemaker.mlops.feature_store.feature_utils.logger") as mock_logger:
             prepare_fg_from_dataframe_or_file(
                 dataframe_or_path=df,
@@ -825,7 +810,7 @@ class TestPrepareFgFromDataframeOrFile:
                 session=mock_session,
                 verbose=False,
             )
-            
+
             mock_logger.setLevel.assert_called_with(logging.WARNING)
 
     @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
@@ -834,12 +819,12 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"id": [1, 2]})
         mock_read_csv.return_value = df
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         prepare_fg_from_dataframe_or_file(
             dataframe_or_path="/path/to/file.csv",
             feature_group_name="test-fg",
@@ -847,7 +832,7 @@ class TestPrepareFgFromDataframeOrFile:
             sep=";",
             encoding="utf-8",
         )
-        
+
         mock_read_csv.assert_called_once()
         call_kwargs = mock_read_csv.call_args[1]
         assert call_kwargs["sep"] == ";"
@@ -858,17 +843,17 @@ class TestPrepareFgFromDataframeOrFile:
         mock_session = MagicMock()
         mock_fg = MagicMock()
         mock_fg_class.return_value = mock_fg
-        
+
         df = pd.DataFrame({"id": [1, 2]})
-        
+
         from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
-        
+
         prepare_fg_from_dataframe_or_file(
             dataframe_or_path=df,
             feature_group_name="test-fg",
             session=mock_session,
         )
-        
+
         mock_fg.load_feature_definitions.assert_called_once()
 
 

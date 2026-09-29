@@ -26,7 +26,6 @@ INSTANCE_TYPE = "ml.g5.2xlarge"
 MODEL_NAME_PREFIX = "js-netiso-test"
 
 
-@pytest.mark.slow_test
 def test_jumpstart_build_enables_network_isolation():
     """Integration test verifying JumpStart models are built with EnableNetworkIsolation.
 
@@ -71,7 +70,6 @@ VOLUME_SIZE_MODEL_ID = "meta-textgenerationneuron-llama-2-7b"
 VOLUME_SIZE_INSTANCE_TYPE = "ml.inf2.xlarge"
 
 
-@pytest.mark.slow_test
 def test_jumpstart_build_sets_volume_size():
     """Integration test verifying volume_size from model specs is propagated.
 
@@ -106,12 +104,9 @@ def test_jumpstart_build_sets_volume_size():
             f"for model {VOLUME_SIZE_MODEL_ID}, got None"
         )
         assert model_builder.volume_size >= 256, (
-            f"volume_size should be >= 256, "
-            f"got {model_builder.volume_size}"
+            f"volume_size should be >= 256, " f"got {model_builder.volume_size}"
         )
-        logger.info(
-            f"✅ volume_size={model_builder.volume_size} correctly set"
-        )
+        logger.info(f"✅ volume_size={model_builder.volume_size} correctly set")
     finally:
         core_model.delete()
         logger.info("Model deleted.")

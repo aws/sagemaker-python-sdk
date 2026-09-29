@@ -17,6 +17,7 @@ class TestEvaluationRoleType:
     def test_evaluation_role_type_exists(self):
         """The 'evaluation' role type should be recognized."""
         from sagemaker.core.helper.iam_policies import IAM_POLICY_CONFIG
+
         assert "model_eval" in IAM_POLICY_CONFIG
 
     def test_evaluation_trust_includes_sagemaker(self):
@@ -56,14 +57,19 @@ class TestEvaluationRoleType:
         paginator.paginate.return_value = [
             {
                 "EvaluationResults": [
-                    {"EvalActionName": "bedrock:CreateEvaluationJob", "EvalDecision": "implicitDeny"},
+                    {
+                        "EvalActionName": "bedrock:CreateEvaluationJob",
+                        "EvalDecision": "implicitDeny",
+                    },
                     {"EvalActionName": "bedrock:GetEvaluationJob", "EvalDecision": "allowed"},
                 ]
             }
         ]
         mock_iam.get_paginator.return_value = paginator
 
-        verdict, denied = _evaluate_permissions(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval")
+        verdict, denied = _evaluate_permissions(
+            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval"
+        )
         assert verdict is False
         assert "bedrock:CreateEvaluationJob" in denied
 
@@ -82,7 +88,9 @@ class TestEvaluationRoleType:
         ]
         mock_iam.get_paginator.return_value = paginator
 
-        verdict, denied = _evaluate_permissions(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval")
+        verdict, denied = _evaluate_permissions(
+            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval"
+        )
         assert verdict is True
         assert denied == []
 
@@ -93,16 +101,20 @@ class TestEvaluationRoleType:
             "Role": {
                 "AssumeRolePolicyDocument": {
                     "Version": "2012-10-17",
-                    "Statement": [{
-                        "Effect": "Allow",
-                        "Principal": {"Service": "sagemaker.amazonaws.com"},
-                        "Action": "sts:AssumeRole",
-                    }],
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {"Service": "sagemaker.amazonaws.com"},
+                            "Action": "sts:AssumeRole",
+                        }
+                    ],
                 }
             }
         }
 
-        result = _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval")
+        result = _role_trusts_service(
+            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval"
+        )
         assert result is True
 
     def test_resolve_and_validate_passes_with_sagemaker_trust(self):
@@ -120,12 +132,14 @@ class TestEvaluationRoleType:
                     "Arn": "arn:aws:iam::123456789012:role/MyRole",
                     "AssumeRolePolicyDocument": {
                         "Version": "2012-10-17",
-                        "Statement": [{
-                            "Effect": "Allow",
-                            "Principal": {"Service": "sagemaker.amazonaws.com"},
-                            "Action": "sts:AssumeRole",
-                        }],
-                    }
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Principal": {"Service": "sagemaker.amazonaws.com"},
+                                "Action": "sts:AssumeRole",
+                            }
+                        ],
+                    },
                 }
             }
 
@@ -133,7 +147,11 @@ class TestEvaluationRoleType:
             actions = _get_smoke_test_actions("model_eval")
             paginator = MagicMock()
             paginator.paginate.return_value = [
-                {"EvaluationResults": [{"EvalActionName": a, "EvalDecision": "allowed"} for a in actions]}
+                {
+                    "EvaluationResults": [
+                        {"EvalActionName": a, "EvalDecision": "allowed"} for a in actions
+                    ]
+                }
             ]
             mock_iam.get_paginator.return_value = paginator
 
@@ -158,12 +176,16 @@ class TestEvaluationRoleType:
                     "Arn": "arn:aws:iam::123456789012:role/MyRole",
                     "AssumeRolePolicyDocument": {
                         "Version": "2012-10-17",
-                        "Statement": [{
-                            "Effect": "Allow",
-                            "Principal": {"Service": ["sagemaker.amazonaws.com", "bedrock.amazonaws.com"]},
-                            "Action": "sts:AssumeRole",
-                        }],
-                    }
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Principal": {
+                                    "Service": ["sagemaker.amazonaws.com", "bedrock.amazonaws.com"]
+                                },
+                                "Action": "sts:AssumeRole",
+                            }
+                        ],
+                    },
                 }
             }
 
@@ -171,7 +193,11 @@ class TestEvaluationRoleType:
             actions = _get_smoke_test_actions("model_eval")
             paginator = MagicMock()
             paginator.paginate.return_value = [
-                {"EvaluationResults": [{"EvalActionName": a, "EvalDecision": "allowed"} for a in actions]}
+                {
+                    "EvaluationResults": [
+                        {"EvalActionName": a, "EvalDecision": "allowed"} for a in actions
+                    ]
+                }
             ]
             mock_iam.get_paginator.return_value = paginator
 

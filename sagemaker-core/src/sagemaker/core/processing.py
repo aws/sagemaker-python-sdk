@@ -16,6 +16,7 @@ which is used for Amazon SageMaker Processing Jobs. These jobs let users perform
 data pre-processing, post-processing, feature engineering, data validation, and model evaluation,
 and interpretation on Amazon SageMaker.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -92,8 +93,7 @@ def _validate_processing_instance_preferences(
     instance_count=None,
     instance_preferences=None,
 ):
-    """Client-side validation for Processor.instance_preferences (the service
-    remains the source of truth).
+    """Client-side validation for Processor.instance_preferences (the service remains the source of truth).
 
     - instance_preferences is mutually exclusive with instance_type (a single
       fixed cluster). The top-level instance_count is NOT exclusive: it is the
@@ -340,10 +340,8 @@ class Processor(object):
             ValueError: if ``logs`` is True but ``wait`` is False.
         """
         if logs and not wait:
-            raise ValueError(
-                """Logs can only be shown if wait is set to True.
-                Please either set wait to True or set logs to False."""
-            )
+            raise ValueError("""Logs can only be shown if wait is set to True.
+                Please either set wait to True or set logs to False.""")
 
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -999,18 +997,12 @@ class ScriptProcessor(Processor):
             # Validate that the file exists locally and is not a directory.
             code_path = url2pathname(code_url.path)
             if not os.path.exists(code_path):
-                raise ValueError(
-                    """code {} wasn't found. Please make sure that the file exists.
-                    """.format(
-                        code
-                    )
-                )
+                raise ValueError("""code {} wasn't found. Please make sure that the file exists.
+                    """.format(code))
             if not os.path.isfile(code_path):
                 raise ValueError(
                     """code {} must be a file, not a directory. Please pass a path to a file.
-                    """.format(
-                        code
-                    )
+                    """.format(code)
                 )
             user_code_s3_uri = self._upload_code(code_path, kms_key)
         else:
@@ -1583,8 +1575,7 @@ class FrameworkProcessor(ScriptProcessor):
 
         install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
 
-        return dedent(
-            """\
+        return dedent("""\
             #!/bin/bash
 
             # Exit on any error. SageMaker uses error code to mark failed job.
@@ -1614,8 +1605,7 @@ class FrameworkProcessor(ScriptProcessor):
             fi
 
             {entry_point_command} {entry_point} "$@"
-        """
-        ).format(
+        """).format(
             install_requirements_dir=install_requirements_dir,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
@@ -1628,8 +1618,7 @@ class FrameworkProcessor(ScriptProcessor):
         source_dir: str = None,
         install_requirements_dir: str = None,
     ) -> str:
-        """
-        Generate a custom framework script with a user-provided entrypoint embedded.
+        """Generate a custom framework script with a user-provided entrypoint embedded.
 
         Reads the entry_point file and embeds its content in the script,
         then appends the command to execute the user script.
@@ -1650,8 +1639,7 @@ class FrameworkProcessor(ScriptProcessor):
         # source bundle on the container.
         if self._is_s3_uri(source_dir):
             install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
-            return dedent(
-                """\
+            return dedent("""\
                 #!/bin/bash
 
                 # Exit on any error. SageMaker uses error code to mark failed job.
@@ -1677,8 +1665,7 @@ class FrameworkProcessor(ScriptProcessor):
                 ./{entry_point}
 
                 {entry_point_command} {user_script} "$@"
-            """
-            ).format(
+            """).format(
                 install_requirements_dir=install_requirements_dir,
                 entry_point=entry_point,
                 entry_point_command=" ".join(self.command),
@@ -1696,13 +1683,11 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point_content = f.read()
 
         # Generate the script with embedded entry_point content
-        return dedent(
-            """\
+        return dedent("""\
             {entry_point_content}
 
             {entry_point_command} {entry_point} "$@"
-            """
-        ).format(
+            """).format(
             entry_point_content=entry_point_content,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,

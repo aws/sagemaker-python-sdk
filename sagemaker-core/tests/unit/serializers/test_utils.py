@@ -11,20 +11,18 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.serializers.utils module."""
+
 from __future__ import absolute_import
 
 import pytest
-import struct
 import numpy as np
 from io import BytesIO
-from unittest.mock import Mock, patch
 
 from sagemaker.core.serializers.utils import (
     _write_recordio,
     read_recordio,
     _resolve_type,
 )
-
 
 # Note: Tests for functions that depend on sagemaker.core.amazon.record_pb2.Record
 # have been removed as that module has been deprecated:

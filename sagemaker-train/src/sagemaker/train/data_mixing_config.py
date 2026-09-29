@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Configuration for blending customer training data with Nova curated datasets."""
+
 from __future__ import absolute_import
 
 from typing import Any, Dict, Optional
@@ -37,22 +38,18 @@ class DataMixingConfig(BaseModel):
     @classmethod
     def _validate_customer_percent(cls, v: float) -> float:
         """Validate that customer_data_percent is between 0 and 100 inclusive."""
-        if not (0 <= v <= 100):
-            raise ValueError(
-                f"customer_data_percent must be between 0 and 100 inclusive, got {v}"
-            )
+        if not 0 <= v <= 100:
+            raise ValueError(f"customer_data_percent must be between 0 and 100 inclusive, got {v}")
         return v
 
     @field_validator("nova_data_percentages")
     @classmethod
-    def _validate_category_ranges(
-        cls, v: Optional[Dict[str, float]]
-    ) -> Optional[Dict[str, float]]:
+    def _validate_category_ranges(cls, v: Optional[Dict[str, float]]) -> Optional[Dict[str, float]]:
         """Validate that each nova data category percentage is between 0 and 100 inclusive."""
         if v is None:
             return v
         for category, percent in v.items():
-            if not (0 <= percent <= 100):
+            if not 0 <= percent <= 100:
                 raise ValueError(
                     f"Each nova data category percent must be between 0 and 100 inclusive, "
                     f"but '{category}' has value {percent}"
@@ -117,9 +114,11 @@ class DataMixingConfig(BaseModel):
             }
         """
         params: Dict[str, str] = {
-            "customer_data_percent": str(int(self.customer_data_percent))
-            if self.customer_data_percent == int(self.customer_data_percent)
-            else str(self.customer_data_percent),
+            "customer_data_percent": (
+                str(int(self.customer_data_percent))
+                if self.customer_data_percent == int(self.customer_data_percent)
+                else str(self.customer_data_percent)
+            ),
         }
         if self.nova_data_percentages is not None:
             for category, percent in self.nova_data_percentages.items():
@@ -143,10 +142,7 @@ class DataMixingConfig(BaseModel):
         nova_data = config.get("nova_data", {})
         nova_percentages: Optional[Dict[str, float]] = None
         if nova_data:
-            nova_percentages = {
-                category: entry["percent"]
-                for category, entry in nova_data.items()
-            }
+            nova_percentages = {category: entry["percent"] for category, entry in nova_data.items()}
         return cls(
             customer_data_percent=customer_percent,
             nova_data_percentages=nova_percentages,

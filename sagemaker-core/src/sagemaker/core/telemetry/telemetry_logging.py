@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Telemetry module for SageMaker Python SDK to collect usage data and metrics."""
+
 from __future__ import absolute_import
 import logging
 import os
@@ -32,7 +33,6 @@ from botocore.exceptions import (
     ReadTimeoutError,
     EndpointConnectionError,
     ConnectionClosedError,
-    ClientError,
     NoRegionError,
 )
 from sagemaker.core.apiutils._boto_functions import to_lower_camel_case
@@ -343,9 +343,7 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                                     FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_OSS)]
                                 )
                     except Exception:  # pylint: disable=W0703
-                        logger.debug(
-                            "Unable to determine NOVA/OSS model type for telemetry."
-                        )
+                        logger.debug("Unable to determine NOVA/OSS model type for telemetry.")
 
                 if (
                     hasattr(sagemaker_session, "sagemaker_config")
@@ -469,6 +467,65 @@ def _send_telemetry_request(
     thread = threading.Thread(target=_run, name="sagemaker-telemetry", daemon=True)
     thread.start()
     return thread
+
+
+def _emit_failure_telemetry(
+    feature: str,
+    func_name: str,
+    exc: Exception,
+    sagemaker_session: Session = None,
+) -> None:
+    """Emit a single FAILURE telemetry event for a client-side failure.
+
+    Unlike the ``@_telemetry_emitter`` decorator -- which wraps a call and emits on
+    both success and failure for every invocation -- this helper emits only when a
+    caller has explicitly hit a failure it wants recorded. Use it to capture a class
+    of client-side failure (e.g. invalid user input) without adding any happy-path
+    telemetry or per-call overhead to the surrounding code.
+
+    Best-effort: it resolves a session (falling back to the default), honors the
+    telemetry opt-out configuration, and swallows any error while emitting, so it can
+    never mask or replace the caller's own exception.
+
+    Args:
+        feature: The Feature enum value to attribute this event to.
+        func_name: Human-readable name of the failing operation, for tracking.
+        exc: The exception representing the failure (used for reason/type/category).
+        sagemaker_session: Optional session; the default session is used if omitted.
+    """
+    try:
+        session = sagemaker_session or _get_default_sagemaker_session()
+        if not session:
+            return
+        # Honor the same telemetry opt-out contract as @_telemetry_emitter: a user
+        # who has opted out must not have these events emitted.
+        if resolve_value_from_config(
+            direct_input=None,
+            config_path=TELEMETRY_OPT_OUT_PATH,
+            default_value=False,
+            sagemaker_session=session,
+        ):
+            return
+        # Mirror the decorator's platform/env dimensions so these events can be
+        # sliced consistently alongside decorator-emitted ones.
+        extra = (
+            f"{func_name}"
+            f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-env={PYTHON_VERSION}"
+            f"&x-sys={OS_NAME_VERSION}"
+            f"&x-platform={process_studio_metadata_file()}"
+            f"&x-errorCategory={_classify_error(exc)}"
+        )
+        _send_telemetry_request(
+            STATUS_TO_CODE[str(Status.FAILURE)],
+            [FEATURE_TO_CODE[str(feature)]],
+            session,
+            str(exc),
+            exc.__class__.__name__,
+            extra,
+        )
+    except Exception:  # pragma: no cover - telemetry must never break the caller
+        pass
 
 
 def _send_telemetry_request_sync(

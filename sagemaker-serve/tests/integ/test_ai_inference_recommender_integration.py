@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """End-to-end integration tests for the AI inference recommender feature."""
+
 from __future__ import absolute_import
 
 import logging
@@ -70,7 +71,6 @@ def _build_jumpstart_model_builder(role_arn):
 
 
 @pytest.mark.slow_test
-@pytest.mark.skip_in_pr_check
 def test_benchmark_workflow_end_to_end():
     """Deploy a JumpStart endpoint, run a benchmark against it, parse the result."""
     logger.info("Starting AI inference recommender benchmark integration test...")
@@ -87,9 +87,7 @@ def test_benchmark_workflow_end_to_end():
         core_model = model_builder.build(model_name=f"air-bench-model-{unique_id}")
         logger.info(f"Model created: {core_model.model_name}")
 
-        core_endpoint = model_builder.deploy(
-            endpoint_name=f"air-bench-ep-{unique_id}"
-        )
+        core_endpoint = model_builder.deploy(endpoint_name=f"air-bench-ep-{unique_id}")
         logger.info(f"Endpoint InService: {core_endpoint.endpoint_name}")
 
         benchmark_job = start_benchmark(
@@ -100,9 +98,7 @@ def test_benchmark_workflow_end_to_end():
             workload_config_name=workload_config_name,
             wait=True,
         )
-        logger.info(
-            f"Benchmark job terminal state: {benchmark_job.ai_benchmark_job_status}"
-        )
+        logger.info(f"Benchmark job terminal state: {benchmark_job.ai_benchmark_job_status}")
         assert benchmark_job.ai_benchmark_job_status == "Completed", (
             f"Benchmark did not complete successfully: "
             f"{benchmark_job.ai_benchmark_job_status} / "
@@ -130,7 +126,6 @@ def test_benchmark_workflow_end_to_end():
         )
 
 
-@pytest.mark.slow_test
 @pytest.mark.gpu_intensive
 def test_recommendation_workflow_end_to_end():
     """Run an AI recommendation via generate_deployment_recommendations and deploy the top recommendation."""
@@ -174,17 +169,15 @@ def test_recommendation_workflow_end_to_end():
         )
 
         rows = model_builder.recommendations
-        assert rows, (
-            "ModelBuilder.recommendations is empty after generate_deployment_recommendations"
-        )
+        assert (
+            rows
+        ), "ModelBuilder.recommendations is empty after generate_deployment_recommendations"
         top = rows.best
         assert top is rows[0], "rows.best should equal rows[0]"
         rec_model_package_arn = getattr(
             getattr(top, "model_details", None), "model_package_arn", None
         )
-        assert rec_model_package_arn, (
-            f"Top recommendation has no ModelPackageArn. Raw: {top}"
-        )
+        assert rec_model_package_arn, f"Top recommendation has no ModelPackageArn. Raw: {top}"
         # The comparative table lives in str(); it includes row count + headers.
         rec_table = str(rows)
         assert f"Recommendations[{len(rows)}]" in rec_table
@@ -202,9 +195,9 @@ def test_recommendation_workflow_end_to_end():
             wait=True,
         )
         logger.info(f"Recommendation endpoint deployed: {rec_endpoint.endpoint_name}")
-        assert rec_endpoint.endpoint_status == "InService", (
-            f"Endpoint did not reach InService: {rec_endpoint.endpoint_status}"
-        )
+        assert (
+            rec_endpoint.endpoint_status == "InService"
+        ), f"Endpoint did not reach InService: {rec_endpoint.endpoint_status}"
         rec_model = Model.get(model_name=rec_model_name)
 
     finally:

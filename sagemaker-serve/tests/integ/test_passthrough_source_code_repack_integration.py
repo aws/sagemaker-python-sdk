@@ -16,6 +16,7 @@ Covers the fix where an image_uri build with a model artifact and custom
 source_code repacks the code into the artifact (instead of silently dropping
 it). This calls build() only (no deploy) so it runs in seconds.
 """
+
 from __future__ import absolute_import
 
 import io
@@ -67,7 +68,6 @@ def _tar_members(s3_client, s3_uri):
     return tarfile.open(fileobj=io.BytesIO(body), mode="r:gz").getnames()
 
 
-@pytest.mark.slow_test
 def test_build_repacks_source_code_into_artifact():
     """build() with image_uri + model artifact + source_code repacks code/ into
     the model.tar.gz. No deploy - runs in seconds."""

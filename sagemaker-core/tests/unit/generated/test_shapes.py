@@ -1,10 +1,13 @@
 import ast
+import datetime
 import unittest
+from unittest.mock import MagicMock, patch
 
 from pydantic import BaseModel, ValidationError
 
 import os
-from sagemaker.core.shapes import Base, AdditionalS3DataSource
+from sagemaker.core.resources import Base as ResourceBase, Endpoint
+from sagemaker.core.shapes import Base, AdditionalS3DataSource, DataCaptureConfigSummary
 from sagemaker.core.utils.utils import Unassigned
 
 # Use the installed package location
@@ -17,7 +20,7 @@ FILE_NAME = os.path.join(
 
 class TestGeneratedShape(unittest.TestCase):
     def test_generated_shapes_have_pydantic_enabled(self):
-        # This test ensures that all main shapes inherit Base which inherits BaseModel, thereby forcing pydantic validiation
+        # This test ensures that all main shapes inherit Base which inherits BaseModel, thereby forcing pydantic validiation  # noqa: E501
         assert issubclass(Base, BaseModel)
         assert (
             self._fetch_number_of_classes_in_file_not_inheriting_a_class(FILE_NAME, "Base") == 1
@@ -58,3 +61,54 @@ class TestGeneratedShape(unittest.TestCase):
                     if not any(base_class.id == base_class_name for base_class in node.bases):
                         count = count + 1
         return count
+
+
+class TestDataCaptureConfigSummaryOptionalKmsKeyId(unittest.TestCase):
+    """DescribeEndpoint omits DataCaptureConfig.KmsKeyId when data capture is enabled
+    without a customer-managed KMS key (issue #5738)."""
+
+    _DESCRIBE_ENDPOINT_RESPONSE = {
+        "EndpointName": "my-endpoint",
+        "EndpointArn": "arn:aws:sagemaker:us-west-2:111122223333:endpoint/my-endpoint",
+        "EndpointConfigName": "my-endpoint-config",
+        "EndpointStatus": "InService",
+        "CreationTime": datetime.datetime(2026, 1, 1),
+        "LastModifiedTime": datetime.datetime(2026, 1, 1),
+        "DataCaptureConfig": {
+            "EnableCapture": True,
+            "CaptureStatus": "Started",
+            "CurrentSamplingPercentage": 100,
+            "DestinationS3Uri": "s3://my-bucket/data-capture",
+        },
+    }
+
+    def test_shape_validates_without_kms_key_id(self):
+        summary = DataCaptureConfigSummary(
+            enable_capture=True,
+            capture_status="Started",
+            current_sampling_percentage=100,
+            destination_s3_uri="s3://my-bucket/data-capture",
+        )
+        assert isinstance(summary.kms_key_id, Unassigned)
+
+    def test_shape_accepts_kms_key_id(self):
+        summary = DataCaptureConfigSummary(
+            enable_capture=True,
+            capture_status="Started",
+            current_sampling_percentage=100,
+            destination_s3_uri="s3://my-bucket/data-capture",
+            kms_key_id="my-kms-key",
+        )
+        assert summary.kms_key_id == "my-kms-key"
+
+    def test_endpoint_get_without_kms_key_id(self):
+        client = MagicMock()
+        client.describe_endpoint.return_value = self._DESCRIBE_ENDPOINT_RESPONSE
+        # Endpoint.get() resolves its client via resources.Base.get_sagemaker_client.
+        with patch.object(ResourceBase, "get_sagemaker_client", return_value=client):
+            endpoint = Endpoint.get("my-endpoint")
+
+        client.describe_endpoint.assert_called_once_with(EndpointName="my-endpoint")
+        assert endpoint.data_capture_config.enable_capture is True
+        assert endpoint.data_capture_config.destination_s3_uri == "s3://my-bucket/data-capture"
+        assert isinstance(endpoint.data_capture_config.kms_key_id, Unassigned)

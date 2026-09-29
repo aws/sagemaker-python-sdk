@@ -11,14 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.fw_utils module."""
+
 from __future__ import absolute_import
 
 import json
-import os
 import pytest
-import tempfile
-from unittest.mock import Mock, patch, MagicMock, mock_open
-from packaging import version
+from unittest.mock import Mock, patch
 
 from sagemaker.core.fw_utils import (
     validate_source_dir,
@@ -31,9 +29,7 @@ from sagemaker.core.fw_utils import (
     framework_version_from_tag,
     model_code_key_prefix,
     warn_if_parameter_server_with_multi_gpu,
-    profiler_config_deprecation_warning,
     validate_smdistributed,
-    validate_distribution,
     validate_distribution_for_instance_type,
     validate_torch_distributed_distribution,
     validate_version_or_image_args,
@@ -43,10 +39,8 @@ from sagemaker.core.fw_utils import (
     _instance_type_supports_profiler,
     _is_gpu_instance,
     _is_trainium_instance,
-    UploadedCode,
 )
 from sagemaker.core.workflow.parameters import ParameterString
-from sagemaker.core.instance_group import InstanceGroup
 
 
 class TestValidateSourceDir:

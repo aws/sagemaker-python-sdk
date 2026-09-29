@@ -1,3 +1,6 @@
+"""Exception types raised across SageMaker core."""
+
+
 class SageMakerCoreError(Exception):
     """Base class for all exceptions in SageMaker Core"""
 
@@ -13,7 +16,7 @@ class SageMakerCoreError(Exception):
         Exception.__init__(self, msg)
 
 
-### Generic Validation Errors
+# Generic Validation Errors
 class ValidationError(SageMakerCoreError):
     """Raised when a validation error occurs."""
 
@@ -28,7 +31,7 @@ class ValidationError(SageMakerCoreError):
         super().__init__(message=message, **kwargs)
 
 
-### Waiter Errors
+# Waiter Errors
 class WaiterError(SageMakerCoreError):
     """Raised when an error occurs while waiting."""
 
@@ -47,7 +50,7 @@ class WaiterError(SageMakerCoreError):
 class FailedStatusError(WaiterError):
     """Raised when a resource enters a failed state."""
 
-    fmt = "Encountered unexpected failed state while waiting for {resource_type}. Final Resource State: {status}. Failure Reason: {reason}"
+    fmt = "Encountered unexpected failed state while waiting for {resource_type}. Final Resource State: {status}. Failure Reason: {reason}"  # noqa: E501
 
     def __init__(self, resource_type="(Unkown)", status="(Unkown)", reason="(Unkown)"):
         """Initialize a FailedStatusError exception.
@@ -81,8 +84,15 @@ class TimeoutExceededError(WaiterError):
 
     fmt = "Timeout exceeded while waiting for {resource_type}. Final Resource State: {status}. {message}"
 
-    def __init__(self, resource_type="(Unkown)", status="(Unkown)", reason="(Unkown)", message="Increase the timeout and try again."):
+    def __init__(
+        self,
+        resource_type="(Unkown)",
+        status="(Unkown)",
+        reason="(Unkown)",
+        message="Increase the timeout and try again.",
+    ):
         """Initialize a TimeoutExceededError exception.
+
         Args:
             resource_type (str): The type of resource being waited on.
             status (str): The final status of the resource.
@@ -92,7 +102,7 @@ class TimeoutExceededError(WaiterError):
         super().__init__(resource_type=resource_type, status=status, reason=reason, message=message)
 
 
-### Intelligent Defaults Errors
+# Intelligent Defaults Errors
 class IntelligentDefaultsError(SageMakerCoreError):
     """Raised when an error occurs in the Intelligent Defaults"""
 
@@ -100,6 +110,7 @@ class IntelligentDefaultsError(SageMakerCoreError):
 
     def __init__(self, message="", **kwargs):
         """Initialize an IntelligentDefaultsError exception.
+
         Args:
             message (str): A message describing the error.
         """
@@ -113,6 +124,7 @@ class LocalConfigNotFoundError(IntelligentDefaultsError):
 
     def __init__(self, file_path="(Unkown)", message=""):
         """Initialize a LocalConfigNotFoundError exception.
+
         Args:
             file_path (str): The path to the configuration file.
             message (str): A message describing the error.
@@ -127,6 +139,7 @@ class S3ConfigNotFoundError(IntelligentDefaultsError):
 
     def __init__(self, s3_uri="(Unkown)", message=""):
         """Initialize a S3ConfigNotFoundError exception.
+
         Args:
             s3_uri (str): The S3 URI path to the configuration file.
             message (str): A message describing the error.
@@ -141,6 +154,7 @@ class ConfigSchemaValidationError(IntelligentDefaultsError, ValidationError):
 
     def __init__(self, file_path="(Unkown)", message=""):
         """Initialize a ConfigSchemaValidationError exception.
+
         Args:
             file_path (str): The path to the configuration file.
             message (str): A message describing the error.
