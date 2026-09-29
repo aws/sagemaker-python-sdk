@@ -3141,13 +3141,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             sagemaker_session=self.sagemaker_session,
         )
 
-        # Nova 1P images require network isolation on the Model resource
+        # Nova 1P images require network isolation on the Model resource.
+        # A pipeline-variable image is only resolved at execution time, so it
+        # cannot be inspected here; set enable_network_isolation explicitly then.
         enable_network_isolation = self._enable_network_isolation
         resolved_image_uri = (
             container_def["Image"] if isinstance(container_def, dict) else container_def[0]["Image"]
         )
         if (
             not enable_network_isolation
+            and isinstance(resolved_image_uri, str)
             and "nova-" in resolved_image_uri
             and is_1p_image_uri(resolved_image_uri)
         ):
