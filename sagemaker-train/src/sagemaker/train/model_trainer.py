@@ -351,6 +351,57 @@ class ModelTrainer(BaseModel):
 
     config_mgr: SageMakerConfig = SageMakerConfig()
 
+    @property
+    def output_data(self) -> str:
+        """The S3 URI of the training job's ``output.tar.gz`` archive.
+
+        This is the non-model output archive that SageMaker uploads from the
+        container's ``/opt/ml/output/data`` directory after training completes,
+        distinct from the model artifact (``model.tar.gz``). The URI follows the
+        layout ``{s3_output_path}/{training_job_name}/output/output.tar.gz``.
+
+        The S3 output path is resolved from the latest training job's
+        ``output_data_config`` and falls back to the trainer's own
+        ``output_data_config`` when the job does not report one.
+
+        Note:
+            This is a computed S3 URI derived from the job's configuration; it is
+            not verified to exist. The archive is only present once the job has
+            completed successfully and produced output data.
+
+        Returns:
+            str: The fully-qualified S3 URI to the job's ``output.tar.gz``.
+
+        Raises:
+            ValueError: If no training job has been created yet (``train`` has
+                not been called), or if no S3 output path can be resolved.
+        """
+        training_job = self._latest_training_job
+        if training_job is None:
+            raise ValueError(
+                "No training job is associated with this ModelTrainer. "
+                "Call train() before accessing output_data."
+            )
+
+        # Prefer the S3 output path reported by the job, falling back to the
+        # trainer's own config. ``Unassigned`` and ``None`` are both falsy.
+        s3_output_path = None
+        job_output_config = getattr(training_job, "output_data_config", None)
+        if job_output_config:
+            s3_output_path = getattr(job_output_config, "s3_output_path", None)
+        if not s3_output_path and self.output_data_config is not None:
+            s3_output_path = getattr(self.output_data_config, "s3_output_path", None)
+
+        if not s3_output_path:
+            raise ValueError(
+                "Unable to resolve the output S3 path for this training job. "
+                "Ensure output_data_config is set on the ModelTrainer or the "
+                "training job."
+            )
+
+        s3_output_path = s3_output_path.rstrip("/")
+        return f"{s3_output_path}/{training_job.training_job_name}/output/output.tar.gz"
+
     def _populate_intelligent_defaults(self):
         """Function to populate all the possible default configs
 
