@@ -231,6 +231,24 @@ train_data = InputData(channel_name="train", data_source="s3://my-bucket/train")
 model_trainer.train(input_data_config=[train_data])
 ```
 
+#### Source code from a Git repository
+
+As in V2 (where `git_config` was passed to the estimator), you can point `SourceCode` at a Git
+repository. When `git_config` is set, the repo is cloned at train time and `entry_script`
+(and, optionally, `source_dir`) are resolved relative to the clone. `entry_script` is required,
+and a local or S3 `source_dir` cannot be combined with `git_config` — when provided, `source_dir`
+must be a path relative to the repository root.
+
+```python
+source_code = SourceCode(
+    entry_script="train.py",
+    git_config={
+        "repo": "https://github.com/my-org/my-repo.git",
+        "branch": "main",
+    },
+)
+```
+
 ### Framework Estimators
 
 **V2 PyTorch:**

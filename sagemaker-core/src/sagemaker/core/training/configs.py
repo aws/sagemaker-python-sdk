@@ -114,6 +114,12 @@ class SourceCode(BaseConfig):
             Only applicable when ``command`` is provided; top-level ``hyperparameters`` are not
             passed as CLI arguments in ``command`` mode -- they are available inside the container
             via the ``SM_HPS`` environment variable.
+        git_config (Optional[dict]):
+            Git configuration used to clone the repository that contains the source code, including
+            ``repo``, ``branch``, ``commit``, ``2FA_enabled``, ``username``, ``password`` and
+            ``token``. Only ``repo`` is required. When provided, the repository is cloned and
+            ``source_dir``/``entry_script`` are resolved relative to the clone; a local
+            ``source_dir`` cannot be combined with ``git_config``.
         ignore_patterns: (Optional[List[str]]) :
             The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
             default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
@@ -124,6 +130,7 @@ class SourceCode(BaseConfig):
     entry_script: Optional[StrPipeVar] = None
     command: Optional[StrPipeVar] = None
     args: Optional[List[Union[str, int, float]]] = None
+    git_config: Optional[dict] = None
     ignore_patterns: Optional[List[str]] = [
         ".env",
         ".git",

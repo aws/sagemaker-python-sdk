@@ -2369,3 +2369,220 @@ def test_output_data_strips_trailing_slash_on_fallback(model_trainer):
     assert model_trainer.output_data == (
         f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
     )
+
+
+# ---------------------------------------------------------------------------
+# git_config support in SourceCode / ModelTrainer (issue #5571)
+# ---------------------------------------------------------------------------
+
+GIT_CONFIG = {"repo": "https://github.com/example/repo.git", "branch": "main"}
+
+
+def test_source_code_accepts_git_config_train_config():
+    """SourceCode (sagemaker.train.configs) exposes an optional ``git_config`` field."""
+    source_code = SourceCode(entry_script="train.py", git_config=GIT_CONFIG)
+    assert source_code.git_config == GIT_CONFIG
+
+
+def test_source_code_accepts_git_config_core_modules_config():
+    """SourceCode (sagemaker.core.modules.configs) exposes an optional ``git_config`` field."""
+    from sagemaker.core.modules.configs import SourceCode as CoreSourceCode
+
+    source_code = CoreSourceCode(entry_script="train.py", git_config=GIT_CONFIG)
+    assert source_code.git_config == GIT_CONFIG
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+@patch("sagemaker.train.model_trainer.ModelTrainer.create_input_data_channel")
+@patch("sagemaker.train.model_trainer.git_clone_repo")
+def test_source_code_git_config_clones_repo(
+    mock_git_clone_repo, mock_create_input_data_channel, mock_training_job, modules_session
+):
+    """When ``git_config`` is set, the repo is cloned and ``source_dir`` points at the clone."""
+    clone_dir = tempfile.mkdtemp()
+    entry = "custom_script.py"
+    with open(os.path.join(clone_dir, entry), "w") as f:
+        f.write("print('hello')\n")
+
+    # Mirror git_clone_repo's contract when no source_dir is provided: entry_point is
+    # resolved to an absolute path inside the clone and source_dir stays None.
+    mock_git_clone_repo.return_value = {
+        "entry_point": os.path.join(clone_dir, entry),
+        "source_dir": None,
+        "dependencies": None,
+    }
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        source_code=SourceCode(entry_script=entry, git_config=GIT_CONFIG),
+        sagemaker_session=modules_session,
+    )
+
+    trainer.train()
+
+    mock_git_clone_repo.assert_called_once()
+    call = mock_git_clone_repo.call_args
+    forwarded_git_config = call.kwargs.get("git_config", call.args[0] if call.args else None)
+    assert forwarded_git_config == GIT_CONFIG
+
+    # The source_code channel points at the resolved local clone so entry_script/requirements
+    # are found there.
+    calls_by_channel = {
+        c.kwargs.get("channel_name"): c.kwargs
+        for c in mock_create_input_data_channel.call_args_list
+    }
+    assert SM_CODE in calls_by_channel, "source_dir channel was not created from the clone"
+    assert calls_by_channel[SM_CODE].get("data_source") == clone_dir
+
+    # The user's SourceCode must NOT be mutated: train() is re-callable and must re-clone.
+    assert trainer.source_code.source_dir is None
+    assert trainer.source_code.git_config == GIT_CONFIG
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+@patch("sagemaker.train.model_trainer.ModelTrainer.create_input_data_channel")
+@patch("sagemaker.train.model_trainer.git_clone_repo")
+def test_source_code_git_config_with_relative_source_dir(
+    mock_git_clone_repo, mock_create_input_data_channel, mock_training_job, modules_session
+):
+    """A relative ``source_dir`` (a path within the repo) is forwarded and then overridden."""
+    clone_source_dir = tempfile.mkdtemp()
+    mock_git_clone_repo.return_value = {
+        "entry_point": "train.py",
+        "source_dir": clone_source_dir,
+        "dependencies": None,
+    }
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        source_code=SourceCode(source_dir="src", entry_script="train.py", git_config=GIT_CONFIG),
+        sagemaker_session=modules_session,
+    )
+
+    trainer.train()
+
+    mock_git_clone_repo.assert_called_once()
+    call = mock_git_clone_repo.call_args
+    forwarded_source_dir = call.kwargs.get("source_dir", None)
+    assert forwarded_source_dir == "src"
+
+    # After cloning, the source_code channel uses the resolved clone location.
+    calls_by_channel = {
+        c.kwargs.get("channel_name"): c.kwargs
+        for c in mock_create_input_data_channel.call_args_list
+    }
+    assert calls_by_channel[SM_CODE].get("data_source") == clone_source_dir
+
+    # The user's SourceCode must NOT be mutated.
+    assert trainer.source_code.source_dir == "src"
+    assert trainer.source_code.git_config == GIT_CONFIG
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+@patch("sagemaker.train.model_trainer.ModelTrainer.create_input_data_channel")
+@patch("sagemaker.train.model_trainer.git_clone_repo")
+def test_git_config_credentials_not_serialized(
+    mock_git_clone_repo, mock_create_input_data_channel, mock_training_job, modules_session
+):
+    """git_config (and any embedded credentials) must not be written into source_code.json."""
+    clone_dir = tempfile.mkdtemp()
+    entry = "train.py"
+    with open(os.path.join(clone_dir, entry), "w") as f:
+        f.write("x = 1\n")
+    mock_git_clone_repo.return_value = {
+        "entry_point": os.path.join(clone_dir, entry),
+        "source_dir": None,
+        "dependencies": None,
+    }
+    git_config = {"repo": "https://github.com/example/repo.git", "token": "super-secret-token"}
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        source_code=SourceCode(entry_script=entry, git_config=git_config),
+        sagemaker_session=modules_session,
+    )
+
+    with patch.object(ModelTrainer, "_write_source_code_json") as mock_write:
+        trainer.train()
+
+    write_call = mock_write.call_args
+    written_source_code = write_call.kwargs.get(
+        "source_code", write_call.args[1] if len(write_call.args) > 1 else None
+    )
+    assert written_source_code.git_config is None
+
+
+def test_git_config_and_local_source_dir_are_mutually_exclusive(modules_session):
+    """A local (absolute) ``source_dir`` cannot be combined with ``git_config``."""
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            stopping_condition=DEFAULT_STOPPING_CONDITION,
+            output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+            source_code=SourceCode(
+                source_dir=os.path.abspath(DEFAULT_SOURCE_DIR),
+                entry_script="custom_script.py",
+                git_config=GIT_CONFIG,
+            ),
+            sagemaker_session=modules_session,
+        )
+
+
+def test_git_config_and_s3_source_dir_are_mutually_exclusive(modules_session):
+    """An S3 ``source_dir`` cannot be combined with ``git_config``."""
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            stopping_condition=DEFAULT_STOPPING_CONDITION,
+            output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+            source_code=SourceCode(
+                source_dir="s3://bucket/code/",
+                entry_script="custom_script.py",
+                git_config=GIT_CONFIG,
+            ),
+            sagemaker_session=modules_session,
+        )
+
+
+def test_git_config_requires_entry_script(modules_session):
+    """``entry_script`` is required when ``git_config`` is provided (command-only is rejected)."""
+    with pytest.raises(ValueError, match="entry_script"):
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            stopping_condition=DEFAULT_STOPPING_CONDITION,
+            output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+            source_code=SourceCode(command="python train.py", git_config=GIT_CONFIG),
+            sagemaker_session=modules_session,
+        )
+
+
+def test_git_config_without_repo_raises(modules_session):
+    """``git_config`` must contain a ``repo`` key."""
+    with pytest.raises(ValueError, match="repo"):
+        ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            stopping_condition=DEFAULT_STOPPING_CONDITION,
+            output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+            source_code=SourceCode(entry_script="train.py", git_config={"branch": "main"}),
+            sagemaker_session=modules_session,
+        )
