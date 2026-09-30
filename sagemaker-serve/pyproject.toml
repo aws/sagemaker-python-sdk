@@ -28,6 +28,11 @@ dependencies = [
     "botocore>=1.35.75,<2.0",
     "deepdiff",
     "mlflow-skinny",
+    # Declared explicitly because full mlflow used to supply it transitively
+    # (mlflow requires docker>=4.0.0,<8; mlflow-skinny does not). It is imported at
+    # module scope by sagemaker.serve.mode.local_container_mode, which sagemaker.serve
+    # imports eagerly, so a missing docker breaks `import sagemaker.serve` outright.
+    "docker>=5.0.2,<8.0.0",
     "sagemaker_schema_inference_artifacts",
     "pytest",
     "tqdm",
