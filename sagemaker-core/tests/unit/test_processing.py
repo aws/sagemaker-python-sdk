@@ -1335,6 +1335,32 @@ class TestFrameworkProcessorRun:
                         processor.run(code=entry_point, wait=False)
                         assert processor.latest_job == mock_job
 
+    def test_run_rejects_pipeline_variable_requirements(self, mock_session):
+        """requirements must not be a pipeline variable; it is baked into runproc.sh.
+
+        Previously a pipeline variable raised an opaque TypeError out of
+        os.path.isabs; the guard now raises a clear ValueError like the code
+        and submit_app guards.
+        """
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        with patch(
+            "sagemaker.core.processing.is_pipeline_variable",
+            side_effect=lambda v: v == "reqs.txt",
+        ):
+            with pytest.raises(ValueError, match="requirements argument"):
+                processor.run(
+                    code="s3://bucket/train.py",
+                    requirements="reqs.txt",
+                    wait=False,
+                )
+
 
 class TestFrameworkProcessorPackAndUpload:
     def test_pack_and_upload_code_with_s3_uri(self, mock_session):

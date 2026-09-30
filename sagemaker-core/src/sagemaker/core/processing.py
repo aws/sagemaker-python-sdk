@@ -1386,6 +1386,13 @@ class FrameworkProcessor(ScriptProcessor):
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
+        if requirements and is_pipeline_variable(requirements):
+            raise ValueError(
+                "requirements argument has to be a path relative to source_dir "
+                + "rather than a pipeline variable, because it is baked into the "
+                + "generated runproc.sh script"
+            )
+
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
             code,
             source_dir,
