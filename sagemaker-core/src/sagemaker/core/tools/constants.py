@@ -126,6 +126,9 @@ REQUIRED_TO_OPTIONAL_OVERRIDES = {
     "ModelPackageSecurityConfig": ["KmsKeyId"],
     # S3Uri is optional when ModelDataSource references escrow-managed artifacts (RMP).
     "S3ModelDataSource": ["S3Uri"],
+    # DescribeEndpoint omits DataCaptureConfig.KmsKeyId when data capture is enabled
+    # without a customer-managed KMS key (S3 default encryption is used instead).
+    "DataCaptureConfigSummary": ["KmsKeyId"],
 }
 
 # Members where the generated primitive type should be replaced with a PipelineVariable
