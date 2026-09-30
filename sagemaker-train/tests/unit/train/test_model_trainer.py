@@ -582,6 +582,87 @@ def test_create_input_data_channel_with_instance_group_names(model_trainer):
     ]
 
 
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_default_prefix_uses_base_job_name(
+    mock_default_bucket, mock_upload_data, mock_staging, model_trainer
+):
+    """Without input_s3_key_prefix, the upload key prefix is derived from base_job_name (unchanged)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+
+    assert model_trainer.input_s3_key_prefix is None
+    model_trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+
+    # Leading segment is derived from base_job_name when input_s3_key_prefix is unset.
+    assert mock_upload_data.call_args.kwargs["key_prefix"] == f"{DEFAULT_BASE_NAME}/input/code"
+
+
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_custom_input_s3_key_prefix(
+    mock_default_bucket, mock_upload_data, mock_staging
+):
+    """input_s3_key_prefix replaces base_job_name as the leading key prefix (issue #5638)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        input_s3_key_prefix="my-pipeline/my-step",
+    )
+    trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+
+    # input_s3_key_prefix replaces base_job_name as the leading segment.
+    assert mock_upload_data.call_args.kwargs["key_prefix"] == "my-pipeline/my-step/input/code"
+    assert f"{DEFAULT_BASE_NAME}/input/code" not in mock_upload_data.call_args.kwargs["key_prefix"]
+
+
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_training_job_args_input_s3_key_prefix(
+    mock_default_bucket, mock_upload_data, mock_staging
+):
+    """Managed sm_drivers/code channels use input_s3_key_prefix in their S3 URIs (issue #5638)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+
+    def _echo(path, bucket, key_prefix, extra_args=None):
+        return f"s3://{bucket}/{key_prefix}"
+
+    mock_upload_data.side_effect = _echo
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        input_s3_key_prefix="my-pipeline",
+    )
+    args = trainer._create_training_job_args()
+    uris = {
+        channel.channel_name: channel.data_source.s3_data_source.s3_uri
+        for channel in args["input_data_config"]
+        if channel.data_source and channel.data_source.s3_data_source
+    }
+
+    # The SDK-managed sm_drivers channel is staged from a local temp dir, so its S3 URI
+    # is built from the input key prefix -> it must lead with the custom pipeline prefix.
+    assert "/my-pipeline/" in uris["sm_drivers"]
+    assert f"/{DEFAULT_BASE_NAME}/input" not in uris["sm_drivers"]
+
+
 HETEROGENEOUS_INSTANCE_GROUPS = [
     InstanceGroup(
         instance_type="ml.t3.large", instance_count=1, instance_group_name="head-instance-group"

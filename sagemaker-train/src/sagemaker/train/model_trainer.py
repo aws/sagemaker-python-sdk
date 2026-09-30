@@ -206,6 +206,12 @@ class ModelTrainer(BaseModel):
             The base name for the training job.
             If not specified, a default name will be generated using the algorithm name
             or training image name.
+        input_s3_key_prefix (Optional[str]):
+            The leading S3 key prefix under which locally-staged input data (source code,
+            SDK drivers, and local input channels) is uploaded. This is useful for grouping
+            a training job's artifacts under a custom prefix such as a pipeline name, e.g.
+            ``s3://<default_bucket_path>/<input_s3_key_prefix>/<job_name>/input/``. If not
+            specified, ``base_job_name`` is used as the leading prefix (unchanged behavior).
         source_code (Optional[SourceCode]):
             The source code configuration. This is used to configure the source code for
             running the training job.
@@ -274,6 +280,7 @@ class ModelTrainer(BaseModel):
     sagemaker_session: Optional[Session] = None
     role: Optional[str] = None
     base_job_name: Optional[str] = None
+    input_s3_key_prefix: Optional[str] = None
     source_code: Optional[SourceCode] = None
     distributed: Optional[DistributedConfig] = None
     compute: Optional[Compute] = None
@@ -317,6 +324,7 @@ class ModelTrainer(BaseModel):
     CONFIGURABLE_ATTRIBUTES: ClassVar[List[str]] = [
         "role",
         "base_job_name",
+        "input_s3_key_prefix",
         "source_code",
         "compute",
         "networking",
@@ -620,7 +628,10 @@ class ModelTrainer(BaseModel):
         """
         self._populate_intelligent_defaults()
         current_training_job_name = _get_unique_name(self.base_job_name)
-        input_data_key_prefix = f"{self.base_job_name}/{current_training_job_name}/input"
+        # Use input_s3_key_prefix (e.g. a pipeline name) as the leading key prefix when set;
+        # otherwise fall back to base_job_name to preserve the default upload layout.
+        input_data_key_prefix_root = self.input_s3_key_prefix or self.base_job_name
+        input_data_key_prefix = f"{input_data_key_prefix_root}/{current_training_job_name}/input"
 
         final_input_data_config = self.input_data_config.copy() if self.input_data_config else []
 
@@ -1122,7 +1133,8 @@ class ModelTrainer(BaseModel):
                     key_prefix = (
                         f"{key_prefix}/{channel_name}"
                         if key_prefix
-                        else f"{self.base_job_name}/input/{channel_name}"
+                        else f"{self.input_s3_key_prefix or self.base_job_name}"
+                        f"/input/{channel_name}"
                     )
                     if self.sagemaker_session.default_bucket_prefix:
                         key_prefix = f"{self.sagemaker_session.default_bucket_prefix}/{key_prefix}"
