@@ -61,6 +61,20 @@ class TestAthenaQuery:
         call_kwargs = mock_start.call_args[1]
         assert call_kwargs["kms_key"] == "arn:aws:kms:us-west-2:123:key/abc"
 
+    @patch("sagemaker.mlops.feature_store.athena_query.start_query_execution")
+    def test_run_with_workgroup(self, mock_start, athena_query):
+        mock_start.return_value = {"QueryExecutionId": "query-123"}
+
+        athena_query.run(
+            query_string="SELECT * FROM table",
+            output_location="s3://bucket/output",
+            workgroup="workgroup1",
+        )
+
+        mock_start.assert_called_once()
+        call_kwargs = mock_start.call_args[1]
+        assert call_kwargs["workgroup"] == "workgroup1"
+
     @patch("sagemaker.mlops.feature_store.athena_query.wait_for_athena_query")
     def test_wait_calls_helper(self, mock_wait, athena_query):
         athena_query._current_query_execution_id = "query-123"
