@@ -18,6 +18,7 @@ from enum import Enum
 import os
 import json
 import re
+import shlex
 import shutil
 from tempfile import TemporaryDirectory
 from typing import Optional, List, Union, Dict, Any, ClassVar
@@ -207,6 +208,12 @@ class ModelTrainer(BaseModel):
             The base name for the training job.
             If not specified, a default name will be generated using the algorithm name
             or training image name.
+        input_s3_key_prefix (Optional[str]):
+            The leading S3 key prefix under which locally-staged input data (source code,
+            SDK drivers, and local input channels) is uploaded. This is useful for grouping
+            a training job's artifacts under a custom prefix such as a pipeline name, e.g.
+            ``s3://<default_bucket_path>/<input_s3_key_prefix>/<job_name>/input/``. If not
+            specified, ``base_job_name`` is used as the leading prefix (unchanged behavior).
         source_code (Optional[SourceCode]):
             The source code configuration. This is used to configure the source code for
             running the training job.
@@ -275,6 +282,7 @@ class ModelTrainer(BaseModel):
     sagemaker_session: Optional[Session] = None
     role: Optional[str] = None
     base_job_name: Optional[str] = None
+    input_s3_key_prefix: Optional[str] = None
     source_code: Optional[SourceCode] = None
     distributed: Optional[DistributedConfig] = None
     compute: Optional[Compute] = None
@@ -318,6 +326,7 @@ class ModelTrainer(BaseModel):
     CONFIGURABLE_ATTRIBUTES: ClassVar[List[str]] = [
         "role",
         "base_job_name",
+        "input_s3_key_prefix",
         "source_code",
         "compute",
         "networking",
@@ -343,6 +352,57 @@ class ModelTrainer(BaseModel):
     }
 
     config_mgr: SageMakerConfig = SageMakerConfig()
+
+    @property
+    def output_data(self) -> str:
+        """The S3 URI of the training job's ``output.tar.gz`` archive.
+
+        This is the non-model output archive that SageMaker uploads from the
+        container's ``/opt/ml/output/data`` directory after training completes,
+        distinct from the model artifact (``model.tar.gz``). The URI follows the
+        layout ``{s3_output_path}/{training_job_name}/output/output.tar.gz``.
+
+        The S3 output path is resolved from the latest training job's
+        ``output_data_config`` and falls back to the trainer's own
+        ``output_data_config`` when the job does not report one.
+
+        Note:
+            This is a computed S3 URI derived from the job's configuration; it is
+            not verified to exist. The archive is only present once the job has
+            completed successfully and produced output data.
+
+        Returns:
+            str: The fully-qualified S3 URI to the job's ``output.tar.gz``.
+
+        Raises:
+            ValueError: If no training job has been created yet (``train`` has
+                not been called), or if no S3 output path can be resolved.
+        """
+        training_job = self._latest_training_job
+        if training_job is None:
+            raise ValueError(
+                "No training job is associated with this ModelTrainer. "
+                "Call train() before accessing output_data."
+            )
+
+        # Prefer the S3 output path reported by the job, falling back to the
+        # trainer's own config. ``Unassigned`` and ``None`` are both falsy.
+        s3_output_path = None
+        job_output_config = getattr(training_job, "output_data_config", None)
+        if job_output_config:
+            s3_output_path = getattr(job_output_config, "s3_output_path", None)
+        if not s3_output_path and self.output_data_config is not None:
+            s3_output_path = getattr(self.output_data_config, "s3_output_path", None)
+
+        if not s3_output_path:
+            raise ValueError(
+                "Unable to resolve the output S3 path for this training job. "
+                "Ensure output_data_config is set on the ModelTrainer or the "
+                "training job."
+            )
+
+        s3_output_path = s3_output_path.rstrip("/")
+        return f"{s3_output_path}/{training_job.training_job_name}/output/output.tar.gz"
 
     def _populate_intelligent_defaults(self):
         """Function to populate all the possible default configs
@@ -646,7 +706,10 @@ class ModelTrainer(BaseModel):
         """
         self._populate_intelligent_defaults()
         current_training_job_name = _get_unique_name(self.base_job_name)
-        input_data_key_prefix = f"{self.base_job_name}/{current_training_job_name}/input"
+        # Use input_s3_key_prefix (e.g. a pipeline name) as the leading key prefix when set;
+        # otherwise fall back to base_job_name to preserve the default upload layout.
+        input_data_key_prefix_root = self.input_s3_key_prefix or self.base_job_name
+        input_data_key_prefix = f"{input_data_key_prefix_root}/{current_training_job_name}/input"
 
         final_input_data_config = self.input_data_config.copy() if self.input_data_config else []
 
@@ -1173,7 +1236,8 @@ class ModelTrainer(BaseModel):
                     key_prefix = (
                         f"{key_prefix}/{channel_name}"
                         if key_prefix
-                        else f"{self.base_job_name}/input/{channel_name}"
+                        else f"{self.input_s3_key_prefix or self.base_job_name}"
+                        f"/input/{channel_name}"
                     )
                     if self.sagemaker_session.default_bucket_prefix:
                         key_prefix = f"{self.sagemaker_session.default_bucket_prefix}/{key_prefix}"
@@ -1320,8 +1384,20 @@ class ModelTrainer(BaseModel):
                     "Both 'command' and 'entry_script' are provided in the SourceCode. "
                     "Defaulting to 'command'."
                 )
-            base_command = source_code.command.split()
-            base_command = " ".join(base_command)
+            command_parts = source_code.command.split()
+            if source_code.args:
+                # Shell-quote each arg so values with spaces or special characters are
+                # passed through as single, literal arguments to the executed command.
+                command_parts.extend(shlex.quote(str(arg)) for arg in source_code.args)
+            base_command = " ".join(command_parts)
+            if self.hyperparameters:
+                logger.warning(
+                    "Hyperparameters are set but are not passed as command-line arguments "
+                    "when 'command' is used in the SourceCode. They are available inside the "
+                    "training container via the 'SM_HPS' environment variable, e.g. "
+                    "`hps = json.loads(os.environ['SM_HPS'])`. To pass arguments to your "
+                    "'command', use the SourceCode 'args' field."
+                )
 
         install_requirements = ""
         if source_code.requirements:

@@ -104,6 +104,13 @@ class SourceCode(BaseConfig):
         command (Optional[str]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        args (Optional[List[Union[str, int, float]]]):
+            A list of arguments to append to ``command`` when it is executed in the training job
+            container. Example: ``["--epochs", 25, "--learning_rate", 0.001]``. Each argument is
+            shell-quoted before being appended, so values may contain spaces or special characters.
+            Only applicable when ``command`` is provided; top-level ``hyperparameters`` are not
+            passed as CLI arguments in ``command`` mode -- they are available inside the container
+            via the ``SM_HPS`` environment variable.
         git_config (Optional[dict]):
             Git configuration used to clone the repository that contains the source code, including
             ``repo``, ``branch``, ``commit``, ``2FA_enabled``, ``username``, ``password`` and
@@ -119,6 +126,7 @@ class SourceCode(BaseConfig):
     requirements: Optional[str] = None
     entry_script: Optional[str] = None
     command: Optional[str] = None
+    args: Optional[List[Union[str, int, float]]] = None
     git_config: Optional[dict] = None
     ignore_patterns: Optional[List[str]] = [
         ".env",

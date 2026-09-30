@@ -14,6 +14,8 @@
 
 from __future__ import absolute_import
 
+import typing
+
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -26,7 +28,10 @@ from sagemaker.core.parameter import (
     CategoricalParameter,
     ContinuousParameter,
     IntegerParameter,
+    ParameterRange,
 )
+from sagemaker.core.helper.pipeline_variable import PipelineVariable
+from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.core.shapes import (
     HyperParameterTuningJobWarmStartConfig,
     Channel,
@@ -147,6 +152,49 @@ class TestHyperparameterTunerInit:
         assert tuner.objective_type == "Maximize"
         assert tuner.max_jobs == 1
         assert tuner.max_parallel_jobs == 1
+
+    def test_hyperparameter_ranges_annotation_allows_pipeline_variable_keys(self):
+        """Regression for #5243.
+
+        The ``hyperparameter_ranges`` key type must allow PipelineVariable (e.g. a pipeline
+        ParameterString), not only ``str``, since the tuner accepts pipeline variables as
+        hyperparameter names. This asserts the resolved annotation, so it fails if the type
+        is narrowed back to ``Dict[str, ParameterRange]``.
+        """
+        # Read the raw annotation object directly: get_type_hints would fail resolving the
+        # TYPE_CHECKING-only "ModelTrainer" forward ref, and this module does not use
+        # ``from __future__ import annotations``, so this is a real typing object.
+        annotation = HyperparameterTuner.__init__.__annotations__["hyperparameter_ranges"]
+
+        key_type, value_type = typing.get_args(annotation)
+        key_options = typing.get_args(key_type)  # (str, PipelineVariable)
+
+        assert str in key_options, f"str must remain a valid key type, got {key_options}"
+        assert (
+            PipelineVariable in key_options
+        ), f"PipelineVariable must be an allowed key type, got {key_options}"
+        assert value_type is ParameterRange
+
+    def test_init_with_pipeline_variable_hyperparameter_key(self, mock_model_trainer):
+        """A pipeline ParameterString used as a hyperparameter-range key is accepted (#5243).
+
+        NOTE: this is a runtime sanity check, not the regression guard -- annotations are not
+        enforced at runtime, so this passes with or without the fix. The guard against
+        re-narrowing the type is test_hyperparameter_ranges_annotation_allows_pipeline_variable_keys.
+        """
+        hparam_name = ParameterString(name="HParamName", default_value="hparam")
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_model_trainer,
+            objective_metric_name="valid:loss",
+            objective_type="Minimize",
+            hyperparameter_ranges={hparam_name: CategoricalParameter([1, 2])},
+            strategy=GRID_SEARCH,
+            max_jobs=2,
+            max_parallel_jobs=1,
+        )
+
+        assert hparam_name in tuner._hyperparameter_ranges
 
     def test_init_with_custom_strategy(self, mock_model_trainer, hyperparameter_ranges):
         """Test initialization with custom strategy."""
@@ -604,6 +652,35 @@ class TestHyperparameterTunerStaticMethods:
         assert "train" in channel_names, "User 'train' channel should be included"
         assert "validation" in channel_names, "User 'validation' channel should be included"
         assert len(channel_names) == 4, "Should have exactly 4 channels"
+
+    def test_build_training_job_definition_preserves_content_type(self):
+        """Regression for #5632.
+
+        Converting an InputData to a Channel must carry over content_type, otherwise built-in
+        algorithms fail because the container doesn't know the data format.
+        """
+        from sagemaker.core.training.configs import InputData
+
+        tuner = HyperparameterTuner(
+            model_trainer=_create_mock_model_trainer(),
+            objective_metric_name="validation:auc",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(
+            [
+                InputData(
+                    channel_name="train",
+                    data_source="s3://bucket/train/train.csv",
+                    content_type="csv",
+                )
+            ]
+        )
+
+        train_channel = next(
+            ch for ch in definition.input_data_config if ch.channel_name == "train"
+        )
+        assert train_channel.content_type == "csv"
 
     def test_build_training_job_definition_includes_spot_params(self):
         """Test that _build_training_job_definition includes spot parameters."""

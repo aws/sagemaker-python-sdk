@@ -92,7 +92,7 @@ class HyperparameterTuner(object):
         self,
         model_trainer: "ModelTrainer",
         objective_metric_name: Union[str, PipelineVariable],
-        hyperparameter_ranges: Dict[str, ParameterRange],
+        hyperparameter_ranges: Dict[Union[str, PipelineVariable], ParameterRange],
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         strategy: Union[str, PipelineVariable] = "Bayesian",
         objective_type: Union[str, PipelineVariable] = "Maximize",
@@ -122,10 +122,11 @@ class HyperparameterTuner(object):
                 instance.
             objective_metric_name (str or PipelineVariable): Name of the metric for evaluating
                 training jobs.
-            hyperparameter_ranges (dict[str, sagemaker.parameter.ParameterRange]): Dictionary of
-                parameter ranges. These parameter ranges can be one
+            hyperparameter_ranges (dict[str or PipelineVariable, sagemaker.parameter.ParameterRange]):
+                Dictionary of parameter ranges. These parameter ranges can be one
                 of three types: Continuous, Integer, or Categorical. The keys of
-                the dictionary are the names of the hyperparameter, and the
+                the dictionary are the names of the hyperparameter (a str, or a
+                PipelineVariable such as a pipeline ParameterString), and the
                 values are the appropriate parameter range class to represent
                 the range.
             metric_definitions (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of
@@ -1040,8 +1041,9 @@ class HyperparameterTuner(object):
                 names as in model_trainer_dict, and there must be one entry for each model_trainer in
                 model_trainer_dict. Each value is a dictionary of sagemaker.parameter.ParameterRange
                 instance, which can be one of three types: Continuous, Integer, or Categorical.
-                The keys of each ParameterRange dictionaries are the names of the hyperparameter,
-                and the values are the appropriate parameter range class to represent the range.
+                The keys of each ParameterRange dictionary are the names of the hyperparameter
+                (a str, or a PipelineVariable such as a pipeline ParameterString), and the values
+                are the appropriate parameter range class to represent the range.
             metric_definitions_dict (dict(str, list[dict]]): Dictionary of metric definitions.
                 The keys are the same set or a subset of model_trainer names as in model_trainer_dict,
                 and there must be one entry for each model_trainer in model_trainer_dict. Each value is
@@ -1426,10 +1428,12 @@ class HyperparameterTuner(object):
                 # List of InputData or Channel objects
                 for inp in inputs:
                     if isinstance(inp, InputData):
-                        # Convert InputData to Channel
+                        # Convert InputData to Channel. Preserve content_type so built-in
+                        # algorithms (e.g. XGBoost) know the data format (issue #5632).
                         input_data_config.append(
                             Channel(
                                 channel_name=inp.channel_name,
+                                content_type=inp.content_type,
                                 data_source=DataSource(
                                     s3_data_source=S3DataSource(
                                         s3_data_type="S3Prefix",

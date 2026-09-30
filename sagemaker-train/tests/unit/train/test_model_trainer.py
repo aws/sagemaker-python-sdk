@@ -582,6 +582,87 @@ def test_create_input_data_channel_with_instance_group_names(model_trainer):
     ]
 
 
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_default_prefix_uses_base_job_name(
+    mock_default_bucket, mock_upload_data, mock_staging, model_trainer
+):
+    """Without input_s3_key_prefix, the upload key prefix is derived from base_job_name (unchanged)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+
+    assert model_trainer.input_s3_key_prefix is None
+    model_trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+
+    # Leading segment is derived from base_job_name when input_s3_key_prefix is unset.
+    assert mock_upload_data.call_args.kwargs["key_prefix"] == f"{DEFAULT_BASE_NAME}/input/code"
+
+
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_custom_input_s3_key_prefix(
+    mock_default_bucket, mock_upload_data, mock_staging
+):
+    """input_s3_key_prefix replaces base_job_name as the leading key prefix (issue #5638)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        input_s3_key_prefix="my-pipeline/my-step",
+    )
+    trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+
+    # input_s3_key_prefix replaces base_job_name as the leading segment.
+    assert mock_upload_data.call_args.kwargs["key_prefix"] == "my-pipeline/my-step/input/code"
+    assert f"{DEFAULT_BASE_NAME}/input/code" not in mock_upload_data.call_args.kwargs["key_prefix"]
+
+
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_training_job_args_input_s3_key_prefix(
+    mock_default_bucket, mock_upload_data, mock_staging
+):
+    """Managed sm_drivers/code channels use input_s3_key_prefix in their S3 URIs (issue #5638)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+
+    def _echo(path, bucket, key_prefix, extra_args=None):
+        return f"s3://{bucket}/{key_prefix}"
+
+    mock_upload_data.side_effect = _echo
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        input_s3_key_prefix="my-pipeline",
+    )
+    args = trainer._create_training_job_args()
+    uris = {
+        channel.channel_name: channel.data_source.s3_data_source.s3_uri
+        for channel in args["input_data_config"]
+        if channel.data_source and channel.data_source.s3_data_source
+    }
+
+    # The SDK-managed sm_drivers channel is staged from a local temp dir, so its S3 URI
+    # is built from the input key prefix -> it must lead with the custom pipeline prefix.
+    assert "/my-pipeline/" in uris["sm_drivers"]
+    assert f"/{DEFAULT_BASE_NAME}/input" not in uris["sm_drivers"]
+
+
 HETEROGENEOUS_INSTANCE_GROUPS = [
     InstanceGroup(
         instance_type="ml.t3.large", instance_count=1, instance_group_name="head-instance-group"
@@ -2220,6 +2301,74 @@ def test_log_actionable_client_error_other_codes_stay_silent(caplog):
         _log_actionable_client_error(error)
 
     assert caplog.text == ""
+
+
+def test_output_data_returns_output_tar_gz_uri(model_trainer):
+    """output_data derives the output.tar.gz S3 URI from the completed job."""
+    from sagemaker.core.shapes import OutputDataConfig as CoreOutputDataConfig
+
+    model_trainer._latest_training_job = TrainingJob(
+        training_job_name="my-training-job",
+        output_data_config=CoreOutputDataConfig(
+            s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}"
+        ),
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_strips_trailing_slash(model_trainer):
+    """A trailing slash on s3_output_path must not produce a double slash."""
+    from sagemaker.core.shapes import OutputDataConfig as CoreOutputDataConfig
+
+    model_trainer._latest_training_job = TrainingJob(
+        training_job_name="my-training-job",
+        output_data_config=CoreOutputDataConfig(
+            s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/"
+        ),
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_falls_back_to_trainer_output_config(model_trainer):
+    """When the job resource has no output_data_config, fall back to the trainer's."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+
+    assert model_trainer.output_data == (
+        f"{DEFAULT_OUTPUT_DATA_CONFIG.s3_output_path}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_raises_when_no_training_job(model_trainer):
+    """Accessing output_data before training raises a clear error."""
+    assert model_trainer._latest_training_job is None
+    with pytest.raises(ValueError, match="No training job"):
+        _ = model_trainer.output_data
+
+
+def test_output_data_raises_when_no_output_path(model_trainer):
+    """output_data raises if no S3 output path can be resolved."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+    model_trainer.output_data_config = None
+    with pytest.raises(ValueError, match="output S3 path"):
+        _ = model_trainer.output_data
+
+
+def test_output_data_strips_trailing_slash_on_fallback(model_trainer):
+    """The trailing slash is also normalized when using the trainer fallback."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+    model_trainer.output_data_config = OutputDataConfig(
+        s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/"
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -316,8 +316,10 @@ class TestMTRLEvaluator3PAgentIntegration:
         """Test evaluating a fine-tuned model by attaching to an existing training job."""
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
+        # Fixture job whose output package is pinned via the `pysdk-ci-protected=true`
+        # tag. Keep in sync with test_mtrl_trainer_integration.py.
         attached_job = MultiTurnRLTrainer.attach(
-            "mock-oss-test-mtrl-20260910094327", session=boto3.Session(region_name=_REGION)
+            "mock-oss-test-mtrl-20260929124814", session=boto3.Session(region_name=_REGION)
         )
 
         evaluator = MultiTurnRLEvaluator(
