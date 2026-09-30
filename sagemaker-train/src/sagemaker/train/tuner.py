@@ -886,7 +886,9 @@ class HyperparameterTuner(object):
             else:
                 value_hp.validate(parameter_range_value)
 
-    def transfer_learning_tuner(self, additional_parents=None, model_trainer=None):
+    def transfer_learning_tuner(
+        self, additional_parents=None, model_trainer=None, hyperparameter_ranges=None
+    ):
         """Creates a new ``HyperparameterTuner``.
 
         Creation is done by copying the request fields from the provided parent
@@ -910,6 +912,15 @@ class HyperparameterTuner(object):
                 that has been initialized with the desired configuration. There
                 does not need to be a training job associated with this
                 instance.
+            hyperparameter_ranges: Optional hyperparameter ranges to use for the new tuner,
+                overriding the parent tuner's ranges. For a tuner created directly (single
+                model_trainer), pass a dictionary mapping hyperparameter names to
+                ``sagemaker.core.parameter.ParameterRange`` values, i.e.
+                ``dict[str, ParameterRange]``. For a tuner created with
+                :meth:`~HyperparameterTuner.create`, pass a dictionary keyed by the tuner's
+                model_trainer name whose value is that trainer's hyperparameter range dictionary,
+                i.e. ``dict[str, dict[str, ParameterRange]]``. If not provided, the parent tuner's
+                ranges are reused (default: None).
 
         Returns:
             sagemaker.core.shapes.HyperparameterTuner: ``HyperparameterTuner``
@@ -920,9 +931,12 @@ class HyperparameterTuner(object):
             additional_parents=additional_parents,
             warm_start_type=WarmStartTypes.TRANSFER_LEARNING,
             model_trainer=model_trainer,
+            hyperparameter_ranges=hyperparameter_ranges,
         )
 
-    def _create_warm_start_tuner(self, additional_parents, warm_start_type, model_trainer=None):
+    def _create_warm_start_tuner(
+        self, additional_parents, warm_start_type, model_trainer=None, hyperparameter_ranges=None
+    ):
         """Creates a new ``HyperparameterTuner`` with ``HyperParameterTuningJobWarmStartConfig``.
 
         Where type will be equal to ``warm_start_type`` and``parents`` would be equal
@@ -934,6 +948,13 @@ class HyperparameterTuner(object):
             warm_start_type (sagemaker.core.shapes.WarmStartTypes): Type of warm start
                 job.
             model_trainer:
+            hyperparameter_ranges (dict): Optional hyperparameter ranges to use for the new
+                tuner, overriding the parent tuner's ranges. For a tuner created directly (single
+                model_trainer) this is a ``dict[str, ParameterRange]``; for a tuner created with
+                :meth:`~HyperparameterTuner.create` this is a dictionary keyed by the tuner's
+                model_trainer name whose value is that trainer's hyperparameter range dictionary
+                (``dict[str, dict[str, ParameterRange]]``). If not provided, the parent tuner's
+                ranges are reused (default: None).
 
         Returns:
             sagemaker.core.shapes.HyperparameterTuner: Instance with the request
@@ -948,7 +969,11 @@ class HyperparameterTuner(object):
             return HyperparameterTuner(
                 model_trainer=model_trainer if model_trainer else self.model_trainer,
                 objective_metric_name=self.objective_metric_name,
-                hyperparameter_ranges=self._hyperparameter_ranges,
+                hyperparameter_ranges=(
+                    hyperparameter_ranges
+                    if hyperparameter_ranges is not None
+                    else self._hyperparameter_ranges
+                ),
                 strategy=self.strategy,
                 strategy_config=self.strategy_config,
                 completion_criteria_config=self.completion_criteria_config,
@@ -977,7 +1002,11 @@ class HyperparameterTuner(object):
         return HyperparameterTuner.create(
             model_trainer_dict=model_trainer_dict,
             objective_metric_name_dict=self.objective_metric_name_dict,
-            hyperparameter_ranges_dict=self._hyperparameter_ranges_dict,
+            hyperparameter_ranges_dict=(
+                hyperparameter_ranges
+                if hyperparameter_ranges is not None
+                else self._hyperparameter_ranges_dict
+            ),
             metric_definitions_dict=self.metric_definitions_dict,
             strategy=self.strategy,
             strategy_config=self.strategy_config,
