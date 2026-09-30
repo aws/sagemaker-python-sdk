@@ -170,13 +170,8 @@ def _get_train_args(job_name):
         "retry_strategy": None,
         "experiment_config": None,
         "enable_network_isolation": False,
-        "debugger_hook_config": {
-            "CollectionConfigurations": [],
-            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
-        },
         "profiler_config": {
-            "DisableProfiler": False,
-            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+            "DisableProfiler": True,
         },
     }
 
