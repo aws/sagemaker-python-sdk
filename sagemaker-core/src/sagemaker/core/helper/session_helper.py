@@ -1274,9 +1274,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             cloudwatch_client = self.boto_session.client("logs")
             paginator = cloudwatch_client.get_paginator("filter_log_events")
             paginator_config = create_paginator_config()
+            not_found_budget = _EndpointNotFoundBudget()
             desc = _wait_until(
                 lambda: _live_logging_deploy_done(
-                    self.sagemaker_client, endpoint, paginator, paginator_config, EP_LOGGER_POLL
+                    self.sagemaker_client,
+                    endpoint,
+                    paginator,
+                    paginator_config,
+                    EP_LOGGER_POLL,
+                    not_found_budget=not_found_budget,
                 ),
                 poll=EP_LOGGER_POLL,
             )
@@ -2979,8 +2985,47 @@ def _deploy_done(sagemaker_client, endpoint_name):
     return None if status in in_progress_statuses else desc
 
 
-def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, paginator_config, poll):
-    """Placeholder docstring"""
+# DescribeEndpoint can briefly report "Could not find endpoint" right after
+# CreateEndpoint returns. An endpoint still missing after this many consecutive
+# polls was deleted out of band, and waiting on it can never succeed.
+_MAX_ENDPOINT_NOT_FOUND_POLLS = 10
+
+
+class _EndpointNotFoundBudget(object):
+    """Bounds how many consecutive polls a deploy wait tolerates a missing endpoint."""
+
+    def __init__(self, max_polls=_MAX_ENDPOINT_NOT_FOUND_POLLS):
+        """Allow up to ``max_polls`` consecutive "endpoint not found" polls."""
+        self.max_polls = max_polls
+        self.misses = 0
+
+    def miss(self, error):
+        """Record one "not found" poll, re-raising ``error`` once the budget is spent."""
+        self.misses += 1
+        if self.misses > self.max_polls:
+            raise error
+
+    def reset(self):
+        """Clear the count once the endpoint is visible."""
+        self.misses = 0
+
+
+def _live_logging_deploy_done(
+    sagemaker_client, endpoint_name, paginator, paginator_config, poll, not_found_budget=None
+):
+    """Return the ``DescribeEndpoint`` response once the endpoint leaves ``Creating``.
+
+    Streams the endpoint's CloudWatch logs on every poll and returns ``None`` while
+    the endpoint is still being created. The log group only exists once a container
+    has started, so an endpoint that fails before any instance is provisioned (for
+    example on InsufficientInstanceCapacity) never gets one: a missing log group
+    must not keep a finished deployment waiting.
+
+    Args:
+        not_found_budget (_EndpointNotFoundBudget): Optional bound on how many
+            consecutive polls a missing endpoint is tolerated. Without it a
+            missing endpoint is waited on indefinitely.
+    """
     stop = False
     endpoint_status = None
     try:
@@ -2988,21 +3033,25 @@ def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, pagina
         endpoint_status = desc["EndpointStatus"]
     except ClientError as e:
         if e.response["Error"]["Code"] == "ValidationException":
+            if not_found_budget is not None:
+                not_found_budget.miss(e)
             LOGGER.debug("Waiting for endpoint to become visible")
             return None
         raise e
+    if not_found_budget is not None:
+        not_found_budget.reset()
+
+    # if endpoint is in an invalid state -> set stop to true, sleep, and flush the logs
+    if endpoint_status != "Creating":
+        stop = True
+        if endpoint_status == "InService":
+            LOGGER.info(
+                "Created endpoint with name %s. Waiting for it to be InService", endpoint_name
+            )
+        else:
+            time.sleep(poll)
 
     try:
-        # if endpoint is in an invalid state -> set stop to true, sleep, and flush the logs
-        if endpoint_status != "Creating":
-            stop = True
-            if endpoint_status == "InService":
-                LOGGER.info(
-                    "Created endpoint with name %s. Waiting for it to be InService", endpoint_name
-                )
-            else:
-                time.sleep(poll)
-
         pages = paginator.paginate(
             logGroupName=f"/aws/sagemaker/Endpoints/{endpoint_name}",
             logStreamNamePrefix="AllTraffic/",
@@ -3016,17 +3065,13 @@ def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, pagina
                     LOGGER.info(event["message"])
             else:
                 LOGGER.debug("No log events available")
-
-        # if stop is true -> return the describe response and stop polling
-        if stop:
-            return desc
     except ClientError as e:
-        if e.response["Error"]["Code"] == "ResourceNotFoundException":
-            LOGGER.debug("Waiting for endpoint log group to appear")
-            return None
-        raise e
+        if e.response["Error"]["Code"] != "ResourceNotFoundException":
+            raise e
+        LOGGER.debug("Waiting for endpoint log group to appear")
 
-    return None
+    # if stop is true -> return the describe response and stop polling
+    return desc if stop else None
 
 
 def _deployment_entity_exists(describe_fn):

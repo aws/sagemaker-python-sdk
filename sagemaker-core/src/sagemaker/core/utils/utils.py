@@ -505,22 +505,28 @@ class ResourceIterator(Generic[T]):
 
         # Otherwise, get the next page of summaries by calling the list method with the next token if available
         else:
-            if self.next_token:
-                response = getattr(self.client, self.list_method)(
-                    NextToken=self.next_token, **self.list_method_kwargs
-                )
-            else:
-                response = getattr(self.client, self.list_method)(**self.list_method_kwargs)
+            while True:
+                previous_token = self.next_token
+                if self.next_token:
+                    response = getattr(self.client, self.list_method)(
+                        NextToken=self.next_token, **self.list_method_kwargs
+                    )
+                else:
+                    response = getattr(self.client, self.list_method)(**self.list_method_kwargs)
 
-            self.summary_list = response.get(self.summaries_key, [])
-            self.next_token = response.get("NextToken", None)
-            self.index = 0
+                self.summary_list = response.get(self.summaries_key, [])
+                self.next_token = response.get("NextToken", None)
+                self.index = 0
 
-            # If list_method returned an empty list, raise StopIteration
-            if len(self.summary_list) == 0:
-                raise StopIteration
+                if len(self.summary_list) > 0:
+                    return self.__next__()
 
-            return self.__next__()
+                # A page can be empty and still carry a NextToken (the service
+                # filters results after paginating), so an empty page only ends
+                # the iteration when there is no further page. A NextToken that
+                # repeats would page forever, so it also ends the iteration.
+                if not self.next_token or self.next_token == previous_token:
+                    raise StopIteration
 
 
 def serialize(value: Any) -> Any:

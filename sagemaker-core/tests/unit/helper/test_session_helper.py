@@ -19,7 +19,12 @@ import pytest
 from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
-from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.exceptions import UnexpectedStatusException
+from sagemaker.core.helper.session_helper import (
+    Session,
+    _EndpointNotFoundBudget,
+    _live_logging_deploy_done,
+)
 from sagemaker.core.session_settings import SessionSettings
 
 
@@ -374,6 +379,119 @@ class TestWaitForEndpoint:
 
             with pytest.raises(Exception, match="Error hosting endpoint"):
                 session.wait_for_endpoint("my-endpoint")
+
+    @patch("sagemaker.core.helper.session_helper._has_permission_for_live_logging")
+    @patch("time.sleep")
+    def test_live_logging_wait_raises_when_endpoint_fails_without_log_group(
+        self, mock_sleep, mock_permission, mock_boto_session, mock_sagemaker_client
+    ):
+        """A Failed endpoint that never got a log group ends the wait instead of hanging."""
+        mock_permission.return_value = True
+        failed = {
+            "EndpointStatus": "Failed",
+            "FailureReason": "Unable to provision requested ML compute capacity due to "
+            "InsufficientInstanceCapacity error.",
+        }
+        # A finite side_effect so a regression surfaces as a failure, not a hang.
+        mock_sagemaker_client.describe_endpoint.side_effect = [failed, failed]
+        paginator = mock_boto_session.client.return_value.get_paginator.return_value
+        paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "FilterLogEvents"
+        )
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+
+        with pytest.raises(UnexpectedStatusException, match="InsufficientInstanceCapacity"):
+            session.wait_for_endpoint("my-endpoint", live_logging=True)
+
+        assert mock_sagemaker_client.describe_endpoint.call_count == 1
+
+
+class TestLiveLoggingDeployDone:
+    """Test _live_logging_deploy_done."""
+
+    RESOURCE_NOT_FOUND = ClientError(
+        {"Error": {"Code": "ResourceNotFoundException"}}, "FilterLogEvents"
+    )
+    ENDPOINT_NOT_FOUND = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "Could not find endpoint"}},
+        "DescribeEndpoint",
+    )
+
+    @patch("time.sleep")
+    def test_finished_endpoint_without_log_group_returns_desc(self, mock_sleep):
+        """InService or Failed with no log group is finished, not "still waiting"."""
+        for status in ("InService", "Failed"):
+            client = Mock()
+            desc = {"EndpointStatus": status}
+            client.describe_endpoint.return_value = desc
+            paginator = Mock()
+            paginator.paginate.side_effect = self.RESOURCE_NOT_FOUND
+
+            assert _live_logging_deploy_done(client, "my-endpoint", paginator, {}, 5) == desc
+
+    def test_creating_endpoint_without_log_group_keeps_waiting(self):
+        """Creating with no log group yet is still in progress."""
+        client = Mock()
+        client.describe_endpoint.return_value = {"EndpointStatus": "Creating"}
+        paginator = Mock()
+        paginator.paginate.side_effect = self.RESOURCE_NOT_FOUND
+
+        assert _live_logging_deploy_done(client, "my-endpoint", paginator, {}, 5) is None
+
+    def test_other_log_errors_are_raised(self):
+        """Log-fetch errors other than a missing log group still propagate."""
+        client = Mock()
+        client.describe_endpoint.return_value = {"EndpointStatus": "InService"}
+        paginator = Mock()
+        paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "ThrottlingException"}}, "FilterLogEvents"
+        )
+
+        with pytest.raises(ClientError):
+            _live_logging_deploy_done(client, "my-endpoint", paginator, {}, 5)
+
+    def test_missing_endpoint_is_waited_on_without_budget(self):
+        """Without a budget a missing endpoint keeps the legacy "keep waiting" result."""
+        client = Mock()
+        client.describe_endpoint.side_effect = self.ENDPOINT_NOT_FOUND
+
+        assert _live_logging_deploy_done(client, "my-endpoint", Mock(), {}, 5) is None
+
+    def test_missing_endpoint_raises_once_budget_is_spent(self):
+        """A missing endpoint is tolerated only for the budgeted number of polls."""
+        client = Mock()
+        client.describe_endpoint.side_effect = self.ENDPOINT_NOT_FOUND
+        budget = _EndpointNotFoundBudget(max_polls=2)
+
+        for _ in range(2):
+            assert (
+                _live_logging_deploy_done(
+                    client, "my-endpoint", Mock(), {}, 5, not_found_budget=budget
+                )
+                is None
+            )
+        with pytest.raises(ClientError, match="Could not find endpoint"):
+            _live_logging_deploy_done(client, "my-endpoint", Mock(), {}, 5, not_found_budget=budget)
+
+    def test_budget_resets_once_endpoint_is_found(self):
+        """Only consecutive "not found" polls count against the budget."""
+        client = Mock()
+        client.describe_endpoint.side_effect = [
+            self.ENDPOINT_NOT_FOUND,
+            {"EndpointStatus": "Creating"},
+            self.ENDPOINT_NOT_FOUND,
+        ]
+        paginator = Mock()
+        paginator.paginate.return_value = []
+        budget = _EndpointNotFoundBudget(max_polls=1)
+
+        for _ in range(3):
+            assert (
+                _live_logging_deploy_done(
+                    client, "my-endpoint", paginator, {}, 5, not_found_budget=budget
+                )
+                is None
+            )
 
 
 class TestUpdateEndpoint:
