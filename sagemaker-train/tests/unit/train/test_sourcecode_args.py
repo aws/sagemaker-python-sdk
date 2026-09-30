@@ -21,8 +21,12 @@ and a warning points users to the ``SM_HPS`` env var when they combine
 
 from __future__ import absolute_import
 
+import json
 import os
 import logging
+import re
+import shutil
+import subprocess
 from tempfile import TemporaryDirectory
 
 import pytest
@@ -88,6 +92,68 @@ def _written_train_script(trainer, source_code):
             return f.read()
 
 
+_EVAL_LINE = 'eval "$CMD"'
+# Deliberately tolerant of how the heredoc delimiter is written, so that a regression which
+# keeps the structure but drops the quotes around the delimiter (re-enabling expansion) is
+# caught by the semantic assertions below rather than by a parse error in this helper.
+_HEREDOC_OPEN_RE = re.compile(r"^CMD=\$\(cat <<'?(?P<delimiter>\w+)'?$")
+
+
+def _command_block_bounds(lines):
+    """Return (heredoc-open index, body slice, index just past ``eval``)."""
+    for index, line in enumerate(lines):
+        match = _HEREDOC_OPEN_RE.match(line)
+        if match:
+            delimiter = match.group("delimiter")
+            close = lines.index(delimiter, index + 1)
+            end = lines.index(_EVAL_LINE, close) + 1
+            return index, slice(index + 1, close), end
+    raise AssertionError(
+        "no 'CMD=$(cat <<DELIMITER' command block in generated script:\n" + "\n".join(lines)
+    )
+
+
+# A stub "command" that reports the argv it actually received, so a test can assert on real
+# shell semantics rather than on the text of the generated script.
+_CAPTURE_ARGV_PRELUDE = """
+capture_args() {
+    python3 -c 'import sys, json; print("ARGV=" + json.dumps(sys.argv[1:]))' "$@"
+}
+"""
+
+
+def _base_command(script):
+    """Return the command carried inside the generated heredoc."""
+    lines = script.splitlines()
+    _, body, _ = _command_block_bounds(lines)
+    return "\n".join(lines[body])
+
+
+def _argv_from_running_base_command(script):
+    """Execute the generated command block under bash and return the argv it produced.
+
+    This is the assertion that actually pins the quoting contract: the SDK writes a shell
+    script, so only running it proves that ``args`` arrive as distinct literal arguments.
+    """
+    lines = script.splitlines()
+    start, _, end = _command_block_bounds(lines)
+    fragment = "\n".join(lines[start:end])
+    completed = subprocess.run(
+        ["bash", "-c", _CAPTURE_ARGV_PRELUDE + fragment],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    for line in completed.stdout.splitlines():
+        if line.startswith("ARGV="):
+            return json.loads(line[len("ARGV=") :])
+    raise AssertionError(
+        "command block produced no ARGV line.\nstdout={}\nstderr={}".format(
+            completed.stdout, completed.stderr
+        )
+    )
+
+
 def test_sourcecode_args_field_defaults_to_none():
     """The new ``args`` field exists and defaults to None (backward compatible)."""
     assert SourceCode(command="python train.py").args is None
@@ -123,7 +189,9 @@ def test_prepare_train_script_appends_args_to_command():
     )
     trainer = _make_trainer(source_code)
     script = _written_train_script(trainer, source_code)
-    assert 'CMD="python launcher.py -e train.py --epochs 25 --learning_rate 0.001"' in script
+    assert (
+        _base_command(script) == "python launcher.py -e train.py --epochs 25 --learning_rate 0.001"
+    )
 
 
 def test_prepare_train_script_appends_numeric_args():
@@ -135,7 +203,7 @@ def test_prepare_train_script_appends_numeric_args():
     )
     trainer = _make_trainer(source_code)
     script = _written_train_script(trainer, source_code)
-    assert 'CMD="python launcher.py --epochs 25 --learning_rate 0.001"' in script
+    assert _base_command(script) == "python launcher.py --epochs 25 --learning_rate 0.001"
 
 
 def test_prepare_train_script_shell_quotes_args_with_spaces():
@@ -148,8 +216,7 @@ def test_prepare_train_script_shell_quotes_args_with_spaces():
     trainer = _make_trainer(source_code)
     script = _written_train_script(trainer, source_code)
     # shlex.quote wraps the value so the space does not re-tokenize the argument.
-    assert "'hello world'" in script
-    assert "CMD=\"python launcher.py --prompt 'hello world'\"" in script
+    assert _base_command(script) == "python launcher.py --prompt 'hello world'"
 
 
 def test_prepare_train_script_command_only_no_regression():
@@ -157,7 +224,112 @@ def test_prepare_train_script_command_only_no_regression():
     source_code = SourceCode(source_dir="scripts", command="python launcher.py -e train.py")
     trainer = _make_trainer(source_code)
     script = _written_train_script(trainer, source_code)
-    assert 'CMD="python launcher.py -e train.py"' in script
+    assert _base_command(script) == "python launcher.py -e train.py"
+
+
+requires_bash = pytest.mark.skipif(
+    shutil.which("bash") is None, reason="needs bash to execute the generated command block"
+)
+
+
+@requires_bash
+@pytest.mark.parametrize(
+    "value",
+    [
+        "hello world",
+        "$HOME",
+        "${HOME}",
+        "$(id -u)",
+        "`id -u`",
+        'a"b',
+        "it's",
+        "; echo INJECTED",
+        "&& echo INJECTED",
+        "| cat",
+        "*",
+        "a\tb",
+        "a\nb",
+        "back\\slash",
+        "",
+    ],
+)
+def test_args_reach_the_command_as_literal_single_arguments(value):
+    """Each arg must arrive verbatim as one argument, whatever shell metacharacters it holds.
+
+    Regression test for the quoting bug in the original implementation: ``shlex.quote`` was
+    defeated because the generated script assigned the command inside a double-quoted
+    ``CMD="..."``, so the shell expanded ``$VAR``/``$(...)``/backticks at assignment time and
+    an embedded double quote terminated the string early. Asserting on the text of the script
+    could not catch that -- only running it can.
+    """
+    source_code = SourceCode(source_dir="scripts", command="capture_args", args=["--prompt", value])
+    trainer = _make_trainer(source_code)
+    script = _written_train_script(trainer, source_code)
+
+    assert _argv_from_running_base_command(script) == ["--prompt", value]
+
+
+@requires_bash
+def test_multiple_args_preserve_order_and_boundaries():
+    """Adjacent args stay distinct even when each contains spaces."""
+    values = ["--a", "one two", "--b", "three  four", "--c", "5"]
+    source_code = SourceCode(source_dir="scripts", command="capture_args", args=values)
+    trainer = _make_trainer(source_code)
+    script = _written_train_script(trainer, source_code)
+
+    assert _argv_from_running_base_command(script) == values
+
+
+@requires_bash
+def test_numeric_args_reach_the_command_as_strings():
+    """int/float args are stringified without gaining quotes or losing precision."""
+    source_code = SourceCode(
+        source_dir="scripts",
+        command="capture_args",
+        args=["--epochs", 25, "--learning_rate", 0.001],
+    )
+    trainer = _make_trainer(source_code)
+    script = _written_train_script(trainer, source_code)
+
+    assert _argv_from_running_base_command(script) == ["--epochs", "25", "--learning_rate", "0.001"]
+
+
+@requires_bash
+def test_environment_variables_in_command_still_expand():
+    """``command`` itself is still shell-evaluated, so env vars in it keep working.
+
+    The heredoc stops expansion at *assignment* time only; ``eval`` still parses the command
+    once, which is the behavior users of ``command`` rely on.
+    """
+    source_code = SourceCode(source_dir="scripts", command="capture_args $HOME")
+    trainer = _make_trainer(source_code)
+    script = _written_train_script(trainer, source_code)
+
+    argv = _argv_from_running_base_command(script)
+    assert argv == [os.environ["HOME"]]
+
+
+@requires_bash
+def test_shell_operators_in_command_still_work():
+    """``&&`` in a user-supplied ``command`` still chains, unchanged from prior behavior."""
+    source_code = SourceCode(source_dir="scripts", command="capture_args one && capture_args two")
+    trainer = _make_trainer(source_code)
+    script = _written_train_script(trainer, source_code)
+
+    lines = script.splitlines()
+    start, _, end = _command_block_bounds(lines)
+    completed = subprocess.run(
+        ["bash", "-c", _CAPTURE_ARGV_PRELUDE + "\n".join(lines[start:end])],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    emitted = [
+        json.loads(line[len("ARGV=") :])
+        for line in completed.stdout.splitlines()
+        if line.startswith("ARGV=")
+    ]
+    assert emitted == [["one"], ["two"]]
 
 
 def test_warning_when_hyperparameters_combined_with_command(caplog):
