@@ -15,16 +15,15 @@
 import pytest
 import time
 import asyncio
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.train.aws_batch.training_queued_job import TrainingQueuedJob
 from sagemaker.train.aws_batch.exception import NoTrainingJob, MissingRequiredArgument
 from .conftest import (
     JOB_NAME,
     JOB_ARN,
+    JOB_ID,
     REASON,
-    TRAINING_JOB_NAME,
-    TRAINING_JOB_ARN,
     JOB_STATUS_PENDING,
     JOB_STATUS_RUNNING,
     JOB_STATUS_SUCCEEDED,
@@ -33,6 +32,7 @@ from .conftest import (
     DESCRIBE_SERVICE_JOB_RESP_SUCCEEDED,
     DESCRIBE_SERVICE_JOB_RESP_FAILED,
     DESCRIBE_SERVICE_JOB_RESP_PENDING,
+    SCHEDULING_PRIORITY,
 )
 
 
@@ -44,6 +44,14 @@ class TestTrainingQueuedJobInit:
         queued_job = TrainingQueuedJob(JOB_ARN, JOB_NAME)
         assert queued_job.job_arn == JOB_ARN
         assert queued_job.job_name == JOB_NAME
+
+    def test_training_queued_job_init_with_quota_share_name(self):
+        """Test TrainingQueuedJob initialization with quota_share_name"""
+        queued_job = TrainingQueuedJob(JOB_ARN, JOB_NAME, quota_share_name="test-quota")
+        assert queued_job.job_arn == JOB_ARN
+        assert queued_job.job_name == JOB_NAME
+        assert queued_job.share_identifier is None
+        assert queued_job.quota_share_name == "test-quota"
 
 
 class TestTrainingQueuedJobDescribe:
@@ -84,6 +92,27 @@ class TestTrainingQueuedJobTerminate:
 
         call_kwargs = mock_terminate_service_job.call_args[0]
         assert call_kwargs[0] == JOB_ARN
+
+
+class TestTrainingQueuedJobUpdate:
+    """Tests for TrainingQueuedJob.update method"""
+
+    @patch("sagemaker.train.aws_batch.training_queued_job._update_service_job")
+    def test_update(self, mock_update_service_job):
+        """Test update calls update API"""
+        mock_update_service_job.return_value = {
+            "jobArn": JOB_ARN,
+            "jobName": JOB_NAME,
+            "jobId": JOB_ID,
+        }
+
+        queued_job = TrainingQueuedJob(JOB_ARN, JOB_NAME)
+        result = queued_job.update(SCHEDULING_PRIORITY)
+
+        mock_update_service_job.assert_called_once_with(JOB_ARN, SCHEDULING_PRIORITY)
+        assert result["jobArn"] == JOB_ARN
+        assert result["jobName"] == JOB_NAME
+        assert result["jobId"] == JOB_ID
 
 
 class TestTrainingQueuedJobWait:
@@ -142,14 +171,20 @@ class TestTrainingQueuedJobWait:
 class TestTrainingQueuedJobGetModelTrainer:
     """Tests for TrainingQueuedJob.get_model_trainer method"""
 
-    @patch("sagemaker.train.aws_batch.training_queued_job._remove_system_tags_in_place_in_model_trainer_object")
-    @patch("sagemaker.train.aws_batch.training_queued_job._construct_model_trainer_from_training_job_name")
+    @patch(
+        "sagemaker.train.aws_batch.training_queued_job._remove_system_tags_in_place_in_model_trainer_object"
+    )
+    @patch(
+        "sagemaker.train.aws_batch.training_queued_job._construct_model_trainer_from_training_job_name"
+    )
     @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
-    def test_get_model_trainer_success(self, mock_describe_service_job, mock_construct_trainer, mock_remove_tags):
+    def test_get_model_trainer_success(
+        self, mock_describe_service_job, mock_construct_trainer, mock_remove_tags
+    ):
         """Test get_model_trainer returns ModelTrainer when training job created"""
         # Return a real dict (not a mock) so nested dict access works
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_SUCCEEDED
-        
+
         mock_trainer = Mock()
         mock_construct_trainer.return_value = mock_trainer
 

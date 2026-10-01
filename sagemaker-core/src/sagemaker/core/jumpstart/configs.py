@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains utilites for JumpStart model metadata."""
+
 from __future__ import absolute_import
 
 from pydantic import BaseModel, ConfigDict
@@ -35,6 +36,9 @@ class JumpStartConfig(BaseConfig):
         model_version (Optional[str]): The version of the JumpStart model.
             Defaults to None.
         hub_name (Optional[str]): The name of the JumpStart hub. Defaults to None.
+        hub_content_name (Optional[str]): The name of the hub content reference in the
+            private hub, when it differs from the public model_id. Defaults to None,
+            which means the hub content is expected to be named after the model_id.
         accept_eula (Optional[bool]): Whether to accept the EULA. Defaults to None.
         training_config_name (Optional[str]): The name of the training configuration.
             Defaults to None.
@@ -45,6 +49,7 @@ class JumpStartConfig(BaseConfig):
     model_id: str
     model_version: Optional[str] = None
     hub_name: Optional[str] = None
+    hub_content_name: Optional[str] = None
     accept_eula: Optional[bool] = False
     training_config_name: Optional[str] = None
     inference_config_name: Optional[str] = None

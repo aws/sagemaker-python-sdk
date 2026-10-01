@@ -6,7 +6,7 @@ from sagemaker.serve.marshalling.custom_payload_translator import CustomPayloadT
 class MockTranslator(CustomPayloadTranslator):
     def serialize_payload_to_bytes(self, payload):
         return str(payload).encode("utf-8")
-    
+
     def deserialize_payload_from_stream(self, stream):
         return stream.read().decode("utf-8")
 

@@ -11,13 +11,13 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.lambda_helper module."""
+
 from __future__ import absolute_import
 
 import pytest
-import os
 import zipfile
 from io import BytesIO
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 from sagemaker.core.lambda_helper import (
@@ -611,7 +611,33 @@ class TestHelperFunctions:
 
         assert result == "prefix/lambda/my-function/code"
         mock_s3_client.upload_file.assert_called_once_with(
-            "/path/to/code.zip", "my-bucket", "prefix/lambda/my-function/code"
+            "/path/to/code.zip",
+            "my-bucket",
+            "prefix/lambda/my-function/code",
+            ExtraArgs=None,
+        )
+
+    def test_upload_to_s3_with_expected_bucket_owner(self):
+        """When expected_bucket_owner is provided (caller resolved default bucket),
+        ExtraArgs must carry ExpectedBucketOwner.
+        """
+        mock_s3_client = Mock()
+
+        result = _upload_to_s3(
+            mock_s3_client,
+            "my-function",
+            "/path/to/code.zip",
+            "sagemaker-us-west-2-111111111111",
+            "prefix",
+            expected_bucket_owner="111111111111",
+        )
+
+        assert result == "prefix/lambda/my-function/code"
+        mock_s3_client.upload_file.assert_called_once_with(
+            "/path/to/code.zip",
+            "sagemaker-us-west-2-111111111111",
+            "prefix/lambda/my-function/code",
+            ExtraArgs={"ExpectedBucketOwner": "111111111111"},
         )
 
     def test_zip_lambda_code(self, tmp_path):

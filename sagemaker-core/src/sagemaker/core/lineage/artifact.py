@@ -11,13 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains code to create and manage SageMaker ``Artifact``."""
+
 from __future__ import absolute_import
 
 import logging
 import math
 
 from datetime import datetime
-from typing import Iterator, Union, Any, Optional, List
+from typing import Iterator, Union, Any, Optional, List, TYPE_CHECKING
 
 from sagemaker.core.apiutils import _base_types, _utils
 from sagemaker.core.lineage import _api_types
@@ -32,6 +33,9 @@ from sagemaker.core.lineage.query import (
 from sagemaker.core.lineage._utils import _disassociate, get_resource_name_from_arn
 from sagemaker.core.lineage.association import Association
 from sagemaker.core.common_utils import get_module, format_tags
+
+if TYPE_CHECKING:
+    from sagemaker.core.lineage.context import Context
 
 LOGGER = logging.getLogger("sagemaker")
 

@@ -13,7 +13,7 @@
 """Unit tests for training_queue module"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.train.aws_batch.training_queue import TrainingQueue
 from sagemaker.train.model_trainer import ModelTrainer, Mode
@@ -21,7 +21,6 @@ from .conftest import (
     JOB_NAME,
     JOB_QUEUE,
     JOB_ARN,
-    JOB_ID,
     SCHEDULING_PRIORITY,
     SHARE_IDENTIFIER,
     TIMEOUT_CONFIG,
@@ -30,8 +29,11 @@ from .conftest import (
     SUBMIT_SERVICE_JOB_RESP,
     LIST_SERVICE_JOB_RESP_WITH_JOBS,
     LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS,
+    LIST_SERVICE_JOB_BY_QUOTA_SHARE_RESP_WITH_JOBS,
     LIST_SERVICE_JOB_RESP_EMPTY,
     TRAINING_JOB_PAYLOAD,
+    QUOTA_SHARE_NAME,
+    PREEMPTION_CONFIG,
 )
 
 
@@ -66,6 +68,7 @@ class TestTrainingQueueSubmit:
             SHARE_IDENTIFIER,
             TIMEOUT_CONFIG,
             BATCH_TAGS,
+            None,
         )
 
         assert queued_job.job_name == JOB_NAME
@@ -91,6 +94,7 @@ class TestTrainingQueueSubmit:
             SHARE_IDENTIFIER,
             None,  # No timeout
             BATCH_TAGS,
+            None,
         )
 
         call_kwargs = mock_submit_service_job.call_args[0]
@@ -116,6 +120,7 @@ class TestTrainingQueueSubmit:
             SHARE_IDENTIFIER,
             TIMEOUT_CONFIG,
             BATCH_TAGS,
+            None,
         )
 
         call_kwargs = mock_submit_service_job.call_args[0]
@@ -136,6 +141,7 @@ class TestTrainingQueueSubmit:
                 SHARE_IDENTIFIER,
                 TIMEOUT_CONFIG,
                 BATCH_TAGS,
+                None,
             )
 
     def test_submit_invalid_training_mode(self):
@@ -155,6 +161,7 @@ class TestTrainingQueueSubmit:
                 SHARE_IDENTIFIER,
                 TIMEOUT_CONFIG,
                 BATCH_TAGS,
+                None,
             )
 
     @patch("sagemaker.train.aws_batch.training_queue._submit_service_job")
@@ -178,6 +185,56 @@ class TestTrainingQueueSubmit:
                 SHARE_IDENTIFIER,
                 TIMEOUT_CONFIG,
                 BATCH_TAGS,
+                None,
+            )
+
+    @patch("sagemaker.train.aws_batch.training_queue._submit_service_job")
+    def test_submit_with_quota_share_name(self, mock_submit_service_job):
+        """Test submit with quota_share_name"""
+        mock_submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
+
+        trainer = Mock(spec=ModelTrainer)
+        trainer.training_mode = Mode.SAGEMAKER_TRAINING_JOB
+        trainer._create_training_job_args.return_value = TRAINING_JOB_PAYLOAD
+
+        queue = TrainingQueue(JOB_QUEUE)
+        queued_job = queue.submit(
+            trainer,
+            [],
+            JOB_NAME,
+            DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
+            SCHEDULING_PRIORITY,
+            None,
+            TIMEOUT_CONFIG,
+            BATCH_TAGS,
+            QUOTA_SHARE_NAME,
+        )
+
+        assert queued_job.job_name == JOB_NAME
+        assert queued_job.job_arn == JOB_ARN
+        mock_submit_service_job.assert_called_once()
+        call_args = mock_submit_service_job.call_args[0]
+        assert call_args[8] == QUOTA_SHARE_NAME
+
+    def test_submit_both_share_identifier_and_quota_share_name_raises(self):
+        """Test submit raises error when both share_identifier and quota_share_name are specified"""
+        trainer = Mock(spec=ModelTrainer)
+        trainer.training_mode = Mode.SAGEMAKER_TRAINING_JOB
+        trainer._create_training_job_args.return_value = TRAINING_JOB_PAYLOAD
+
+        queue = TrainingQueue(JOB_QUEUE)
+
+        with pytest.raises(ValueError, match="Either share_identifier or quota_share_name"):
+            queue.submit(
+                trainer,
+                [],
+                JOB_NAME,
+                DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
+                SCHEDULING_PRIORITY,
+                SHARE_IDENTIFIER,
+                TIMEOUT_CONFIG,
+                BATCH_TAGS,
+                QUOTA_SHARE_NAME,
             )
 
 
@@ -204,6 +261,7 @@ class TestTrainingQueueMap:
             SHARE_IDENTIFIER,
             TIMEOUT_CONFIG,
             BATCH_TAGS,
+            None,
         )
 
         assert len(queued_jobs) == 3
@@ -230,6 +288,7 @@ class TestTrainingQueueMap:
             SHARE_IDENTIFIER,
             TIMEOUT_CONFIG,
             BATCH_TAGS,
+            None,
         )
 
         assert len(queued_jobs) == 2
@@ -253,7 +312,35 @@ class TestTrainingQueueMap:
                 SHARE_IDENTIFIER,
                 TIMEOUT_CONFIG,
                 BATCH_TAGS,
+                None,
             )
+
+    @patch("sagemaker.train.aws_batch.training_queue._submit_service_job")
+    def test_map_with_quota_share_name(self, mock_submit_service_job):
+        """Test map passes quota_share_name through to submit"""
+        mock_submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
+
+        trainer = Mock(spec=ModelTrainer)
+        trainer.training_mode = Mode.SAGEMAKER_TRAINING_JOB
+        trainer._create_training_job_args.return_value = TRAINING_JOB_PAYLOAD
+
+        queue = TrainingQueue(JOB_QUEUE)
+        inputs = ["input1", "input2"]
+        queued_jobs = queue.map(
+            trainer,
+            inputs,
+            None,
+            DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
+            SCHEDULING_PRIORITY,
+            None,
+            TIMEOUT_CONFIG,
+            BATCH_TAGS,
+            QUOTA_SHARE_NAME,
+        )
+
+        assert len(queued_jobs) == 2
+        for call_args in mock_submit_service_job.call_args_list:
+            assert call_args[0][8] == QUOTA_SHARE_NAME
 
 
 class TestTrainingQueueList:
@@ -276,7 +363,7 @@ class TestTrainingQueueList:
         mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_RESP_WITH_JOBS])
 
         queue = TrainingQueue(JOB_QUEUE)
-        jobs = queue.list_jobs(job_name=JOB_NAME)
+        queue.list_jobs(job_name=JOB_NAME)
 
         # Verify list_service_job was called
         mock_list_service_job.assert_called_once()
@@ -303,6 +390,20 @@ class TestTrainingQueueList:
 
         assert len(jobs) == 0
 
+    @patch("sagemaker.train.aws_batch.training_queue._list_service_job")
+    def test_list_jobs_extracts_quota_share_name(self, mock_list_service_job):
+        """Test list_jobs extracts quotaShareName from response into TrainingQueuedJob"""
+        mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_BY_QUOTA_SHARE_RESP_WITH_JOBS])
+
+        queue = TrainingQueue(JOB_QUEUE)
+        jobs = queue.list_jobs()
+
+        assert len(jobs) == 2
+        assert jobs[0].quota_share_name == QUOTA_SHARE_NAME
+        assert jobs[0].share_identifier is None
+        assert jobs[1].quota_share_name == "another-quota-share"
+        assert jobs[1].share_identifier is None
+
 
 class TestTrainingQueueListByShare:
     """Tests for TrainingQueue.list_jobs_by_share method"""
@@ -324,7 +425,7 @@ class TestTrainingQueueListByShare:
         mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS])
 
         queue = TrainingQueue(JOB_QUEUE)
-        jobs = queue.list_jobs_by_share(share_identifier=SHARE_IDENTIFIER)
+        queue.list_jobs_by_share(share_identifier=SHARE_IDENTIFIER)
 
         # Verify list_service_job was called
         mock_list_service_job.assert_called_once()
@@ -342,6 +443,38 @@ class TestTrainingQueueListByShare:
         assert filters[0]["values"] == [
             SHARE_IDENTIFIER
         ], "Filter values should contain the share identifier"
+
+    @patch("sagemaker.train.aws_batch.training_queue._list_service_job")
+    def test_list_jobs_by_share_with_quota_share_name_filter(self, mock_list_service_job):
+        """Test list_jobs_by_share with quota_share_name filter"""
+        mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_BY_QUOTA_SHARE_RESP_WITH_JOBS])
+
+        queue = TrainingQueue(JOB_QUEUE)
+        jobs = queue.list_jobs_by_share(quota_share_name=QUOTA_SHARE_NAME)
+
+        assert len(jobs) == 2
+        assert jobs[0].quota_share_name == QUOTA_SHARE_NAME
+
+        mock_list_service_job.assert_called_once()
+
+        call_args = mock_list_service_job.call_args[0]
+        filters = call_args[2] if len(call_args) > 2 else None
+
+        assert filters is not None, "Filters should be passed to list_service_job"
+        assert filters[0]["name"] == "QUOTA_SHARE_NAME", "QUOTA_SHARE_NAME filter should be present"
+        assert filters[0]["values"] == [
+            QUOTA_SHARE_NAME
+        ], "Filter values should contain the quota share name"
+
+    def test_list_jobs_by_share_both_share_and_quota_raises(self):
+        """Test list_jobs_by_share raises error when both share_identifier and quota_share_name are specified"""
+        queue = TrainingQueue(JOB_QUEUE)
+
+        with pytest.raises(ValueError, match="Either share_identifier or quota_share_name"):
+            queue.list_jobs_by_share(
+                share_identifier=SHARE_IDENTIFIER,
+                quota_share_name=QUOTA_SHARE_NAME,
+            )
 
     @patch("sagemaker.train.aws_batch.training_queue._list_service_job")
     def test_list_jobs_by_share_empty(self, mock_list_service_job):
@@ -377,3 +510,45 @@ class TestTrainingQueueGet:
 
         with pytest.raises(ValueError, match="Cannot find job"):
             queue.get_job(JOB_NAME)
+
+
+class TestTrainingQueueSubmitWithQuotaManagement:
+    """Tests for TrainingQueue.submit with quota management parameters"""
+
+    @patch("sagemaker.train.aws_batch.training_queue._submit_service_job")
+    def test_submit_with_quota_share_name_and_preemption_config(self, mock_submit_service_job):
+        """Test submit with quota_share_name and preemption_config"""
+        mock_submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
+
+        trainer = Mock(spec=ModelTrainer)
+        trainer.training_mode = Mode.SAGEMAKER_TRAINING_JOB
+        trainer._create_training_job_args.return_value = TRAINING_JOB_PAYLOAD
+
+        queue = TrainingQueue(JOB_QUEUE)
+        queued_job = queue.submit(
+            trainer,
+            [],
+            JOB_NAME,
+            DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
+            SCHEDULING_PRIORITY,
+            None,
+            TIMEOUT_CONFIG,
+            BATCH_TAGS,
+            quota_share_name=QUOTA_SHARE_NAME,
+            preemption_config=PREEMPTION_CONFIG,
+        )
+
+        assert queued_job.job_name == JOB_NAME
+        assert queued_job.job_arn == JOB_ARN
+        mock_submit_service_job.assert_called_once_with(
+            TRAINING_JOB_PAYLOAD,
+            JOB_NAME,
+            JOB_QUEUE,
+            DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
+            SCHEDULING_PRIORITY,
+            TIMEOUT_CONFIG,
+            None,
+            BATCH_TAGS,
+            QUOTA_SHARE_NAME,
+            PREEMPTION_CONFIG,
+        )

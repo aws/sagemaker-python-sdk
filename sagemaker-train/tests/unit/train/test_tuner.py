@@ -11,7 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for tuner module."""
+
 from __future__ import absolute_import
+
+import typing
 
 import pytest
 from unittest.mock import MagicMock, patch
@@ -25,7 +28,10 @@ from sagemaker.core.parameter import (
     CategoricalParameter,
     ContinuousParameter,
     IntegerParameter,
+    ParameterRange,
 )
+from sagemaker.core.helper.pipeline_variable import PipelineVariable
+from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.core.shapes import (
     HyperParameterTuningJobWarmStartConfig,
     Channel,
@@ -33,18 +39,19 @@ from sagemaker.core.shapes import (
     S3DataSource,
 )
 
-
 # ---------------------------------------------------------------------------
 # Factory functions for creating test objects (reduces fixture duplication)
 # ---------------------------------------------------------------------------
 
 
-def _create_mock_model_trainer(with_internal_channels=False):
+def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=False):
     """Create a mock ModelTrainer with common attributes.
 
     Args:
         with_internal_channels: If True, adds internal channels (code, sm_drivers)
             to input_data_config for testing channel inclusion in tuning jobs.
+        with_spot_training: If True, sets spot parameters (enable_managed_spot_training,
+            max_wait_time_in_seconds)
     """
     trainer = MagicMock()
     trainer.sagemaker_session = MagicMock()
@@ -52,8 +59,9 @@ def _create_mock_model_trainer(with_internal_channels=False):
     trainer.training_image = "test-image:latest"
     trainer.training_input_mode = "File"
     trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
-    trainer.output_data_config = MagicMock()
-    trainer.output_data_config.s3_output_path = "s3://bucket/output"
+    from sagemaker.core.shapes import OutputDataConfig
+
+    trainer.output_data_config = OutputDataConfig(s3_output_path="s3://bucket/output")
     trainer.compute = MagicMock()
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
@@ -67,6 +75,9 @@ def _create_mock_model_trainer(with_internal_channels=False):
             _create_channel("code", "s3://bucket/code"),
             _create_channel("sm_drivers", "s3://bucket/drivers"),
         ]
+    if with_spot_training:
+        trainer.compute.enable_managed_spot_training = True
+        trainer.stopping_condition.max_wait_time_in_seconds = 3600
     return trainer
 
 
@@ -141,6 +152,49 @@ class TestHyperparameterTunerInit:
         assert tuner.objective_type == "Maximize"
         assert tuner.max_jobs == 1
         assert tuner.max_parallel_jobs == 1
+
+    def test_hyperparameter_ranges_annotation_allows_pipeline_variable_keys(self):
+        """Regression for #5243.
+
+        The ``hyperparameter_ranges`` key type must allow PipelineVariable (e.g. a pipeline
+        ParameterString), not only ``str``, since the tuner accepts pipeline variables as
+        hyperparameter names. This asserts the resolved annotation, so it fails if the type
+        is narrowed back to ``Dict[str, ParameterRange]``.
+        """
+        # Read the raw annotation object directly: get_type_hints would fail resolving the
+        # TYPE_CHECKING-only "ModelTrainer" forward ref, and this module does not use
+        # ``from __future__ import annotations``, so this is a real typing object.
+        annotation = HyperparameterTuner.__init__.__annotations__["hyperparameter_ranges"]
+
+        key_type, value_type = typing.get_args(annotation)
+        key_options = typing.get_args(key_type)  # (str, PipelineVariable)
+
+        assert str in key_options, f"str must remain a valid key type, got {key_options}"
+        assert (
+            PipelineVariable in key_options
+        ), f"PipelineVariable must be an allowed key type, got {key_options}"
+        assert value_type is ParameterRange
+
+    def test_init_with_pipeline_variable_hyperparameter_key(self, mock_model_trainer):
+        """A pipeline ParameterString used as a hyperparameter-range key is accepted (#5243).
+
+        NOTE: this is a runtime sanity check, not the regression guard -- annotations are not
+        enforced at runtime, so this passes with or without the fix. The guard against
+        re-narrowing the type is test_hyperparameter_ranges_annotation_allows_pipeline_variable_keys.
+        """
+        hparam_name = ParameterString(name="HParamName", default_value="hparam")
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_model_trainer,
+            objective_metric_name="valid:loss",
+            objective_type="Minimize",
+            hyperparameter_ranges={hparam_name: CategoricalParameter([1, 2])},
+            strategy=GRID_SEARCH,
+            max_jobs=2,
+            max_parallel_jobs=1,
+        )
+
+        assert hparam_name in tuner._hyperparameter_ranges
 
     def test_init_with_custom_strategy(self, mock_model_trainer, hyperparameter_ranges):
         """Test initialization with custom strategy."""
@@ -254,6 +308,30 @@ class TestHyperparameterTunerInit:
         )
 
         assert tuner.random_seed == 42
+
+    def test_random_seed_accepts_pipeline_variable(self, mock_model_trainer, hyperparameter_ranges):
+        """Regression for #5614 / #6171.
+
+        ``random_seed`` must accept a pipeline variable (e.g. a ParameterInteger). Building the
+        tuning job config assigns it to ``HyperParameterTuningJobConfig.random_seed`` under
+        ``validate_assignment=True``; when that field was typed ``Optional[int]`` this raised
+        ``ValidationError: 1 validation error for HyperParameterTuningJobConfig``.
+        """
+        from sagemaker.core.workflow.parameters import ParameterInteger
+
+        seed = ParameterInteger(name="RandomState", default_value=42)
+        tuner = HyperparameterTuner(
+            model_trainer=mock_model_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=hyperparameter_ranges,
+            max_jobs=2,
+            max_parallel_jobs=1,
+            random_seed=seed,
+        )
+
+        assert tuner.random_seed is seed
+        config = tuner._build_tuning_job_config()
+        assert config.random_seed is seed
 
     def test_init_with_autotune(self, mock_model_trainer):
         """Test initialization with autotune enabled."""
@@ -574,3 +652,154 @@ class TestHyperparameterTunerStaticMethods:
         assert "train" in channel_names, "User 'train' channel should be included"
         assert "validation" in channel_names, "User 'validation' channel should be included"
         assert len(channel_names) == 4, "Should have exactly 4 channels"
+
+    def test_build_training_job_definition_preserves_content_type(self):
+        """Regression for #5632.
+
+        Converting an InputData to a Channel must carry over content_type, otherwise built-in
+        algorithms fail because the container doesn't know the data format.
+        """
+        from sagemaker.core.training.configs import InputData
+
+        tuner = HyperparameterTuner(
+            model_trainer=_create_mock_model_trainer(),
+            objective_metric_name="validation:auc",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(
+            [
+                InputData(
+                    channel_name="train",
+                    data_source="s3://bucket/train/train.csv",
+                    content_type="csv",
+                )
+            ]
+        )
+
+        train_channel = next(
+            ch for ch in definition.input_data_config if ch.channel_name == "train"
+        )
+        assert train_channel.content_type == "csv"
+
+    def test_build_training_job_definition_includes_spot_params(self):
+        """Test that _build_training_job_definition includes spot parameters."""
+        tuner = HyperparameterTuner(
+            model_trainer=_create_mock_model_trainer(with_spot_training=True),
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        # Build training job definition
+        definition = tuner._build_training_job_definition(None)
+
+        # Verify managed spot training enabled
+        assert definition.enable_managed_spot_training is True, "Spot should be enabled"
+        assert isinstance(
+            definition.stopping_condition.max_wait_time_in_seconds, int
+        ), "Max wait time should be set"
+
+    def test_build_training_job_definition_includes_environment_variables(self):
+        """Test that _build_training_job_definition includes environment variables.
+
+        This test verifies the fix for GitHub issue #5613 where tuning jobs were
+        missing environment variables that were set on the ModelTrainer.
+        """
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = {
+            "FOO": "bar",
+            "RANDOM_STATE": "42",
+        }
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert definition.environment is not None, "Environment should not be None"
+        assert definition.environment == {
+            "FOO": "bar",
+            "RANDOM_STATE": "42",
+        }, "Environment variables should match those set on ModelTrainer"
+
+    def test_build_training_job_definition_with_none_environment(self):
+        """Test that _build_training_job_definition handles None environment gracefully.
+
+        When environment is None, it should not be passed to the Pydantic constructor,
+        so the field stays as Unassigned (excluded from serialization).
+        """
+        from sagemaker.core.utils.utils import Unassigned
+
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = None
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert isinstance(
+            definition.environment, Unassigned
+        ), "Environment should be Unassigned when model_trainer.environment is None"
+
+    def test_build_training_job_definition_with_empty_environment(self):
+        """Test that _build_training_job_definition passes through empty environment.
+
+        An empty dict is valid for the SageMaker API, so we pass it through as-is
+        rather than silently converting it to None.
+        """
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = {}
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert definition.environment == {}, "Empty dict environment should be passed through as-is"
+
+    def test_build_training_job_definition_passes_through_output_data_config(self):
+        """Test that _build_training_job_definition passes through the full OutputDataConfig.
+
+        This verifies that fields like kms_key_id and compression_type from
+        ModelTrainer.output_data_config are preserved in the tuning job definition,
+        rather than only copying s3_output_path.
+        """
+        from sagemaker.core.shapes import OutputDataConfig
+
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.output_data_config = OutputDataConfig(
+            s3_output_path="s3://bucket/output",
+            kms_key_id="arn:aws:kms:us-west-2:123456789012:key/abc123",
+            compression_type="NONE",
+        )
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert (
+            definition.output_data_config is mock_trainer.output_data_config
+        ), "output_data_config should be the same object from ModelTrainer"
+        assert definition.output_data_config.kms_key_id == (
+            "arn:aws:kms:us-west-2:123456789012:key/abc123"
+        ), "kms_key_id should be preserved"
+        assert (
+            definition.output_data_config.compression_type == "NONE"
+        ), "compression_type should be preserved"
+        assert (
+            definition.output_data_config.s3_output_path == "s3://bucket/output"
+        ), "s3_output_path should be preserved"

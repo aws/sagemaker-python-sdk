@@ -14,31 +14,7 @@ Key Benefits of V3 ML Operations
 Quick Start Example
 -------------------
 
-Here's how ML Operations workflows are simplified in V3:
-
-**Traditional Pipeline Approach:**
-
-.. code-block:: python
-
-   from sagemaker.workflow.pipeline import Pipeline
-   from sagemaker.workflow.steps import TrainingStep, ProcessingStep
-   from sagemaker.sklearn.processing import SKLearnProcessor
-   
-   # Complex setup with multiple framework-specific classes
-   processor = SKLearnProcessor(
-       framework_version="0.23-1",
-       role=role,
-       instance_type="ml.m5.xlarge",
-       instance_count=1
-   )
-   
-   processing_step = ProcessingStep(
-       name="PreprocessData",
-       processor=processor,
-       # ... many configuration parameters
-   )
-
-**SageMaker V3 MLOps Approach:**
+Define a pipeline and add a processing step:
 
 .. code-block:: python
 
@@ -162,6 +138,7 @@ Key MLOps Features
 * **Model Performance Tracking** - Real-time monitoring of model accuracy, latency, and business metrics with alerting
 * **Bias Detection and Fairness** - Built-in bias detection across protected attributes with automated reporting and remediation
 * **Automated Retraining** - Trigger-based model retraining based on performance degradation or data drift detection
+* **Feature Store** - Centralized repository for storing, sharing, and managing ML features with support for both online and offline stores
 
 Supported MLOps Scenarios
 -------------------------
@@ -199,17 +176,627 @@ If you're migrating MLOps workflows from V2, the key improvements are:
 * **Improved Governance**: Integrated model registry and approval workflows streamline compliance
 * **Better Resource Management**: Automatic resource optimization and cost management across workflows
 
+Lineage Tracking
+~~~~~~~~~~~~~~~~
+
+
+SageMaker Lineage enables tracing events across your ML workflow via a graph structure. V3 provides lineage tracking through ``sagemaker.core.lineage`` with support for:
+
+
+- **Contexts** - Logical grouping of lineage entities under workflow contexts
+- **Actions** - Recording computational steps like model builds and transformations
+- **Artifacts** - Registering data inputs, labels, and trained models
+- **Associations** - Directed edges linking entities to form the lineage graph
+- **Traversal** - Querying relationships between entities for reporting and analysis
+
+.. code-block:: python
+
+   from sagemaker.core.lineage.context import Context
+   from sagemaker.core.lineage.action import Action
+   from sagemaker.core.lineage.artifact import Artifact
+   from sagemaker.core.lineage.association import Association
+
+   # Create a workflow context
+   context = Context.create(
+       context_name="my-ml-workflow",
+       context_type="MLWorkflow",
+       source_uri="workflow-source",
+   )
+
+   # Create an action and associate it with the context
+   action = Action.create(
+       action_name="model-build-step",
+       action_type="ModelBuild",
+       source_uri="build-source",
+   )
+
+   Association.create(
+       source_arn=context.context_arn,
+       destination_arn=action.action_arn,
+       association_type="AssociatedWith",
+   )
+
+:doc:`Learn more about Lineage Tracking <lineage>`
+
 ML Operations Examples
 ----------------------
 
-Explore comprehensive MLOps examples that demonstrate V3 capabilities:
+
+E2E Pipeline with Model Registry
+----------------------------------
+
+
+Build a SageMaker Pipeline that preprocesses data, trains a model, and registers it to the Model Registry.
+
+.. code-block:: python
+
+   from sagemaker.mlops.workflow.pipeline import Pipeline
+   from sagemaker.mlops.workflow.steps import ProcessingStep, TrainingStep, CacheConfig
+   from sagemaker.mlops.workflow.model_step import ModelStep
+   from sagemaker.core.processing import ScriptProcessor
+   from sagemaker.core.shapes import ProcessingInput, ProcessingS3Input, ProcessingOutput, ProcessingS3Output
+   from sagemaker.core.workflow.parameters import ParameterString
+   from sagemaker.core.workflow.pipeline_context import PipelineSession
+   from sagemaker.train import ModelTrainer
+   from sagemaker.train.configs import InputData, Compute
+   from sagemaker.serve.model_builder import ModelBuilder
+
+   pipeline_session = PipelineSession()
+
+   # Processing step
+   processor = ScriptProcessor(image_uri=sklearn_image, instance_type="ml.m5.xlarge", ...)
+   step_process = ProcessingStep(name="Preprocess", step_args=processor.run(...))
+
+   # Training step
+   trainer = ModelTrainer(training_image=xgboost_image, compute=Compute(instance_type="ml.m5.xlarge"), ...)
+   step_train = TrainingStep(name="Train", step_args=trainer.train())
+
+   # Register model
+   model_builder = ModelBuilder(
+       s3_model_data_url=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+       image_uri=xgboost_image, role_arn=role, sagemaker_session=pipeline_session,
+   )
+   step_register = ModelStep(name="Register", step_args=model_builder.register(
+       model_package_group_name="my-group", approval_status="Approved",
+   ))
+
+   pipeline = Pipeline(name="my-pipeline", steps=[step_process, step_train, step_register], sagemaker_session=pipeline_session)
+   pipeline.upsert(role_arn=role)
+   pipeline.start()
+
+:doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-pipeline-train-create-registry>`
+
+
+
+Processing Jobs
+----------------
+
+
+Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcessor`` (PyTorch).
+
+.. code-block:: python
+
+   from sagemaker.core.processing import ScriptProcessor
+   from sagemaker.core.shapes import ProcessingInput, ProcessingS3Input, ProcessingOutput, ProcessingS3Output
+
+   processor = ScriptProcessor(
+       image_uri=image_uris.retrieve(framework="sklearn", region=region, version="1.2-1", py_version="py3", instance_type="ml.m5.xlarge"),
+       instance_type="ml.m5.xlarge", instance_count=1, role=role,
+   )
+
+   processor.run(
+       inputs=[ProcessingInput(input_name="input-1", s3_input=ProcessingS3Input(s3_uri=input_data, local_path="/opt/ml/processing/input", s3_data_type="S3Prefix"))],
+       outputs=[ProcessingOutput(output_name="train", s3_output=ProcessingS3Output(s3_uri="s3://bucket/train", local_path="/opt/ml/processing/train", s3_upload_mode="EndOfJob"))],
+       code="code/preprocess.py",
+       arguments=["--input-data", input_data],
+   )
+
+:doc:`SKLearn example <../v3-examples/ml-ops-examples/v3-processing-job-sklearn>` · :doc:`PyTorch example <../v3-examples/ml-ops-examples/v3-processing-job-pytorch/v3-pytorch-processing-example>`
+
+**Instance Preferences:** pass an ordered list of candidate instance types and the platform runs the job on the first type with available capacity.
+
+.. code-block:: python
+
+   from sagemaker.core import image_uris
+   from sagemaker.core.processing import Processor
+
+   # Resolve the image from one of the candidates; every candidate must be able to run it.
+   processing_image = image_uris.retrieve(
+       framework="sklearn", region=region, version="1.2-1", instance_type="ml.m5.4xlarge"
+   )
+
+   processor = Processor(
+       role=role, image_uri=processing_image, volume_size_in_gb=100,
+       instance_preferences=[
+           {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+           {"InstanceType": "ml.m5.2xlarge", "InstanceCount": 4},
+       ],
+   )
+
+   processor.run(job_name="instance-prefs-processing")
+
+Up to 5 candidates are allowed, each instance type at most once, and exactly one is selected; the list is mutually exclusive with ``instance_type``. Counts use exactly one of two modes — a top-level ``instance_count`` shared by whichever candidate wins, or an ``InstanceCount`` on every candidate — and mixed, partial, or omitted counts are rejected. Selection is based on capacity, not on workload fit, so list only types that can run the job's ``image_uri`` (the image is fixed at submission time; the instance type is not). The winner is reported as ``SelectedInstanceType`` / ``SelectedInstanceCount`` on the job's ``ClusterConfig``, and billing is for that type and count. Supported on ``Processor``, ``ScriptProcessor``, ``PySparkProcessor``, and ``SparkJarProcessor``; training plans are training-only and do not apply to processing.
+
+:doc:`Instance Preferences example <../v3-examples/ml-ops-examples/v3-processing-instance-preferences>`
+
+
+
+Batch Transform Jobs
+---------------------
+
+
+Run batch inference on large datasets using ``Transformer``.
+
+.. code-block:: python
+
+   from sagemaker.core.transformer import Transformer
+   from sagemaker.serve.model_builder import ModelBuilder
+
+   model_builder = ModelBuilder(image_uri=xgboost_image, s3_model_data_url=model_url, role_arn=role)
+   model_builder.build(model_name="my-transform-model")
+
+   transformer = Transformer(
+       model_name="my-transform-model", instance_count=1, instance_type="ml.m5.xlarge",
+       accept="text/csv", assemble_with="Line", output_path="s3://bucket/output",
+   )
+   transformer.transform("s3://bucket/input", content_type="text/csv", split_type="Line", input_filter="$[1:]")
+
+:doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-transform-job-example>`
+
+
+
+Hyperparameter Tuning
+----------------------
+
+
+Optimize hyperparameters with ``HyperparameterTuner`` using ``ContinuousParameter`` and ``CategoricalParameter`` ranges.
+
+.. code-block:: python
+
+   from sagemaker.train.tuner import HyperparameterTuner
+   from sagemaker.core.parameter import ContinuousParameter, CategoricalParameter
+   from sagemaker.train import ModelTrainer
+   from sagemaker.train.configs import InputData
+
+   trainer = ModelTrainer(training_image=pytorch_image, source_code=source_code, compute=compute, hyperparameters={"epochs": 1})
+
+   tuner = HyperparameterTuner(
+       model_trainer=trainer,
+       objective_metric_name="average test loss",
+       hyperparameter_ranges={"lr": ContinuousParameter(0.001, 0.1), "batch-size": CategoricalParameter([32, 64, 128])},
+       metric_definitions=[{"Name": "average test loss", "Regex": "Test set: Average loss: ([0-9\\.]+)"}],
+       max_jobs=3, max_parallel_jobs=2, strategy="Random", objective_type="Minimize",
+   )
+
+   tuner.tune(inputs=[InputData(channel_name="training", data_source=s3_data_uri)], wait=False)
+
+:doc:`Standalone example <../v3-examples/ml-ops-examples/v3-hyperparameter-tuning-example/v3-hyperparameter-tuning-example>` · :doc:`Pipeline example <../v3-examples/ml-ops-examples/v3-hyperparameter-tuning-example/v3-hyperparameter-tuning-pipeline>`
+
+
+
+Model Registry
+---------------
+
+
+Register models, create models from registry entries, and manage approval workflows.
+
+.. code-block:: python
+
+   from sagemaker.serve.model_builder import ModelBuilder
+   from sagemaker.core.resources import Model, ModelPackage
+
+   # Register from artifact
+   model_builder = ModelBuilder(s3_model_data_url=s3_url, image_uri=image_uri, role_arn=role)
+   model_builder.build(model_name="my-model")
+   model_builder.register(model_package_group_name="my-group", content_types=["application/json"], response_types=["application/json"], approval_status="Approved")
+
+   # Create model from registry
+   model_package = ModelPackage.get(model_package_name=registered_arn)
+   model_builder = ModelBuilder(
+       s3_model_data_url=model_package.inference_specification.containers[0].model_data_url,
+       image_uri=model_package.inference_specification.containers[0].image, role_arn=role,
+   )
+   model_builder.build(model_name="model-from-registry")
+
+:doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-model-registry-example/v3-model-registry-example>`
+
+
+
+Clarify Bias and Explainability
+--------------------------------
+
+
+Run pre-training bias analysis and SHAP explainability using ``SageMakerClarifyProcessor``.
+
+.. code-block:: python
+
+   from sagemaker.core.clarify import SageMakerClarifyProcessor, DataConfig, BiasConfig, SHAPConfig
+
+   data_config = DataConfig(s3_data_input_path=data_uri, s3_output_path=output_uri, label="target", headers=headers, dataset_type="text/csv")
+   bias_config = BiasConfig(label_values_or_threshold=[1], facet_name="gender", facet_values_or_threshold=[1])
+
+   clarify_processor = SageMakerClarifyProcessor(role=role, instance_count=1, instance_type="ml.m5.large")
+   clarify_processor.run_pre_training_bias(data_config=data_config, data_bias_config=bias_config, methods=["CI", "DPL"])
+
+:doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-sagemaker-clarify>`
+
+
+
+EMR Serverless Pipeline Step
+-----------------------------
+
+
+Run PySpark jobs on EMR Serverless within a SageMaker Pipeline.
+
+.. code-block:: python
+
+   from sagemaker.mlops.workflow.emr_serverless_step import EMRServerlessStep, EMRServerlessJobConfig
+   from sagemaker.mlops.workflow.pipeline import Pipeline
+
+   job_config = EMRServerlessJobConfig(
+       job_driver={"sparkSubmit": {"entryPoint": script_uri, "entryPointArguments": ["--input", input_uri, "--output", output_uri]}},
+       execution_role_arn=emr_role,
+   )
+
+   step = EMRServerlessStep(
+       name="SparkJob", job_config=job_config,
+       application_config={"name": "spark-app", "releaseLabel": "emr-6.15.0", "type": "SPARK"},
+   )
+
+   pipeline = Pipeline(name="EMRPipeline", steps=[step], sagemaker_session=pipeline_session)
+   pipeline.upsert(role_arn=role)
+   pipeline.start()
+
+:doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-emr-serverless-step-example>`
+
+
+
+MLflow Integration
+-------------------
+
+
+Train with MLflow metric tracking and deploy from the MLflow model registry.
+
+.. code-block:: python
+
+   from sagemaker.train.model_trainer import ModelTrainer
+   from sagemaker.serve.model_builder import ModelBuilder
+   from sagemaker.serve.mode.function_pointers import Mode
+
+   # Train (script logs to MLflow internally)
+   trainer = ModelTrainer(training_image=pytorch_image, source_code=SourceCode(source_dir=code_dir, entry_script="train.py", requirements="requirements.txt"))
+   trainer.train()
+
+   # Deploy from MLflow registry
+   model_builder = ModelBuilder(
+       mode=Mode.SAGEMAKER_ENDPOINT,
+       schema_builder=schema_builder,
+       model_metadata={"MLFLOW_MODEL_PATH": "models:/my-model/1", "MLFLOW_TRACKING_ARN": tracking_arn},
+   )
+   model_builder.build(model_name="mlflow-model")
+   model_builder.deploy(endpoint_name="mlflow-endpoint")
+
+:doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-mlflow-train-inference-e2e-example>`
+
+
+
+Feature Store
+--------------
+
+
+Create and manage feature groups for storing, retrieving, and sharing ML features across teams and models.
+
+**FeatureGroupManager with Lake Formation and Iceberg configuration:**
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import FeatureGroupManager, FeatureDefinition, FeatureTypeEnum
+   from sagemaker.mlops.feature_store.feature_group_manager import LakeFormationConfig, IcebergProperties
+   from sagemaker.core.shapes import OnlineStoreConfig, OfflineStoreConfig, S3StorageConfig
+
+   # Define features
+   feature_definitions = [
+       FeatureDefinition(feature_name="customer_id", feature_type=FeatureTypeEnum.STRING),
+       FeatureDefinition(feature_name="purchase_count", feature_type=FeatureTypeEnum.INTEGRAL),
+       FeatureDefinition(feature_name="avg_order_value", feature_type=FeatureTypeEnum.FRACTIONAL),
+       FeatureDefinition(feature_name="event_time", feature_type=FeatureTypeEnum.STRING),
+   ]
+
+   # Configure Lake Formation for fine-grained access control
+   lake_formation_config = LakeFormationConfig(
+       enabled=True,
+       hybrid_access_mode_enabled=True,
+       acknowledge_risk=True,
+   )
+
+   # Configure Iceberg table properties
+   iceberg_properties = IcebergProperties(
+       properties={
+           "write.target-file-size-bytes": "536870912",
+           "history.expire.min-snapshots-to-keep": "3",
+       }
+   )
+
+   # Create feature group with Lake Formation and Iceberg configs
+   feature_group = FeatureGroupManager.create(
+       feature_group_name="customer-features",
+       record_identifier_feature_name="customer_id",
+       event_time_feature_name="event_time",
+       feature_definitions=feature_definitions,
+       online_store_config=OnlineStoreConfig(enable_online_store=True),
+       offline_store_config=OfflineStoreConfig(
+           s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/feature-store/"),
+           table_format="Iceberg",
+       ),
+       role_arn=role,
+       lake_formation_config=lake_formation_config,
+       iceberg_properties=iceberg_properties,
+   )
+
+**Using the base FeatureGroup resource:**
+
+.. code-block:: python
+
+   from sagemaker.core.resources import FeatureGroup
+
+   # Retrieve an existing feature group
+   feature_group = FeatureGroup.get(feature_group_name="customer-features")
+
+   # List feature groups
+   feature_groups = FeatureGroup.get_all()
+   for fg in feature_groups:
+       print(f"{fg.feature_group_name}: {fg.feature_group_status}")
+
+**Ingesting data with BatchWriteRecord:**
+
+Use ``ingest_dataframe`` with ``use_batch_write_record=True`` to write records in batches of up to
+25 per API call, significantly improving throughput compared to single-record ``PutRecord`` calls.
+This requires both ``sagemaker:BatchWriteRecord`` and ``sagemaker:PutRecord`` IAM permissions.
+
+.. code-block:: python
+
+   import pandas as pd
+   from sagemaker.mlops.feature_store import ingest_dataframe
+
+   # Prepare your data
+   data = pd.DataFrame({
+       "customer_id": ["cust-1", "cust-2", "cust-3"],
+       "purchase_count": [10, 25, 3],
+       "avg_order_value": [45.99, 120.50, 15.00],
+       "event_time": ["2026-01-01T00:00:00Z"] * 3,
+   })
+
+   # Ingest using BatchWriteRecord (batches of 25 records per API call)
+   ingest_dataframe(
+       feature_group_name="customer-features",
+       data_frame=data,
+       max_workers=4,
+       max_processes=2,
+       use_batch_write_record=True,
+   )
+
+You can also ingest to specific target stores (``OnlineStore``, ``OfflineStore``, or both)
+using ``IngestionManagerPandas`` directly:
+
+.. code-block:: python
+
+   import pandas as pd
+   from sagemaker.mlops.feature_store import IngestionManagerPandas
+
+   data = pd.DataFrame({
+       "customer_id": ["cust-1", "cust-2", "cust-3"],
+       "purchase_count": [10, 25, 3],
+       "avg_order_value": [45.99, 120.50, 15.00],
+       "event_time": ["2026-01-01T00:00:00Z"] * 3,
+   })
+
+   manager = IngestionManagerPandas(
+       feature_group_name="customer-features",
+       feature_definitions={
+           "customer_id": {"FeatureType": "String", "CollectionType": None},
+           "purchase_count": {"FeatureType": "Integral", "CollectionType": None},
+           "avg_order_value": {"FeatureType": "Fractional", "CollectionType": None},
+           "event_time": {"FeatureType": "String", "CollectionType": None},
+       },
+       max_workers=4,
+       use_batch_write_record=True,
+   )
+   manager.run(data_frame=data, target_stores=["OnlineStore"])
+
+**Listing records from the OnlineStore:**
+
+Use ``list_records`` to retrieve record identifiers from a FeatureGroup's OnlineStore. Results are
+paginated — use the ``next_token`` from the response to fetch subsequent pages.
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import list_records
+
+   # List first page of records
+   response = list_records(
+       feature_group_name="customer-features",
+       max_results=10,
+       region="us-west-2",
+   )
+   print(response.record_identifiers)  # ['cust-1', 'cust-2', ...]
+
+   # Paginate through all records
+   next_token = response.next_token
+   while next_token:
+       response = list_records(
+           feature_group_name="customer-features",
+           max_results=100,
+           next_token=next_token,
+           region="us-west-2",
+       )
+       print(response.record_identifiers)
+       next_token = response.next_token
+
+To include soft-deleted records in the listing:
+
+.. code-block:: python
+
+   response = list_records(
+       feature_group_name="customer-features",
+       max_results=50,
+       include_soft_deleted_records=True,
+       region="us-west-2",
+   )
+
+**Feature-level writes with UpdateRecord (Standard_V2):**
+
+``UpdateRecord`` performs a partial write to a record in a feature group whose online store uses
+the ``Standard_V2`` or ``InMemory`` storage type. Only the features you supply are written; features
+you do not list are preserved. This avoids the ``GetRecord`` -> merge -> ``PutRecord`` round trip and
+prevents lost writes when independent pipelines own different features on the same record. The record
+must already exist in the online store (use ``PutRecord`` to create it).
+
+Create the feature group with ``Standard_V2`` storage (feature-level writes require ``Standard_V2``
+or ``InMemory``; they are not supported on the default ``Standard`` tier):
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import FeatureGroupManager, OnlineStoreStorageTypeEnum
+   from sagemaker.core.shapes import OnlineStoreConfig
+
+   feature_group = FeatureGroupManager.create(
+       feature_group_name="customer-features",
+       record_identifier_feature_name="customer_id",
+       event_time_feature_name="event_time",
+       feature_definitions=feature_definitions,
+       online_store_config=OnlineStoreConfig(
+           enable_online_store=True,
+           storage_type=OnlineStoreStorageTypeEnum.STANDARD_V2.value,
+       ),
+       role_arn=role,
+   )
+
+You can migrate an existing ``Standard`` feature group to ``Standard_V2`` with ``UpdateFeatureGroup``.
+This migration is one-way and cannot be reversed:
+
+.. code-block:: python
+
+   from sagemaker.core.resources import FeatureGroup
+   from sagemaker.core.shapes import OnlineStoreConfigUpdate
+
+   feature_group = FeatureGroup.get(feature_group_name="customer-features")
+   feature_group.update(
+       online_store_config=OnlineStoreConfigUpdate(storage_type="Standard_V2"),
+   )
+
+Use ``update_record`` to write only the features that changed. Pass ``EventTime`` as a feature
+(not a top-level parameter); features you do not include are preserved:
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import update_record
+
+   update_record(
+       feature_group_name="customer-features",
+       record_identifier_value_as_string="cust-1",
+       features=[
+           {"feature_name": "purchase_count", "value_as_string": "11"},
+           {"feature_name": "event_time", "value_as_string": "2026-01-02T00:00:00Z"},
+       ],
+       region="us-west-2",
+   )
+
+Notes:
+
+* Supply at most 100 features per call. If the supplied ``EventTime`` is not greater than the
+  record's current ``EventTime``, the update is rejected with a ``ConflictException``.
+* ``ttl_duration`` requires the record's event-time feature to be present in ``features``.
+  ``target_stores`` defaults to all stores on the feature group; a value resolving to the
+  ``OfflineStore`` only is rejected.
+* ``UpdateRecord`` is not supported on ``Standard`` (V1) feature groups.
+
+
+
+Migration from V2
+------------------
+
+
+MLOps Classes and Imports
+--------------------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - V2
+     - V3
+   * - ``sagemaker.workflow.pipeline.Pipeline``
+     - ``sagemaker.mlops.workflow.pipeline.Pipeline``
+   * - ``sagemaker.workflow.steps.ProcessingStep``
+     - ``sagemaker.mlops.workflow.steps.ProcessingStep``
+   * - ``sagemaker.workflow.steps.TrainingStep``
+     - ``sagemaker.mlops.workflow.steps.TrainingStep``
+   * - ``sagemaker.workflow.step_collections.RegisterModel``
+     - ``sagemaker.mlops.workflow.model_step.ModelStep`` + ``model_builder.register()``
+   * - ``sagemaker.workflow.model_step.ModelStep``
+     - ``sagemaker.mlops.workflow.model_step.ModelStep``
+   * - ``sagemaker.sklearn.processing.SKLearnProcessor``
+     - ``sagemaker.core.processing.ScriptProcessor``
+   * - ``sagemaker.processing.ScriptProcessor``
+     - ``sagemaker.core.processing.ScriptProcessor``
+   * - ``sagemaker.processing.FrameworkProcessor``
+     - ``sagemaker.core.processing.FrameworkProcessor``
+   * - ``sagemaker.processing.ProcessingInput``
+     - ``sagemaker.core.shapes.ProcessingInput`` + ``ProcessingS3Input``
+   * - ``sagemaker.processing.ProcessingOutput``
+     - ``sagemaker.core.shapes.ProcessingOutput`` + ``ProcessingS3Output``
+   * - ``sagemaker.tuner.HyperparameterTuner``
+     - ``sagemaker.train.tuner.HyperparameterTuner``
+   * - ``sagemaker.parameter.ContinuousParameter``
+     - ``sagemaker.core.parameter.ContinuousParameter``
+   * - ``sagemaker.transformer.Transformer``
+     - ``sagemaker.core.transformer.Transformer``
+   * - ``sagemaker.clarify.SageMakerClarifyProcessor``
+     - ``sagemaker.core.clarify.SageMakerClarifyProcessor``
+   * - ``sagemaker.workflow.parameters.ParameterString``
+     - ``sagemaker.core.workflow.parameters.ParameterString``
+   * - ``sagemaker.workflow.pipeline_context.PipelineSession``
+     - ``sagemaker.core.workflow.pipeline_context.PipelineSession``
+   * - ``sagemaker.lineage.context.Context``
+     - ``sagemaker.core.lineage.context.Context``
+   * - ``sagemaker.feature_store.feature_group.FeatureGroup``
+     - ``sagemaker.mlops.feature_store.FeatureGroupManager``
+
+
+V3 Package Structure
+---------------------
+
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - V3 Package
+     - MLOps Components
+   * - ``sagemaker-core``
+     - ScriptProcessor, FrameworkProcessor, Transformer, Clarify, lineage, pipeline context, parameters, image URIs
+   * - ``sagemaker-train``
+     - ModelTrainer, HyperparameterTuner, InputData, Compute, SourceCode
+   * - ``sagemaker-serve``
+     - ModelBuilder (build, register, deploy)
+   * - ``sagemaker-mlops``
+     - Pipeline, ProcessingStep, TrainingStep, ModelStep, TuningStep, EMRServerlessStep, CacheConfig, Feature Store (FeatureGroupManager, FeatureDefinition, DatasetBuilder)
+
+
+Explore comprehensive MLOps examples:
 
 .. toctree::
    :maxdepth: 1
 
+   lineage
    ../v3-examples/ml-ops-examples/v3-sagemaker-clarify
    ../v3-examples/ml-ops-examples/v3-pipeline-train-create-registry
    ../v3-examples/ml-ops-examples/v3-transform-job-example
    ../v3-examples/ml-ops-examples/v3-hyperparameter-tuning-example/v3-hyperparameter-tuning-example
+   ../v3-examples/ml-ops-examples/v3-hyperparameter-tuning-example/v3-hyperparameter-tuning-pipeline
    ../v3-examples/ml-ops-examples/v3-model-registry-example/v3-model-registry-example
    ../v3-examples/ml-ops-examples/v3-processing-job-pytorch/v3-pytorch-processing-example
+   ../v3-examples/ml-ops-examples/v3-processing-job-sklearn
+   ../v3-examples/ml-ops-examples/v3-processing-instance-preferences
+   ../v3-examples/ml-ops-examples/v3-emr-serverless-step-example
+   ../v3-examples/ml-ops-examples/v3-mlflow-train-inference-e2e-example

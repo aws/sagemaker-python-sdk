@@ -2,10 +2,11 @@
 
 from __future__ import absolute_import
 
-import requests
 import logging
 import platform
 from pathlib import Path
+
+import requests
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core import fw_utils
@@ -23,6 +24,9 @@ logger = logging.getLogger(__name__)
 class LocalMultiModelServer:
     """Local Multi Model server instance"""
 
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets self.container during _start_*, not in __init__, by design.
+
     def _start_serving(
         self,
         client: object,
@@ -35,7 +39,6 @@ class LocalMultiModelServer:
         env = {
             "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
             "SAGEMAKER_PROGRAM": "inference.py",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         if env_vars:
@@ -47,7 +50,7 @@ class LocalMultiModelServer:
             image,
             "serve",
             # network_mode="host",
-            ports={'8080/tcp': 8080},
+            ports={"8080/tcp": 8080},
             detach=True,
             auto_remove=True,
             volumes={
@@ -131,7 +134,6 @@ class SageMakerMultiModelServer:
             env_vars = {
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
                 "LOCAL_PYTHON": platform.python_version(),

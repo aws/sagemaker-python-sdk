@@ -7,10 +7,8 @@ Tests verify that:
 4. Separate inference components are created for base and adapter
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.core.resources import ModelPackage, TrainingJob
 
 
 class TestTwoStageDeployment:
@@ -26,10 +24,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
     @patch.object(ModelBuilder, "_fetch_hub_document_for_custom_model")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_base_model_deployment_tagged_correctly(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_fetch_hub,
         mock_endpoint_exists,
         mock_fetch_peft,
@@ -91,20 +91,19 @@ class TestTwoStageDeployment:
         )
 
         # Deploy with mocked lineage tracking
+        model_builder.built_model = Mock(model_name="test-model")
         with patch("sagemaker.core.resources.Action"), patch(
             "sagemaker.core.resources.Association"
         ), patch("sagemaker.core.resources.Artifact"):
             model_builder._deploy_model_customization(endpoint_name="test-endpoint")
 
-        # Verify: InferenceComponent.create was called with Base tag
+        # Verify: InferenceComponent.create was called
         assert mock_ic_create.called
         create_call = mock_ic_create.call_args
         tags = create_call[1].get("tags", [])
 
-        # Should have exactly one tag with key="Base"
-        assert len(tags) == 1
-        assert tags[0]["key"] == "Base"
-        assert tags[0]["value"] == "test-base-model"
+        # Non-LORA deployments do not get Base tags
+        assert len(tags) == 0
 
     @patch("sagemaker.core.resources.InferenceComponent.get")
     @patch("sagemaker.core.resources.InferenceComponent.create")
@@ -115,10 +114,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_model_package")
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_full_fine_tuned_model_not_tagged_as_base(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_endpoint_exists,
         mock_fetch_peft,
         mock_fetch_package,
@@ -180,6 +181,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy with mocked lineage tracking
+        model_builder.built_model = Mock(model_name="test-model")
         with patch("sagemaker.core.resources.Action"), patch(
             "sagemaker.core.resources.Association"
         ), patch("sagemaker.core.resources.Artifact"):
@@ -200,10 +202,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_model_package")
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_lora_adapter_references_base_component(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_endpoint_exists,
         mock_fetch_peft,
         mock_fetch_package,
@@ -263,6 +267,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy
+        model_builder.built_model = Mock(model_name="test-model")
         model_builder._deploy_model_customization(endpoint_name="test-endpoint")
 
         # Verify: InferenceComponent.create was called with base_inference_component_name
@@ -286,10 +291,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
     @patch.object(ModelBuilder, "_fetch_hub_document_for_custom_model")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_base_model_uses_hosting_artifact_uri(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_fetch_hub,
         mock_endpoint_exists,
         mock_fetch_peft,
@@ -350,18 +357,19 @@ class TestTwoStageDeployment:
         )
 
         # Deploy with mocked lineage tracking
+        model_builder.built_model = Mock(model_name="test-model")
         with patch("sagemaker.core.resources.Action"), patch(
             "sagemaker.core.resources.Association"
         ), patch("sagemaker.core.resources.Artifact"):
             model_builder._deploy_model_customization(endpoint_name="test-endpoint")
 
-        # Verify: InferenceComponent.create was called with HostingArtifactUri
+        # Verify: InferenceComponent.create was called with model_name (non-LORA path)
         assert mock_ic_create.called
         create_call = mock_ic_create.call_args
         spec = create_call[1].get("specification")
 
-        # Should use HostingArtifactUri
-        assert spec.container.artifact_url == expected_artifact_uri
+        # Non-LORA deployments now use model_name instead of container.artifact_url
+        assert spec.model_name == "test-model"
 
     @patch("sagemaker.core.resources.InferenceComponent.get")
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
@@ -375,10 +383,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
     @patch.object(ModelBuilder, "_fetch_hub_document_for_custom_model")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_sequential_base_then_adapter_deployment(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_fetch_hub,
         mock_endpoint_exists,
         mock_fetch_peft,
@@ -447,6 +457,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy base model with mocked lineage tracking
+        model_builder.built_model = Mock(model_name="test-model")
         with patch("sagemaker.core.resources.Action"), patch(
             "sagemaker.core.resources.Association"
         ), patch("sagemaker.core.resources.Artifact"):
@@ -457,8 +468,8 @@ class TestTwoStageDeployment:
         assert mock_ic_create.call_count == 1
         base_create_call = mock_ic_create.call_args
         base_tags = base_create_call[1].get("tags", [])
-        assert len(base_tags) == 1
-        assert base_tags[0]["key"] == "Base"
+        # Non-LORA deployments do not get Base tags
+        assert len(base_tags) == 0
 
         # Reset mocks for adapter deployment
         mock_ic_create.reset_mock()
@@ -508,6 +519,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy adapter (no lineage tracking for existing endpoint)
+        adapter_builder.built_model = Mock(model_name="test-model")
         adapter_builder._deploy_model_customization(endpoint_name="test-endpoint")
 
         # Verify adapter was deployed

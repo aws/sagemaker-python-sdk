@@ -1,0 +1,13 @@
+# pydocstyle configuration shared by all four submodules. Each submodule's tox
+# ``docstyle`` env runs ``pydocstyle src/sagemaker`` from the submodule root;
+# pydocstyle walks up from the checked files and picks this file up.
+#
+# Restored from the v2 (master-v2) branch, where it lived at the repo root and
+# was lost in the v3 monorepo split. The generated API surface
+# (``sagemaker/core/resources.py`` and ``sagemaker/core/shapes/shapes.py``)
+# is excluded: it is produced by the code generator, not hand-written.
+[pydocstyle]
+inherit = false
+ignore = D104,D107,D202,D203,D213,D214,D400,D401,D404,D406,D407,D411,D413,D414,D415,D417
+match = (?!record_pb2)(?!resources\.py$)(?!shapes\.py$).*\.py
+match-dir = (?!.*test).*

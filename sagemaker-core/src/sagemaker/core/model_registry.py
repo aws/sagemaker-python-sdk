@@ -1,3 +1,5 @@
+"""Helpers for building SageMaker model package and model registry arguments."""
+
 from sagemaker.core.common_utils import (
     format_tags,
     resolve_value_from_config,
@@ -12,6 +14,7 @@ from sagemaker.core.config import (
     MODEL_PACKAGE_INFERENCE_SPECIFICATION_CONTAINERS_PATH,
     MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
 )
+from sagemaker.core.resources import ModelPackageModelCard
 from botocore.exceptions import ClientError
 import logging
 
@@ -45,6 +48,7 @@ def get_model_package_args(
     model_card=None,
     model_life_cycle=None,
 ):
+    """Build the arguments for creating a SageMaker model package."""
     if container_def_list is not None:
         containers = container_def_list
     else:
@@ -100,12 +104,12 @@ def get_model_package_args(
     if model_life_cycle is not None:
         model_package_args["model_life_cycle"] = model_life_cycle._to_request_dict()
     if model_card is not None:
-        original_req = model_card._create_request_args()
-        if original_req.get("ModelCardName") is not None:
-            del original_req["ModelCardName"]
-        if original_req.get("Content") is not None:
-            original_req["ModelCardContent"] = original_req["Content"]
-            del original_req["Content"]
+        original_req = {}
+        if isinstance(model_card, ModelPackageModelCard):
+            original_req["ModelCardContent"] = model_card.model_card_content
+        else:
+            original_req["ModelCardContent"] = model_card.content
+        original_req["ModelCardStatus"] = model_card.model_card_status
         model_package_args["model_card"] = original_req
     return model_package_args
 
@@ -135,6 +139,7 @@ def get_create_model_package_request(
     model_card=None,
     model_life_cycle=None,
 ):
+    """Build the request dictionary for a CreateModelPackage call."""
     if all([model_package_name, model_package_group_name]):
         raise ValueError(
             "model_package_name and model_package_group_name cannot be present at the " "same time."

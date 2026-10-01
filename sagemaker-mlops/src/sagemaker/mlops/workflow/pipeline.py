@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The Pipeline entity for workflow."""
+
 from __future__ import absolute_import
 
 import json
@@ -33,12 +34,14 @@ from sagemaker.core.remote_function.core.stored_function import RESULTS_FOLDER
 from sagemaker.core.remote_function.errors import RemoteFunctionError
 from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.core.s3 import s3_path_join
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.common_utils import (
     resolve_value_from_config,
     retry_with_backoff,
     format_tags,
     Tags,
+    _is_resource_already_exists_error,
 )
 
 # Orchestration imports (now in mlops)
@@ -81,7 +84,7 @@ from sagemaker.mlops.workflow.triggers import (
 )
 from sagemaker.core.workflow.utilities import list_to_request
 from sagemaker.mlops.workflow._steps_compiler import StepsCompiler
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
@@ -165,13 +168,22 @@ class Pipeline:
         else:
             return summaries[0].get("PipelineVersionId")
 
-    @_telemetry_emitter(feature=Feature.MLOPS, func_name="pipeline.create")
+    @_telemetry_emitter(
+        feature=Feature.MLOPS,
+        func_name="pipeline.create",
+        telemetry_params=[
+            ("pipeline_definition_config", TelemetryParamType.ATTR_EXISTS),
+            ("mlflow_config", TelemetryParamType.ATTR_EXISTS),
+        ],
+    )
     def create(
         self,
         role_arn: str = None,
         description: str = None,
         tags: Optional[Tags] = None,
         parallelism_config: ParallelismConfiguration = None,
+        *,
+        _log_name_collision_hint: bool = True,
     ) -> Dict[str, Any]:
         """Creates a Pipeline in the Pipelines service.
 
@@ -189,12 +201,14 @@ class Pipeline:
         role_arn = resolve_value_from_config(
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not role_arn:
-            # Originally IAM role was a required parameter.
-            # Now we marked that as Optional because we can fetch it from SageMakerConfig
-            # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
-            raise ValueError("An AWS IAM role is required to create a Pipeline.")
+        # Resolve and validate the pipeline role: the provided/config role_arn if
+        # set, otherwise the caller's own identity role. A RoleValidationError
+        # explains how to grant the missing permissions if it is insufficient.
+        role_arn = resolve_and_validate_role(
+            provided_role=role_arn,
+            role_type="pipeline",
+            sagemaker_session=self.sagemaker_session,
+        )
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
@@ -209,7 +223,21 @@ class Pipeline:
             Tags=tags,
         )
         # TODO: replace with sagemaker-core methods
-        return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
+        try:
+            return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
+        except ClientError as ce:
+            # upsert() handles the name collision itself (create-or-update), so it
+            # suppresses this hint -- otherwise every successful upsert of an
+            # existing pipeline would log a misleading ERROR.
+            if _log_name_collision_hint and _is_resource_already_exists_error(ce):
+                logger.error(
+                    "A pipeline named '%s' already exists in this account and Region. "
+                    "To update the existing pipeline (or create it only if missing), call "
+                    "pipeline.upsert() instead of pipeline.create(). To keep both, choose a "
+                    "unique pipeline name.",
+                    self.name,
+                )
+            raise ce
 
     def _create_args(
         self, role_arn: str, description: str, parallelism_config: ParallelismConfiguration
@@ -253,7 +281,10 @@ class Pipeline:
             }
 
         update_args(
-            kwargs, PipelineDescription=description, ParallelismConfiguration=parallelism_config
+            kwargs,
+            PipelineDescription=description,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
         )
         return kwargs
 
@@ -295,12 +326,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         role_arn = resolve_value_from_config(
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not role_arn:
-            # Originally IAM role was a required parameter.
-            # Now we marked that as Optional because we can fetch it from SageMakerConfig
-            # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
-            raise ValueError("An AWS IAM role is required to update a Pipeline.")
+        # Resolve and validate the pipeline role: the provided/config role_arn if
+        # set, otherwise the caller's own identity role. A RoleValidationError
+        # explains how to grant the missing permissions if it is insufficient.
+        role_arn = resolve_and_validate_role(
+            provided_role=role_arn,
+            role_type="pipeline",
+            sagemaker_session=self.sagemaker_session,
+        )
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
@@ -332,18 +365,24 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         tags = format_tags(tags)
-        if not role_arn:
-            # Originally IAM role was a required parameter.
-            # Now we marked that as Optional because we can fetch it from SageMakerConfig
-            # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
-            raise ValueError("An AWS IAM role is required to create or update a Pipeline.")
+        # Resolve and validate the pipeline role: the provided/config role_arn if
+        # set, otherwise the caller's own identity role. A RoleValidationError
+        # explains how to grant the missing permissions if it is insufficient.
+        role_arn = resolve_and_validate_role(
+            provided_role=role_arn,
+            role_type="pipeline",
+            sagemaker_session=self.sagemaker_session,
+        )
         try:
-            response = self.create(role_arn, description, tags, parallelism_config)
+            response = self.create(
+                role_arn,
+                description,
+                tags,
+                parallelism_config,
+                _log_name_collision_hint=False,
+            )
         except ClientError as ce:
-            error_code = ce.response["Error"]["Code"]
-            error_message = ce.response["Error"]["Message"]
-            if not (error_code == "ValidationException" and "already exists" in error_message):
+            if not _is_resource_already_exists_error(ce):
                 raise ce
             # already exists
             response = self.update(role_arn, description, parallelism_config=parallelism_config)
@@ -375,7 +414,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
-    @_telemetry_emitter(feature=Feature.MLOPS, func_name="pipeline.start")
+    @_telemetry_emitter(
+        feature=Feature.MLOPS,
+        func_name="pipeline.start",
+        telemetry_params=[
+            ("selective_execution_config", TelemetryParamType.KWARG_EXISTS),
+            ("parallelism_config", TelemetryParamType.KWARG_EXISTS),
+        ],
+    )
     def start(
         self,
         parameters: Dict[str, Union[str, bool, int, float]] = None,
@@ -406,7 +452,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 specified, uses the latest version ID.
 
         Returns:
-            A `_PipelineExecution` instance, if successful.
+            A `PipelineExecution` instance, if successful.
         """
         if selective_execution_config is not None:
             if (
@@ -423,7 +469,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
-            ParallelismConfiguration=parallelism_config,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
             SelectiveExecutionConfig=selective_execution_config,
             MlflowExperimentName=mlflow_experiment_name,
             PipelineVersionId=pipeline_version_id,
@@ -438,7 +485,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             lambda: self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs),
             botocore_client_error_code="AccessDeniedException",
         )
-        return _PipelineExecution(
+        return PipelineExecution(
             arn=response["PipelineExecutionArn"],
             sagemaker_session=self.sagemaker_session,
         )
@@ -602,7 +649,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A parameter dict from the execution.
         """
-        pipeline_execution = _PipelineExecution(
+        pipeline_execution = PipelineExecution(
             arn=pipeline_execution_arn,
             sagemaker_session=self.sagemaker_session,
         )
@@ -660,12 +707,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         _role_arn = role_arn or resolve_value_from_config(
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not _role_arn:
-            # Originally IAM role was a required parameter.
-            # Now we marked that as Optional because we can fetch it from SageMakerConfig
-            # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
-            raise ValueError("An AWS IAM role is required to create triggers for a pipeline.")
+        # Resolve and validate the pipeline role: the provided/config role if set,
+        # otherwise the caller's own identity role. A RoleValidationError explains
+        # how to grant the missing permissions if it is insufficient.
+        _role_arn = resolve_and_validate_role(
+            provided_role=_role_arn,
+            role_type="pipeline",
+            sagemaker_session=self.sagemaker_session,
+        )
         if not triggers:
             raise TypeError(
                 "No Triggers provided. Please specify at least one to setup pipeline triggers."
@@ -922,6 +971,20 @@ def _map_lambda_outputs(steps: List[Step]):
     return lambda_output_map
 
 
+def _resolve_parallelism_config(parallelism_config):
+    """Normalize a parallelism_config into the request dict boto expects.
+
+    boto's create/update/start pipeline APIs expect ``ParallelismConfiguration`` as a dict
+    (``{"MaxParallelExecutionSteps": int}``), not a ``ParallelismConfiguration`` object
+    (issue #5354). This converts the object via ``to_request()``. A dict is passed through
+    unchanged so callers who adopted the pre-fix ``.to_request()`` workaround keep working,
+    and ``None`` is returned as-is so ``update_args`` can drop the key.
+    """
+    if isinstance(parallelism_config, ParallelismConfiguration):
+        return parallelism_config.to_request()
+    return parallelism_config
+
+
 def update_args(args: Dict[str, Any], **kwargs):
     """Updates the request arguments dict with a value, if populated.
 
@@ -950,8 +1013,21 @@ def _generate_step_map(steps: Sequence[Step], step_map: dict):
 
 
 @attr.s
-class _PipelineExecution:
-    """Internal class for encapsulating pipeline execution instances.
+class PipelineExecution:
+    """Encapsulates a pipeline execution instance.
+
+    This class can be used to interact with pipeline executions that were
+    started from any source (Python SDK, Studio UI, console, etc.).
+
+    Example::
+
+        execution = PipelineExecution(
+            arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/my-pipeline/execution/abc123",
+            sagemaker_session=sagemaker_session,
+        )
+        execution.describe()
+        execution.wait()
+        execution.list_steps()
 
     Attributes:
         arn (str): The arn of the pipeline execution.
@@ -1133,30 +1209,44 @@ def get_function_step_result(
     job_arn = step_metadata["Arn"]
     job_name = job_arn.split("/")[-1]
 
-    if isinstance(sagemaker_session, LocalSession):
-        describe_training_job_response = sagemaker_session.sagemaker_client.describe_training_job(
-            job_name
-        )
-    else:
-        describe_training_job_response = sagemaker_session.describe_training_job(job_name)
+    describe_training_job_response = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=job_name
+    )
     container_args = describe_training_job_response["AlgorithmSpecification"]["ContainerEntrypoint"]
     if container_args != JOBS_CONTAINER_ENTRYPOINT:
         raise ValueError(_ERROR_MSG_OF_WRONG_STEP_TYPE)
     s3_output_path = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
 
-    s3_uri_suffix = s3_path_join(execution_id, step_name, RESULTS_FOLDER)
-    if s3_output_path.endswith(s3_uri_suffix) or s3_output_path[0:-1].endswith(s3_uri_suffix):
-        s3_uri = s3_output_path
+    # S3OutputPath can be in one of two formats:
+    # 1. New format (pipeline step): base/step_name/build_timestamp/execution_id/results
+    #    - S3OutputPath already points directly to the results folder
+    # 2. Old format (legacy, pre-build-timestamp): base/execution_id/step_name/results
+    #    - S3OutputPath also already points to the results folder
+    # 3. Obsoleted format: base path only, without the results suffix
+    #    - Must append execution_id/step_name/results for backward compatibility
+    #
+    # Cases 1 and 2 both end with RESULTS_FOLDER; case 3 does not.
+    s3_output_path_stripped = s3_output_path.rstrip("/")
+    if (
+        s3_output_path_stripped.endswith("/" + RESULTS_FOLDER)
+        or s3_output_path_stripped == RESULTS_FOLDER
+    ):
+        # S3OutputPath already points to the results folder (new or old format)
+        s3_uri = s3_output_path_stripped
     else:
-        # This is the obsoleted version of s3_output_path
-        # Keeping it for backward compatible
-        s3_uri = s3_path_join(s3_output_path, s3_uri_suffix)
+        # Obsoleted version of s3_output_path — append the suffix for backward compatibility
+        s3_uri = s3_path_join(s3_output_path, execution_id, step_name, RESULTS_FOLDER)
 
     job_status = describe_training_job_response["TrainingJobStatus"]
     if job_status == "Completed":
+        # Results are written by the job side using plain SHA-256 hashing (no asymmetric
+        # signature). The REMOTE_FUNCTION_SECRET_KEY is the public key used by the job to
+        # verify client-uploaded payloads (function/args), not for verifying job-uploaded
+        # results. Pass verification_key=None to use plain SHA-256 hash verification.
         return deserialize_obj_from_s3(
             sagemaker_session=sagemaker_session,
             s3_uri=s3_uri,
+            verification_key=None,
         )
 
     raise RemoteFunctionError(_ERROR_MSG_OF_STEP_INCOMPLETE)

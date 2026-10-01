@@ -123,6 +123,10 @@
         "content_bucket": "jumpstart-cache-prod-eu-isoe-west-1",
         "gated_content_bucket": "jumpstart-private-cache-prod-eu-isoe-west-1"
     },
+    "eusc-de-east-1": {
+        "content_bucket": "jumpstart-cache-prod-eusc-de-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eusc-de-east-1"
+    },
     "il-central-1": {
         "content_bucket": "jumpstart-cache-prod-il-central-1",
         "gated_content_bucket": "jumpstart-private-cache-prod-il-central-1"
