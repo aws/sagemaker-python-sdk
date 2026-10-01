@@ -361,7 +361,17 @@ class Processor(object):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
         """Extend inputs and outputs based on extra parameters"""
@@ -929,7 +939,17 @@ class ScriptProcessor(Processor):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.
@@ -1826,6 +1846,36 @@ def _get_process_request(
     return process_request
 
 
+def _wait_for_processing_job(sagemaker_session, job_name, poll=10):
+    """Wait for a processing job to reach a terminal state, respecting the session region.
+
+    Unlike ``ProcessingJob.wait()`` (which resolves a default, global SageMaker client),
+    this describes the job through ``sagemaker_session.sagemaker_client`` so the job is
+    polled in the same region it was created in (issue #5796).
+
+    Args:
+        sagemaker_session: The session used to create the job; its region-aware
+            ``sagemaker_client`` is used to describe the job.
+        job_name (str): Name of the processing job to wait for.
+        poll (int): The interval in seconds between polling for job completion.
+
+    Raises:
+        ValueError: If the processing job fails.
+    """
+    terminal_states = ("Completed", "Failed", "Stopped")
+
+    def _describe_if_terminal():
+        description = sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        )
+        if description["ProcessingJobStatus"] in terminal_states:
+            return description
+        return None
+
+    description = _wait_until(_describe_if_terminal, poll)
+    _check_job_status(job_name, description, "ProcessingJobStatus")
+
+
 def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """Display logs for a given processing job, optionally tailing them until the is complete.
 
@@ -1841,11 +1891,9 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """
 
     description = _wait_until(
-        lambda: ProcessingJob.get(
-            processing_job_name=job_name, session=sagemaker_session.boto_session
-        )
-        .refresh()
-        .__dict__,
+        lambda: sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        ),
         poll,
     )
 
@@ -1895,12 +1943,8 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
         if state == LogState.JOB_COMPLETE:
             state = LogState.COMPLETE
         elif time.time() - last_describe_job_call >= 30:
-            description = (
-                ProcessingJob.get(
-                    processing_job_name=job_name, session=sagemaker_session.boto_session
-                )
-                .refresh()
-                .__dict__
+            description = sagemaker_session.sagemaker_client.describe_processing_job(
+                ProcessingJobName=job_name
             )
             last_describe_job_call = time.time()
 
