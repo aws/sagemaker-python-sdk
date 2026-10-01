@@ -71,7 +71,9 @@ class TestLambdaInit:
 
     def test_lambda_init_missing_code(self):
         """Test initialization fails without code when creating new function."""
-        with pytest.raises(ValueError, match="Either zipped_code_dir or script must be provided"):
+        with pytest.raises(
+            ValueError, match="Either zipped_code_dir, script or image must be provided"
+        ):
             Lambda(
                 function_name="my-function",
                 execution_role_arn="arn:aws:iam::123456789012:role/my-role",
@@ -96,6 +98,41 @@ class TestLambdaInit:
                 function_name="my-function",
                 execution_role_arn="arn:aws:iam::123456789012:role/my-role",
                 script="/path/to/script.py",
+            )
+
+    def test_lambda_init_with_image(self):
+        """Test initialization with an ECR image (no handler/runtime required)."""
+        lambda_obj = Lambda(
+            function_name="my-function",
+            execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+            image="123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+        )
+        assert lambda_obj.image == "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest"
+        assert lambda_obj.handler is None
+
+    def test_lambda_init_image_and_script_fails(self):
+        """Test initialization fails when both image and script are provided."""
+        with pytest.raises(
+            ValueError, match="Provide either image or zipped_code_dir/script, not both"
+        ):
+            Lambda(
+                function_name="my-function",
+                execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+                image="123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+                script="/path/to/script.py",
+                handler="script.handler",
+            )
+
+    def test_lambda_init_image_and_zipped_code_fails(self):
+        """Test initialization fails when both image and zipped_code_dir are provided."""
+        with pytest.raises(
+            ValueError, match="Provide either image or zipped_code_dir/script, not both"
+        ):
+            Lambda(
+                function_name="my-function",
+                execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+                image="123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+                zipped_code_dir="/path/to/code.zip",
             )
 
     def test_lambda_init_with_optional_params(self):
@@ -180,6 +217,51 @@ class TestLambdaCreate:
         }
 
     @patch("sagemaker.core.lambda_helper._get_lambda_client")
+    def test_create_with_image(self, mock_get_client):
+        """Test creating a Lambda function from an ECR image."""
+        mock_client = Mock()
+        mock_get_client.return_value = mock_client
+        mock_client.create_function.return_value = {
+            "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        }
+
+        image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest"
+        lambda_obj = Lambda(
+            function_name="my-function",
+            execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+            image=image_uri,
+        )
+        result = lambda_obj.create()
+
+        assert result["FunctionArn"] == "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        mock_client.create_function.assert_called_once()
+        call_args = mock_client.create_function.call_args[1]
+        assert call_args["Code"] == {"ImageUri": image_uri}
+        assert call_args["PackageType"] == "Image"
+        assert "Runtime" not in call_args
+        assert "Handler" not in call_args
+
+    @patch("sagemaker.core.lambda_helper._get_lambda_client")
+    def test_create_with_image_client_error(self, mock_get_client):
+        """Test image-based create handles ClientError."""
+        mock_client = Mock()
+        mock_get_client.return_value = mock_client
+        error = ClientError(
+            {"Error": {"Code": "InvalidParameterValue", "Message": "Invalid parameter"}},
+            "CreateFunction",
+        )
+        mock_client.create_function.side_effect = error
+
+        lambda_obj = Lambda(
+            function_name="my-function",
+            execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+            image="123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+        )
+
+        with pytest.raises(ValueError):
+            lambda_obj.create()
+
+    @patch("sagemaker.core.lambda_helper._get_lambda_client")
     def test_create_without_function_name(self, mock_get_client):
         """Test create fails without function name."""
         lambda_obj = Lambda(
@@ -237,6 +319,29 @@ class TestLambdaUpdate:
 
         assert result["FunctionArn"] == "arn:aws:lambda:us-west-2:123456789012:function:my-function"
         mock_client.update_function_code.assert_called_once()
+
+    @patch("sagemaker.core.lambda_helper._get_lambda_client")
+    def test_update_with_image(self, mock_get_client):
+        """Test updating a Lambda function's code from an ECR image."""
+        mock_client = Mock()
+        mock_get_client.return_value = mock_client
+        mock_client.update_function_code.return_value = {
+            "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        }
+
+        image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest"
+        lambda_obj = Lambda(
+            function_name="my-function",
+            execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+            image=image_uri,
+        )
+        result = lambda_obj.update()
+
+        assert result["FunctionArn"] == "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        mock_client.update_function_code.assert_called_once_with(
+            FunctionName="my-function",
+            ImageUri=image_uri,
+        )
 
     @patch("sagemaker.core.lambda_helper._get_lambda_client")
     @patch("sagemaker.core.lambda_helper._zip_lambda_code")
