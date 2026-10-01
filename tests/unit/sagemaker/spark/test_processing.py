@@ -476,6 +476,33 @@ def test_stage_submit_deps(mock_s3_uploader, jar_file, config, expected, sagemak
             assert spark_opt == expected[1]
 
 
+@patch("sagemaker.spark.processing.S3Uploader")
+def test_stage_submit_deps_accepts_directory(mock_s3_uploader, sagemaker_session):
+    """A local directory in submit_deps is staged rather than rejected (issue #2447)."""
+    spark_processor = PySparkProcessor(
+        base_job_name="sm-spark",
+        role="AmazonSageMaker-ExecutionRole",
+        framework_version="2.4",
+        instance_count=1,
+        instance_type="ml.c5.xlarge",
+        image_uri="790336243319.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark:0.1",
+        sagemaker_session=sagemaker_session,
+    )
+
+    with tempfile.TemporaryDirectory() as dep_dir:
+        (pathlib.Path(dep_dir) / "module.py").write_text("x = 1\n")
+        (pathlib.Path(dep_dir) / "helper.py").write_text("y = 2\n")
+
+        input_channel, spark_opt = spark_processor._stage_submit_deps([dep_dir], "pySparkFiles")
+
+    # The directory was accepted (no ValueError) and staged as an input channel,
+    # with its contents uploaded to the dependency location.
+    assert input_channel is not None
+    assert input_channel.destination == "/opt/ml/processing/input/pySparkFiles"
+    assert spark_opt == "/opt/ml/processing/input/pySparkFiles"
+    mock_s3_uploader.upload.assert_called_once()
+
+
 @pytest.mark.parametrize(
     "config, expected",
     [
