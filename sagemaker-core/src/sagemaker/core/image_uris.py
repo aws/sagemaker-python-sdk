@@ -278,7 +278,7 @@ def retrieve(
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
-    if repo == f"{framework}-inference-graviton":
+    if repo in (f"{framework}-inference-graviton", f"{framework}-inference-arm64"):
         container_version = f"{container_version}-sagemaker"
 
     # Some images encode the accelerator directly in the tag (e.g. the amzn2023
