@@ -16,16 +16,17 @@ This module provides the ModelBuilder class, which offers a unified interface fo
 and deploying machine learning models across different model servers and deployment modes.
 It supports various frameworks including PyTorch, TensorFlow, HuggingFace, XGBoost, and more.
 """
+
 from __future__ import absolute_import, annotations
 
 import os
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 # SageMaker core imports
 from sagemaker.core.resources import Model, Endpoint
 from sagemaker.core.utils.utils import logger
-
+from sagemaker.core.common_utils import _is_s3_uri
 
 # SageMaker serve imports
 from sagemaker.serve.local_resources import LocalEndpoint
@@ -37,7 +38,8 @@ from sagemaker.serve.utils.local_hardware import (
 )
 from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
 from sagemaker.serve.detector.image_detector import (
-     _get_model_base, _detect_framework_and_version
+    _get_model_base,
+    _detect_framework_and_version,
 )
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.types import ModelServer
@@ -50,11 +52,15 @@ from sagemaker.serve.model_server.djl_serving.utils import (
 from sagemaker.serve.model_server.tgi.utils import _get_default_tgi_configurations
 from sagemaker.serve.model_server.tgi.prepare import prepare_tgi_js_resources
 from sagemaker.serve.model_server.djl_serving.prepare import prepare_djl_js_resources
-from sagemaker.serve.model_server.multi_model_server.prepare import prepare_mms_js_resources
+from sagemaker.serve.model_server.multi_model_server.prepare import (
+    prepare_mms_js_resources,
+)
 
 # Model server preparation
 from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
-from sagemaker.serve.model_server.tensorflow_serving.prepare import prepare_for_tf_serving
+from sagemaker.serve.model_server.tensorflow_serving.prepare import (
+    prepare_for_tf_serving,
+)
 from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
 from sagemaker.serve.model_server.multi_model_server.prepare import prepare_for_mms
 
@@ -69,20 +75,38 @@ JOB_NAME_PARAM_NAME = "sagemaker_job_name"
 MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
 SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
 SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
+# Intentionally allowlist only instance families documented for the GPU 4.1 AMI.
+# Add new families only after SageMaker documents support for them.
+_CUDA_13_INFERENCE_AMI = "al2023-ami-sagemaker-inference-gpu-4-1"
+_CUDA_13_INFERENCE_AMI_COMPATIBLE_FAMILIES = frozenset(
+    {
+        "ml.g4dn",
+        "ml.g5",
+        "ml.g6",
+        "ml.g6e",
+        "ml.p4d",
+        "ml.p4de",
+        "ml.p5",
+        "ml.p5e",
+        "ml.p5en",
+    }
+)
 
 
 class _ModelBuilderServers(object):
-
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets attributes on the composed ModelBuilder instance during
+    # build, not in __init__, by design.
     def _build_for_model_server(self) -> Model:
         """Build model using explicit model server configuration.
-        
+
         This method routes to the appropriate model server builder based on
         the specified model_server parameter. It validates that the model server
         is supported and that required parameters are provided.
-        
+
         Returns:
             Model: A deployable model object configured for the specified model server.
-            
+
         Raises:
             ValueError: If the model server is not supported or required parameters are missing.
         """
@@ -101,47 +125,53 @@ class _ModelBuilderServers(object):
         # Route to appropriate model server builder
         if self.model_server == ModelServer.TORCHSERVE:
             return self._build_for_torchserve()
-        elif self.model_server == ModelServer.TRITON:
+        if self.model_server == ModelServer.TRITON:
             return self._build_for_triton()
-        elif self.model_server == ModelServer.TENSORFLOW_SERVING:
+        if self.model_server == ModelServer.TENSORFLOW_SERVING:
             return self._build_for_tensorflow_serving()
-        elif self.model_server == ModelServer.DJL_SERVING:
+        if self.model_server == ModelServer.DJL_SERVING:
             return self._build_for_djl()
-        elif self.model_server == ModelServer.TEI:
+        if self.model_server == ModelServer.TEI:
             return self._build_for_tei()
-        elif self.model_server == ModelServer.TGI:
+        if self.model_server == ModelServer.TGI:
             return self._build_for_tgi()
-        elif self.model_server == ModelServer.MMS:
+        if self.model_server == ModelServer.VLLM:
+            return self._build_for_vllm()
+        if self.model_server == ModelServer.SGLANG:
+            return self._build_for_sglang()
+        if self.model_server == ModelServer.VLLM_OMNI:
+            return self._build_for_vllm_omni()
+        if self.model_server == ModelServer.LLAMACPP:
+            return self._build_for_llamacpp()
+        if self.model_server == ModelServer.MMS:
             return self._build_for_transformers()
-        elif self.model_server == ModelServer.SMD:
+        if self.model_server == ModelServer.SMD:
             return self._build_for_smd()
-        else:
-            raise ValueError(f"Unsupported model server: {self.model_server}")
-
+        raise ValueError(f"Unsupported model server: {self.model_server}")
 
     def _build_for_torchserve(self) -> Model:
         """Build model for TorchServe deployment.
-        
+
         Configures the model for deployment using TorchServe model server.
         Handles both local model objects and HuggingFace model IDs.
-        
+
         Returns:
             Model: Configured model ready for TorchServe deployment.
         """
         self.secret_key = ""
-        
+
         # Save inference spec if we have local artifacts
         self._save_model_inference_spec()
 
         if isinstance(self.model, str):
             # Configure HuggingFace model support
             if not self._is_jumpstart_model_id():
-                self.env_vars.update({"HF_MODEL_ID": self.model})
-                
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
+
                 # Add HuggingFace token if available
                 if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
                     self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-                
+
                 # HF models download directly from hub
                 self.s3_upload_path = None
 
@@ -150,6 +180,8 @@ class _ModelBuilderServers(object):
 
             # Prepare TorchServe artifacts for local container mode
             if self.mode == Mode.LOCAL_CONTAINER and self.model_path:
+                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+                # pylint: disable-next=assignment-from-no-return
                 self.secret_key = prepare_for_torchserve(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
@@ -159,6 +191,8 @@ class _ModelBuilderServers(object):
                     inference_spec=self.inference_spec,
                 )
             if self.mode == Mode.SAGEMAKER_ENDPOINT and self.model_path:
+                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+                # pylint: disable-next=assignment-from-no-return
                 self.secret_key = prepare_for_torchserve(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
@@ -176,19 +210,18 @@ class _ModelBuilderServers(object):
 
         return self._create_model()
 
-
     def _build_for_tgi(self) -> Model:
         """Build model for Text Generation Inference (TGI) deployment.
-        
+
         Configures the model for deployment using Hugging Face's TGI server,
         optimized for large language model inference with features like
         tensor parallelism and continuous batching.
-        
+
         Returns:
             Model: Configured model ready for TGI deployment.
         """
         self.secret_key = ""
-        
+
         # Initialize TGI-specific configuration
         if self.model_server != ModelServer.TGI:
             messaging = (
@@ -200,7 +233,7 @@ class _ModelBuilderServers(object):
             self.model_server = ModelServer.TGI
 
         self._validate_tgi_serving_sample_data()
-        
+
         # Use notebook instance type if available
         nb_instance = _get_nb_instance()
         if nb_instance and not self._user_provided_instance_type:
@@ -208,52 +241,73 @@ class _ModelBuilderServers(object):
             logger.debug(f"Using detected notebook instance type: {nb_instance}")
 
         from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
-        _create_dir_structure(self.model_path)
+
+        # Detect an S3 weight source from model_path before any local directory is
+        # created. TGI's HF_MODEL_ID does not accept an S3 URI, so an S3 source is
+        # attached as an uncompressed ModelDataSource (mounted at /opt/ml/model)
+        # instead of being downloaded from the HuggingFace Hub.
+        s3_model_source = self.model_path if _is_s3_uri(self.model_path) else None
+
+        # Skip the local mkdir for an S3 source so we do not create a literal
+        # local "s3:/..." directory tree; only create it for genuine local paths.
+        if not s3_model_source:
+            _create_dir_structure(self.model_path)
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
             # Configure HuggingFace model for TGI
-            self.env_vars.update({"HF_MODEL_ID": self.model})
-            
+            if s3_model_source:
+                # Weights are mounted at /opt/ml/model; do not download from the Hub.
+                self.env_vars.setdefault("HF_MODEL_ID", "/opt/ml/model")
+                self.env_vars.setdefault("HF_HUB_OFFLINE", "1")
+            else:
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
+
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
             )
-            
+
             # Apply TGI-specific configurations
             default_tgi_configurations, _default_max_new_tokens = _get_default_tgi_configurations(
                 self.model, self.hf_model_config, self.schema_builder
             )
             # Filter out None values to avoid pydantic validation errors
-            filtered_tgi_config = {k: v for k, v in default_tgi_configurations.items() if v is not None}
+            filtered_tgi_config = {
+                k: v for k, v in default_tgi_configurations.items() if v is not None
+            }
             self.env_vars.update(filtered_tgi_config)
-            
+
             # Configure schema builder for text generation
             if "parameters" not in self.schema_builder.sample_input:
                 self.schema_builder.sample_input["parameters"] = {}
-            self.schema_builder.sample_input["parameters"]["max_new_tokens"] = _default_max_new_tokens
-            
+            self.schema_builder.sample_input["parameters"][
+                "max_new_tokens"
+            ] = _default_max_new_tokens
+
             # Set TGI sharding defaults
             self.env_vars.setdefault("SHARDED", "false")
             self.env_vars.setdefault("NUM_SHARD", "1")
-                
+
             # Configure HuggingFace cache and authentication
-            tgi_env_vars = {
-                "HF_HOME": "/tmp",
-                "HUGGINGFACE_HUB_CACHE": "/tmp"
-            }
-            
+            tgi_env_vars = {"HF_HOME": "/tmp", "HUGGINGFACE_HUB_CACHE": "/tmp"}
+
             if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
                 tgi_env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-                
+
             self.env_vars.update(tgi_env_vars)
-            
+
             # TGI downloads models directly from HuggingFace Hub
             self.s3_upload_path = None
 
         self._auto_detect_image_uri()
-        
+
         if not self._optimizing:
             if self.mode in LOCAL_MODES:
                 self._prepare_for_mode(should_upload_artifacts=True)
+            elif s3_model_source:
+                # Route the S3 weight source through _prepare_for_mode so the
+                # _upload_tgi_artifacts S3 branch builds the uncompressed
+                # ModelDataSource (CompressionType="None", S3DataType="S3Prefix").
+                self.s3_model_data_url, _ = self._prepare_for_mode(model_path=s3_model_source)
             else:
                 self.s3_model_data_url, _ = self._prepare_for_mode()
 
@@ -270,48 +324,174 @@ class _ModelBuilderServers(object):
                 raise ValueError(
                     "Instance type must be provided when building for SageMaker Endpoint mode."
                 )
-            
+
             try:
                 tot_gpus = _get_gpu_info(self.instance_type, self.sagemaker_session)
             except Exception:  # pylint: disable=W0703
                 tot_gpus = _get_gpu_info_fallback(self.instance_type)
-            
+
             default_num_shard = _get_default_tensor_parallel_degree(self.hf_model_config, tot_gpus)
-            self.env_vars.update({
-                "NUM_SHARD": str(default_num_shard),
-                "SHARDED": "true" if default_num_shard > 1 else "false",
-            })
-            
+            self.env_vars.update(
+                {
+                    "NUM_SHARD": str(default_num_shard),
+                    "SHARDED": "true" if default_num_shard > 1 else "false",
+                }
+            )
+
         model = self._create_model()
-    
+
+        # Reset the in-memory HF_HUB_OFFLINE flag after the container is built,
+        # EXCEPT when weights are mounted from S3: those must stay offline so TGI
+        # loads from /opt/ml/model instead of phoning home to the HuggingFace Hub.
+        if "HF_HUB_OFFLINE" in self.env_vars and not s3_model_source:
+            self.env_vars.update({"HF_HUB_OFFLINE": "0"})
+
+        return model
+
+    def _resolve_inference_ami_version(
+        self,
+        instance_type: Optional[str],
+        inference_ami_version: Optional[str],
+    ) -> Optional[str]:
+        """Resolve a CUDA-compatible inference AMI without overriding the caller."""
+        if inference_ami_version is not None:
+            return inference_ami_version
+        if not isinstance(self.image_uri, str) or not isinstance(instance_type, str):
+            return inference_ami_version
+
+        # DLC CUDA versions are hyphen-delimited tag tokens. Splitting also
+        # recognizes a tag ending in ``-cu130`` without requiring a suffix.
+        image_tag = self.image_uri.rpartition(":")[2]
+        if "cu130" not in image_tag.split("-"):
+            return inference_ami_version
+
+        instance_family = instance_type.rsplit(".", 1)[0]
+        if instance_family not in _CUDA_13_INFERENCE_AMI_COMPATIBLE_FAMILIES:
+            return inference_ami_version
+
+        return _CUDA_13_INFERENCE_AMI
+
+    def _build_for_hf_server(self, model_server: ModelServer) -> Model:
+        """Build a HuggingFace model for a hub-download serving container.
+
+        Generic build path shared by the vLLM, SGLang, and vLLM-omni servers. It
+        configures the container to pull the model directly from the HuggingFace Hub,
+        resolves the appropriate DLC image via _auto_detect_image_uri, and prepares the
+        model for the selected mode. Server-specific tuning (sharding, tensor parallelism,
+        MAX_* limits, etc.) remains configurable through environment variables.
+
+        Args:
+            model_server: The HuggingFace serving model server to build for
+                (VLLM, SGLANG, or VLLM_OMNI).
+
+        Returns:
+            Model: Configured model ready for deployment.
+        """
+        self.secret_key = ""
+        self.model_server = model_server
+
+        # Use notebook instance type if available
+        nb_instance = _get_nb_instance()
+        if nb_instance and not self._user_provided_instance_type:
+            self.instance_type = nb_instance
+            logger.debug(f"Using detected notebook instance type: {nb_instance}")
+
+        from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
+
+        _create_dir_structure(self.model_path)
+
+        if isinstance(self.model, str) and not self._is_jumpstart_model_id():
+            # These containers download the model directly from the HuggingFace Hub.
+            self.env_vars.setdefault("HF_MODEL_ID", self.model)
+
+            if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
+                self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+
+            self.s3_upload_path = None
+
+        self._auto_detect_image_uri()
+
+        if not self._optimizing:
+            if self.mode in LOCAL_MODES:
+                self._prepare_for_mode(should_upload_artifacts=True)
+            else:
+                self.s3_model_data_url, _ = self._prepare_for_mode()
+
+        # Cache management based on mode
+        if self.mode in LOCAL_MODES:
+            self.env_vars.update({"HF_HUB_OFFLINE": "1"})
+        else:
+            self.env_vars["HF_HOME"] = "/tmp"
+            self.env_vars["HUGGINGFACE_HUB_CACHE"] = "/tmp"
+
+        if self.mode == Mode.SAGEMAKER_ENDPOINT and not self.instance_type:
+            raise ValueError(
+                "Instance type must be provided when building for SageMaker Endpoint mode."
+            )
+
+        model = self._create_model()
+
         if "HF_HUB_OFFLINE" in self.env_vars:
             self.env_vars.update({"HF_HUB_OFFLINE": "0"})
-        
+
         return model
+
+    def _build_for_vllm(self) -> Model:
+        """Build a HuggingFace model for the vLLM serving container.
+
+        Returns:
+            Model: Configured model ready for vLLM deployment.
+        """
+        return self._build_for_hf_server(ModelServer.VLLM)
+
+    def _build_for_sglang(self) -> Model:
+        """Build a HuggingFace model for the SGLang serving container.
+
+        Returns:
+            Model: Configured model ready for SGLang deployment.
+        """
+        return self._build_for_hf_server(ModelServer.SGLANG)
+
+    def _build_for_vllm_omni(self) -> Model:
+        """Build a HuggingFace model for the vLLM-omni (multimodal) serving container.
+
+        Returns:
+            Model: Configured model ready for vLLM-omni deployment.
+        """
+        return self._build_for_hf_server(ModelServer.VLLM_OMNI)
+
+    def _build_for_llamacpp(self) -> Model:
+        """Build a HuggingFace model for the llama.cpp serving container.
+
+        Returns:
+            Model: Configured model ready for llama.cpp deployment.
+        """
+        return self._build_for_hf_server(ModelServer.LLAMACPP)
 
     def _build_for_djl(self) -> Model:
         """Build model for DJL Serving deployment.
-        
+
         Configures the model for deployment using Amazon's Deep Java Library (DJL)
         Serving, which provides high-performance inference with support for
         tensor parallelism and model partitioning.
-        
+
         Returns:
             Model: Configured model ready for DJL Serving deployment.
         """
         self.secret_key = ""
         self.model_server = ModelServer.DJL_SERVING
-        
+
         # Set MODEL_LOADING_TIMEOUT from instance variable
         if self.model_data_download_timeout:
             self.env_vars.update({"MODEL_LOADING_TIMEOUT": str(self.model_data_download_timeout)})
-        
+
         self._validate_djl_serving_sample_data()
 
         # Create DJL directory structure for local artifacts
         from sagemaker.serve.model_server.djl_serving.prepare import _create_dir_structure
+
         _create_dir_structure(self.model_path)
-        
+
         # Use notebook instance type if available
         nb_instance = _get_nb_instance()
         if nb_instance and not self._user_provided_instance_type:
@@ -320,52 +500,60 @@ class _ModelBuilderServers(object):
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
             # Configure HuggingFace model for DJL
-            self.env_vars.update({"HF_MODEL_ID": self.model})
-            
+            self.env_vars.setdefault("HF_MODEL_ID", self.model)
+
             # Get model configuration for DJL optimization
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
             )
-            
+
             # Apply DJL-specific configurations
             default_djl_configurations, _default_max_new_tokens = _get_default_djl_configurations(
                 self.model, self.hf_model_config, self.schema_builder
             )
             self.env_vars.update(default_djl_configurations)
-            
+
             # Configure schema builder for text generation
             if "parameters" not in self.schema_builder.sample_input:
                 self.schema_builder.sample_input["parameters"] = {}
-            self.schema_builder.sample_input["parameters"]["max_new_tokens"] = _default_max_new_tokens
-            
-            # Set DJL serving defaults
+            self.schema_builder.sample_input["parameters"][
+                "max_new_tokens"
+            ] = _default_max_new_tokens
+
+            # Set DJL serving defaults (only if not already set by user)
             djl_env_vars = {
                 "OPTION_ENGINE": "Python",
                 "SERVING_MIN_WORKERS": "1",
-                "SERVING_MAX_WORKERS": "1", 
+                "SERVING_MAX_WORKERS": "1",
                 "OPTION_MODEL_LOADING_TIMEOUT": "240",
                 "OPTION_PREDICT_TIMEOUT": "60",
-                "TENSOR_PARALLEL_DEGREE": "1"  # Default, will be overridden below
+                "TENSOR_PARALLEL_DEGREE": "1",
             }
-            
+
             # Add HuggingFace authentication
             if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
                 djl_env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-            
+
             # Update with defaults only if not already set
             for key, value in djl_env_vars.items():
                 self.env_vars.setdefault(key, value)
-            
+
             # DJL downloads models directly from HuggingFace Hub
             self.s3_upload_path = None
 
         self._auto_detect_image_uri()
-        
+
         if not self._optimizing:
             if self.mode in LOCAL_MODES:
                 self._prepare_for_mode(should_upload_artifacts=True)
             else:
                 self.s3_model_data_url, _ = self._prepare_for_mode()
+
+        # Set HF cache env vars to writable location (unconditionally, using setdefault
+        # to preserve user-provided values). This is needed because /opt/ml/model/ may be
+        # read-only when source_code artifacts are mounted there.
+        self.env_vars.setdefault("HF_HOME", "/tmp")
+        self.env_vars.setdefault("HUGGINGFACE_HUB_CACHE", "/tmp")
 
         # Cache management based on mode
         if self.mode in LOCAL_MODES:
@@ -377,34 +565,31 @@ class _ModelBuilderServers(object):
                 raise ValueError(
                     "Instance type must be provided when building for SageMaker Endpoint mode."
                 )
-            
+
             try:
                 tot_gpus = _get_gpu_info(self.instance_type, self.sagemaker_session)
             except Exception:  # pylint: disable=W0703
                 tot_gpus = _get_gpu_info_fallback(self.instance_type)
-            
+
             default_tensor_parallel_degree = _get_default_tensor_parallel_degree(
                 self.hf_model_config, tot_gpus
             )
-            self.env_vars.update({
-                "TENSOR_PARALLEL_DEGREE": str(default_tensor_parallel_degree)
-            })
-        
+            self.env_vars.update({"TENSOR_PARALLEL_DEGREE": str(default_tensor_parallel_degree)})
+
         model = self._create_model()
-        
+
         if "HF_HUB_OFFLINE" in self.env_vars:
             self.env_vars.update({"TRANSFORMERS_OFFLINE": "0"})
-        
-        return model
 
+        return model
 
     def _build_for_triton(self) -> Model:
         """Build model for NVIDIA Triton Inference Server deployment.
-        
+
         Configures the model for deployment using NVIDIA Triton Inference Server,
         which provides high-performance inference with support for multiple
         frameworks and advanced features like dynamic batching.
-        
+
         Returns:
             Model: Configured model ready for Triton deployment.
         """
@@ -414,7 +599,7 @@ class _ModelBuilderServers(object):
         if isinstance(self.model, str):
             self.framework = None
             self.framework_version = None
-            
+
             # Configure HuggingFace model for Triton
             if not self._is_jumpstart_model_id():
                 # Get model metadata for task detection
@@ -424,53 +609,53 @@ class _ModelBuilderServers(object):
                 model_task = hf_model_md.get("pipeline_tag")
                 if model_task:
                     self.env_vars.update({"HF_TASK": model_task})
-                
+
                 # Configure HuggingFace authentication
-                self.env_vars.update({"HF_MODEL_ID": self.model})
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
                 if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
                     self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-                
+
                 # Triton downloads models directly from HuggingFace Hub
                 self.s3_upload_path = None
         elif self.model:
-            fw, self.framework_version = _detect_framework_and_version(str(_get_model_base(self.model)))
+            fw, self.framework_version = _detect_framework_and_version(
+                str(_get_model_base(self.model))
+            )
             self.framework = self._normalize_framework_to_enum(fw)
-        
+
         # Auto-detect Triton image if not provided
         if not self.image_uri:
             self._auto_detect_image_for_triton()
-            
+
         # Prepare Triton-specific artifacts
         self._save_inference_spec()
         self._prepare_for_triton()
-        
+
         # Prepare deployment artifacts
         if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
         else:
             # self._prepare_for_mode(should_upload_artifacts=True)
             self.s3_model_data_url, _ = self._prepare_for_mode(should_upload_artifacts=True)
-            
+
         return self._create_model()
-
-
 
     def _build_for_tensorflow_serving(self) -> Model:
         """Build model for TensorFlow Serving deployment.
-        
+
         Configures the model for deployment using TensorFlow Serving,
         Google's high-performance serving system for TensorFlow models.
-        
+
         Returns:
             Model: Configured model ready for TensorFlow Serving deployment.
-            
+
         Raises:
             ValueError: If image_uri is not provided for TensorFlow Serving.
         """
         self.secret_key = ""
         if not getattr(self, "_is_mlflow_model", False):
             raise ValueError("Tensorflow Serving is currently only supported for mlflow models.")
-        
+
         # Save Schema Builder
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
@@ -481,6 +666,8 @@ class _ModelBuilderServers(object):
             raise ValueError("image_uri is required for TensorFlow Serving deployment")
 
         # Prepare TensorFlow Serving artifacts for local container mode
+        # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+        # pylint: disable-next=assignment-from-no-return
         self.secret_key = prepare_for_tf_serving(
             model_path=self.model_path,
             shared_libs=self.shared_libs,
@@ -495,23 +682,22 @@ class _ModelBuilderServers(object):
 
         return self._create_model()
 
-
     def _build_for_tei(self) -> Model:
         """Build model for Text Embeddings Inference (TEI) deployment.
-        
+
         Configures the model for deployment using Hugging Face's TEI server,
         optimized for embedding model inference with features like
         pooling strategies and efficient batching.
-        
+
         Returns:
             Model: Configured model ready for TEI deployment.
         """
         self.secret_key = ""
-        
+
         # Set MODEL_LOADING_TIMEOUT from instance variable
         if self.model_data_download_timeout:
             self.env_vars.update({"MODEL_LOADING_TIMEOUT": str(self.model_data_download_timeout)})
-        
+
         if self.model_server != ModelServer.TEI:
             messaging = (
                 "HuggingFace Model ID support on model server: "
@@ -528,33 +714,34 @@ class _ModelBuilderServers(object):
             logger.debug(f"Using detected notebook instance type: {nb_instance}")
 
         from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
+
         _create_dir_structure(self.model_path)
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
             # Configure HuggingFace model for TEI
-            self.env_vars.update({"HF_MODEL_ID": self.model})
-            
+            self.env_vars.setdefault("HF_MODEL_ID", self.model)
+
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
             )
-            
+
             # Configure TEI-specific environment variables
             tei_env_vars = {
                 "HF_HOME": "/tmp",
                 "HUGGINGFACE_HUB_CACHE": "/tmp",
                 "MODEL_LOADING_TIMEOUT": "240",
             }
-            
+
             if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
                 tei_env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-                
+
             self.env_vars.update(tei_env_vars)
-            
+
             # TEI downloads models directly from HuggingFace Hub
             self.s3_upload_path = None
 
         self._auto_detect_image_uri()
-        
+
         if not self._optimizing:
             if self.mode in LOCAL_MODES:
                 self._prepare_for_mode(should_upload_artifacts=True)
@@ -573,27 +760,26 @@ class _ModelBuilderServers(object):
             raise ValueError(
                 "Instance type must be provided when building for SageMaker Endpoint mode."
             )
-        
+
         model = self._create_model()
-        
+
         if "HF_HUB_OFFLINE" in self.env_vars:
             self.env_vars.update({"HF_HUB_OFFLINE": "0"})
-        
-        return model
 
+        return model
 
     def _build_for_smd(self) -> Model:
         """Build model for SageMaker Distribution (SMD) deployment.
-        
+
         Configures the model for deployment using SageMaker's distribution
         container, which provides a comprehensive ML environment with
         pre-installed frameworks and optimizations.
-        
+
         Returns:
             Model: Configured model ready for SMD deployment.
         """
         self.secret_key = ""
-        
+
         self._save_model_inference_spec()
 
         if self.mode != Mode.IN_PROCESS:
@@ -602,6 +788,8 @@ class _ModelBuilderServers(object):
                 cpu_or_gpu = self._get_processing_unit()
                 self.image_uri = self._get_smd_image_uri(processing_unit=cpu_or_gpu)
 
+            # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+            # pylint: disable-next=assignment-from-no-return
             self.secret_key = prepare_for_smd(
                 model_path=self.model_path,
                 shared_libs=self.shared_libs,
@@ -619,16 +807,16 @@ class _ModelBuilderServers(object):
 
     def _build_for_transformers(self) -> Model:
         """Build model for HuggingFace Transformers deployment.
-        
+
         Configures the model for deployment using Multi-Model Server (MMS)
         with HuggingFace Transformers backend for general-purpose model inference.
-        
+
         Returns:
             Model: Configured model ready for Transformers deployment.
         """
         self.secret_key = ""
         self.model_server = ModelServer.MMS
-        
+
         # Set MODEL_LOADING_TIMEOUT from instance variable
         if self.model_data_download_timeout:
             self.env_vars.update({"MODEL_LOADING_TIMEOUT": str(self.model_data_download_timeout)})
@@ -646,6 +834,8 @@ class _ModelBuilderServers(object):
                 self._create_conda_env()
 
             if self.mode in [Mode.LOCAL_CONTAINER] and self.model_path:
+                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+                # pylint: disable-next=assignment-from-no-return
                 self.secret_key = prepare_for_mms(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
@@ -655,6 +845,8 @@ class _ModelBuilderServers(object):
                     inference_spec=self.inference_spec,
                 )
             if self.mode == Mode.SAGEMAKER_ENDPOINT and self.model_path:
+                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
+                # pylint: disable-next=assignment-from-no-return
                 self.secret_key = prepare_for_mms(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
@@ -670,13 +862,14 @@ class _ModelBuilderServers(object):
             logger.debug(f"Using detected notebook instance type: {nb_instance}")
 
         from sagemaker.serve.model_server.multi_model_server.prepare import _create_dir_structure
+
         _create_dir_structure(self.model_path)
 
         if not isinstance(self.model, str) or not self._is_jumpstart_model_id():
             if self.inference_spec is not None:
                 hf_model_id = self.inference_spec.get_model()
                 if isinstance(hf_model_id, str):  # Only if it's a valid HF model ID
-                    self.env_vars.update({"HF_MODEL_ID": hf_model_id})
+                    self.env_vars.setdefault("HF_MODEL_ID", hf_model_id)
                     # Get HF config only for string model IDs
                     if hasattr(self.env_vars, "HF_API_TOKEN"):
                         self.hf_model_config = _get_model_config_properties_from_hf(
@@ -687,7 +880,20 @@ class _ModelBuilderServers(object):
                             hf_model_id, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                         )
             elif isinstance(self.model, str):  # Only set HF_MODEL_ID if model is a string
-                self.env_vars.update({"HF_MODEL_ID": self.model})
+                # Get model metadata for task detection
+                hf_model_md = self.get_huggingface_model_metadata(
+                    self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+                )
+                model_task = hf_model_md.get("pipeline_tag")
+                if model_task:
+                    self.env_vars.update({"HF_TASK": model_task})
+
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
+
+                # Add HuggingFace token if available
+                if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
+                    self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+
                 # Get HF config for string model IDs
                 if hasattr(self.env_vars, "HF_API_TOKEN"):
                     self.hf_model_config = _get_model_config_properties_from_hf(
@@ -704,7 +910,6 @@ class _ModelBuilderServers(object):
             else:
                 self.s3_model_data_url, _ = self._prepare_for_mode()
 
-
         # Clean up empty secret key
         if (
             "SAGEMAKER_SERVE_SECRET_KEY" in self.env_vars
@@ -720,14 +925,12 @@ class _ModelBuilderServers(object):
 
         return self._create_model()
 
-
-
     def _build_for_djl_jumpstart(self, init_kwargs) -> Model:
         """Build DJL model using JumpStart artifacts.
-        
+
         Args:
             init_kwargs: JumpStart initialization parameters.
-            
+
         Returns:
             Model: Configured DJL model for JumpStart deployment.
         """
@@ -735,14 +938,12 @@ class _ModelBuilderServers(object):
         self.model_server = ModelServer.DJL_SERVING
 
         from sagemaker.serve.model_server.djl_serving.prepare import _create_dir_structure
+
         _create_dir_structure(self.model_path)
 
         if self.mode in LOCAL_MODES:
             # Prepare DJL resources for local deployment
-            (
-                self.js_model_config,
-                self.prepared_for_djl
-            ) = prepare_djl_js_resources(
+            self.js_model_config, self.prepared_for_djl = prepare_djl_js_resources(
                 model_path=self.model_path,
                 js_id=self.model,
                 dependencies=self.dependencies,
@@ -757,13 +958,12 @@ class _ModelBuilderServers(object):
         self.prepared_for_djl = True
         return self._create_model()
 
-
     def _build_for_tgi_jumpstart(self, init_kwargs) -> Model:
         """Build TGI model using JumpStart artifacts.
-        
+
         Args:
             init_kwargs: JumpStart initialization parameters.
-            
+
         Returns:
             Model: Configured TGI model for JumpStart deployment.
         """
@@ -771,6 +971,7 @@ class _ModelBuilderServers(object):
         self.model_server = ModelServer.TGI
 
         from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
+
         _create_dir_structure(self.model_path)
 
         if self.mode in LOCAL_MODES:
@@ -790,16 +991,15 @@ class _ModelBuilderServers(object):
             if not hasattr(self, "s3_upload_path") or not self.s3_upload_path:
                 self.s3_upload_path = init_kwargs.model_data
 
-        self.prepared_for_tgi = True  
+        self.prepared_for_tgi = True
         return self._create_model()
-
 
     def _build_for_mms_jumpstart(self, init_kwargs) -> Model:
         """Build MMS model using JumpStart artifacts.
-        
+
         Args:
             init_kwargs: JumpStart initialization parameters.
-            
+
         Returns:
             Model: Configured MMS model for JumpStart deployment.
         """
@@ -807,6 +1007,7 @@ class _ModelBuilderServers(object):
         self.model_server = ModelServer.MMS
 
         from sagemaker.serve.model_server.multi_model_server.prepare import _create_dir_structure
+
         _create_dir_structure(self.model_path)
 
         if self.mode in LOCAL_MODES:
@@ -829,48 +1030,110 @@ class _ModelBuilderServers(object):
         self.prepared_for_mms = True
         return self._create_model()
 
-
-
     def _build_for_jumpstart(self) -> Model:
         """Build model for JumpStart deployment.
-        
+
         Configures the model for deployment using SageMaker JumpStart,
         which provides pre-trained models with optimized configurations
         and deployment settings.
-        
+
         Returns:
             Model: Configured model ready for JumpStart deployment.
-            
+
         Raises:
             ValueError: If the JumpStart image URI is not supported.
         """
         from sagemaker.core.jumpstart.factory.utils import get_init_kwargs
 
         self.secret_key = ""
-        
+
         # Get JumpStart model configuration
-        init_kwargs = get_init_kwargs(
+        init_kwargs_params = dict(
             model_id=self.model,
-            model_version=self.model_version or "*", 
+            model_version=self.model_version or "*",
             region=self.region,
             instance_type=self.instance_type,
-            tolerate_vulnerable_model=getattr(self, 'tolerate_vulnerable_model', None),
-            tolerate_deprecated_model=getattr(self, 'tolerate_deprecated_model', None)
+            sagemaker_session=self.sagemaker_session,
+            tolerate_vulnerable_model=getattr(self, "tolerate_vulnerable_model", None),
+            tolerate_deprecated_model=getattr(self, "tolerate_deprecated_model", None),
+            config_name=getattr(self, "config_name", None),
         )
-        
+        hub_arn = getattr(self, "hub_arn", None)
+        if hub_arn:
+            init_kwargs_params["hub_arn"] = hub_arn
+            # When the private hub content reference is named differently from
+            # the public model_id, resolve hub content by its actual name.
+            hub_content_name = getattr(self, "hub_content_name", None)
+            if hub_content_name:
+                init_kwargs_params["model_id"] = hub_content_name
+        init_kwargs = get_init_kwargs(**init_kwargs_params)
+
         # Configure image URI and environment variables
+        if not self.image_uri:
+            # Defense-in-depth: reject a hub-sourced image URI that spoofs an ECR host before it can
+            # propagate to LocalContainerMode's docker login (see check_image_uri).
+            from sagemaker.serve.validations.check_image_uri import validate_hub_ecr_address
+
+            validate_hub_ecr_address(init_kwargs.image_uri)
         self.image_uri = self.image_uri or init_kwargs.image_uri
-        
-        if hasattr(init_kwargs, 'env') and init_kwargs.env:
+
+        if hasattr(init_kwargs, "env") and init_kwargs.env:
             self.env_vars.update(init_kwargs.env)
-        
+
+        # Apply network isolation from JumpStart model spec if not already set by user
+        if (
+            not self._enable_network_isolation
+            and getattr(init_kwargs, "enable_network_isolation", None) is not None
+        ):
+            self._enable_network_isolation = init_kwargs.enable_network_isolation
+
+        # Propagate model_reference_arn from init_kwargs so that
+        # _prepare_container_def_base can attach HubAccessConfig to the
+        # CreateModel request (required for private hub brokered access).
+        if getattr(init_kwargs, "model_reference_arn", None):
+            self.model_reference_arn = init_kwargs.model_reference_arn
+
+        # Propagate additional model data sources resolved from the JumpStart
+        # spec (e.g. speculative decoding draft models like EAGLE). The JumpStart
+        # factory (_add_additional_model_data_sources_to_kwargs) already returns
+        # these in CreateModel API shape via camel_case_to_pascal_case(...),
+        # except for two adjustments applied here, mirroring how ``container_def``
+        # treats the primary model's ``ModelDataSource``:
+        # - the JumpStart-internal ``HostingEulaKey`` is removed (it is not part
+        #   of the CreateModel API shape, request validation rejects it), and
+        # - when ``accept_eula`` is set, it is folded into each source's
+        #   ``S3DataSource.ModelAccessConfig``.
+        # Gated-source EULA enforcement is server-side, same as for the primary
+        # model: the control plane determines gatedness from the artifact's
+        # bucket and rejects CreateModel with an EULA validation error when a
+        # gated source lacks ``ModelAccessConfig`` with ``AcceptEula`` true.
+        # Without this propagation, sources declared in the spec are dropped
+        # from the CreateModel call and the container fails to find the
+        # referenced artifacts at runtime.
+        additional_model_data_sources = getattr(init_kwargs, "additional_model_data_sources", None)
+        if isinstance(additional_model_data_sources, list) and additional_model_data_sources:
+            accept_eula = getattr(self, "accept_eula", None)
+            prepared_sources = []
+            for source in additional_model_data_sources:
+                prepared_source = dict(source)
+                prepared_source.pop("HostingEulaKey", None)
+                if accept_eula is not None:
+                    s3_data_source = dict(prepared_source.get("S3DataSource", {}))
+                    s3_data_source["ModelAccessConfig"] = {"AcceptEula": accept_eula}
+                    prepared_source["S3DataSource"] = s3_data_source
+                prepared_sources.append(prepared_source)
+            self.additional_model_data_sources = prepared_sources
+
         # Handle model artifacts for fine-tuned models
-        if hasattr(init_kwargs, 'model_data') and init_kwargs.model_data:
-            if isinstance(init_kwargs.model_data, dict) and 'S3DataSource' in init_kwargs.model_data:
-                self.s3_model_data_url = init_kwargs.model_data['S3DataSource']['S3Uri']
+        if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:
+            if (
+                isinstance(init_kwargs.model_data, dict)
+                and "S3DataSource" in init_kwargs.model_data
+            ):
+                self.s3_model_data_url = init_kwargs.model_data["S3DataSource"]["S3Uri"]
             elif isinstance(init_kwargs.model_data, str):
                 self.s3_model_data_url = init_kwargs.model_data
-        
+
         # Prepare resources based on mode and model server
         if self.mode == Mode.LOCAL_CONTAINER:
             # Route to appropriate model server and prepare resources
@@ -887,8 +1150,8 @@ class _ModelBuilderServers(object):
                         model_data=self.s3_model_data_url,
                     )
                 return self._build_for_djl_jumpstart(init_kwargs)
-                
-            elif "tgi-inference" in self.image_uri:
+
+            if "tgi-inference" in self.image_uri:
                 self.model_server = ModelServer.TGI
                 if not hasattr(self, "prepared_for_tgi"):
                     self.js_model_config, self.prepared_for_tgi = prepare_tgi_js_resources(
@@ -898,8 +1161,8 @@ class _ModelBuilderServers(object):
                         model_data=self.s3_model_data_url,
                     )
                 return self._build_for_tgi_jumpstart(init_kwargs)
-                
-            elif "huggingface-pytorch-inference" in self.image_uri:
+
+            if "huggingface-pytorch-inference" in self.image_uri:
                 self.model_server = ModelServer.MMS
                 if not hasattr(self, "prepared_for_mms"):
                     self.js_model_config, self.prepared_for_mms = prepare_mms_js_resources(
@@ -909,28 +1172,28 @@ class _ModelBuilderServers(object):
                         model_data=self.s3_model_data_url,
                     )
                 return self._build_for_mms_jumpstart(init_kwargs)
-            else:
-                raise ValueError(f"Unsupported JumpStart image URI: {self.image_uri}")
-        
+            raise ValueError(
+                f"Local container mode is not yet supported for JumpStart image: {self.image_uri}. "
+                f"Use Mode.SAGEMAKER_ENDPOINT for deployment."
+            )
+
         else:
-            # SAGEMAKER_ENDPOINT mode - prepare artifacts if needed
+            # SAGEMAKER_ENDPOINT mode — all JumpStart containers follow the same
+            # pattern: JumpStart provides the full image URI, env vars, and S3
+            # model artifacts. No framework-specific prep is needed.
             if not self._optimizing:
                 self._prepare_for_mode()
-            
-            # Route to appropriate model server based on image URI
+
             if "djl-inference" in self.image_uri:
                 self.model_server = ModelServer.DJL_SERVING
-                return self._build_for_djl_jumpstart(init_kwargs)
             elif "tgi-inference" in self.image_uri:
                 self.model_server = ModelServer.TGI
-                return self._build_for_tgi_jumpstart(init_kwargs)
             elif "huggingface-pytorch-inference" in self.image_uri:
                 self.model_server = ModelServer.MMS
-                return self._build_for_mms_jumpstart(init_kwargs)
-            else:
-                raise ValueError(f"Unsupported JumpStart image URI: {self.image_uri}")
 
-
+            if not hasattr(self, "s3_upload_path") or not self.s3_upload_path:
+                self.s3_upload_path = init_kwargs.model_data
+            return self._create_model()
 
     def _djl_model_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
         """Returns predictor depending on local mode or endpoint mode"""
@@ -941,122 +1204,120 @@ class _ModelBuilderServers(object):
         # Handle local deployment modes
         if self.mode == Mode.IN_PROCESS:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         if self.mode == Mode.LOCAL_CONTAINER:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         # Remove mode/role from kwargs if present
         kwargs.pop("mode", None)
         if "role" in kwargs:
             self.role_arn = kwargs.pop("role")
-        
+
         # Set default values
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        
+
         if "initial_instance_count" not in kwargs:
             kwargs["initial_instance_count"] = 1
-        
+
         # Deploy to SageMaker endpoint
         return self._deploy_core_endpoint(*args, **kwargs)
-    
 
     def _tgi_model_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
         """Simplified TGI deploy wrapper - env vars already set during build."""
-        
+
         # Handle mode overrides for local deployment
         if self.mode == Mode.IN_PROCESS:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         if self.mode == Mode.LOCAL_CONTAINER:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         # Remove mode/role from kwargs if present
         kwargs.pop("mode", None)
         if "role" in kwargs:
             self.role_arn = kwargs.pop("role")
-        
+
         # Set default values
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        
+
         if "initial_instance_count" not in kwargs:
             kwargs["initial_instance_count"] = 1
-        
+
         # Deploy to SageMaker endpoint
         return self._deploy_core_endpoint(*args, **kwargs)
 
-    
     def _tei_model_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
         """Simplified TEI deploy wrapper - env vars already set during build."""
-        
+
         # Handle local deployment modes
         if self.mode == Mode.IN_PROCESS:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         if self.mode == Mode.LOCAL_CONTAINER:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         # Remove mode/role from kwargs if present
         kwargs.pop("mode", None)
         if "role" in kwargs:
             self.role_arn = kwargs.pop("role")
-        
+
         # Set default values
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        
+
         if "initial_instance_count" not in kwargs:
             kwargs["initial_instance_count"] = 1
-        
+
         # Deploy to SageMaker endpoint
         return self._deploy_core_endpoint(**kwargs)
-
-    
 
     def _js_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
         """Simplified JumpStart deploy wrapper - resource prep already done during build."""
-        
+
         # Handle local deployment
         if self.mode == Mode.LOCAL_CONTAINER:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         # Remove mode/role from kwargs if present
         kwargs.pop("mode", None)
         if "role" in kwargs:
             self.role_arn = kwargs.pop("role")
-        
+
         # Set default values
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        
+
         if hasattr(self, "instance_type"):
             kwargs.update({"instance_type": self.instance_type})
-        
+
         # Deploy to SageMaker endpoint
         return self._deploy_core_endpoint(**kwargs)
 
-    def _transformers_model_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
+    def _transformers_model_builder_deploy_wrapper(
+        self, *args, **kwargs
+    ) -> Union[Endpoint, LocalEndpoint]:
         """Simplified Transformers deploy wrapper - env vars already set during build."""
-        
+
         # Handle local deployment modes
         if self.mode == Mode.LOCAL_CONTAINER:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         if self.mode == Mode.IN_PROCESS:
             return self._deploy_local_endpoint(**kwargs)
-        
+
         # Remove mode/role from kwargs if present
         kwargs.pop("mode", None)
         if "role" in kwargs:
             self.role_arn = kwargs.pop("role")
-        
+
         # Set default values
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
-        
+
         if "initial_instance_count" not in kwargs:
             kwargs["initial_instance_count"] = 1
-        
+
         # Deploy to SageMaker endpoint
         return self._deploy_core_endpoint(**kwargs)

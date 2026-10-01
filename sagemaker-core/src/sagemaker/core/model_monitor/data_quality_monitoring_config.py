@@ -15,6 +15,7 @@
 Code is used to represent the Monitoring Config object and its parameters suggested
 in constraints file by Model Monitor Container in data quality analysis.
 """
+
 from __future__ import print_function, absolute_import
 
 CHI_SQUARED_METHOD = "ChiSquared"

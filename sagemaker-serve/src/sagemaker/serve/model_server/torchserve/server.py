@@ -2,10 +2,12 @@
 
 from __future__ import absolute_import
 
-import requests
 import logging
 import platform
 from pathlib import Path
+
+import requests
+
 from sagemaker.core.common_utils import _is_s3_uri
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.utils import determine_bucket_and_prefix, parse_s3_url
@@ -19,6 +21,9 @@ logger = logging.getLogger(__name__)
 class LocalTorchServe:
     """Placeholder docstring"""
 
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets self.container during _start_*, not in __init__, by design.
+
     def _start_torch_serve(
         self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
     ):
@@ -29,7 +34,7 @@ class LocalTorchServe:
             detach=True,
             auto_remove=True,
             # network_mode="host",
-            ports={'8080/tcp': 8080},
+            ports={"8080/tcp": 8080},
             volumes={
                 Path(model_path): {
                     "bind": "/opt/ml/model",
@@ -39,7 +44,6 @@ class LocalTorchServe:
             environment={
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
                 **env_vars,
             },
@@ -103,7 +107,6 @@ class SageMakerTorchServe:
             "SAGEMAKER_PROGRAM": "inference.py",
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars

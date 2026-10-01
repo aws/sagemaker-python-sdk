@@ -8,6 +8,7 @@ These tests focus on the V3 experience where:
 
 import json
 import unittest
+from contextlib import ExitStack
 from unittest.mock import Mock, patch, MagicMock
 
 from botocore.exceptions import ClientError
@@ -23,27 +24,30 @@ class TestModelBuilderV3(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         import tempfile
+
         self.model_path = tempfile.mkdtemp()
-        
+
         # Shared schema builder for all tests
         self.mock_schema_builder = MagicMock()
         self.mock_schema_builder.sample_input = {"inputs": "test input", "parameters": {}}
         self.mock_schema_builder.sample_output = [{"generated_text": "test output"}]
-        
+
         # Shared mock model
         self.mock_model = Mock()
-        
+
         # Shared mock inference spec
         self.mock_inference_spec = Mock()
-        
+
         # Shared image URI
-        self.image_uri = "123456789012.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.8.0-gpu-py3"
-        
+        self.image_uri = (
+            "123456789012.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.8.0-gpu-py3"
+        )
+
         self.mock_session = Mock()
         self.mock_session.boto_region_name = "us-east-1"
         self.mock_session.default_bucket.return_value = "test-bucket"
         self.mock_session.default_bucket_prefix = "test-prefix"
-        
+
         # Mock session credentials properly
         mock_credentials = Mock()
         mock_credentials.access_key = "test-access-key"
@@ -51,15 +55,15 @@ class TestModelBuilderV3(unittest.TestCase):
         mock_credentials.token = None
         self.mock_session.boto_session.get_credentials.return_value = mock_credentials
         self.mock_session.boto_session.region_name = "us-east-1"
-        
+
         # Mock config attributes to prevent config resolution errors
         self.mock_session.config = {}
         self.mock_session.sagemaker_config = {}
-        
+
         # Additional mock setup for session
         self.mock_session.boto_session = Mock()
         self.mock_session.boto_session.region_name = "us-east-1"
-        
+
         # Mock settings to prevent AttributeError
         self.mock_session.settings = Mock()
         self.mock_session.settings.include_jumpstart_tags = False
@@ -68,10 +72,10 @@ class TestModelBuilderV3(unittest.TestCase):
     def test_model_server_validation_unsupported_type(self):
         """Test that unsupported model server types raise error."""
         try:
-            builder = ModelBuilder(
+            ModelBuilder(
                 model=self.mock_model,
                 model_server="UNSUPPORTED_SERVER",
-                sagemaker_session=self.mock_session
+                sagemaker_session=self.mock_session,
             )
             # If we get here, the validation might happen later
             self.assertTrue(True)
@@ -85,24 +89,58 @@ class TestModelBuilderV3(unittest.TestCase):
             model=self.mock_model,
             model_server=ModelServer.TORCHSERVE,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         self.assertIsInstance(builder.env_vars, dict)
 
     def test_env_vars_custom_values(self):
         """Test that custom env_vars are preserved."""
         custom_env = {"CUSTOM_VAR": "custom_value"}
-        
+
         builder = ModelBuilder(
             model=self.mock_model,
             model_server=ModelServer.TORCHSERVE,
             env_vars=custom_env,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         self.assertEqual(builder.env_vars["CUSTOM_VAR"], "custom_value")
+
+    @patch("sagemaker.serve.model_builder.resolve_and_validate_role")
+    def test_auto_resolves_serving_role_when_none(self, mock_resolve):
+        """When no role_arn is provided, the constructor auto-resolves a serving role."""
+        auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Serving"
+        mock_resolve.return_value = auto_arn
+
+        builder = ModelBuilder(
+            model=self.mock_model,
+            model_server=ModelServer.TORCHSERVE,
+            sagemaker_session=self.mock_session,
+        )
+
+        self.assertEqual(builder.role_arn, auto_arn)
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="serving",
+            sagemaker_session=self.mock_session,
+        )
+
+    @patch("sagemaker.serve.model_builder.resolve_and_validate_role")
+    def test_explicit_role_skips_auto_resolution(self, mock_resolve):
+        """An explicitly provided role_arn is used and the resolver is not invoked at init."""
+        explicit = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
+
+        builder = ModelBuilder(
+            model=self.mock_model,
+            model_server=ModelServer.TORCHSERVE,
+            role_arn=explicit,
+            sagemaker_session=self.mock_session,
+        )
+
+        self.assertEqual(builder.role_arn, explicit)
+        mock_resolve.assert_not_called()
 
     def test_model_path_temp_creation_local_mode(self):
         """Test that temp model_path is created for local modes."""
@@ -111,28 +149,28 @@ class TestModelBuilderV3(unittest.TestCase):
             model_server=ModelServer.TORCHSERVE,
             mode=Mode.LOCAL_CONTAINER,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         self.assertIsNotNone(builder.model_path)
         self.assertTrue("/tmp" in builder.model_path or "sagemaker" in builder.model_path)
 
     def test_schema_builder_validation(self):
         """Test that schema_builder is properly validated."""
         from sagemaker.serve.builder.schema_builder import SchemaBuilder
-        
+
         sample_input = {"inputs": "test"}
         sample_output = [{"result": "test"}]
         schema_builder = SchemaBuilder(sample_input, sample_output)
-        
+
         builder = ModelBuilder(
             model=self.mock_model,
             model_server=ModelServer.TORCHSERVE,
             schema_builder=schema_builder,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         self.assertEqual(builder.schema_builder, schema_builder)
 
     def test_mode_defaults_to_sagemaker_endpoint(self):
@@ -141,9 +179,9 @@ class TestModelBuilderV3(unittest.TestCase):
             model=self.mock_model,
             model_server=ModelServer.TORCHSERVE,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         self.assertEqual(builder.mode, Mode.SAGEMAKER_ENDPOINT)
 
     def test_mode_local_container_validation(self):
@@ -153,9 +191,9 @@ class TestModelBuilderV3(unittest.TestCase):
             model_server=ModelServer.TORCHSERVE,
             mode=Mode.LOCAL_CONTAINER,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         self.assertEqual(builder.mode, Mode.LOCAL_CONTAINER)
         self.assertIsNotNone(builder.model_path)
 
@@ -165,12 +203,12 @@ class TestModelBuilderV3(unittest.TestCase):
             model=self.mock_model,
             model_server=ModelServer.TORCHSERVE,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         with self.assertRaises(ValueError) as context:
             builder.deploy()
-        
+
         error_msg = str(context.exception).lower()
         self.assertTrue("model" in error_msg and "built" in error_msg and "deploy" in error_msg)
 
@@ -178,25 +216,24 @@ class TestModelBuilderV3(unittest.TestCase):
     def test_deploy_serverless_inference(self, mock_deploy):
         """Test deploy() with ServerlessInferenceConfig."""
         from sagemaker.core.inference_config import ServerlessInferenceConfig
-        
+
         mock_endpoint = Mock()
         mock_deploy.return_value = mock_endpoint
-        
+
         builder = ModelBuilder(
             model=self.mock_model,
             model_server=ModelServer.TORCHSERVE,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
         builder.built_model = Mock()
-        
+
         serverless_config = ServerlessInferenceConfig()
-        
+
         result = builder.deploy(
-            inference_config=serverless_config,
-            endpoint_name="test-serverless-endpoint"
+            inference_config=serverless_config, endpoint_name="test-serverless-endpoint"
         )
-        
+
         mock_deploy.assert_called_once()
         self.assertEqual(result, mock_endpoint)
 
@@ -206,15 +243,12 @@ class TestModelBuilderV3(unittest.TestCase):
             model=self.mock_model,
             model_server=ModelServer.TORCHSERVE,
             role_arn="arn:aws:iam::123456789012:role/SageMakerExecutionRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         with self.assertRaises(ValueError) as context:
-            builder.transformer(
-                instance_count=1,
-                instance_type="ml.m5.large"
-            )
-        
+            builder.transformer(instance_count=1, instance_type="ml.m5.large")
+
         self.assertIn("Must call build() before creating transformer", str(context.exception))
 
 
@@ -228,122 +262,132 @@ class ModelCustomizationTest(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         from sagemaker.core.resources import TrainingJob
-        
+
         self.mock_session = Mock()
         self.mock_session.boto_region_name = "us-east-1"
         self.mock_session.default_bucket.return_value = "test-bucket"
         self.mock_session.boto_session = Mock()
         self.mock_session.boto_session.region_name = "us-east-1"
-        
+
         # Mock config attributes to prevent config resolution errors
         self.mock_session.config = {}
         self.mock_session.sagemaker_config = {}
-        
+
         self.mock_training_job = Mock(spec=TrainingJob)
         self.mock_training_job.serverless_job_config = Mock()
         self.mock_training_job.model_package_config = Mock()
-        self.mock_training_job.output_model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/test-package"
+        self.mock_training_job.output_model_package_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/test-package"
+        )
 
-    @patch('sagemaker.serve.model_builder.HubContent')
+    @patch("sagemaker.serve.model_builder.HubContent")
     def test_fetch_hub_document_for_custom_model(self, mock_hub_content):
         """Test fetching hub document for custom model."""
         mock_hub_doc = {"HostingConfigs": {"InstanceType": "ml.g5.2xlarge"}}
         mock_hub_content.get.return_value.hub_content_document = json.dumps(mock_hub_doc)
-        
+
         mock_model_package = Mock()
         mock_model_package.inference_specification.containers = [Mock()]
         mock_model_package.inference_specification.containers[0].base_model = Mock()
-        mock_model_package.inference_specification.containers[0].base_model.hub_content_name = "test-model"
-        mock_model_package.inference_specification.containers[0].base_model.hub_content_version = "1.0"
-        
+        mock_model_package.inference_specification.containers[0].base_model.hub_content_name = (
+            "test-model"
+        )
+        mock_model_package.inference_specification.containers[0].base_model.hub_content_version = (
+            "1.0"
+        )
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
-        with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
+
+        with patch.object(builder, "_fetch_model_package", return_value=mock_model_package):
             result = builder._fetch_hub_document_for_custom_model()
             self.assertEqual(result, mock_hub_doc)
 
     def test_fetch_hosting_configs_for_custom_model(self):
         """Test fetching hosting configs for custom model."""
         mock_hub_doc = {"HostingConfigs": {"InstanceType": "ml.g5.2xlarge"}}
-        
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
-        with patch.object(builder, '_fetch_hub_document_for_custom_model', return_value=mock_hub_doc):
+
+        with patch.object(
+            builder, "_fetch_hub_document_for_custom_model", return_value=mock_hub_doc
+        ):
             result = builder._fetch_hosting_configs_for_custom_model()
             self.assertEqual(result, {"InstanceType": "ml.g5.2xlarge"})
 
     def test_fetch_default_instance_type_for_custom_model(self):
         """Test fetching default instance type for custom model."""
         mock_hosting_configs = {"InstanceType": "ml.g5.2xlarge"}
-        
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
-        with patch.object(builder, '_fetch_hosting_configs_for_custom_model', return_value=mock_hosting_configs):
+
+        with patch.object(
+            builder, "_fetch_hosting_configs_for_custom_model", return_value=mock_hosting_configs
+        ):
             result = builder._fetch_default_instance_type_for_custom_model()
             self.assertEqual(result, "ml.g5.2xlarge")
-
 
     def test_get_instance_resources(self):
         """Test getting instance resources from EC2."""
         mock_ec2 = Mock()
         mock_ec2.describe_instance_types.return_value = {
-            'InstanceTypes': [{
-                'VCpuInfo': {'DefaultVCpus': 8},
-                'MemoryInfo': {'SizeInMiB': 32768}
-            }]
+            "InstanceTypes": [{"VCpuInfo": {"DefaultVCpus": 8}, "MemoryInfo": {"SizeInMiB": 32768}}]
         }
         self.mock_session.boto_session.client.return_value = mock_ec2
-        
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         cpus, memory = builder._get_instance_resources("ml.g5.2xlarge")
         self.assertEqual(cpus, 8)
         self.assertEqual(memory, 32768)
 
-    @patch('sagemaker.serve.model_builder.InferenceComponent')
-    @patch('sagemaker.core.resources.Tag')
+    @patch("sagemaker.serve.model_builder.InferenceComponent")
+    @patch("sagemaker.core.resources.Tag")
     def test_fetch_endpoint_names_for_base_model(self, mock_tag, mock_ic):
         """Test fetching endpoint names for base model."""
         mock_ic1 = Mock()
-        mock_ic1.inference_component_arn = "arn:aws:sagemaker:us-east-1:123456789012:inference-component/ic1"
+        mock_ic1.inference_component_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:inference-component/ic1"
+        )
         mock_ic1.endpoint_name = "endpoint-1"
-        
+
         mock_ic.get_all.return_value = [mock_ic1]
-        
+
         mock_tag_obj = Mock()
         mock_tag_obj.key = "Base"
         mock_tag_obj.value = "test-recipe"
         mock_tag.get_all.return_value = [mock_tag_obj]
-        
+
         mock_model_package = Mock()
         mock_model_package.inference_specification.containers = [Mock()]
         mock_model_package.inference_specification.containers[0].base_model = Mock()
-        mock_model_package.inference_specification.containers[0].base_model.recipe_name = "test-recipe"
-        
+        mock_model_package.inference_specification.containers[0].base_model.recipe_name = (
+            "test-recipe"
+        )
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
-        with patch.object(builder, '_is_model_customization', return_value=True):
-            with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
+
+        with patch.object(builder, "_is_model_customization", return_value=True):
+            with patch.object(builder, "_fetch_model_package", return_value=mock_model_package):
                 result = builder.fetch_endpoint_names_for_base_model()
                 self.assertIn("endpoint-1", result)
 
@@ -351,167 +395,1492 @@ class ModelCustomizationTest(unittest.TestCase):
         """Test _fetch_model_package_arn from model_package_config."""
         from sagemaker.core.utils.utils import Unassigned
         from sagemaker.core.resources import TrainingJob
-        
+
         mock_training_job = Mock(spec=TrainingJob)
         mock_training_job.output_model_package_arn = Unassigned()
         mock_training_job.model_package_config = Mock()
-        mock_training_job.model_package_config.source_model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/source"
+        mock_training_job.model_package_config.source_model_package_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/source"
+        )
         mock_training_job.serverless_job_config = Unassigned()
-        
+
         builder = ModelBuilder(
             model=mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         result = builder._fetch_model_package_arn()
         self.assertEqual(result, "arn:aws:sagemaker:us-east-1:123456789012:model-package/source")
 
     def test_fetch_peft_from_training_job(self):
         """Test fetching PEFT from TrainingJob."""
-        from sagemaker.core.utils.utils import Unassigned
-        
-        mock_job_spec = Mock()
-        mock_job_spec.get = Mock(return_value="LORA")
+
         self.mock_training_job.serverless_job_config = Mock()
-        self.mock_training_job.serverless_job_config.job_spec = mock_job_spec
-        
+        self.mock_training_job.serverless_job_config.peft = "LORA"
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         result = builder._fetch_peft()
         self.assertEqual(result, "LORA")
 
     def test_fetch_peft_from_model_trainer(self):
         """Test fetching PEFT from ModelTrainer."""
         from sagemaker.train.model_trainer import ModelTrainer
-        
-        mock_job_spec = Mock()
-        mock_job_spec.get = Mock(return_value="LORA")
+
         self.mock_training_job.serverless_job_config = Mock()
-        self.mock_training_job.serverless_job_config.job_spec = mock_job_spec
-        
+        self.mock_training_job.serverless_job_config.peft = "LORA"
+
         mock_trainer = Mock(spec=ModelTrainer)
         mock_trainer._latest_training_job = self.mock_training_job
-        
+
         builder = ModelBuilder(
             model=mock_trainer,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         result = builder._fetch_peft()
         self.assertEqual(result, "LORA")
 
     def test_is_model_customization_with_model_package_config(self):
         """Test _is_model_customization with model_package_config."""
         from sagemaker.core.utils.utils import Unassigned
-        
+
         self.mock_training_job.model_package_config = Mock()
-        self.mock_training_job.model_package_config.source_model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/source"
+        self.mock_training_job.model_package_config.source_model_package_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/source"
+        )
         self.mock_training_job.serverless_job_config = Unassigned()
-        
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
         )
-        
+
         result = builder._is_model_customization()
         self.assertTrue(result)
 
-    @patch('sagemaker.serve.model_builder.Model')
-    @patch('sagemaker.serve.model_builder.is_1p_image_uri')
+    @patch("sagemaker.serve.model_builder.Model")
+    @patch("sagemaker.serve.model_builder.is_1p_image_uri")
     def test_build_single_modelbuilder_with_model_customization(self, mock_is_1p, mock_model_class):
         """Test _build_single_modelbuilder when _is_model_customization returns True."""
-        from sagemaker.core.utils.utils import Unassigned
-        
+
         # Mock is_1p_image_uri to return True to bypass validation
         mock_is_1p.return_value = True
-        
+
         # Setup mock model package
         mock_model_package = Mock()
         mock_model_package.inference_specification.containers = [Mock()]
-        mock_model_package.inference_specification.containers[0].model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
-        mock_model_package.inference_specification.containers[0].base_model.recipe_name = "test-recipe"
-        
+        mock_model_package.inference_specification.containers[
+            0
+        ].model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
+        mock_model_package.inference_specification.containers[0].base_model.recipe_name = (
+            "test-recipe"
+        )
+
         # Setup training job with model_package_config
         self.mock_training_job.model_package_config = Mock()
-        self.mock_training_job.model_package_config.source_model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/source"
-        
+        self.mock_training_job.model_package_config.source_model_package_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/source"
+        )
+
         # Setup mock for Model.create
         mock_created_model = Mock()
         mock_model_class.create.return_value = mock_created_model
-        
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
             sagemaker_session=self.mock_session,
             image_uri="test-image:latest",
-            instance_type="ml.g5.2xlarge"
+            instance_type="ml.g5.2xlarge",
         )
-        
+
         # Mock the helper methods
-        with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
-            with patch.object(builder, '_fetch_and_cache_recipe_config'):
-                with patch.object(builder, '_get_client_translators', return_value=(Mock(), Mock())):
-                    with patch.object(builder, '_get_serve_setting', return_value=Mock()):
-                        result = builder._build_single_modelbuilder()
-        
+        with patch.object(builder, "_fetch_model_package", return_value=mock_model_package):
+            with patch.object(builder, "_fetch_and_cache_recipe_config"):
+                with patch.object(
+                    builder, "_get_client_translators", return_value=(Mock(), Mock())
+                ):
+                    with patch.object(builder, "_get_serve_setting", return_value=Mock()):
+                        with patch.object(builder, "_is_nova_model", return_value=False):
+                            result = builder._build_single_modelbuilder()
+
         # Verify Model.create was called (indicating model customization path was taken)
+        mock_model_class.create.assert_called_once()
+        self.assertEqual(result, mock_created_model)
+
+    @patch("sagemaker.serve.model_builder.Model")
+    @patch("sagemaker.serve.model_builder.is_1p_image_uri")
+    def test_build_single_modelbuilder_with_model_customization_no_jumpstart(
+        self, mock_is_1p, mock_model_class
+    ):
+        """Test _build_single_modelbuilder skips _fetch_and_cache_recipe_config when base_model is None."""
+        mock_is_1p.return_value = True
+
+        # Setup mock model package with base_model = None (custom model package, not JumpStart)
+        mock_model_package = Mock()
+        mock_container = Mock()
+        mock_container.base_model = None
+        mock_container.model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
+        mock_model_package.inference_specification.containers = [mock_container]
+
+        # Setup training job with model_package_config
+        self.mock_training_job.model_package_config = Mock()
+        self.mock_training_job.model_package_config.source_model_package_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/source"
+        )
+
+        mock_created_model = Mock()
+        mock_model_class.create.return_value = mock_created_model
+
+        builder = ModelBuilder(
+            model=self.mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-image:latest",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        with patch.object(builder, "_fetch_model_package", return_value=mock_model_package):
+            with patch.object(builder, "_fetch_and_cache_recipe_config") as mock_recipe:
+                with patch.object(builder, "_get_serve_setting", return_value=Mock()):
+                    with patch.object(builder, "_is_nova_model", return_value=False):
+                        with patch.object(builder, "_fetch_peft", return_value=None):
+                            result = builder._build_single_modelbuilder()
+
+        mock_recipe.assert_not_called()
         mock_model_class.create.assert_called_once()
         self.assertEqual(result, mock_created_model)
 
     def test_deploy_model_customization_new_endpoint(self):
         """Test _deploy_model_customization for new endpoint creation."""
         from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
-        from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent, Action, Association, Artifact
-        
+        from sagemaker.core.resources import (
+            Endpoint,
+            EndpointConfig,
+            InferenceComponent,
+            Action,
+            Association,
+            Artifact,
+        )
+
         # Setup mocks
         mock_endpoint_config = Mock()
         mock_endpoint = Mock()
         mock_endpoint.wait_for_status = Mock()
         mock_ic = Mock()
-        mock_ic.inference_component_arn = "arn:aws:sagemaker:us-east-1:123456789012:inference-component/test-ic"
+        mock_ic.inference_component_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:inference-component/test-ic"
+        )
         mock_action = Mock()
         mock_action.action_arn = "arn:aws:sagemaker:us-east-1:123456789012:action/test-action"
         mock_artifact = Mock()
-        mock_artifact.artifact_arn = "arn:aws:sagemaker:us-east-1:123456789012:artifact/test-artifact"
-        
+        mock_artifact.artifact_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:artifact/test-artifact"
+        )
+
         mock_model_package = Mock()
         mock_model_package.inference_specification.containers = [Mock()]
-        mock_model_package.inference_specification.containers[0].base_model.recipe_name = "test-recipe"
-        mock_model_package.inference_specification.containers[0].model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
-        
+        mock_model_package.inference_specification.containers[0].base_model.recipe_name = (
+            "test-recipe"
+        )
+        mock_model_package.inference_specification.containers[
+            0
+        ].model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
+
         builder = ModelBuilder(
             model=self.mock_training_job,
             role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
             sagemaker_session=self.mock_session,
             image_uri="test-image:latest",
-            instance_type="ml.g5.2xlarge"
+            instance_type="ml.g5.2xlarge",
         )
         builder._cached_compute_requirements = InferenceComponentComputeResourceRequirements(
-            min_memory_required_in_mb=1024,
-            number_of_cpu_cores_required=1
+            min_memory_required_in_mb=1024, number_of_cpu_cores_required=1
         )
-        
-        with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
-            with patch.object(builder, '_fetch_peft', return_value=None):
-                with patch.object(EndpointConfig, 'create', return_value=mock_endpoint_config):
-                    with patch.object(Endpoint, 'get', side_effect=ClientError({'Error': {'Code': 'ValidationException'}}, 'GetEndpoint')):
-                        with patch.object(Endpoint, 'create', return_value=mock_endpoint):
-                            with patch.object(InferenceComponent, 'create', return_value=mock_ic):
-                                with patch.object(InferenceComponent, 'get', return_value=mock_ic):
-                                    with patch.object(Action, 'create', return_value=mock_action):
-                                        with patch.object(Artifact, 'get_all', return_value=[mock_artifact]):
-                                            with patch.object(Association, 'add', return_value=None):
-                                                result = builder._deploy_model_customization(
-                                                    endpoint_name="test-endpoint",
-                                                    instance_type="ml.g5.2xlarge",
-                                                    initial_instance_count=1
-                                                )
-        
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
+
+        with patch.object(builder, "_fetch_model_package", return_value=mock_model_package):
+            with patch.object(builder, "_fetch_peft", return_value=None):
+                with patch.object(builder, "_is_nova_model", return_value=False):
+                    with patch.object(EndpointConfig, "create", return_value=mock_endpoint_config):
+                        with patch.object(
+                            Endpoint,
+                            "get",
+                            side_effect=ClientError(
+                                {"Error": {"Code": "ValidationException"}}, "GetEndpoint"
+                            ),
+                        ):
+                            with patch.object(Endpoint, "create", return_value=mock_endpoint):
+                                with patch.object(
+                                    InferenceComponent, "create", return_value=mock_ic
+                                ):
+                                    with patch.object(
+                                        InferenceComponent, "get", return_value=mock_ic
+                                    ):
+                                        with patch.object(
+                                            Action, "create", return_value=mock_action
+                                        ):
+                                            with patch.object(
+                                                Artifact, "get_all", return_value=[mock_artifact]
+                                            ):
+                                                with patch.object(
+                                                    Association, "add", return_value=None
+                                                ):
+                                                    result = builder._deploy_model_customization(
+                                                        endpoint_name="test-endpoint",
+                                                        instance_type="ml.g5.2xlarge",
+                                                        initial_instance_count=1,
+                                                    )
+
         self.assertEqual(result, mock_endpoint)
+
+    def test_deploy_model_customization_with_inference_config(self):
+        """Test _deploy_model_customization with inference_config parameter."""
+        from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
+        from sagemaker.core.resources import (
+            Endpoint,
+            EndpointConfig,
+            InferenceComponent,
+            Action,
+            Association,
+            Artifact,
+        )
+        from sagemaker.core.inference_config import ResourceRequirements
+
+        # Setup mocks
+        mock_endpoint_config = Mock()
+        mock_endpoint = Mock()
+        mock_endpoint.wait_for_status = Mock()
+        mock_ic = Mock()
+        mock_ic.inference_component_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:inference-component/test-ic"
+        )
+        mock_action = Mock()
+        mock_action.action_arn = "arn:aws:sagemaker:us-east-1:123456789012:action/test-action"
+        mock_artifact = Mock()
+        mock_artifact.artifact_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:artifact/test-artifact"
+        )
+
+        mock_model_package = Mock()
+        mock_model_package.inference_specification.containers = [Mock()]
+        mock_model_package.inference_specification.containers[0].base_model.recipe_name = (
+            "test-recipe"
+        )
+        mock_model_package.inference_specification.containers[
+            0
+        ].model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
+
+        builder = ModelBuilder(
+            model=self.mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-image:latest",
+            instance_type="ml.g5.12xlarge",
+        )
+
+        # Set cached compute requirements (should be overridden by inference_config)
+        builder._cached_compute_requirements = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=1024,
+            number_of_cpu_cores_required=1,
+            number_of_accelerator_devices_required=1,
+        )
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
+
+        # Create inference_config with different values
+        inference_config = ResourceRequirements(
+            requests={"num_accelerators": 4, "num_cpus": 8, "memory": 49152},
+            limits={"memory": 98304},
+        )
+
+        # Track the InferenceComponent.create call to verify compute requirements
+        created_ic_spec = None
+
+        def capture_ic_create(**kwargs):
+            nonlocal created_ic_spec
+            created_ic_spec = kwargs.get("specification")
+            return mock_ic
+
+        with patch.object(builder, "_fetch_model_package", return_value=mock_model_package):
+            with patch.object(builder, "_fetch_peft", return_value=None):
+                with patch.object(builder, "_is_nova_model", return_value=False):
+                    with patch.object(EndpointConfig, "create", return_value=mock_endpoint_config):
+                        with patch.object(
+                            Endpoint,
+                            "get",
+                            side_effect=ClientError(
+                                {"Error": {"Code": "ValidationException"}}, "GetEndpoint"
+                            ),
+                        ):
+                            with patch.object(Endpoint, "create", return_value=mock_endpoint):
+                                with patch.object(
+                                    InferenceComponent, "create", side_effect=capture_ic_create
+                                ):
+                                    with patch.object(
+                                        InferenceComponent, "get", return_value=mock_ic
+                                    ):
+                                        with patch.object(
+                                            Action, "create", return_value=mock_action
+                                        ):
+                                            with patch.object(
+                                                Artifact, "get_all", return_value=[mock_artifact]
+                                            ):
+                                                with patch.object(
+                                                    Association, "add", return_value=None
+                                                ):
+                                                    result = builder._deploy_model_customization(
+                                                        endpoint_name="test-endpoint",
+                                                        instance_type="ml.g5.12xlarge",
+                                                        initial_instance_count=1,
+                                                        inference_config=inference_config,
+                                                    )
+
+        # Verify the result
+        self.assertEqual(result, mock_endpoint)
+
+        # Verify that inference_config values were used (not cached values)
+        self.assertIsNotNone(created_ic_spec)
+        compute_reqs = created_ic_spec.compute_resource_requirements
+        self.assertEqual(compute_reqs.min_memory_required_in_mb, 49152)
+        self.assertEqual(compute_reqs.max_memory_required_in_mb, 98304)
+        self.assertEqual(compute_reqs.number_of_cpu_cores_required, 8)
+        self.assertEqual(compute_reqs.number_of_accelerator_devices_required, 4)
+
+    def test_deploy_model_customization_without_inference_config_uses_cached(self):
+        """Test _deploy_model_customization falls back to cached requirements when inference_config not provided."""
+        from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
+        from sagemaker.core.resources import (
+            Endpoint,
+            EndpointConfig,
+            InferenceComponent,
+            Action,
+            Association,
+            Artifact,
+        )
+
+        # Setup mocks
+        mock_endpoint_config = Mock()
+        mock_endpoint = Mock()
+        mock_endpoint.wait_for_status = Mock()
+        mock_ic = Mock()
+        mock_ic.inference_component_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:inference-component/test-ic"
+        )
+        mock_action = Mock()
+        mock_action.action_arn = "arn:aws:sagemaker:us-east-1:123456789012:action/test-action"
+        mock_artifact = Mock()
+        mock_artifact.artifact_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:artifact/test-artifact"
+        )
+
+        mock_model_package = Mock()
+        mock_model_package.inference_specification.containers = [Mock()]
+        mock_model_package.inference_specification.containers[0].base_model.recipe_name = (
+            "test-recipe"
+        )
+        mock_model_package.inference_specification.containers[
+            0
+        ].model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
+
+        builder = ModelBuilder(
+            model=self.mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-image:latest",
+            instance_type="ml.g5.2xlarge",
+        )
+
+        # Set cached compute requirements
+        cached_reqs = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=2048,
+            number_of_cpu_cores_required=2,
+            number_of_accelerator_devices_required=1,
+        )
+        builder._cached_compute_requirements = cached_reqs
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
+
+        # Track the InferenceComponent.create call to verify compute requirements
+        created_ic_spec = None
+
+        def capture_ic_create(**kwargs):
+            nonlocal created_ic_spec
+            created_ic_spec = kwargs.get("specification")
+            return mock_ic
+
+        with patch.object(builder, "_fetch_model_package", return_value=mock_model_package):
+            with patch.object(builder, "_fetch_peft", return_value=None):
+                with patch.object(builder, "_is_nova_model", return_value=False):
+                    with patch.object(EndpointConfig, "create", return_value=mock_endpoint_config):
+                        with patch.object(
+                            Endpoint,
+                            "get",
+                            side_effect=ClientError(
+                                {"Error": {"Code": "ValidationException"}}, "GetEndpoint"
+                            ),
+                        ):
+                            with patch.object(Endpoint, "create", return_value=mock_endpoint):
+                                with patch.object(
+                                    InferenceComponent, "create", side_effect=capture_ic_create
+                                ):
+                                    with patch.object(
+                                        InferenceComponent, "get", return_value=mock_ic
+                                    ):
+                                        with patch.object(
+                                            Action, "create", return_value=mock_action
+                                        ):
+                                            with patch.object(
+                                                Artifact, "get_all", return_value=[mock_artifact]
+                                            ):
+                                                with patch.object(
+                                                    Association, "add", return_value=None
+                                                ):
+                                                    result = builder._deploy_model_customization(
+                                                        endpoint_name="test-endpoint",
+                                                        instance_type="ml.g5.2xlarge",
+                                                        initial_instance_count=1,
+                                                        # Note: no inference_config parameter
+                                                    )
+
+        # Verify the result
+        self.assertEqual(result, mock_endpoint)
+
+        # Verify that cached requirements were used
+        self.assertIsNotNone(created_ic_spec)
+        compute_reqs = created_ic_spec.compute_resource_requirements
+        self.assertIs(compute_reqs, cached_reqs)
+
+    def test_deploy_nova_inference_component(self):
+        """Nova + ResourceRequirements deploys via the shared single-IC path.
+
+        A Nova checkpoint with an inference_config must NOT take the
+        model-on-variant path (_deploy_nova_model); it is hosted as a single
+        inference component referencing the built Model. The endpoint config
+        must set network isolation to match the Nova Model, or
+        CreateInferenceComponent rejects the mismatch.
+        """
+        from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent
+        from sagemaker.core.inference_config import ResourceRequirements
+
+        mock_endpoint = Mock()
+        mock_endpoint.wait_for_status = Mock()
+        mock_ic = Mock()
+        mock_ic.inference_component_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:inference-component/nova-ic"
+        )
+
+        builder = ModelBuilder(
+            model=self.mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-nova-image:latest",
+            instance_type="ml.p5.48xlarge",
+        )
+        builder.built_model = Mock()
+        builder.built_model.model_name = "nova-model"
+
+        inference_config = ResourceRequirements(
+            requests={"num_accelerators": 4, "num_cpus": 20, "memory": 35000, "copies": 1}
+        )
+
+        created_config_kwargs = {}
+
+        def capture_config_create(**kwargs):
+            created_config_kwargs.update(kwargs)
+            return Mock()
+
+        created_ic_kwargs = {}
+
+        def capture_ic_create(**kwargs):
+            created_ic_kwargs.update(kwargs)
+            return mock_ic
+
+        with patch.object(builder, "_is_nova_model", return_value=True):
+            with patch.object(builder, "_deploy_nova_model") as mock_deploy_nova:
+                with patch.object(builder, "_fetch_model_package", return_value=None):
+                    with patch.object(builder, "_does_endpoint_exist", return_value=False):
+                        with patch.object(
+                            EndpointConfig, "create", side_effect=capture_config_create
+                        ):
+                            with patch.object(Endpoint, "create", return_value=mock_endpoint):
+                                with patch.object(
+                                    InferenceComponent, "create", side_effect=capture_ic_create
+                                ):
+                                    result = builder._deploy_model_customization(
+                                        endpoint_name="nova-ic-endpoint",
+                                        instance_type="ml.p5.48xlarge",
+                                        initial_instance_count=1,
+                                        inference_config=inference_config,
+                                    )
+
+        # Routed through the IC path, not the model-on-variant Nova path.
+        mock_deploy_nova.assert_not_called()
+        self.assertEqual(result, mock_endpoint)
+
+        # Endpoint config network isolation matches the Nova Model.
+        self.assertTrue(created_config_kwargs.get("enable_network_isolation"))
+
+        # A single IC was created referencing the built Model with the requested
+        # compute requirements.
+        self.assertEqual(created_ic_kwargs["endpoint_name"], "nova-ic-endpoint")
+        ic_spec = created_ic_kwargs["specification"]
+        self.assertEqual(ic_spec.model_name, "nova-model")
+        compute_reqs = ic_spec.compute_resource_requirements
+        self.assertEqual(compute_reqs.number_of_accelerator_devices_required, 4)
+        self.assertEqual(compute_reqs.number_of_cpu_cores_required, 20)
+        self.assertEqual(compute_reqs.min_memory_required_in_mb, 35000)
+
+    def test_deploy_passes_inference_config_to_model_customization(self):
+        """Test deploy() passes inference_config to _deploy_model_customization."""
+        from sagemaker.core.inference_config import ResourceRequirements
+
+        # Create a mock training job that will be recognized as model customization
+        mock_training_job = Mock()
+        mock_training_job.training_job_name = "test-training-job"
+
+        builder = ModelBuilder(
+            model=mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-image:latest",
+            instance_type="ml.g5.12xlarge",
+        )
+
+        # Mark as built
+        builder.built_model = Mock()
+
+        # Create inference_config
+        inference_config = ResourceRequirements(
+            requests={"num_accelerators": 4, "num_cpus": 8, "memory": 49152}
+        )
+
+        # Mock _is_model_customization to return True
+        with patch.object(builder, "_is_model_customization", return_value=True):
+            # Mock _deploy_model_customization to capture the call
+            with patch.object(builder, "_deploy_model_customization") as mock_deploy_mc:
+                mock_endpoint = Mock()
+                mock_deploy_mc.return_value = mock_endpoint
+
+                # Call deploy with inference_config
+                result = builder.deploy(
+                    endpoint_name="test-endpoint", inference_config=inference_config
+                )
+
+                # Verify _deploy_model_customization was called with inference_config
+                mock_deploy_mc.assert_called_once()
+                call_kwargs = mock_deploy_mc.call_args[1]
+                self.assertEqual(call_kwargs["inference_config"], inference_config)
+                self.assertEqual(result, mock_endpoint)
+
+
+class TestLoraAcceptEula(unittest.TestCase):
+    """Tests for accept_eula handling in the LoRA deployment path."""
+
+    def _make_mb(self, accept_eula=None):
+        mb = ModelBuilder.__new__(ModelBuilder)
+        mb.accept_eula = accept_eula
+        mb.image_uri = "some-image-uri"
+        mb.env_vars = {}
+        mb.model_name = None
+        mb.model_path = "/tmp/fake-model-path"
+        mb.role_arn = "arn:aws:iam::123456789012:role/role"
+        mb.model = MagicMock()
+        mb._adapter_s3_uri = None
+        mb.shared_libs = []
+        mb.dependencies = {"auto": True}
+        mb.image_config = None
+        mb.inference_spec = None
+        mb.schema_builder = None
+        mb.modelbuilder_list = None
+        mb.sagemaker_session = None
+        mb.s3_model_data_url = None
+        mb.source_code = None
+        mb.model_server = None
+        mb.model_metadata = None
+        mb.log_level = None
+        mb.content_type = None
+        mb.accept_type = None
+        mb.compute = None
+        mb.network = None
+        mb.instance_type = None
+        mb.mode = None
+        return mb
+
+    def _patch_lora_deps(self, mb, hosting_uri="s3://bucket/hosting/", hosting_eula_uri=None):
+        """Patch all dependencies needed to reach the LoRA ContainerDefinition block.
+
+        Pass ``hosting_eula_uri`` to simulate a gated model whose hub content
+        document declares a ``HostingEulaUri``; omit it to simulate an ungated
+        (e.g. Apache-2.0) model.
+        """
+        hub_document = {"HostingArtifactUri": hosting_uri}
+        if hosting_eula_uri is not None:
+            hub_document["HostingEulaUri"] = hosting_eula_uri
+        patches = [
+            patch.object(mb, "_get_serve_setting", return_value=MagicMock()),
+            patch.object(mb, "_is_model_customization", return_value=True),
+            patch.object(mb, "_fetch_model_package", return_value=MagicMock()),
+            patch.object(mb, "_fetch_and_cache_recipe_config"),
+            patch.object(mb, "_is_nova_model", return_value=False),
+            patch.object(mb, "_fetch_peft", return_value="LORA"),
+            patch.object(
+                mb,
+                "_resolve_lora_adapter_s3_uri",
+                return_value="s3://test-bucket/adapter/checkpoints/hf/",
+            ),
+            patch.object(mb, "_fetch_hub_document_for_custom_model", return_value=hub_document),
+        ]
+        return patches
+
+    _GATED_EULA_URI = "s3://jumpstart-cache-prod/eula/llama_eula.txt"
+
+    def test_lora_gated_build_raises_when_accept_eula_false(self):
+        mb = self._make_mb(accept_eula=False)
+        patches = self._patch_lora_deps(mb, hosting_eula_uri=self._GATED_EULA_URI)
+        for p in patches:
+            p.start()
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                mb._build_single_modelbuilder()
+            self.assertIn("accept_eula", str(ctx.exception))
+        finally:
+            for p in patches:
+                p.stop()
+
+    def test_lora_gated_build_raises_when_accept_eula_not_set(self):
+        mb = self._make_mb(accept_eula=None)
+        patches = self._patch_lora_deps(mb, hosting_eula_uri=self._GATED_EULA_URI)
+        for p in patches:
+            p.start()
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                mb._build_single_modelbuilder()
+            self.assertIn("accept_eula", str(ctx.exception))
+        finally:
+            for p in patches:
+                p.stop()
+
+    @patch("sagemaker.serve.model_builder.ContainerDefinition")
+    @patch("sagemaker.serve.model_builder.Model")
+    def test_lora_gated_build_passes_accept_eula_true(self, mock_model, mock_container_def):
+        mb = self._make_mb(accept_eula=True)
+        mock_model.create.return_value = MagicMock()
+        patches = self._patch_lora_deps(mb, hosting_eula_uri=self._GATED_EULA_URI)
+        for p in patches:
+            p.start()
+        try:
+            mb._build_single_modelbuilder()
+            call_kwargs = mock_container_def.call_args[1]
+            eula_val = call_kwargs["model_data_source"]["s3_data_source"]["model_access_config"][
+                "accept_eula"
+            ]
+            self.assertTrue(eula_val)
+        finally:
+            for p in patches:
+                p.stop()
+
+
+class TestModelReuse(unittest.TestCase):
+    """Test ModelBuilder model reuse integration."""
+
+    def setUp(self):
+        self.mock_session = Mock()
+        self.mock_session.boto_region_name = "us-west-2"
+        self.mock_session.default_bucket.return_value = "test-bucket"
+        self.mock_session.default_bucket_prefix = "test-prefix"
+        self.mock_session.boto_session = Mock()
+        self.mock_session.boto_session.region_name = "us-west-2"
+        self.mock_session.config = {}
+        self.mock_session.sagemaker_config = {}
+        self.mock_session.settings = Mock()
+        self.mock_session.settings.include_jumpstart_tags = False
+        self.mock_session.settings._local_download_dir = None
+
+    def _make_builder(self, **overrides):
+        defaults = dict(
+            model=Mock(),
+            model_server=ModelServer.TORCHSERVE,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+        )
+        defaults.update(overrides)
+        return ModelBuilder(**defaults)
+
+    def test_resolve_model_source_id_returns_model_package_arn(self):
+        model_package = Mock(spec=["model_package_arn"])
+        model_package.model_package_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-pkg/1"
+        )
+
+        with patch.object(ModelBuilder, "_fetch_model_package_arn") as mock_fetch:
+            mock_fetch.return_value = (
+                "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-pkg/1"
+            )
+            builder = self._make_builder()
+            result = builder._resolve_model_source_id()
+
+        assert result == "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-pkg/1"
+
+    def test_resolve_model_source_id_returns_s3_artifact_uri(self):
+        with patch.object(ModelBuilder, "_fetch_model_package_arn", return_value=None):
+            builder = self._make_builder(s3_model_data_url="s3://my-bucket/artifacts/model.tar.gz")
+            result = builder._resolve_model_source_id()
+
+        assert result == "s3://my-bucket/artifacts/model.tar.gz"
+
+    def test_resolve_model_source_id_returns_none_when_no_source(self):
+        with patch.object(ModelBuilder, "_fetch_model_package_arn", return_value=None):
+            builder = self._make_builder(s3_model_data_url=None)
+            builder.model = 12345
+            result = builder._resolve_model_source_id()
+
+        assert result is None
+
+    def test_resolve_model_source_id_returns_raw_s3_model(self):
+        with patch.object(ModelBuilder, "_fetch_model_package_arn", return_value=None):
+            builder = self._make_builder(model="s3://bucket/checkpoint/", s3_model_data_url=None)
+            result = builder._resolve_model_source_id()
+
+        assert result == "s3://bucket/checkpoint/"
+
+    def test_is_raw_s3_model(self):
+        builder = self._make_builder(model="s3://bucket/checkpoint/")
+        assert builder._is_raw_s3_model() is True
+
+        builder = self._make_builder(model="nova-textgeneration-lite")
+        assert builder._is_raw_s3_model() is False
+
+    def test_base_model_name_from_model_metadata(self):
+        with patch.object(ModelBuilder, "_fetch_model_package", return_value=None):
+            builder = self._make_builder(
+                model="s3://bucket/checkpoint/",
+                model_metadata={"BASE_MODEL_NAME": "nova-textgeneration-lite"},
+            )
+            assert builder._base_model_name() == "nova-textgeneration-lite"
+
+    def test_is_model_customization_raw_s3_nova(self):
+        with patch.object(ModelBuilder, "_fetch_model_package", return_value=None):
+            builder = self._make_builder(
+                model="s3://bucket/checkpoint/",
+                model_metadata={"BASE_MODEL_NAME": "nova-textgeneration-lite"},
+            )
+            assert builder._is_model_customization() is True
+
+    def test_is_model_customization_raw_s3_non_nova_is_false(self):
+        with patch.object(ModelBuilder, "_fetch_model_package", return_value=None):
+            builder = self._make_builder(
+                model="s3://bucket/checkpoint/",
+                model_metadata={"BASE_MODEL_NAME": "llama-3-8b"},
+            )
+            assert builder._is_model_customization() is False
+
+    def test_is_model_customization_raw_s3_without_base_model_is_false(self):
+        with patch.object(ModelBuilder, "_fetch_model_package", return_value=None):
+            builder = self._make_builder(model="s3://bucket/checkpoint/", model_metadata=None)
+            assert builder._is_model_customization() is False
+
+    def test_resolve_nova_escrow_uri_raw_s3(self):
+        with patch.object(ModelBuilder, "_fetch_model_package", return_value=None):
+            builder = self._make_builder(
+                model="s3://bucket/checkpoint/",
+                model_metadata={"BASE_MODEL_NAME": "nova-textgeneration-lite"},
+            )
+            assert builder._resolve_nova_escrow_uri() == "s3://bucket/checkpoint"
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_deploy_with_existing_endpoint_returns_without_creating(
+        self, mock_find, mock_endpoint_get
+    ):
+        existing_arn = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/existing-ep"
+        mock_find.return_value = existing_arn
+        mock_endpoint = Mock()
+        mock_endpoint_get.return_value = mock_endpoint
+
+        with (
+            patch.object(
+                ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"
+            ),
+            patch.object(ModelBuilder, "_reused_endpoint_matches_config", return_value=True),
+        ):
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+
+            result = builder.deploy(endpoint_name="existing-ep", reuse_resources=True)
+
+        # deploy() discovers the reusable endpoint via _find_reusable_endpoint,
+        # which queries find_existing_sagemaker_endpoint with the session's
+        # sagemaker_client and the resolved source id.
+        mock_find.assert_called_once_with(
+            self.mock_session.sagemaker_client,
+            "s3://bucket/model",
+        )
+        mock_endpoint_get.assert_called_once_with(
+            endpoint_name="existing-ep",
+            session=self.mock_session.boto_session,
+            region="us-west-2",
+        )
+        assert result == mock_endpoint
+
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_deploy_with_no_existing_endpoint_creates_and_tags(self, mock_find):
+        mock_find.return_value = None
+
+        with (
+            patch.object(
+                ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"
+            ),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_get_deploy_wrapper") as mock_get_wrapper,
+            patch.object(ModelBuilder, "add_tags") as mock_add_tags,
+        ):
+            mock_deploy = Mock(return_value=Mock())
+            mock_get_wrapper.return_value = mock_deploy
+
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+
+            builder.deploy(endpoint_name="new-ep", reuse_resources=True)
+
+        mock_find.assert_called_once()
+        mock_add_tags.assert_called_once()
+        tag_arg = mock_add_tags.call_args[0][0][0]
+        assert tag_arg["Key"] == "sagemaker.amazonaws.com/model-source"
+        assert tag_arg["Value"] == "s3://bucket/model"
+
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_deploy_default_skips_lookup_but_tags(self, mock_find):
+        with (
+            patch.object(
+                ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"
+            ),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_get_deploy_wrapper") as mock_get_wrapper,
+            patch.object(ModelBuilder, "add_tags") as mock_add_tags,
+        ):
+            mock_deploy = Mock(return_value=Mock())
+            mock_get_wrapper.return_value = mock_deploy
+
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+
+            # Default is reuse_resources=False: no lookup, but new endpoint is tagged.
+            builder.deploy(endpoint_name="forced-ep")
+
+        mock_find.assert_not_called()
+        mock_add_tags.assert_called_once()
+        tag_arg = mock_add_tags.call_args[0][0][0]
+        assert tag_arg["Key"] == "sagemaker.amazonaws.com/model-source"
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_deploy_skips_reuse_when_config_mismatch(self, mock_find, mock_endpoint_get):
+        mock_find.return_value = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/existing-ep"
+
+        with (
+            patch.object(
+                ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"
+            ),
+            patch.object(ModelBuilder, "_reused_endpoint_matches_config", return_value=False),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_get_deploy_wrapper") as mock_get_wrapper,
+            patch.object(ModelBuilder, "add_tags"),
+        ):
+            mock_deploy = Mock(return_value=Mock())
+            mock_get_wrapper.return_value = mock_deploy
+
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+
+            builder.deploy(endpoint_name="new-ep", reuse_resources=True)
+
+        # A config mismatch must not return the existing endpoint; a new one is created.
+        mock_endpoint_get.assert_not_called()
+        mock_deploy.assert_called_once()
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_reuse_does_not_intercept_inference_component_deploy(
+        self, mock_find, mock_endpoint_get
+    ):
+        # reuse_resources=True must NOT short-circuit an IC deploy; the IC path
+        # (inference_config is a ResourceRequirements) manages its own reuse.
+        from sagemaker.core.inference_config import ResourceRequirements
+
+        with (
+            patch.object(
+                ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"
+            ),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_find_reusable_endpoint") as mock_find_reusable,
+            patch.object(ModelBuilder, "_deploy") as mock_deploy,
+            patch.object(ModelBuilder, "add_tags"),
+        ):
+            mock_deploy.return_value = Mock()
+
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+
+            builder.deploy(
+                endpoint_name="ic-ep",
+                inference_config=ResourceRequirements(
+                    requests={"num_accelerators": 1, "memory": 1024, "copies": 1}
+                ),
+                reuse_resources=True,
+            )
+
+        # The reuse gate must be bypassed entirely for IC deployments.
+        mock_find_reusable.assert_not_called()
+        mock_endpoint_get.assert_not_called()
+        mock_deploy.assert_called_once()
+
+    def _stub_endpoint_config_client(self, instance_type):
+        # Describe an endpoint whose production variant runs on `instance_type`.
+        client = self.mock_session.sagemaker_client
+        client.describe_endpoint.return_value = {"EndpointConfigName": "cfg"}
+        client.describe_endpoint_config.return_value = {
+            "ProductionVariants": [{"ModelName": "m", "InstanceType": instance_type}]
+        }
+        client.describe_model.return_value = {
+            "PrimaryContainer": {"Environment": {}, "Image": "img:1"}
+        }
+        return client
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_deploy_ignores_cached_endpoint_when_instance_type_mismatches(
+        self, mock_find, mock_endpoint_get
+    ):
+        # An endpoint found by source tag must be re-validated against the deploy-time
+        # instance_type; a config mismatch falls through to create a new endpoint.
+        self._stub_endpoint_config_client(instance_type="ml.g5.xlarge")
+        mock_find.return_value = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/existing-ep"
+
+        with (
+            patch.object(
+                ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"
+            ),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_get_deploy_wrapper") as mock_get_wrapper,
+            patch.object(ModelBuilder, "add_tags"),
+        ):
+            mock_deploy = Mock(return_value=Mock())
+            mock_get_wrapper.return_value = mock_deploy
+
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+
+            builder.deploy(
+                endpoint_name="new-ep",
+                instance_type="ml.p4d.24xlarge",
+                reuse_resources=True,
+            )
+
+        # Instance-type mismatch: fall through and create a new endpoint.
+        mock_endpoint_get.assert_not_called()
+        mock_deploy.assert_called_once()
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_deploy_reuses_cached_endpoint_when_instance_type_matches(
+        self, mock_find, mock_endpoint_get
+    ):
+        # A matching instance_type still reuses the endpoint (no over-correction).
+        self._stub_endpoint_config_client(instance_type="ml.p4d.24xlarge")
+        mock_endpoint = Mock()
+        mock_endpoint_get.return_value = mock_endpoint
+        mock_find.return_value = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/cached-ep"
+
+        with (
+            patch.object(
+                ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"
+            ),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_get_deploy_wrapper") as mock_get_wrapper,
+            patch.object(ModelBuilder, "add_tags"),
+        ):
+            mock_deploy = Mock(return_value=Mock())
+            mock_get_wrapper.return_value = mock_deploy
+
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+
+            result = builder.deploy(
+                endpoint_name="new-ep",
+                instance_type="ml.p4d.24xlarge",
+                reuse_resources=True,
+            )
+
+        # Config match: endpoint reused, not recreated.
+        mock_deploy.assert_not_called()
+        assert result == mock_endpoint
+
+    def _make_customization_builder(self):
+        from sagemaker.core.resources import TrainingJob
+
+        training_job = Mock(spec=TrainingJob)
+        training_job.model_artifacts = Mock(s3_model_artifacts="s3://test-bucket/training-output")
+        builder = self._make_builder(model=training_job, instance_type="ml.g5.4xlarge")
+        return builder
+
+    @staticmethod
+    def _make_customization_package(recipe_name="test-lora"):
+        package = Mock()
+        package.model_package_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package/test-package/1"
+        )
+        container = Mock()
+        container.base_model.recipe_name = recipe_name
+        container.model_data_source.s3_data_source.s3_uri = "s3://test-bucket/model"
+        package.inference_specification.containers = [container]
+        return package
+
+    def test_reused_model_marker_lifecycle_and_reset(self):
+        from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
+
+        reused_model = Mock(model_name="reused-model", model_arn="reused-model-arn")
+        builder = self._make_customization_builder()
+        assert builder._built_model_was_reused is False
+
+        with (
+            patch.object(builder, "_get_serve_setting", return_value=Mock()),
+            patch.object(builder, "_find_reusable_model", return_value=reused_model),
+        ):
+            assert builder.build(reuse_resources=True) is reused_model
+
+        assert builder._built_model_was_reused is True
+        builder._cached_compute_requirements = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=1024
+        )
+        builder._adapter_s3_uri = "s3://test-bucket/adapter"
+        builder._reset_build_state()
+        assert builder._built_model_was_reused is False
+        assert not hasattr(builder, "_cached_compute_requirements")
+        assert not hasattr(builder, "_adapter_s3_uri")
+
+        created_model = Mock(model_name="created-model", model_arn="created-model-arn")
+
+        def create_model(**_kwargs):
+            builder.built_model = created_model
+            return created_model
+
+        with (
+            patch.object(builder, "_get_serve_setting", return_value=Mock()),
+            patch.object(builder, "_find_reusable_model", return_value=None),
+            patch.object(builder, "_build_single_modelbuilder", side_effect=create_model),
+        ):
+            assert builder.build(reuse_resources=True) is created_model
+
+        assert builder._built_model_was_reused is False
+
+    @patch("sagemaker.serve.model_builder.InferenceComponent.create")
+    @patch("sagemaker.serve.model_builder.EndpointConfig.create")
+    @patch("sagemaker.serve.model_builder.Endpoint.create")
+    @patch("sagemaker.serve.model_builder.Model.create")
+    def test_reuse_hit_returns_exact_model_and_endpoint_without_preparation(
+        self, mock_model_create, mock_endpoint_create, mock_config_create, mock_ic_create
+    ):
+        reused_model = Mock(model_name="reused-model", model_arn="reused-model-arn")
+        reused_endpoint = Mock(endpoint_name="reused-endpoint", endpoint_arn="reused-endpoint-arn")
+        builder = self._make_customization_builder()
+
+        with (
+            patch.object(builder, "_get_serve_setting", return_value=Mock()),
+            patch.object(builder, "_find_reusable_model", return_value=reused_model),
+            patch.object(builder, "_find_reusable_endpoint", return_value="reused-endpoint"),
+            patch.object(builder, "_deploy_model_customization") as mock_custom_deploy,
+            patch.object(
+                builder, "_prepare_reused_model_customization_deployment_state"
+            ) as mock_prepare,
+            patch("sagemaker.serve.model_builder.Endpoint.get", return_value=reused_endpoint),
+        ):
+            assert builder.build(reuse_resources=True) is reused_model
+            assert builder.deploy(reuse_resources=True) is reused_endpoint
+
+        assert builder.built_model is reused_model
+        mock_prepare.assert_not_called()
+        mock_custom_deploy.assert_not_called()
+        mock_model_create.assert_not_called()
+        mock_config_create.assert_not_called()
+        mock_endpoint_create.assert_not_called()
+        mock_ic_create.assert_not_called()
+
+    def test_lora_model_reuse_endpoint_miss_restores_state_before_writes(self):
+        from sagemaker.core.resources import (
+            Action,
+            Artifact,
+            Association,
+            Endpoint,
+            EndpointConfig,
+            InferenceComponent,
+            Model,
+            Tag,
+        )
+        from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
+
+        package = self._make_customization_package()
+        reused_model = Mock(model_name="reused-model", model_arn="reused-model-arn")
+        created_endpoint = Mock(endpoint_name="new-endpoint", endpoint_arn="new-endpoint-arn")
+        created_endpoint.wait_for_status = Mock()
+        base_component = Mock(inference_component_arn="base-component-arn")
+        base_component.wait_for_status = Mock()
+        compute_requirements = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=2048,
+            number_of_cpu_cores_required=4,
+            number_of_accelerator_devices_required=1,
+        )
+        adapter_uri = "s3://test-bucket/training-output/checkpoints/hf/"
+        builder = self._make_customization_builder()
+        create_calls = []
+
+        def prepare_recipe():
+            builder._cached_compute_requirements = compute_requirements
+
+        def create_config(**kwargs):
+            assert builder._cached_compute_requirements is compute_requirements
+            assert builder._adapter_s3_uri == adapter_uri
+            create_calls.append(("config", kwargs))
+            return Mock()
+
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(builder, "_get_serve_setting", return_value=Mock()))
+            stack.enter_context(
+                patch.object(builder, "_find_reusable_model", return_value=reused_model)
+            )
+            stack.enter_context(patch.object(builder, "_find_reusable_endpoint", return_value=None))
+            stack.enter_context(
+                patch.object(builder, "_resolve_model_source_id", return_value="test-source")
+            )
+            stack.enter_context(patch.object(builder, "add_tags"))
+            stack.enter_context(patch.object(builder, "_is_model_customization", return_value=True))
+            stack.enter_context(patch.object(builder, "_is_nova_model", return_value=False))
+            stack.enter_context(patch.object(builder, "_fetch_model_package", return_value=package))
+            stack.enter_context(patch.object(builder, "_fetch_peft", return_value="LORA"))
+            stack.enter_context(
+                patch.object(builder, "_fetch_and_cache_recipe_config", side_effect=prepare_recipe)
+            )
+            stack.enter_context(
+                patch.object(builder, "_resolve_lora_adapter_s3_uri", return_value=adapter_uri)
+            )
+            stack.enter_context(patch.object(builder, "_does_endpoint_exist", return_value=False))
+            stack.enter_context(patch.object(EndpointConfig, "create", side_effect=create_config))
+            stack.enter_context(patch.object(Endpoint, "create", return_value=created_endpoint))
+            stack.enter_context(patch.object(InferenceComponent, "get_all", return_value=[]))
+            mock_ic_create = stack.enter_context(
+                patch.object(InferenceComponent, "create", return_value=Mock())
+            )
+            stack.enter_context(
+                patch.object(InferenceComponent, "get", return_value=base_component)
+            )
+            stack.enter_context(patch.object(Tag, "get_all", return_value=[]))
+            stack.enter_context(
+                patch.object(Action, "create", side_effect=Exception("skip lineage"))
+            )
+            stack.enter_context(patch.object(Artifact, "get_all", return_value=[]))
+            stack.enter_context(patch.object(Association, "add"))
+            mock_model_create = stack.enter_context(patch.object(Model, "create"))
+
+            assert builder.build(reuse_resources=True) is reused_model
+            result = builder.deploy(endpoint_name="new-endpoint", reuse_resources=True)
+
+        assert result is created_endpoint
+        assert builder.built_model is reused_model
+        assert create_calls[0][0] == "config"
+        assert mock_ic_create.call_count == 2
+        base_spec = mock_ic_create.call_args_list[0].kwargs["specification"]
+        adapter_spec = mock_ic_create.call_args_list[1].kwargs["specification"]
+        assert base_spec.compute_resource_requirements is compute_requirements
+        assert adapter_spec.container.artifact_url == adapter_uri
+        mock_model_create.assert_not_called()
+
+    def test_reused_non_lora_restores_compute_without_creating_adapter(self):
+        from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent, Model
+        from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
+
+        package = self._make_customization_package(recipe_name="full-finetuning")
+        endpoint = Mock()
+        endpoint.wait_for_status = Mock()
+        compute_requirements = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=1024
+        )
+        builder = self._make_customization_builder()
+        builder.built_model = Mock(model_name="reused-model")
+        builder._built_model_was_reused = True
+
+        def prepare_recipe():
+            builder._cached_compute_requirements = compute_requirements
+
+        with (
+            patch.object(builder, "_is_nova_model", return_value=False),
+            patch.object(builder, "_fetch_model_package", return_value=package),
+            patch.object(builder, "_fetch_peft", return_value=None),
+            patch.object(builder, "_fetch_and_cache_recipe_config", side_effect=prepare_recipe),
+            patch.object(builder, "_does_endpoint_exist", return_value=False),
+            patch.object(EndpointConfig, "create"),
+            patch.object(Endpoint, "create", return_value=endpoint),
+            patch.object(InferenceComponent, "create", return_value=Mock()) as mock_ic_create,
+            patch.object(Model, "create") as mock_model_create,
+        ):
+            result = builder._deploy_model_customization(endpoint_name="new-endpoint")
+
+        assert result is endpoint
+        assert mock_ic_create.call_count == 1
+        assert (
+            mock_ic_create.call_args.kwargs["specification"].compute_resource_requirements
+            is compute_requirements
+        )
+        mock_model_create.assert_not_called()
+
+    def test_reused_lora_explicit_requirements_preserve_values_and_restore_adapter(self):
+        from sagemaker.core.inference_config import ResourceRequirements
+        from sagemaker.core.resources import (
+            Endpoint,
+            EndpointConfig,
+            InferenceComponent,
+            Model,
+            Tag,
+        )
+
+        package = self._make_customization_package()
+        endpoint = Mock()
+        endpoint.wait_for_status = Mock()
+        base_component = Mock(inference_component_arn="base-component-arn")
+        base_component.wait_for_status = Mock()
+        requirements = ResourceRequirements(
+            requests={"num_cpus": 8, "memory": 49152, "num_accelerators": 4, "copies": 3},
+            limits={"memory": 98304},
+        )
+        adapter_uri = "s3://test-bucket/training-output/checkpoints/hf/"
+        builder = self._make_customization_builder()
+        builder.built_model = Mock(model_name="reused-model")
+        builder._built_model_was_reused = True
+
+        with (
+            patch.object(builder, "_is_nova_model", return_value=False),
+            patch.object(builder, "_fetch_model_package", return_value=package),
+            patch.object(builder, "_fetch_peft", return_value="LORA"),
+            patch.object(builder, "_fetch_and_cache_recipe_config") as mock_recipe,
+            patch.object(builder, "_resolve_lora_adapter_s3_uri", return_value=adapter_uri),
+            patch.object(builder, "_does_endpoint_exist", return_value=False),
+            patch.object(EndpointConfig, "create"),
+            patch.object(Endpoint, "create", return_value=endpoint),
+            patch.object(InferenceComponent, "get_all", return_value=[]),
+            patch.object(InferenceComponent, "create", return_value=Mock()) as mock_ic_create,
+            patch.object(InferenceComponent, "get", return_value=base_component),
+            patch.object(Tag, "get_all", return_value=[]),
+            patch.object(Model, "create") as mock_model_create,
+        ):
+            builder._deploy_model_customization(
+                endpoint_name="new-endpoint", inference_config=requirements
+            )
+
+        mock_recipe.assert_not_called()
+        base_call = mock_ic_create.call_args_list[0]
+        compute = base_call.kwargs["specification"].compute_resource_requirements
+        assert compute.number_of_cpu_cores_required == 8
+        assert compute.min_memory_required_in_mb == 49152
+        assert compute.max_memory_required_in_mb == 98304
+        assert compute.number_of_accelerator_devices_required == 4
+        assert base_call.kwargs["runtime_config"].copy_count == 3
+        assert (
+            mock_ic_create.call_args_list[1].kwargs["specification"].container.artifact_url
+            == adapter_uri
+        )
+        assert requirements.copy_count == 3
+        mock_model_create.assert_not_called()
+
+    def test_lora_adapter_uri_resolver_supported_and_rejected_sources(self):
+        from sagemaker.core.resources import ModelPackage, TrainingJob
+        from sagemaker.train.agent_rft_job import AgentRFTJob
+        from sagemaker.train.base_trainer import BaseTrainer
+        from sagemaker.train.model_trainer import ModelTrainer
+
+        package = self._make_customization_package()
+        cases = []
+
+        training_job = Mock(spec=TrainingJob)
+        training_job.model_artifacts = Mock(s3_model_artifacts="s3://test-bucket/training")
+        cases.append((training_job, "s3://test-bucket/training/checkpoints/hf/"))
+
+        model_trainer = Mock(spec=ModelTrainer)
+        model_trainer._latest_training_job = Mock(
+            model_artifacts=Mock(s3_model_artifacts="s3://test-bucket/trainer")
+        )
+        cases.append((model_trainer, "s3://test-bucket/trainer/checkpoints/hf/"))
+
+        agent_job = Mock(spec=AgentRFTJob)
+        cases.append((agent_job, "s3://test-bucket/model/checkpoints/hf/"))
+
+        model_package = Mock(spec=ModelPackage)
+        cases.append((model_package, "s3://test-bucket/model/model/checkpoints/hf/"))
+
+        for model, expected in cases:
+            with self.subTest(model_type=type(model).__name__):
+                builder = self._make_builder(model=model)
+                assert builder._resolve_lora_adapter_s3_uri(package) == expected
+
+        unsupported = Mock(spec=BaseTrainer)
+        builder = self._make_builder(model=unsupported)
+        with self.assertRaisesRegex(ValueError, "Use a TrainingJob"):
+            builder._resolve_lora_adapter_s3_uri(package)
+
+        from sagemaker.core.inference_config import ResourceRequirements
+        from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent
+
+        builder.built_model = Mock(model_name="reused-model")
+        builder._built_model_was_reused = True
+        requirements = ResourceRequirements(requests={"memory": 4096})
+        with (
+            patch.object(builder, "_is_nova_model", return_value=False),
+            patch.object(builder, "_fetch_model_package", return_value=package),
+            patch.object(builder, "_fetch_peft", return_value="LORA"),
+            patch.object(builder, "_does_endpoint_exist") as mock_endpoint_exists,
+            patch.object(EndpointConfig, "create") as mock_config_create,
+            patch.object(Endpoint, "create") as mock_endpoint_create,
+            patch.object(InferenceComponent, "create") as mock_ic_create,
+        ):
+            with self.assertRaisesRegex(ValueError, "Use a TrainingJob"):
+                builder._deploy_model_customization(
+                    endpoint_name="new-endpoint", inference_config=requirements
+                )
+
+        mock_endpoint_exists.assert_not_called()
+        mock_config_create.assert_not_called()
+        mock_endpoint_create.assert_not_called()
+        mock_ic_create.assert_not_called()
+
+
+class TestReusedEndpointMatchesConfig(unittest.TestCase):
+    """Tests for ModelBuilder._reused_endpoint_matches_config."""
+
+    def _make_builder(self, **overrides):
+        session = Mock()
+        session.boto_session = Mock()
+        defaults = dict(
+            model=Mock(),
+            model_server=ModelServer.TORCHSERVE,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=session,
+        )
+        defaults.update(overrides)
+        builder = ModelBuilder(**defaults)
+        return builder
+
+    def _stub_sagemaker_client(self, builder, env=None, image=None, instance_type=None):
+        client = Mock()
+        client.describe_endpoint.return_value = {"EndpointConfigName": "cfg"}
+        client.describe_endpoint_config.return_value = {
+            "ProductionVariants": [
+                {"ModelName": "m", "InstanceType": instance_type or "ml.g5.xlarge"}
+            ]
+        }
+        client.describe_model.return_value = {
+            "PrimaryContainer": {
+                "Environment": env or {},
+                "Image": image or "img:1",
+            }
+        }
+        builder.sagemaker_session.sagemaker_client = client
+        return client
+
+    def test_matches_when_env_and_image_and_instance_match(self):
+        builder = self._make_builder(env_vars={"A": "1"}, image_uri="img:1")
+        self._stub_sagemaker_client(
+            builder, env={"A": "1"}, image="img:1", instance_type="ml.g5.xlarge"
+        )
+        assert builder._reused_endpoint_matches_config("ep", instance_type="ml.g5.xlarge") is True
+
+    def test_matches_nova_model_using_containers_list(self):
+        # Nova / model-customization models expose config via Containers, not
+        # PrimaryContainer. The match must read from Containers[0] in that case.
+        builder = self._make_builder(env_vars={"A": "1"}, image_uri="img:1")
+        client = Mock()
+        client.describe_endpoint.return_value = {"EndpointConfigName": "cfg"}
+        client.describe_endpoint_config.return_value = {
+            "ProductionVariants": [{"ModelName": "m", "InstanceType": "ml.p4d.24xlarge"}]
+        }
+        client.describe_model.return_value = {
+            "PrimaryContainer": None,
+            "Containers": [{"Environment": {"A": "1"}, "Image": "img:1"}],
+        }
+        builder.sagemaker_session.sagemaker_client = client
+        assert (
+            builder._reused_endpoint_matches_config("ep", instance_type="ml.p4d.24xlarge") is True
+        )
+
+    def test_mismatch_on_env_vars(self):
+        builder = self._make_builder(env_vars={"A": "2"}, image_uri="img:1")
+        self._stub_sagemaker_client(builder, env={"A": "1"}, image="img:1")
+        assert builder._reused_endpoint_matches_config("ep") is False
+
+    def test_mismatch_on_image(self):
+        builder = self._make_builder(env_vars={"A": "1"}, image_uri="img:2")
+        self._stub_sagemaker_client(builder, env={"A": "1"}, image="img:1")
+        assert builder._reused_endpoint_matches_config("ep") is False
+
+    def test_mismatch_on_instance_type(self):
+        builder = self._make_builder(env_vars={"A": "1"}, image_uri="img:1")
+        self._stub_sagemaker_client(
+            builder, env={"A": "1"}, image="img:1", instance_type="ml.g5.xlarge"
+        )
+        assert (
+            builder._reused_endpoint_matches_config("ep", instance_type="ml.p4d.24xlarge") is False
+        )
+
+    def test_matches_when_describe_fails(self):
+        builder = self._make_builder(env_vars={"A": "1"})
+        client = Mock()
+        client.describe_endpoint.side_effect = Exception("boom")
+        builder.sagemaker_session.sagemaker_client = client
+        assert builder._reused_endpoint_matches_config("ep") is True
+
+    def _stub_ic_sagemaker_client(self, builder, instance_type):
+        # IC-based endpoints carry no ModelName on the variant, only InstanceType.
+        client = Mock()
+        client.describe_endpoint.return_value = {"EndpointConfigName": "cfg"}
+        client.describe_endpoint_config.return_value = {
+            "ProductionVariants": [{"InstanceType": instance_type}]
+        }
+        builder.sagemaker_session.sagemaker_client = client
+        return client
+
+    def test_ic_endpoint_mismatch_on_instance_type(self):
+        # Regression: the IC early-return previously skipped the instance_type check.
+        builder = self._make_builder()
+        client = self._stub_ic_sagemaker_client(builder, instance_type="ml.g5.xlarge")
+        assert (
+            builder._reused_endpoint_matches_config("ep", instance_type="ml.p4d.24xlarge") is False
+        )
+        # Caught from the variant alone, without describing a model.
+        client.describe_model.assert_not_called()
+
+    def test_ic_endpoint_matches_on_instance_type(self):
+        # An IC endpoint whose instance_type matches is still reusable.
+        builder = self._make_builder()
+        self._stub_ic_sagemaker_client(builder, instance_type="ml.p4d.24xlarge")
+        assert (
+            builder._reused_endpoint_matches_config("ep", instance_type="ml.p4d.24xlarge") is True
+        )
+
+    def test_ic_endpoint_reusable_when_no_instance_type_requested(self):
+        # No instance_type requested: an IC endpoint stays reusable.
+        builder = self._make_builder()
+        self._stub_ic_sagemaker_client(builder, instance_type="ml.g5.xlarge")
+        assert builder._reused_endpoint_matches_config("ep") is True

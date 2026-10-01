@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Repack model script for training jobs to inject entry points"""
+
 from __future__ import absolute_import
 
 import argparse
@@ -57,7 +58,8 @@ def _is_bad_path(path, base):
         bool: True if the path is not rooted under the base directory, False otherwise.
     """
     # joinpath will ignore base if path is absolute
-    return not _get_resolved_path(joinpath(base, path)).startswith(base)
+    resolved = _get_resolved_path(joinpath(base, path))
+    return os.path.commonpath([resolved, base]) != base
 
 
 def _is_bad_link(info, base):
@@ -77,19 +79,18 @@ def _is_bad_link(info, base):
     return _is_bad_path(info.linkname, base=tip)
 
 
-def _get_safe_members(members):
+def _get_safe_members(members, base):
     """A generator that yields members that are safe to extract.
 
     It filters out bad paths and bad links.
 
     Args:
         members (list): A list of members to check.
+        base (str): The base directory for extraction.
 
     Yields:
         tarfile.TarInfo: The tar file info.
     """
-    base = _get_resolved_path("")
-
     for file_info in members:
         if _is_bad_path(file_info.name, base):
             logger.error("%s is blocked (illegal path)", file_info.name)
@@ -120,7 +121,8 @@ def custom_extractall_tarfile(tar, extract_path):
     if hasattr(tarfile, "data_filter"):
         tar.extractall(path=extract_path, filter="data")
     else:
-        tar.extractall(path=extract_path, members=_get_safe_members(tar))
+        base = _get_resolved_path(extract_path)
+        tar.extractall(path=extract_path, members=_get_safe_members(tar.getmembers(), base))
 
 
 def repack(inference_script, model_archive, source_dir=None):  # pragma: no cover
@@ -130,7 +132,7 @@ def repack(inference_script, model_archive, source_dir=None):  # pragma: no cove
         inference_script (str): The path to the custom entry point.
         model_archive (str): The name or path (e.g. s3 uri) of the model TAR archive.
         source_dir (str): The path to a custom source directory.
-    
+
     Note:
         Requirements.txt dependencies are automatically installed by ModelTrainer
         before this script runs, so no manual pip installation is needed.
@@ -172,7 +174,7 @@ def repack(inference_script, model_archive, source_dir=None):  # pragma: no cove
             # Try ModelTrainer structure first, then fallback
             entry_point_paths = [
                 os.path.join("/opt/ml/input/data/code", inference_script),
-                os.path.join("/opt/ml/code", inference_script)
+                os.path.join("/opt/ml/code", inference_script),
             ]
             entry_point = None
             for path in entry_point_paths:

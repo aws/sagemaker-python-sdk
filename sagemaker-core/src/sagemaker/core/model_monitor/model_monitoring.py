@@ -15,6 +15,7 @@
 These classes assist with suggesting baselines and creating monitoring schedules for
 data captured by SageMaker Endpoints.
 """
+
 from __future__ import print_function, absolute_import
 
 import copy
@@ -320,8 +321,8 @@ class ModelMonitor(object):
         self.latest_baselining_job = BaseliningJob(
             sagemaker_session=self.sagemaker_session,
             job_name=self.latest_baselining_job_name,
-            inputs=baseline_job_inputs,
-            outputs=[normalized_baseline_output],
+            inputs=normalized_baseline_inputs,
+            outputs=[normalized_output],
             output_kms_key=None,
         )
         self.baselining_jobs.append(self.latest_baselining_job)
@@ -3772,7 +3773,7 @@ class BaseliningJob:
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
                 status = self.sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=processing_job_name
+                    ProcessingJobName=self.job_name
                 )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
@@ -3811,7 +3812,7 @@ class BaseliningJob:
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
                 status = self.sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=processing_job_name
+                    ProcessingJobName=self.job_name
                 )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
@@ -3956,7 +3957,7 @@ class MonitoringExecution(ProcessingJob):
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
                 status = self.sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=processing_job_name
+                    ProcessingJobName=self.processing_job_name
                 )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
@@ -4000,7 +4001,7 @@ class MonitoringExecution(ProcessingJob):
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
                 status = self.sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=processing_job_name
+                    ProcessingJobName=self.processing_job_name
                 )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
@@ -4174,7 +4175,7 @@ class BatchTransformInput(MonitoringInput):
 
         """
         self.data_captured_destination_s3_uri = data_captured_destination_s3_uri
-        self.s3_output.s3_uri = destination
+        self.destination = destination
         self.s3_input_mode = s3_input_mode
         self.s3_data_distribution_type = s3_data_distribution_type
         self.dataset_format = dataset_format
@@ -4193,7 +4194,7 @@ class BatchTransformInput(MonitoringInput):
         """Generates a request dictionary using the parameters provided to the class."""
         batch_transform_input_data = {
             "DataCapturedDestinationS3Uri": self.data_captured_destination_s3_uri,
-            "LocalPath": self.s3_output.s3_uri,
+            "LocalPath": self.destination,
             "S3InputMode": self.s3_input_mode,
             "S3DataDistributionType": self.s3_data_distribution_type,
             "DatasetFormat": self.dataset_format,

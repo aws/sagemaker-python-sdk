@@ -20,6 +20,10 @@ class ModelServer(Enum):
     TGI = 6
     TEI = 7
     SMD = 8
+    VLLM = 9
+    SGLANG = 10
+    VLLM_OMNI = 11
+    LLAMACPP = 12
 
 
 class HardwareType(Enum):

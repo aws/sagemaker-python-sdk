@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Helpers for building the SageMaker SDK user agent string."""
+
 from __future__ import absolute_import
 
 import json
@@ -17,7 +19,31 @@ import os
 
 import importlib_metadata
 
+from string import ascii_letters, digits
+
+from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
+
 SagemakerCore_PREFIX = "AWS-SageMakerCore"
+
+_USERAGENT_ALLOWED_CHARACTERS = ascii_letters + digits + "!$%&'*+-.^_`|~,"
+
+
+def sanitize_user_agent_string_component(raw_str, allow_hash=False):
+    """Sanitize a User-Agent string component by replacing disallowed characters with '-'.
+
+    Args:
+        raw_str (str): The input string to sanitize.
+        allow_hash (bool): Whether '#' is considered an allowed character.
+
+    Returns:
+        str: The sanitized string.
+    """
+    return "".join(
+        c if c in _USERAGENT_ALLOWED_CHARACTERS or (allow_hash and c == "#") else "-"
+        for c in raw_str
+    )
+
+
 STUDIO_PREFIX = "AWS-SageMaker-Studio"
 NOTEBOOK_PREFIX = "AWS-SageMaker-Notebook-Instance"
 
@@ -73,5 +99,12 @@ def get_user_agent_extra_suffix() -> str:
     studio_app_type = process_studio_metadata_file()
     if studio_app_type:
         suffix = "{} md/{}#{}".format(suffix, STUDIO_PREFIX, studio_app_type)
+
+    # Add created_by metadata if attribution has been set
+    created_by = os.environ.get(_CREATED_BY_ENV_VAR)
+    if created_by:
+        suffix = "{} md/{}#{}".format(
+            suffix, "createdBy", sanitize_user_agent_string_component(created_by)
+        )
 
     return suffix

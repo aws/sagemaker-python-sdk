@@ -7,7 +7,7 @@ name = "sagemaker-train"
 dynamic = ["version"]
 description = "Open source library for training and deploying models on Amazon SageMaker."
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
   { name = "Amazon Web Services" },
 ]
@@ -27,13 +27,13 @@ classifiers = [
   #"License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "sagemaker-core>=2.4.0",
+    "sagemaker-core>=2.23.0",
     "graphene>=3,<4",
     "typing_extensions>=4.9.0",
     "tblib>=1.7.0",
@@ -43,12 +43,16 @@ dependencies = [
     "sagemaker-mlflow>=0.0.1,<1.0.0",
     "mlflow>=3.0.0,<4.0.0",
     "nest_asyncio>=1.5.0",
+    "requests>=2.28.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/aws/sagemaker-python-sdk"
 
 [project.optional-dependencies]
+rft-strands = ["strands-agents"]
+rft-langchain = ["httpx>=0.24.0"]
 test = [
     "pytest",
     "pytest-cov",
@@ -60,6 +64,12 @@ test = [
     "omegaconf",
     "graphene",
     "IPython"
+]
+notebook = [
+    "ipywidgets>=8.0.0",
+    "rich>=13.0.0",
+    "matplotlib>=3.5.0",
+    "pandas",
 ]
 
 [tool.setuptools.packages.find]
@@ -75,6 +85,15 @@ addopts = ["-vv"]
 testpaths = ["tests"]
 markers = [
     "serial: marks tests that must run serially (not in parallel)",
+    # gpu_intensive and us_east_1 are declared in tox.ini too, but pytest reads
+    # its config from this file (it is the first of the candidates present), so
+    # markers listed only there are unregistered at runtime and raise
+    # PytestUnknownMarkWarning. Registering them here matters because the PR gate
+    # selects with -m "not gpu_intensive and not us_east_1": a typo'd marker name
+    # would otherwise silently put an expensive deep test back on the gate instead
+    # of warning.
+    "gpu_intensive: marks a test that consumes real training capacity (scheduled CI, not PR checks); see tests/integ/train/shallow",
+    "us_east_1: marks a test that must run in us-east-1 (Nova); runs in the us-east-1 integ job",
 ]
 
 [tool.black]

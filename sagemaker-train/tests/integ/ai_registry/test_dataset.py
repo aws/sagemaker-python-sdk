@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 
 """Integration tests for DataSet."""
+
 import os
 import time
 
@@ -32,7 +33,7 @@ class TestDataSetIntegration:
             name=unique_name,
             source=sample_jsonl_file,
             customization_technique=CustomizationTechnique.SFT,
-            wait=False
+            wait=False,
         )
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
@@ -47,7 +48,7 @@ class TestDataSetIntegration:
             name=unique_name,
             source=s3_uri,
             customization_technique=CustomizationTechnique.SFT,
-            wait=False
+            wait=False,
         )
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
@@ -60,7 +61,7 @@ class TestDataSetIntegration:
             name=unique_name,
             source=s3_uri,
             customization_technique=CustomizationTechnique.RLVR,
-            wait=False
+            wait=False,
         )
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
@@ -73,65 +74,66 @@ class TestDataSetIntegration:
             name=unique_name,
             source=s3_uri,
             customization_technique=CustomizationTechnique.DPO,
-            wait=False
+            wait=False,
         )
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.DPO
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_sft(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova SFT dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_sft_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
             source=s3_uri,
             customization_technique=CustomizationTechnique.SFT,
-            wait=False
+            wait=False,
         )
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.SFT
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_dpo(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova DPO dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_dpo_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
             source=s3_uri,
             customization_technique=CustomizationTechnique.DPO,
-            wait=False
+            wait=False,
         )
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.DPO
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_rft(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova RFT dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_rft_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
             source=s3_uri,
             customization_technique=CustomizationTechnique.RLVR,
-            wait=False
+            wait=False,
         )
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.RLVR
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_eval(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova eval dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_eval.jsonl"
-        dataset = DataSet.create(
-            name=unique_name,
-            source=s3_uri,
-            wait=False
-        )
+        dataset = DataSet.create(name=unique_name, source=s3_uri, wait=False)
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
 
-    def test_get_dataset(self, unique_name, sample_jsonl_file):
+    def test_get_dataset(self, unique_name, sample_jsonl_file, cleanup_list):
         """Test retrieving dataset by name."""
         created = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
+        cleanup_list.append(created)
         retrieved = DataSet.get(unique_name)
         assert retrieved.name == created.name
         assert retrieved.arn == created.arn
@@ -141,16 +143,21 @@ class TestDataSetIntegration:
         datasets = list(DataSet.get_all(max_results=5))
         assert isinstance(datasets, list)
 
-    def test_dataset_refresh(self, unique_name, sample_jsonl_file):
+    def test_dataset_refresh(self, unique_name, sample_jsonl_file, cleanup_list):
         """Test refreshing dataset status."""
         dataset = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
+        cleanup_list.append(dataset)
         dataset.refresh()
         time.sleep(3)
-        assert dataset.status in [HubContentStatus.IMPORTING.value, HubContentStatus.AVAILABLE.value]
+        assert dataset.status in [
+            HubContentStatus.IMPORTING.value,
+            HubContentStatus.AVAILABLE.value,
+        ]
 
-    def test_dataset_get_versions(self, unique_name, sample_jsonl_file):
+    def test_dataset_get_versions(self, unique_name, sample_jsonl_file, cleanup_list):
         """Test getting dataset versions."""
         dataset = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
+        cleanup_list.append(dataset)
         versions = dataset.get_versions()
         assert len(versions) >= 1
         assert all(isinstance(v, DataSet) for v in versions)
@@ -178,7 +185,7 @@ class TestDataSetIntegration:
         """Test creating new dataset version."""
         dataset = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
         result = dataset.create_version(sample_jsonl_file)
-        cleanup_list.append(cleanup_list)
+        cleanup_list.append(dataset)
         assert result is True
 
     def test_dataset_validation_invalid_extension(self, unique_name):
@@ -189,36 +196,37 @@ class TestDataSetIntegration:
     def test_create_dataset_with_invalid_format_s3(self, unique_name, test_bucket):
         """Test creating dataset from S3 with invalid format fails."""
         # This would require an actual invalid file in S3, so we'll mock it
-        with patch('sagemaker.ai_registry.dataset.AIRHub.download_from_s3'), \
-             patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format', side_effect=ValueError("Invalid format")):
+        with (
+            patch("sagemaker.ai_registry.dataset.AIRHub.download_from_s3"),
+            patch(
+                "sagemaker.ai_registry.dataset.DataSet._validate_dataset_format",
+                side_effect=ValueError("Invalid format"),
+            ),
+        ):
             with pytest.raises(ValueError, match="Invalid format"):
                 DataSet.create(
-                    name=unique_name,
-                    source=f"s3://{test_bucket}/invalid_file.jsonl",
-                    wait=False
+                    name=unique_name, source=f"s3://{test_bucket}/invalid_file.jsonl", wait=False
                 )
 
     def test_create_dataset_with_invalid_format_local(self, unique_name):
         """Test creating dataset from local file with invalid format fails."""
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', mode='w', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", mode="w", delete=False) as f:
             f.write("invalid content")
             f.flush()
             try:
                 with pytest.raises(ValueError, match="Unable to detect format"):
-                    DataSet.create(
-                        name=unique_name,
-                        source=f.name,
-                        wait=False
-                    )
+                    DataSet.create(name=unique_name, source=f.name, wait=False)
             finally:
                 os.unlink(f.name)
 
     def test_dataset_validation_large_file(self, unique_name):
         """Test dataset validation with oversized file."""
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
-            f.write(b'x' * (1024 * 1024 * 1024 + 1))  # > 1GB
+
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+            f.write(b"x" * (1024 * 1024 * 1024 + 1))  # > 1GB
             f.flush()
             with pytest.raises(ValueError, match="exceeds maximum allowed size"):
                 DataSet._validate_dataset_file(f.name)
@@ -228,10 +236,7 @@ class TestDataSetIntegration:
         """Test creating dataset with description."""
         description = "Test dataset description"
         dataset = DataSet.create(
-            name=unique_name,
-            source=sample_jsonl_file,
-            description=description,
-            wait=False
+            name=unique_name, source=sample_jsonl_file, description=description, wait=False
         )
         cleanup_list.append(dataset)
         assert dataset.description is not None
@@ -239,12 +244,7 @@ class TestDataSetIntegration:
     def test_dataset_with_tags(self, unique_name, sample_jsonl_file, cleanup_list):
         """Test creating dataset with custom tags."""
         tags = [("env", "test"), ("team", "ml")]
-        dataset = DataSet.create(
-            name=unique_name,
-            source=sample_jsonl_file,
-            tags=tags,
-            wait=False
-        )
+        dataset = DataSet.create(name=unique_name, source=sample_jsonl_file, tags=tags, wait=False)
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
 
@@ -256,7 +256,8 @@ class TestDataSetIntegration:
     def test_dataset_format_validation_failure_invalid_format(self, unique_name):
         """Test dataset format validation fails for invalid format."""
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', mode='w', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", mode="w", delete=False) as f:
             f.write("invalid json content")
             f.flush()
             with pytest.raises(ValueError, match="Unable to detect format"):
@@ -266,9 +267,9 @@ class TestDataSetIntegration:
     def test_dataset_format_validation_failure_empty_file(self, unique_name):
         """Test dataset format validation fails for empty files."""
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
             f.flush()  # Create empty file
             with pytest.raises(ValueError, match="Unable to detect format"):
                 DataSet._validate_dataset_format(f.name)
             os.unlink(f.name)
-
