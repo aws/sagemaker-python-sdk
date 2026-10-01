@@ -28,7 +28,12 @@ dependencies = [
     "boto3>=1.42.2,<2.0",
     "botocore>=1.35.75,<2.0",
     "deepdiff",
-    "mlflow",
+    "mlflow-skinny",
+    # Declared explicitly because full mlflow used to supply it transitively
+    # (mlflow requires docker>=4.0.0,<8; mlflow-skinny does not). It is imported at
+    # module scope by sagemaker.serve.mode.local_container_mode, which sagemaker.serve
+    # imports eagerly, so a missing docker breaks `import sagemaker.serve` outright.
+    "docker>=5.0.2,<8.0.0",
     "sagemaker_schema_inference_artifacts",
     "pytest",
     "tqdm",
@@ -40,6 +45,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Full MLflow. The client only needs the tracking/registry APIs from mlflow-skinny;
+# the full MLflow model-flavor loaders (mlflow.pyfunc/sklearn/pytorch/...) are used
+# only by the container-side inference handlers that run inside the DLC. Install this
+# extra to pull in the full MLflow package locally.
+full = ["mlflow"]
 test = [
     "pytest",
     "pytest-cov",
