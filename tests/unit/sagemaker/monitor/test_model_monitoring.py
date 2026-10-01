@@ -550,6 +550,25 @@ def data_quality_monitor(sagemaker_session):
     )
 
 
+def test_generate_job_definition_name_uses_base_job_name(data_quality_monitor):
+    """A user-supplied base_job_name is reflected in the job definition name (#4783)."""
+    name = data_quality_monitor._generate_job_definition_name()
+    assert name.startswith(BASE_JOB_NAME + "-")
+    assert DefaultModelMonitor.JOB_DEFINITION_BASE_NAME not in name
+
+
+def test_generate_job_definition_name_defaults_without_base_job_name(sagemaker_session):
+    """Without base_job_name, the job definition name falls back to the type default."""
+    monitor = DefaultModelMonitor(
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+    )
+    name = monitor._generate_job_definition_name()
+    assert name.startswith(DefaultModelMonitor.JOB_DEFINITION_BASE_NAME)
+
+
 @pytest.fixture()
 def model_monitor_arguments(sagemaker_session):
     return ModelMonitor(
@@ -953,7 +972,28 @@ def test_data_quality_monitor_invalid_attach(data_quality_monitor, sagemaker_ses
         )
 
 
-def test_data_quality_monitor_update_failure(data_quality_monitor, sagemaker_session):
+def _unique_name_from_base(base, *args, **kwargs):
+    """Deterministic, collision-free stand-in for name_from_base in tests.
+
+    The real name_from_base appends a millisecond timestamp, so two calls in the
+    same millisecond (create + update within one test) can return identical names.
+    This counter-based helper keeps each generated name unique and still prefixed
+    by the base, which is what these tests assert.
+    """
+    _unique_name_from_base.counter += 1
+    return "{}-{:08d}".format(base, _unique_name_from_base.counter)
+
+
+_unique_name_from_base.counter = 0
+
+
+@patch(
+    "sagemaker.model_monitor.model_monitoring.name_from_base",
+    side_effect=_unique_name_from_base,
+)
+def test_data_quality_monitor_update_failure(
+    mock_name_from_base, data_quality_monitor, sagemaker_session
+):
     data_quality_monitor.create_monitoring_schedule(
         endpoint_input=ENDPOINT_NAME,
     )
@@ -1623,7 +1663,13 @@ def test_model_quality_monitor_invalid_attach(model_quality_monitor, sagemaker_s
         )
 
 
-def test_model_quality_monitor_update_failure(model_quality_monitor, sagemaker_session):
+@patch(
+    "sagemaker.model_monitor.model_monitoring.name_from_base",
+    side_effect=_unique_name_from_base,
+)
+def test_model_quality_monitor_update_failure(
+    mock_name_from_base, model_quality_monitor, sagemaker_session
+):
     model_quality_monitor.create_monitoring_schedule(
         endpoint_input=ENDPOINT_NAME,
         ground_truth_input=GROUND_TRUTH_S3_URI,

@@ -25,7 +25,7 @@ import uuid
 from sagemaker.model_monitor import model_monitoring as mm
 from sagemaker import image_uris, s3
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base, format_tags
+from sagemaker.utils import format_tags
 from sagemaker.clarify import SageMakerClarifyProcessor, ModelPredictedLabelConfig
 from sagemaker.lineage._utils import get_resource_name_from_arn
 
@@ -625,7 +625,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         monitor_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_job_definition_request(
             monitoring_schedule_name=monitor_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -768,7 +768,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         job_desc = self.sagemaker_session.sagemaker_client.describe_model_bias_job_definition(
             JobDefinitionName=self.job_definition_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_job_definition_request(
             monitoring_schedule_name=self.monitoring_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -1067,7 +1067,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         monitor_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_job_definition_request(
             monitoring_schedule_name=monitor_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -1215,7 +1215,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 JobDefinitionName=self.job_definition_name
             )
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_job_definition_request(
             monitoring_schedule_name=self.monitoring_schedule_name,
             job_definition_name=new_job_definition_name,
