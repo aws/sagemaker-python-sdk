@@ -97,6 +97,14 @@ RESOURCES = "Resources"
 REQUIRED = "required"
 GLOBAL_DEFAULTS = "GlobalDefaults"
 
+# Some resources do not return their *Name identifier from the List API for certain
+# variants (e.g. a versioned ModelPackage returns only ModelPackageArn). Because the
+# Describe API accepts either the name or the ARN for the *Name parameter, refresh()
+# falls back to the ARN attribute when the name identifier is Unassigned. See issue #5606.
+REFRESH_IDENTIFIER_FALLBACKS = {
+    "ModelPackage": {"ModelPackageName": "model_package_arn"},
+}
+
 
 class ResourcesCodeGen:
     """A class for generating resources based on a service JSON file.
@@ -760,7 +768,10 @@ class ResourcesCodeGen:
         return operation_input_args
 
     def _generate_operation_input_necessary_args(
-        self, resource_operation: dict, resource_attributes: list
+        self,
+        resource_operation: dict,
+        resource_attributes: list,
+        identifier_fallbacks: dict = None,
     ) -> str:
         """Generate the operation input arguments string.
 
@@ -769,7 +780,10 @@ class ResourcesCodeGen:
 
         Args:
             resource_operation (dict): The resource operation dictionary.
-            is_class_method (bool): Indicates method is class method, else object method.
+            resource_attributes (list): The resource object attributes available on self.
+            identifier_fallbacks (dict, optional): Maps an input member name to a resource
+                attribute to fall back to when the member's own attribute is Unassigned
+                (e.g. {"ModelPackageName": "model_package_arn"}). See issue #5606.
 
         Returns:
             str: The formatted operation input arguments string.
@@ -777,12 +791,22 @@ class ResourcesCodeGen:
         input_shape_name = resource_operation["input"]["shape"]
         input_shape_members = list(self.shapes[input_shape_name]["members"].keys())
 
+        identifier_fallbacks = identifier_fallbacks or {}
         args = list()
         for member in input_shape_members:
-            if convert_to_snake_case(member) in resource_attributes:
-                args.append(f"'{member}': self.{convert_to_snake_case(member)}")
+            snake_member = convert_to_snake_case(member)
+            if snake_member in resource_attributes:
+                if member in identifier_fallbacks:
+                    fallback_attr = identifier_fallbacks[member]
+                    args.append(
+                        f"'{member}': self.{snake_member} "
+                        f"if not isinstance(self.{snake_member}, Unassigned) "
+                        f"else self.{fallback_attr}"
+                    )
+                else:
+                    args.append(f"'{member}': self.{snake_member}")
             else:
-                args.append(f"'{member}': {convert_to_snake_case(member)}")
+                args.append(f"'{member}': {snake_member}")
 
         operation_input_args = ",\n".join(args)
         operation_input_args += ","
@@ -1299,7 +1323,9 @@ class ResourcesCodeGen:
         )
 
         operation_input_args = self._generate_operation_input_necessary_args(
-            operation_metadata, kwargs["resource_attributes"]
+            operation_metadata,
+            kwargs["resource_attributes"],
+            identifier_fallbacks=REFRESH_IDENTIFIER_FALLBACKS.get(resource_name),
         )
 
         operation = convert_to_snake_case(operation_name)

@@ -22864,7 +22864,11 @@ class ModelPackage(Base):
         """
 
         operation_input_args = {
-            "ModelPackageName": self.model_package_name,
+            "ModelPackageName": (
+                self.model_package_name
+                if not isinstance(self.model_package_name, Unassigned)
+                else self.model_package_arn
+            ),
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
