@@ -226,6 +226,10 @@ def retrieve(
         serverless_inference_config,
     )
 
+    # Preserve the caller-supplied container_version so we can detect the case where it
+    # is a framework that does not use a container_version tag component (see guard below).
+    requested_container_version = container_version
+
     # if container version is available in .json file, utilize that
     if version_config.get("container_version"):
         container_version = version_config["container_version"][processor]
@@ -280,6 +284,32 @@ def retrieve(
     if repo == f"{framework}-inference-graviton":
         container_version = f"{container_version}-sagemaker"
     _validate_instance_deprecation(framework, instance_type, version)
+
+    # A caller-supplied container_version is only meaningful for frameworks whose image
+    # tag actually carries a trailing version component -- either declared in the config
+    # (``container_version`` map, which overrode the value above), or appended by the
+    # graviton/neuron/HuggingFace/SMP code paths. For any other framework the value would
+    # be concatenated into a tag that does not correspond to a published image (e.g.
+    # ``pytorch-inference:1.12-gpu-py38-1.1``), so fail fast instead of returning a URI
+    # that cannot be pulled (see #3702). ``container_version`` is a tag build component
+    # (such as a CUDA/OS suffix), not a Deep Learning Containers release version.
+    if (
+        requested_container_version is not None
+        and not version_config.get("container_version")
+        and framework != HUGGING_FACE_FRAMEWORK
+        and framework != "pytorch-smp"
+        and repo != f"{framework}-inference-graviton"
+        and "neuron" not in repo
+    ):
+        raise ValueError(
+            "container_version '{}' is not supported for framework '{}' version '{}'. "
+            "The resulting image tag would not correspond to a published image. "
+            "container_version is an image tag build component (for example a CUDA/OS "
+            "suffix), not a Deep Learning Containers release version; omit it and pass "
+            "the full framework version instead.".format(
+                requested_container_version, framework, version
+            )
+        )
 
     tag = _get_image_tag(
         container_version,
