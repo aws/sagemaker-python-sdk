@@ -336,6 +336,139 @@ class TestLambdaUpsert:
         mock_update.assert_called_once()
 
 
+class TestLambdaUpdateConfiguration:
+    """Test Lambda.update_configuration method."""
+
+    @patch("sagemaker.core.lambda_helper._get_lambda_client")
+    def test_update_configuration_success(self, mock_get_client):
+        """Test updating Lambda function configuration."""
+        mock_client = Mock()
+        mock_get_client.return_value = mock_client
+        mock_client.update_function_configuration.return_value = {
+            "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:my-function",
+            "Timeout": 300,
+            "MemorySize": 256,
+        }
+
+        lambda_obj = Lambda(
+            function_name="my-function",
+            execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+            script="/path/to/script.py",
+            handler="script.handler",
+            timeout=300,
+            memory_size=256,
+            runtime="python3.12",
+            environment={"Variables": {"KEY": "value"}},
+            layers=["arn:aws:lambda:us-west-2:123456789012:layer:my-layer:1"],
+        )
+        result = lambda_obj.update_configuration()
+
+        assert result["Timeout"] == 300
+        assert result["MemorySize"] == 256
+        mock_client.update_function_configuration.assert_called_once_with(
+            FunctionName="my-function",
+            Handler="script.handler",
+            Runtime="python3.12",
+            Role="arn:aws:iam::123456789012:role/my-role",
+            Timeout=300,
+            MemorySize=256,
+            Environment={"Variables": {"KEY": "value"}},
+            Layers=["arn:aws:lambda:us-west-2:123456789012:layer:my-layer:1"],
+        )
+
+    @patch("sagemaker.core.lambda_helper._get_lambda_client")
+    def test_update_configuration_with_function_arn(self, mock_get_client):
+        """Test updating configuration using function ARN."""
+        mock_client = Mock()
+        mock_get_client.return_value = mock_client
+        mock_client.update_function_configuration.return_value = {"Timeout": 60}
+
+        lambda_obj = Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:my-function",
+            timeout=60,
+        )
+        result = lambda_obj.update_configuration()
+
+        assert result["Timeout"] == 60
+        call_kwargs = mock_client.update_function_configuration.call_args[1]
+        assert call_kwargs["FunctionName"] == "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+        assert call_kwargs["Timeout"] == 60
+
+    @patch("sagemaker.core.lambda_helper._get_lambda_client")
+    def test_update_configuration_retry_on_resource_conflict(self, mock_get_client):
+        """Test update_configuration retries on ResourceConflictException."""
+        mock_client = Mock()
+        mock_get_client.return_value = mock_client
+
+        error = ClientError(
+            {"Error": {"Code": "ResourceConflictException", "Message": "Resource in use"}},
+            "UpdateFunctionConfiguration",
+        )
+        mock_client.update_function_configuration.side_effect = [
+            error,
+            {"Timeout": 300},
+        ]
+
+        lambda_obj = Lambda(
+            function_name="my-function",
+            execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+            script="/path/to/script.py",
+            handler="script.handler",
+            timeout=300,
+        )
+
+        with patch("time.sleep"):
+            result = lambda_obj.update_configuration()
+
+        assert result["Timeout"] == 300
+        assert mock_client.update_function_configuration.call_count == 2
+
+    @patch("sagemaker.core.lambda_helper._get_lambda_client")
+    def test_update_configuration_max_retries_exceeded(self, mock_get_client):
+        """Test update_configuration fails after max retries."""
+        mock_client = Mock()
+        mock_get_client.return_value = mock_client
+
+        error = ClientError(
+            {"Error": {"Code": "ResourceConflictException", "Message": "Resource in use"}},
+            "UpdateFunctionConfiguration",
+        )
+        mock_client.update_function_configuration.side_effect = error
+
+        lambda_obj = Lambda(
+            function_name="my-function",
+            execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+            script="/path/to/script.py",
+            handler="script.handler",
+        )
+
+        with patch("time.sleep"):
+            with pytest.raises(ValueError):
+                lambda_obj.update_configuration()
+
+    @patch("sagemaker.core.lambda_helper._get_lambda_client")
+    def test_update_configuration_non_retryable_error(self, mock_get_client):
+        """Test update_configuration raises on non-retryable errors."""
+        mock_client = Mock()
+        mock_get_client.return_value = mock_client
+
+        error = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException", "Message": "Function not found"}},
+            "UpdateFunctionConfiguration",
+        )
+        mock_client.update_function_configuration.side_effect = error
+
+        lambda_obj = Lambda(
+            function_name="my-function",
+            execution_role_arn="arn:aws:iam::123456789012:role/my-role",
+            script="/path/to/script.py",
+            handler="script.handler",
+        )
+
+        with pytest.raises(ValueError):
+            lambda_obj.update_configuration()
+
+
 class TestLambdaInvoke:
     """Test Lambda.invoke method."""
 
