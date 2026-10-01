@@ -28,7 +28,7 @@ from rich.logging import RichHandler
 from rich.style import Style
 from rich.theme import Theme
 from rich.traceback import install
-from typing import Any, Dict, List, TypeVar, Generic, Type
+from typing import Any, Dict, List, Optional, TypeVar, Generic, Type
 from sagemaker.core.utils.code_injection.codec import transform
 from sagemaker.core.utils.code_injection.constants import Color
 from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix
@@ -478,6 +478,8 @@ class ResourceIterator(Generic[T]):
         list_method: str,
         list_method_kwargs: dict = {},
         custom_key_mapping: dict = None,
+        session=None,
+        region: Optional[str] = None,
     ):
         """Initialize a ResourceIterator object
 
@@ -491,6 +493,10 @@ class ResourceIterator(Generic[T]):
             custom_key_mapping (dict, optional): The custom key mapping used to map keys from
                 summary object to those expected from resource object during initialization.
                 Defaults to None.
+            session (boto3.session.Session, optional): The session the list call was made with.
+                Each returned resource is bound to it, so its refresh and other object methods
+                use the same account. Defaults to None (the process default client).
+            region (str, optional): The region the list call was made in. Defaults to None.
         """
         self.summaries_key = summaries_key
         self.summary_name = summary_name
@@ -498,6 +504,8 @@ class ResourceIterator(Generic[T]):
         self.list_method = list_method
         self.list_method_kwargs = list_method_kwargs
         self.custom_key_mapping = custom_key_mapping
+        self.session = session
+        self.region = region
 
         self.resource_cls = resource_cls
         self.index = 0
@@ -533,6 +541,12 @@ class ResourceIterator(Generic[T]):
                 init_data = {k: v for k, v in init_data.items() if k in fields}
 
                 resource_object = self.resource_cls(**init_data)
+
+                # Bind the resource to the session/region it was listed with
+                if hasattr(resource_object, "_set_client_context"):
+                    resource_object._set_client_context(  # pylint: disable=protected-access
+                        session=self.session, region=self.region
+                    )
 
             # If the resource object has refresh method, refresh and return it
             if hasattr(resource_object, "refresh"):
