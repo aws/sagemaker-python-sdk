@@ -3013,10 +3013,11 @@ class _EndpointNotFoundBudget(object):
 def _live_logging_deploy_done(
     sagemaker_client, endpoint_name, paginator, paginator_config, poll, not_found_budget=None
 ):
-    """Return the ``DescribeEndpoint`` response once the endpoint leaves ``Creating``.
+    """Return the ``DescribeEndpoint`` response once the endpoint is no longer in progress.
 
     Streams the endpoint's CloudWatch logs on every poll and returns ``None`` while
-    the endpoint is still being created. The log group only exists once a container
+    the endpoint is still ``Creating`` or ``Updating``, the same in-progress statuses
+    as ``_deploy_done``. The log group only exists once a container
     has started, so an endpoint that fails before any instance is provisioned (for
     example on InsufficientInstanceCapacity) never gets one: a missing log group
     must not keep a finished deployment waiting.
@@ -3026,6 +3027,7 @@ def _live_logging_deploy_done(
             consecutive polls a missing endpoint is tolerated. Without it a
             missing endpoint is waited on indefinitely.
     """
+    in_progress_statuses = ["Creating", "Updating"]
     stop = False
     endpoint_status = None
     try:
@@ -3042,7 +3044,7 @@ def _live_logging_deploy_done(
         not_found_budget.reset()
 
     # if endpoint is in an invalid state -> set stop to true, sleep, and flush the logs
-    if endpoint_status != "Creating":
+    if endpoint_status not in in_progress_statuses:
         stop = True
         if endpoint_status == "InService":
             LOGGER.info(

@@ -524,7 +524,8 @@ class ResourceIterator(Generic[T]):
                 # A page can be empty and still carry a NextToken (the service
                 # filters results after paginating), so an empty page only ends
                 # the iteration when there is no further page. A NextToken that
-                # repeats would page forever, so it also ends the iteration.
+                # comes back unchanged would page forever, so it also ends the
+                # iteration (the same consecutive-repeat check botocore paginators do).
                 if not self.next_token or self.next_token == previous_token:
                     raise StopIteration
 

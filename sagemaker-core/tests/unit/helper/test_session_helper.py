@@ -429,14 +429,19 @@ class TestLiveLoggingDeployDone:
 
             assert _live_logging_deploy_done(client, "my-endpoint", paginator, {}, 5) == desc
 
-    def test_creating_endpoint_without_log_group_keeps_waiting(self):
-        """Creating with no log group yet is still in progress."""
-        client = Mock()
-        client.describe_endpoint.return_value = {"EndpointStatus": "Creating"}
-        paginator = Mock()
-        paginator.paginate.side_effect = self.RESOURCE_NOT_FOUND
+    @patch("time.sleep")
+    def test_in_progress_endpoint_keeps_waiting(self, mock_sleep):
+        """Creating or Updating is still in progress, with or without a log group."""
+        for status in ("Creating", "Updating"):
+            for log_error in (self.RESOURCE_NOT_FOUND, None):
+                client = Mock()
+                client.describe_endpoint.return_value = {"EndpointStatus": status}
+                paginator = Mock()
+                paginator.paginate.side_effect = log_error
+                paginator.paginate.return_value = []
 
-        assert _live_logging_deploy_done(client, "my-endpoint", paginator, {}, 5) is None
+                assert _live_logging_deploy_done(client, "my-endpoint", paginator, {}, 5) is None
+        mock_sleep.assert_not_called()
 
     def test_other_log_errors_are_raised(self):
         """Log-fetch errors other than a missing log group still propagate."""
