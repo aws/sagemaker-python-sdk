@@ -37,6 +37,15 @@ logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
+# Frameworks whose image tag legitimately carries a caller-supplied container_version
+# component even though their config has no container_version map. For these the SDK's
+# own higher-level classes pass container_version (e.g. SparkProcessor -> "v1",
+# the HuggingFace GPU/trcomp path -> "cu110-ubuntu18.04", pytorch-smp -> "cu124").
+# See issue #3702: for any framework NOT in this set, a caller-supplied container_version
+# can only produce a tag that does not correspond to a published image.
+FRAMEWORKS_WITH_CONTAINER_VERSION_SUFFIX = frozenset(
+    {HUGGING_FACE_FRAMEWORK, "pytorch-smp", "spark"}
+)
 HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
 HUGGING_FACE_TEI_GPU_FRAMEWORK = "huggingface-tei"
 HUGGING_FACE_TEI_CPU_FRAMEWORK = "huggingface-tei-cpu"
@@ -296,8 +305,7 @@ def retrieve(
     if (
         requested_container_version is not None
         and not version_config.get("container_version")
-        and framework != HUGGING_FACE_FRAMEWORK
-        and framework != "pytorch-smp"
+        and framework not in FRAMEWORKS_WITH_CONTAINER_VERSION_SUFFIX
         and repo != f"{framework}-inference-graviton"
         and "neuron" not in repo
     ):
