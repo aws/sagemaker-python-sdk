@@ -430,8 +430,14 @@ class SageMakerClient(metaclass=_ClientCacheMeta):
             region_name = session.region_name
 
         if config is None:
-            logger.debug("No config provided. Using default config.")
-            config = Config(retries={"max_attempts": 10, "mode": "standard"})
+            if _retries_configured_outside_code(session):
+                # An explicit Config outranks env vars and the shared config file,
+                # so only supply the SDK's retry default when the user set neither.
+                logger.debug("No config provided. Using retry settings from env/config.")
+                config = Config()
+            else:
+                logger.debug("No config provided. Using default config.")
+                config = Config(retries={"max_attempts": 10, "mode": "standard"})
 
         # Keep the caller's config object alive: the cache key uses its identity.
         self._base_config = config
@@ -464,6 +470,26 @@ class SageMakerClient(metaclass=_ClientCacheMeta):
         """
         service_name = service_name.replace("-", "_")
         return getattr(self, service_name + "_client")
+
+
+_RETRY_ENV_VARS = ("AWS_RETRY_MODE", "AWS_MAX_ATTEMPTS")
+_RETRY_CONFIG_KEYS = ("retry_mode", "max_attempts")
+
+
+def _retries_configured_outside_code(session: Session) -> bool:
+    """Return True if the user set retry behaviour via env vars or the shared config file.
+
+    These are the two sources botocore consults for retries when no explicit
+    ``Config(retries=...)`` is passed; a synthesized one would silently override them.
+    """
+    if any(os.environ.get(name) for name in _RETRY_ENV_VARS):
+        return True
+    try:
+        scoped = session._session.get_scoped_config()
+    except Exception:  # pylint: disable=broad-except
+        # e.g. ProfileNotFound; botocore will surface that on first call anyway.
+        return False
+    return any(key in scoped for key in _RETRY_CONFIG_KEYS)
 
 
 class ResourceIterator(Generic[T]):

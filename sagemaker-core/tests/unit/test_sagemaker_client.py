@@ -134,7 +134,15 @@ def test_config_argument_is_applied_and_user_agent_suffix_appended():
     assert "sagemaker" in meta_config.user_agent_extra.lower()
 
 
-def test_default_config_keeps_retry_settings():
+@pytest.fixture
+def no_user_retry_settings(monkeypatch, tmp_path):
+    """Isolate from the developer's env vars and ~/.aws/config retry settings."""
+    for name in ("AWS_RETRY_MODE", "AWS_MAX_ATTEMPTS", "AWS_PROFILE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "config"))
+
+
+def test_default_config_keeps_retry_settings(no_user_retry_settings):
     session_a = _session("AKIAFIRSTSESSION0000", REGION_A)
 
     client = SageMakerClient(session=session_a)
@@ -143,6 +151,49 @@ def test_default_config_keeps_retry_settings():
     retries = client.sagemaker_client.meta.config.retries
     assert retries["total_max_attempts"] == 11
     assert retries["mode"] == "standard"
+
+
+@pytest.mark.parametrize(
+    "env, expected",
+    [
+        ({"AWS_MAX_ATTEMPTS": "3"}, {"total_max_attempts": 3}),
+        ({"AWS_RETRY_MODE": "adaptive"}, {"mode": "adaptive"}),
+    ],
+)
+def test_default_config_defers_to_retry_env_vars(
+    no_user_retry_settings, monkeypatch, env, expected
+):
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    session_a = _session("AKIAFIRSTSESSION0000", REGION_A)
+
+    client = SageMakerClient(session=session_a)
+
+    retries = client.sagemaker_client.meta.config.retries
+    for key, value in expected.items():
+        assert retries[key] == value
+    assert retries.get("total_max_attempts") != 11
+
+
+def test_default_config_defers_to_shared_config_retries(no_user_retry_settings, tmp_path):
+    (tmp_path / "config").write_text("[default]\nretry_mode = adaptive\nmax_attempts = 4\n")
+    session_a = _session("AKIAFIRSTSESSION0000", REGION_A)
+
+    client = SageMakerClient(session=session_a)
+
+    retries = client.sagemaker_client.meta.config.retries
+    assert retries["mode"] == "adaptive"
+    assert retries["total_max_attempts"] == 4
+
+
+def test_explicit_config_retries_win_over_env(no_user_retry_settings, monkeypatch):
+    monkeypatch.setenv("AWS_MAX_ATTEMPTS", "3")
+    session_a = _session("AKIAFIRSTSESSION0000", REGION_A)
+    config = Config(retries={"max_attempts": 6, "mode": "standard"})
+
+    client = SageMakerClient(session=session_a, config=config)
+
+    assert client.sagemaker_client.meta.config.retries["total_max_attempts"] == 7
 
 
 def test_distinct_config_objects_get_distinct_clients():
