@@ -372,6 +372,104 @@ class TestLocalSagemakerRuntimeClient:
         # String should be encoded to bytes
         assert isinstance(body, bytes)
 
+    @patch("sagemaker.core.local.local_session.get_docker_host")
+    @patch("urllib3.PoolManager")
+    def test_invoke_endpoint_response_shape(self, mock_pool_manager_class, mock_get_host):
+        """Response mirrors the real runtime client (ResponseMetadata + variant)."""
+        mock_get_host.return_value = "localhost"
+
+        mock_pool = Mock()
+        mock_response = Mock()
+        mock_response.status = 200
+        mock_response.headers = {
+            "Content-type": "application/json",
+            "x-amzn-RequestId": "req-abc-123",
+        }
+        mock_pool.request.return_value = mock_response
+        mock_pool_manager_class.return_value = mock_pool
+
+        client = LocalSagemakerRuntimeClient()
+
+        response = client.invoke_endpoint(
+            Body=b"test data",
+            EndpointName="test-endpoint",
+            Accept="application/json",
+            TargetVariant="variant1",
+        )
+
+        assert response["Body"] == mock_response
+        assert response["ContentType"] == "application/json"
+        assert response["InvokedProductionVariant"] == "variant1"
+        metadata = response["ResponseMetadata"]
+        assert metadata["HTTPStatusCode"] == 200
+        assert metadata["RequestId"] == "req-abc-123"
+        assert metadata["HTTPHeaders"]["Content-type"] == "application/json"
+        assert metadata["RetryAttempts"] == 0
+
+    @patch("sagemaker.core.local.local_session.get_docker_host")
+    @patch("urllib3.PoolManager")
+    def test_invoke_endpoint_header_lookup_is_case_insensitive(
+        self, mock_pool_manager_class, mock_get_host
+    ):
+        """Real containers send ``Content-Type``; the lookup must not depend on casing."""
+        mock_get_host.return_value = "localhost"
+
+        mock_pool = Mock()
+        mock_response = Mock()
+        mock_response.status = 200
+        mock_response.headers = {
+            "Content-Type": "application/octet-stream",
+            "X-Amzn-Requestid": "req-mixed-case",
+        }
+        mock_pool.request.return_value = mock_response
+        mock_pool_manager_class.return_value = mock_pool
+
+        client = LocalSagemakerRuntimeClient()
+        response = client.invoke_endpoint(
+            Body=b"test data", EndpointName="test-endpoint", Accept="application/json"
+        )
+
+        assert response["ContentType"] == "application/octet-stream"
+        assert response["ResponseMetadata"]["RequestId"] == "req-mixed-case"
+
+    @patch("sagemaker.core.local.local_session.get_docker_host")
+    @patch("urllib3.PoolManager")
+    def test_invoke_endpoint_default_variant(self, mock_pool_manager_class, mock_get_host):
+        """Without TargetVariant the response reports the default variant name."""
+        mock_get_host.return_value = "localhost"
+
+        mock_pool = Mock()
+        mock_response = Mock()
+        mock_response.status = 200
+        mock_response.headers = {}
+        mock_pool.request.return_value = mock_response
+        mock_pool_manager_class.return_value = mock_pool
+
+        client = LocalSagemakerRuntimeClient()
+
+        response = client.invoke_endpoint(Body=b"data", EndpointName="ep")
+
+        assert response["InvokedProductionVariant"] == "AllTraffic"
+        assert response["ResponseMetadata"]["RequestId"] == "local-request-id"
+
+    def test_describe_user_profile_passthrough(self):
+        """describe_user_profile delegates to the real boto SageMaker client."""
+        mock_session = Mock()
+        mock_boto_client = Mock()
+        mock_boto_client.describe_user_profile.return_value = {
+            "UserSettings": {"ExecutionRole": "arn:aws:iam::123456789012:role/Studio"}
+        }
+        mock_session.boto_session.client.return_value = mock_boto_client
+
+        client = LocalSagemakerClient(sagemaker_session=mock_session)
+        result = client.describe_user_profile(DomainId="d-123", UserProfileName="user-a")
+
+        mock_session.boto_session.client.assert_called_once_with("sagemaker")
+        mock_boto_client.describe_user_profile.assert_called_once_with(
+            DomainId="d-123", UserProfileName="user-a"
+        )
+        assert result["UserSettings"]["ExecutionRole"] == ("arn:aws:iam::123456789012:role/Studio")
+
 
 class TestLocalSession:
     """Test cases for LocalSession"""

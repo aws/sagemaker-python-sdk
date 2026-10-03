@@ -278,11 +278,12 @@ class Processor(object):
         self.role = resolve_value_from_config(
             role, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not self.role:
+        if not self.role and self.instance_type not in ("local", "local_gpu"):
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
+            # after fetching the config. In Local Mode the role is never used
+            # (LocalSagemakerClient.create_processing_job discards it), so it is not required.
             raise ValueError("An AWS IAM role is required to create a Processing job.")
 
         self.env = resolve_value_from_config(
@@ -750,11 +751,12 @@ class Processor(object):
             process_request_args["network_config"] = self.network_config._to_request_dict()
         else:
             process_request_args["network_config"] = None
-        process_request_args["role_arn"] = (
-            self.role
-            if is_pipeline_variable(self.role)
-            else self.sagemaker_session.expand_role(self.role)
-        )
+        if self.role is None or is_pipeline_variable(self.role):
+            # No role in Local Mode (see __init__): the local client discards RoleArn,
+            # and expand_role(None) would raise.
+            process_request_args["role_arn"] = self.role
+        else:
+            process_request_args["role_arn"] = self.sagemaker_session.expand_role(self.role)
         process_request_args["tags"] = self.tags
         return process_request_args
 
