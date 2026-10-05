@@ -81,6 +81,8 @@ def sagemaker_session():
 
     # For tests which doesn't verify config file injection, operate with empty config
     session.sagemaker_config = {}
+    # Prevent _get_account_id_if_default_bucket from polluting method_calls assertions
+    session._get_account_id_if_default_bucket = lambda bucket: None
     return session
 
 

@@ -17,7 +17,7 @@ import logging
 from typing import Callable, Optional, Union, List, Dict
 
 import sagemaker
-from sagemaker import image_uris, ModelMetrics
+from sagemaker import image_uris, ModelMetrics, ContainerBaseModel
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.fw_utils import (
     model_code_key_prefix,
@@ -182,6 +182,8 @@ class ChainerModel(FrameworkModel):
         source_uri: Optional[Union[str, PipelineVariable]] = None,
         model_card: Optional[Union[ModelPackageModelCard, ModelCard]] = None,
         model_life_cycle: Optional[ModelLifeCycle] = None,
+        model_package_registration_type: Optional[Union[str, PipelineVariable]] = None,
+        base_model: Optional[ContainerBaseModel] = None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -236,6 +238,9 @@ class ChainerModel(FrameworkModel):
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
             model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+            model_package_registration_type (str or PipelineVariable): Model Package Registration
+                Type (default: None).
+            base_model (ContainerBaseModel): ContainerBaseModel object (default: None).
 
         Returns:
             str: A string of SageMaker Model Package ARN.
@@ -278,6 +283,8 @@ class ChainerModel(FrameworkModel):
             source_uri=source_uri,
             model_card=model_card,
             model_life_cycle=model_life_cycle,
+            model_package_registration_type=model_package_registration_type,
+            base_model=base_model,
         )
 
     def prepare_container_def(

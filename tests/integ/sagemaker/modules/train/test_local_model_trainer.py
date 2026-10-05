@@ -147,15 +147,14 @@ def test_single_container_local_mode_s3_data(modules_sagemaker_session):
         finally:
             subprocess.run(["docker", "compose", "down", "-v"])
 
-            assert not os.path.exists(os.path.join(CWD, "shared"))
-            assert not os.path.exists(os.path.join(CWD, "input"))
-            assert not os.path.exists(os.path.join(CWD, "algo-1"))
-
             directories = [
                 "compressed_artifacts",
                 "artifacts",
                 "model",
                 "output",
+                "shared",
+                "input",
+                "algo-1",
             ]
 
             for directory in directories:

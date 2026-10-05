@@ -528,7 +528,7 @@ def test_delete_lambda_client_error(sagemaker_session):
 
 def test_upload_to_s3(s3_client):
     key = lambda_helper._upload_to_s3(s3_client, FUNCTION_NAME, ZIPPED_CODE_DIR, S3_BUCKET)
-    s3_client.upload_file.assert_called_with(ZIPPED_CODE_DIR, S3_BUCKET, key)
+    s3_client.upload_file.assert_called_with(ZIPPED_CODE_DIR, S3_BUCKET, key, ExtraArgs=None)
     assert key == S3_KEY
 
 

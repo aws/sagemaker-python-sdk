@@ -19,7 +19,7 @@ import os
 import pytest
 from mock import MagicMock, Mock, ANY
 from mock import patch
-from pkg_resources import parse_version
+from packaging.version import parse as parse_version
 
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.drift_check_baselines import DriftCheckBaselines
@@ -104,6 +104,8 @@ def sagemaker_session():
 
     # For tests which doesn't verify config file injection, operate with empty config
     session.sagemaker_config = {}
+    # Prevent _get_account_id_if_default_bucket from polluting method_calls assertions
+    session._get_account_id_if_default_bucket = lambda bucket: None
     return session
 
 

@@ -18,6 +18,7 @@ import copy
 import logging
 import shutil
 import tarfile
+import tempfile
 from datetime import datetime
 import os
 import re
@@ -60,6 +61,8 @@ from sagemaker.utils import (
     tag_exists,
     _validate_new_tags,
     remove_tag_with_key,
+    _download_files_under_prefix,
+    validate_path_within_directory,
 )
 from src.sagemaker.config.config_utils import _log_sagemaker_config_single_substitution
 from tests.unit.sagemaker.workflow.helpers import CustomStep
@@ -656,7 +659,7 @@ def test_download_folder(makedirs):
     obj_mock = Mock()
     s3_mock.Object.return_value = obj_mock
 
-    def obj_mock_download(path):
+    def obj_mock_download(path, **kwargs):
         # Mock the S3 object to raise an error when the input to download_file
         # is a "folder"
         if path in ("/tmp/", os.path.join("/tmp", "prefix")):
@@ -685,8 +688,8 @@ def test_download_folder(makedirs):
 
     obj_mock.download_file.assert_called()
     calls = [
-        call(os.path.join("/tmp", "train", "train_data.csv")),
-        call(os.path.join("/tmp", "train", "validation_data.csv")),
+        call(os.path.join("/tmp", "train", "train_data.csv"), ExtraArgs=None),
+        call(os.path.join("/tmp", "train", "validation_data.csv"), ExtraArgs=None),
     ]
     obj_mock.download_file.assert_has_calls(calls)
     assert s3_mock.Object.call_count == 3
@@ -723,7 +726,7 @@ def test_download_folder_points_to_single_file(makedirs):
     sagemaker.utils.download_folder(BUCKET_NAME, "/prefix/train/train_data.csv", "/tmp", session)
 
     obj_mock.download_file.assert_called()
-    calls = [call(os.path.join("/tmp", "train_data.csv"))]
+    calls = [call(os.path.join("/tmp", "train_data.csv"), ExtraArgs=None)]
     obj_mock.download_file.assert_has_calls(calls)
     boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.assert_not_called()
     obj_mock.reset_mock()
@@ -740,7 +743,9 @@ def test_download_file():
         BUCKET_NAME, "/prefix/path/file.tar.gz", "/tmp/file.tar.gz", session
     )
 
-    bucket_mock.download_file.assert_called_with("prefix/path/file.tar.gz", "/tmp/file.tar.gz")
+    bucket_mock.download_file.assert_called_with(
+        "prefix/path/file.tar.gz", "/tmp/file.tar.gz", ExtraArgs=None
+    )
 
 
 @patch("tarfile.open")
@@ -1039,6 +1044,9 @@ class FakeS3(object):
     def __init__(self, tmp):
         self.tmp = tmp
         self.sagemaker_session = MagicMock(settings=SessionSettings())
+        # Ensure the spot-check helper returns None so repack tests don't
+        # inject ExpectedBucketOwner unexpectedly.
+        self.sagemaker_session._get_account_id_if_default_bucket.return_value = None
         self.location_map = {}
         self.current_bucket = None
         self.object_mock = MagicMock()
@@ -1053,7 +1061,7 @@ class FakeS3(object):
         self.current_bucket = name
         return self
 
-    def download_file(self, path, target):
+    def download_file(self, path, target, ExtraArgs=None):
         key = "%s/%s" % (self.current_bucket, path)
         shutil.copy2(self.location_map[key], target)
 
@@ -1844,6 +1852,7 @@ class TestVolumeSizeSupported(TestCase):
             "ml.afbsadjfbasfb.sdkjfnsa": "afbsadjfbasfb",
             "ml_fdsfsdf.xlarge": "fdsfsdf",
             "ml_c2.4xlarge": "c2",
+            "ml.p6-b200.48xlarge": "p6-b200",
             "sdfasfdda": "",
             "local": "",
             "c2.xlarge": "",
@@ -2244,3 +2253,269 @@ class TestGetDomainForRegion(TestCase):
         self.assertEqual(get_domain_for_region("us-iso-east-1"), "c2s.ic.gov")
         self.assertEqual(get_domain_for_region("us-isob-east-1"), "sc2s.sgov.gov")
         self.assertEqual(get_domain_for_region("invalid-region"), "amazonaws.com")
+
+
+class TestValidateSourceDirectory(TestCase):
+    """Tests for _validate_source_directory function"""
+
+    def test_validate_source_directory_with_s3_path(self):
+        """S3 paths should be allowed"""
+        from sagemaker.utils import _validate_source_directory
+
+        # Should not raise any exception
+        _validate_source_directory("s3://my-bucket/my-prefix")
+
+    def test_validate_source_directory_with_none(self):
+        """None should be allowed"""
+        from sagemaker.utils import _validate_source_directory
+
+        # Should not raise any exception
+        _validate_source_directory(None)
+
+    def test_validate_source_directory_with_safe_local_path(self):
+        """Safe local paths should be allowed"""
+        from sagemaker.utils import _validate_source_directory
+
+        # Should not raise any exception
+        _validate_source_directory("/tmp/my_code")
+        _validate_source_directory("./my_code")
+        _validate_source_directory("../my_code")
+
+    def test_validate_source_directory_with_sensitive_path_aws(self):
+        """Paths under ~/.aws should be rejected"""
+        from sagemaker.utils import _validate_source_directory
+
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_source_directory(os.path.expanduser("~/.aws/credentials"))
+
+    def test_validate_source_directory_with_sensitive_path_ssh(self):
+        """Paths under ~/.ssh should be rejected"""
+        from sagemaker.utils import _validate_source_directory
+
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_source_directory(os.path.expanduser("~/.ssh/id_rsa"))
+
+    def test_validate_source_directory_with_root_directory(self):
+        """Root directory itself should be allowed (not rejected)"""
+        from sagemaker.utils import _validate_source_directory
+
+        # Should not raise any exception - root directory is explicitly allowed
+        _validate_source_directory("/")
+
+
+class TestValidateDependencyPath(TestCase):
+    """Tests for _validate_dependency_path function"""
+
+    def test_validate_dependency_path_with_none(self):
+        """None should be allowed"""
+        from sagemaker.utils import _validate_dependency_path
+
+        # Should not raise any exception
+        _validate_dependency_path(None)
+
+    def test_validate_dependency_path_with_safe_local_path(self):
+        """Safe local paths should be allowed"""
+        from sagemaker.utils import _validate_dependency_path
+
+        # Should not raise any exception
+        _validate_dependency_path("/tmp/my_lib")
+        _validate_dependency_path("./my_lib")
+        _validate_dependency_path("../my_lib")
+
+    def test_validate_dependency_path_with_sensitive_path_aws(self):
+        """Paths under ~/.aws should be rejected"""
+        from sagemaker.utils import _validate_dependency_path
+
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_dependency_path(os.path.expanduser("~/.aws"))
+
+    def test_validate_dependency_path_with_sensitive_path_docker(self):
+        """Paths under ~/.docker should be rejected"""
+        from sagemaker.utils import _validate_dependency_path
+
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_dependency_path(os.path.expanduser("~/.docker/config.json"))
+
+    def test_validate_dependency_path_with_root_directory(self):
+        """Root directory itself should be allowed (not rejected)"""
+        from sagemaker.utils import _validate_dependency_path
+
+        # Should not raise any exception - root directory is explicitly allowed
+        _validate_dependency_path("/")
+
+
+class TestCreateOrUpdateCodeDir(TestCase):
+    """Tests for _create_or_update_code_dir function"""
+
+    @patch("sagemaker.utils._validate_source_directory")
+    @patch("sagemaker.utils._validate_dependency_path")
+    @patch("sagemaker.utils.os.path.exists")
+    @patch("sagemaker.utils.os.mkdir")
+    @patch("sagemaker.utils.shutil.copy2")
+    def test_create_or_update_code_dir_with_inference_script(
+        self, mock_copy, mock_mkdir, mock_exists, mock_validate_dep, mock_validate_src
+    ):
+        """Test creating code dir with inference script"""
+        from sagemaker.utils import _create_or_update_code_dir
+
+        mock_exists.return_value = False
+
+        with patch("sagemaker.utils._get_resolved_path") as mock_get_resolved:
+            mock_get_resolved.return_value = "/tmp/model/code"
+
+            _create_or_update_code_dir(
+                model_dir="/tmp/model",
+                inference_script="inference.py",
+                source_directory=None,
+                dependencies=[],
+                sagemaker_session=None,
+                tmp="/tmp",
+            )
+
+            mock_mkdir.assert_called()
+            mock_copy.assert_called_once()
+
+    @patch("sagemaker.utils._validate_source_directory")
+    @patch("sagemaker.utils.os.path.exists")
+    @patch("sagemaker.utils.shutil.rmtree")
+    @patch("sagemaker.utils.shutil.copytree")
+    def test_create_or_update_code_dir_with_source_directory(
+        self, mock_copytree, mock_rmtree, mock_exists, mock_validate_src
+    ):
+        """Test creating code dir with source directory"""
+        from sagemaker.utils import _create_or_update_code_dir
+
+        mock_exists.return_value = True
+
+        with patch("sagemaker.utils._get_resolved_path") as mock_get_resolved:
+            mock_get_resolved.return_value = "/tmp/model/code"
+
+            _create_or_update_code_dir(
+                model_dir="/tmp/model",
+                inference_script=None,
+                source_directory="/tmp/my_code",
+                dependencies=[],
+                sagemaker_session=None,
+                tmp="/tmp",
+            )
+
+            mock_validate_src.assert_called_once_with("/tmp/my_code")
+            mock_rmtree.assert_called_once()
+            mock_copytree.assert_called_once()
+
+    def test_create_or_update_code_dir_with_sensitive_code_dir(self):
+        """Test that code_dir resolving to sensitive path is rejected"""
+        from sagemaker.utils import _create_or_update_code_dir
+
+        with patch("sagemaker.utils._get_resolved_path") as mock_get_resolved:
+            # Simulate code_dir resolving to a sensitive path
+            mock_get_resolved.return_value = os.path.abspath(os.path.expanduser("~/.aws"))
+
+            with pytest.raises(ValueError, match="Invalid code_dir path"):
+                _create_or_update_code_dir(
+                    model_dir="/tmp/model",
+                    inference_script="inference.py",
+                    source_directory=None,
+                    dependencies=[],
+                    sagemaker_session=None,
+                    tmp="/tmp",
+                )
+
+
+class TestValidatePathWithinDirectory(TestCase):
+    """Test validate_path_within_directory blocks path traversal."""
+
+    def test_raises_on_path_outside_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outside = os.path.join(tmpdir, "..", "..", "etc", "passwd")
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                validate_path_within_directory(outside, tmpdir, source_description="key")
+
+    def test_allows_path_within_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            inside = os.path.join(tmpdir, "subdir", "file.txt")
+            # should not raise
+            validate_path_within_directory(inside, tmpdir)
+
+    def test_allows_target_directory_itself(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # should not raise
+            validate_path_within_directory(tmpdir, tmpdir)
+
+
+class TestDownloadFilesUnderPrefixPathTraversal(TestCase):
+    """Test _download_files_under_prefix blocks path traversal attacks."""
+
+    def test_path_traversal_via_dotdot_in_key(self):
+        """Test that S3 keys with '..' traversal sequences are blocked."""
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/../../../../etc/passwd"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_not_called()
+
+    def test_path_traversal_via_relative_escape(self):
+        """Test that keys resolving outside target via relpath are blocked."""
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "prefix/../../../etc/cron.d/backdoor"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                _download_files_under_prefix("bucket", "prefix/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_not_called()
+
+    def test_safe_keys_are_allowed(self):
+        """Test that normal S3 keys within the target directory are allowed."""
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/subdir/file.txt"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_called_once()
+
+    def test_folder_objects_are_skipped(self):
+        """Test that S3 folder objects (keys ending with /) are skipped."""
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/subdir/"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_s3.Object.assert_not_called()

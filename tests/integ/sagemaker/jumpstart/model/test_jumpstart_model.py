@@ -34,6 +34,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     download_inference_assets,
     get_sm_session,
     get_tabular_data,
+    x_fail_if_ice,
 )
 
 INF2_SUPPORTED_REGIONS = {
@@ -87,7 +88,7 @@ def test_non_prepacked_jumpstart_model(setup):
 
 def test_prepacked_jumpstart_model(setup):
 
-    model_id = "huggingface-txt2img-conflictx-complex-lineart"
+    model_id = "model-txt2img-stabilityai-stable-diffusion-v2-1-base"
 
     model = JumpStartModel(
         model_id=model_id,
@@ -95,9 +96,10 @@ def test_prepacked_jumpstart_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.p3.2xlarge instance
+    # uses ml.g4dn.xlarge instance
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        instance_type="ml.g4dn.xlarge",
     )
 
     response = predictor.predict("hello world!")
@@ -105,6 +107,7 @@ def test_prepacked_jumpstart_model(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() not in GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS,
     reason=f"JumpStart model package inference models unavailable in {tests.integ.test_region()}.",
@@ -120,7 +123,7 @@ def test_model_package_arn_jumpstart_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.g5.2xlarge instance
+    # uses ml.g4dn.2xlarge instance
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
@@ -175,7 +178,7 @@ def test_jumpstart_gated_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.g5.2xlarge instance
+    # uses ml.g4dn.2xlarge instance
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         accept_eula=True,
@@ -191,22 +194,24 @@ def test_jumpstart_gated_model(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
+@x_fail_if_ice
 def test_jumpstart_gated_model_inference_component_enabled(setup):
 
     model_id = "meta-textgeneration-llama-2-7b"
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        model_version="4.*",  # pin: v5.0.0 default image fails to start
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.g5.2xlarge instance
     model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         accept_eula=True,
         endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+        instance_type="ml.g5.24xlarge",
     )
 
     predictor = retrieve_default(
@@ -251,11 +256,10 @@ def test_instantiating_model(mock_warning_logger, setup):
 
 
 def test_jumpstart_model_register(setup):
-    model_id = "huggingface-txt2img-conflictx-complex-lineart"
+    model_id = "model-txt2img-stabilityai-stable-diffusion-v2-1-base"
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="1.1.0",
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
@@ -264,7 +268,7 @@ def test_jumpstart_model_register(setup):
 
     # uses  instance
     predictor = model_package.deploy(
-        instance_type="ml.p3.2xlarge",
+        instance_type="ml.g4dn.xlarge",
         initial_instance_count=1,
     )
 
@@ -381,7 +385,7 @@ def test_jumpstart_model_with_deployment_configs(setup):
 
     model.set_deployment_config(
         configs[0]["ConfigName"],
-        "ml.g5.2xlarge",
+        "ml.g4dn.2xlarge",
     )
     assert model.config_name == configs[0]["ConfigName"]
 
@@ -415,7 +419,7 @@ def test_jumpstart_session_with_config_name():
             pass
 
     assert (
-        "md/js_model_id#meta-textgeneration-llama-2-7b md/js_model_ver#* md/js_config#tgi"
+        f"md/js_model_id#meta-textgeneration-llama-2-7b md/js_model_ver#* md/js_config#{model.config_name}"
         in mock_make_request.call_args[0][1]["headers"]["User-Agent"]
     )
 

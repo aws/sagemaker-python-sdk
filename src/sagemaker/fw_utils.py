@@ -156,6 +156,9 @@ TORCH_DISTRIBUTED_GPU_SUPPORTED_FRAMEWORK_VERSIONS = [
     "2.3.1",
     "2.4.1",
     "2.5.1",
+    "2.6.0",
+    "2.7.1",
+    "2.8.0",
 ]
 
 TRAINIUM_SUPPORTED_DISTRIBUTION_STRATEGIES = ["torch_distributed"]
@@ -398,6 +401,7 @@ def tar_and_upload_dir(
     kms_key=None,
     s3_resource=None,
     settings: Optional[SessionSettings] = None,
+    expected_bucket_owner: Optional[str] = None,
 ) -> UploadedCode:
     """Package source files and upload a compress tar file to S3.
 
@@ -428,6 +432,12 @@ def tar_and_upload_dir(
         settings (sagemaker.session_settings.SessionSettings): Optional. The settings
             of the SageMaker ``Session``, can be used to override the default encryption
             behavior (default: None).
+        expected_bucket_owner (str): Optional. AWS account id passed as
+            ``ExpectedBucketOwner`` on the upload. Callers should supply this when
+            ``bucket`` is the session's default bucket (via
+            ``Session._get_account_id_if_default_bucket``) to defend against
+            bucket-squatting on the predictable default name. Leave as ``None`` for
+            cross-account destination buckets.
     Returns:
         sagemaker.fw_utils.UploadedCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
@@ -468,6 +478,10 @@ def tar_and_upload_dir(
             extra_args = {"ServerSideEncryption": "aws:kms"}
         else:
             extra_args = None
+
+        if expected_bucket_owner:
+            extra_args = dict(extra_args) if extra_args else {}
+            extra_args["ExpectedBucketOwner"] = expected_bucket_owner
 
         if s3_resource is None:
             s3_resource = session.resource("s3", region_name=session.region_name)
@@ -962,7 +976,7 @@ def validate_distribution_for_instance_type(instance_type, distribution):
     """
     err_msg = ""
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             keys = list(distribution.keys())
             if len(keys) == 0:
@@ -1063,7 +1077,7 @@ def validate_torch_distributed_distribution(
             )
 
     # Check entry point type
-    if not entry_point.endswith(".py"):
+    if entry_point is not None and not entry_point.endswith(".py"):
         err_msg += (
             "Unsupported entry point type for the distribution torch_distributed.\n"
             "Only python programs (*.py) are supported."
@@ -1083,7 +1097,7 @@ def _is_gpu_instance(instance_type):
         bool: Whether or not the instance_type supports GPU
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match:
             if match[1].startswith("p") or match[1].startswith("g"):
                 return True
@@ -1102,7 +1116,7 @@ def _is_trainium_instance(instance_type):
         bool: Whether or not the instance_type is a Trainium instance
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             return True
     return False
@@ -1149,7 +1163,7 @@ def _instance_type_supports_profiler(instance_type):
         bool: Whether or not the region supports Amazon SageMaker Debugger profiling feature.
     """
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match and match[1].startswith("trn"):
             return True
     return False

@@ -1,6 +1,7 @@
 ###########################
 Amazon SageMaker Python SDK
 ###########################
+
 Amazon SageMaker Python SDK is an open source library for training and deploying machine-learned models on Amazon SageMaker.
 
 With the SDK, you can train and deploy models using popular deep learning frameworks, algorithms provided by Amazon, or your own algorithms built into SageMaker-compatible Docker images.

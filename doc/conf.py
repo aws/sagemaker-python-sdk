@@ -13,7 +13,7 @@
 """Configuration for generating readthedocs docstrings."""
 from __future__ import absolute_import
 
-import pkg_resources
+from importlib.metadata import version as _get_distribution_version
 from datetime import datetime
 import sys
 import os
@@ -22,7 +22,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "."))
 from doc_utils.jumpstart_doc_utils import create_jumpstart_model_table  # noqa: E402
 
 project = "sagemaker"
-version = pkg_resources.require(project)[0].version
+version = _get_distribution_version(project)
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
@@ -38,7 +38,17 @@ extensions = [
 ]
 
 # Add any paths that contain templates here, relative to this directory.
+# The _templates/layout.html override injects a <meta name="robots" content="noindex">
+# tag into every page's <head> so search engines drop the deprecated V2 docs from
+# their results (search de-indexing lever).
 templates_path = ["_templates"]
+
+# Canonical URL. Sphinx emits <link rel="canonical"> on each page using this base URL,
+# declaring the V3 ("stable") page as the authoritative URL for each V2 page so search
+# engines and automation consolidate signals on V3. A page built at
+# /en/v2/<path>.html points its canonical at https://sagemaker.readthedocs.io/en/stable/<path>.html
+# (same relative path under the V3 tree). Only accurate where a same-path V3 page exists.
+html_baseurl = "https://sagemaker.readthedocs.io/en/stable/"
 
 source_suffix = ".rst"  # The suffix of source filenames.
 master_doc = "index"  # The master toctree document.

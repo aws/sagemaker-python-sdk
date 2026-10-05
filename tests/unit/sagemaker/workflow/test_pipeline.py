@@ -174,6 +174,102 @@ def test_pipeline_create_and_start_with_parallelism_config(sagemaker_session_moc
     )
 
 
+def test_pipeline_create_converts_parallelism_config_object_to_dict(
+    sagemaker_session_mock, role_arn
+):
+    """Regression for #5354.
+
+    create() (via _create_args) must convert a ParallelismConfiguration object to its request
+    dict, because boto rejects the object with a ParamValidationError.
+    """
+    from sagemaker.workflow.parallelism_config import ParallelismConfiguration
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    pipeline.create(
+        role_arn=role_arn,
+        parallelism_config=ParallelismConfiguration(max_parallel_execution_steps=5),
+    )
+    call_kwargs = sagemaker_session_mock.sagemaker_client.create_pipeline.call_args[1]
+    assert call_kwargs["ParallelismConfiguration"] == {"MaxParallelExecutionSteps": 5}
+    assert isinstance(call_kwargs["ParallelismConfiguration"], dict)
+
+
+def test_pipeline_start_converts_parallelism_config_object_to_dict(
+    sagemaker_session_mock, role_arn
+):
+    """Regression for #5354: start() must pass a dict to boto, not a ParallelismConfiguration."""
+    from sagemaker.workflow.parallelism_config import ParallelismConfiguration
+
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = dict(
+        PipelineExecutionArn="pipeline-execution-arn"
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    pipeline.start(parallelism_config=ParallelismConfiguration(max_parallel_execution_steps=7))
+    call_kwargs = sagemaker_session_mock.sagemaker_client.start_pipeline_execution.call_args[1]
+    assert call_kwargs["ParallelismConfiguration"] == {"MaxParallelExecutionSteps": 7}
+    assert isinstance(call_kwargs["ParallelismConfiguration"], dict)
+
+
+def test_resolve_parallelism_config_output_passes_real_boto_param_validation():
+    """End-to-end proof for #5354 against the real SageMaker service model (offline).
+
+    boto3's client-side ParamValidator (no network, no credentials) is exactly what raised the
+    reported ParamValidationError. This asserts the raw ParallelismConfiguration object is
+    rejected by that validator, while the value produced by ``_resolve_parallelism_config`` is
+    accepted -- reproducing the bug and proving the fix at the boto layer, not just via mocks.
+    """
+    import boto3
+    from botocore import validate
+
+    from sagemaker.workflow.parallelism_config import ParallelismConfiguration
+    from sagemaker.workflow.pipeline import _resolve_parallelism_config
+
+    shape = (
+        boto3.client("sagemaker", region_name="us-west-2")
+        .meta.service_model.operation_model("CreatePipeline")
+        .input_shape
+    )
+    validator = validate.ParamValidator()
+    base = {
+        "PipelineName": "p",
+        "RoleArn": "arn:aws:iam::111111111111:role/x",
+        "PipelineDefinition": "{}",
+        "ClientRequestToken": "x" * 32,
+    }
+    cfg = ParallelismConfiguration(max_parallel_execution_steps=5)
+
+    # The raw object is what the old code passed -- boto rejects it.
+    raw_report = validator.validate({**base, "ParallelismConfiguration": cfg}, shape)
+    assert raw_report.has_errors()
+
+    # The converted value the fix passes -- boto accepts it.
+    fixed_report = validator.validate(
+        {**base, "ParallelismConfiguration": _resolve_parallelism_config(cfg)}, shape
+    )
+    assert not fixed_report.has_errors()
+
+
+def test_resolve_parallelism_config_passes_through_dict_and_none():
+    """Backwards compat for #5354: a dict (pre-fix workaround) is forwarded unchanged and
+    None is returned as-is so update_args drops the key."""
+    from sagemaker.workflow.pipeline import _resolve_parallelism_config
+
+    assert _resolve_parallelism_config({"MaxParallelExecutionSteps": 3}) == {
+        "MaxParallelExecutionSteps": 3
+    }
+    assert _resolve_parallelism_config(None) is None
+
+
 @patch("sagemaker.s3.S3Uploader.upload_string_as_file_body")
 def test_large_pipeline_create(sagemaker_session_mock, role_arn):
     sagemaker_session_mock.sagemaker_config = {}
@@ -324,7 +420,6 @@ def test_pipeline_execution_result(
         },
         "TrainingJobStatus": "Completed",
         "OutputDataConfig": {"S3OutputPath": s3_output_path},
-        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "abcdefg"},
     }
     execution.result("stepA")
 
@@ -391,7 +486,6 @@ def test_pipeline_upsert_resource_already_exists(sagemaker_session_mock, role_ar
     sagemaker_session_mock.sagemaker_client.create_pipeline = Mock(
         name="create_pipeline", side_effect=_raise_does_already_exists_client_error
     )
-
     sagemaker_session_mock.sagemaker_client.update_pipeline.return_value = {
         "PipelineArn": "pipeline-arn"
     }
@@ -428,6 +522,12 @@ def test_pipeline_upsert_resource_already_exists(sagemaker_session_mock, role_ar
     sagemaker_session_mock.sagemaker_client.add_tags.assert_called_with(
         ResourceArn="pipeline-arn", Tags=tags
     )
+
+    sagemaker_session_mock.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": [{"PipelineVersionId": 2}]
+    }
+
+    assert pipeline.latest_pipeline_version_id == 2
 
 
 def test_pipeline_upsert_create_unexpected_failure(sagemaker_session_mock, role_arn):
@@ -476,17 +576,10 @@ def test_pipeline_upsert_create_unexpected_failure(sagemaker_session_mock, role_
     sagemaker_session_mock.sagemaker_client.add_tags.assert_not_called()
 
 
-def test_pipeline_upsert_resourse_doesnt_exist(sagemaker_session_mock, role_arn):
+def test_pipeline_upsert_resource_doesnt_exist(sagemaker_session_mock, role_arn):
 
     # case 3: resource does not exist
     sagemaker_session_mock.sagemaker_client.create_pipeline = Mock(name="create_pipeline")
-
-    sagemaker_session_mock.sagemaker_client.update_pipeline.return_value = {
-        "PipelineArn": "pipeline-arn"
-    }
-    sagemaker_session_mock.sagemaker_client.list_tags.return_value = {
-        "Tags": [{"Key": "dummy", "Value": "dummy_tag"}]
-    }
 
     tags = [
         {"Key": "foo", "Value": "abc"},
@@ -542,6 +635,11 @@ def test_pipeline_describe(sagemaker_session_mock):
         PipelineName="MyPipeline",
     )
 
+    pipeline.describe(pipeline_version_id=5)
+    sagemaker_session_mock.sagemaker_client.describe_pipeline.assert_called_with(
+        PipelineName="MyPipeline", PipelineVersionId=5
+    )
+
 
 def test_pipeline_start(sagemaker_session_mock):
     sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = {
@@ -566,6 +664,11 @@ def test_pipeline_start(sagemaker_session_mock):
     pipeline.start(parameters=dict(alpha="epsilon"))
     sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
+    )
+
+    pipeline.start(pipeline_version_id=5)
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.assert_called_with(
+        PipelineName="MyPipeline", PipelineVersionId=5
     )
 
 
@@ -784,6 +887,79 @@ def test_pipeline_disable_experiment_config(sagemaker_session_mock):
     )
 
 
+@patch("sagemaker.workflow.pipeline.EXPERIMENTS_REGIONS", {"us-east-1", "us-west-2"})
+def test_pipeline_init_with_default_experiment_config_in_supported_region(sagemaker_session_mock):
+    """Test that default experiment config is preserved in regions where Experiments is available."""
+    sagemaker_session_mock.boto_region_name = "us-east-1"
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Default experiment config should be preserved
+    assert pipeline.pipeline_experiment_config is not None
+    assert pipeline.pipeline_experiment_config.experiment_name == ExecutionVariables.PIPELINE_NAME
+    assert (
+        pipeline.pipeline_experiment_config.trial_name == ExecutionVariables.PIPELINE_EXECUTION_ID
+    )
+
+
+@patch("sagemaker.workflow.pipeline.EXPERIMENTS_REGIONS", {"us-east-1", "us-west-2"})
+def test_pipeline_init_with_default_experiment_config_in_unsupported_region(
+    sagemaker_session_mock,
+):
+    """Test that default experiment config is disabled in regions where Experiments is not available."""
+    sagemaker_session_mock.boto_region_name = "ap-southeast-4"  # Not in EXPERIMENTS_REGIONS
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Default experiment config should be set to None
+    assert pipeline.pipeline_experiment_config is None
+
+
+@patch("sagemaker.workflow.pipeline.EXPERIMENTS_REGIONS", {"us-east-1", "us-west-2"})
+def test_pipeline_init_with_explicit_experiment_config_in_unsupported_region(
+    sagemaker_session_mock,
+):
+    """Test that explicitly set experiment config is preserved even in unsupported regions."""
+    sagemaker_session_mock.boto_region_name = "ap-southeast-4"  # Not in EXPERIMENTS_REGIONS
+
+    explicit_config = PipelineExperimentConfig("MyExperiment", "MyTrial")
+    pipeline = Pipeline(
+        name="MyPipeline",
+        pipeline_experiment_config=explicit_config,
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Explicitly set experiment config should be preserved
+    assert pipeline.pipeline_experiment_config is not None
+    assert pipeline.pipeline_experiment_config.experiment_name == "MyExperiment"
+    assert pipeline.pipeline_experiment_config.trial_name == "MyTrial"
+
+
+@patch("sagemaker.workflow.pipeline.EXPERIMENTS_REGIONS", {"us-east-1", "us-west-2"})
+def test_pipeline_init_with_none_experiment_config_in_supported_region(sagemaker_session_mock):
+    """Test that explicitly setting experiment config to None is respected in supported regions."""
+    sagemaker_session_mock.boto_region_name = "us-east-1"
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        pipeline_experiment_config=None,
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Explicitly set None should be preserved
+    assert pipeline.pipeline_experiment_config is None
+
+
 def test_pipeline_list_executions(sagemaker_session_mock):
     sagemaker_session_mock.sagemaker_client.list_pipeline_executions.return_value = {
         "PipelineExecutionSummaries": [Mock()],
@@ -807,6 +983,29 @@ def test_pipeline_list_executions(sagemaker_session_mock):
     assert len(executions) == 2
     assert len(executions["PipelineExecutionSummaries"]) == 2
     assert executions["NextToken"] == "token"
+
+
+def test_pipeline_list_versions(sagemaker_session_mock):
+    sagemaker_session_mock.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": [Mock()],
+        "NextToken": "token",
+    }
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[ParameterString("alpha", "beta"), ParameterString("gamma", "delta")],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    versions = pipeline.list_pipeline_versions()
+    assert len(versions["PipelineVersionSummaries"]) == 1
+    assert versions["NextToken"] == "token"
+
+    sagemaker_session_mock.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": [Mock(), Mock()],
+    }
+    versions = pipeline.list_pipeline_versions(next_token=versions["NextToken"])
+    assert len(versions["PipelineVersionSummaries"]) == 2
+    assert "NextToken" not in versions
 
 
 def test_pipeline_build_parameters_from_execution(sagemaker_session_mock):

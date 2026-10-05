@@ -32,6 +32,10 @@ INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
 KEEP_ALIVE_PERIOD = 1800
 TRAINING_PLAN = "arn:aws:sagemaker:us-west-2:336:training-plan/test_training_plan"
+INSTANCE_PLACEMENT_CONFIG = {
+    "EnableMultipleJobs": True,
+    "PlacementSpecifications": [{"UltraServerId": "us-1", "InstanceCount": "2"}],
+}
 INSTANCE_GROUP = InstanceGroup("group", "ml.c4.xlarge", 1)
 VOLUME_SIZE = 1
 MAX_RUNTIME = 1
@@ -753,6 +757,28 @@ def test_prepare_resource_config_with_training_plan():
         "VolumeSizeInGB": VOLUME_SIZE,
         "VolumeKmsKeyId": VOLUME_KMS_KEY,
         "TrainingPlanArn": TRAINING_PLAN,
+    }
+
+
+def test_prepare_resource_config_with_placement_config():
+    resource_config = _Job._prepare_resource_config(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        None,
+        VOLUME_SIZE,
+        VOLUME_KMS_KEY,
+        None,
+        TRAINING_PLAN,
+        INSTANCE_PLACEMENT_CONFIG,
+    )
+
+    assert resource_config == {
+        "InstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "VolumeSizeInGB": VOLUME_SIZE,
+        "VolumeKmsKeyId": VOLUME_KMS_KEY,
+        "TrainingPlanArn": TRAINING_PLAN,
+        "InstancePlacementConfig": INSTANCE_PLACEMENT_CONFIG,
     }
 
 

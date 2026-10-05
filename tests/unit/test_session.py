@@ -18,6 +18,7 @@ import io
 import json
 import logging
 import os
+import tempfile
 
 import pytest
 import six
@@ -726,6 +727,25 @@ def test_get_caller_identity_arn_from_metadata_file_for_space(boto_session):
     actual = sess.get_caller_identity_arn()
 
     assert actual == expected_role
+
+
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"ExecutionRoleArn": "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_metadata_file_with_no_domain_id(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    # Should not call describe_notebook_instance since ExecutionRoleArn is available
+    sess.sagemaker_client.describe_notebook_instance.assert_not_called()
 
 
 @patch(
@@ -4971,6 +4991,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
     response_types = ["application/json"]
     inference_instances = ["ml.m4.xlarge"]
     transform_instances = ["ml.m4.xlarget"]
+    model_package_registration_type = "Registered"
     model_metrics = {
         "Bias": {
             "ContentType": "content-type",
@@ -5026,6 +5047,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
         task=task,
         validation_specification=validation_specification,
         skip_model_validation=skip_model_validation,
+        model_package_registration_type=model_package_registration_type,
     )
     expected_kms_key_id = SAGEMAKER_CONFIG_MODEL_PACKAGE["SageMaker"]["ModelPackage"][
         "ValidationSpecification"
@@ -5064,6 +5086,7 @@ def test_create_model_package_with_sagemaker_config_injection(sagemaker_session)
             "Task": task,
             "ValidationSpecification": validation_specification,
             "SkipModelValidation": skip_model_validation,
+            "ModelPackageRegistrationType": "Registered",
         }
     )
     expected_args["ValidationSpecification"]["ValidationRole"] = expected_role_arn
@@ -5094,6 +5117,8 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
     approval_status = ("Approved",)
     skip_model_validation = "All"
     source_uri = "dummy-source-uri"
+    model_package_registration_type = "Registered"
+    sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
     sagemaker_session.sagemaker_client.search.return_value = {"Results": []}
 
@@ -5115,6 +5140,7 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
         approval_status=approval_status,
         skip_model_validation=skip_model_validation,
         source_uri=source_uri,
+        model_package_registration_type=model_package_registration_type,
     )
     expected_create_mp_args = {
         "ModelPackageGroupName": model_package_group_name,
@@ -5128,6 +5154,7 @@ def test_create_model_package_from_containers_with_source_uri_and_inference_spec
         "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
         "SkipModelValidation": skip_model_validation,
+        "ModelPackageRegistrationType": "Registered",
     }
 
     sagemaker_session.sagemaker_client.create_model_package.assert_called_once_with(
@@ -7024,6 +7051,68 @@ def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
         Filename="./foo/bar/mode.tar.gz",
         ExtraArgs=None,
     )
+
+
+def test_download_data_path_traversal_in_file_key(sagemaker_session):
+    """Test that S3 keys with '..' traversal sequences are blocked."""
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/../../../../etc/passwd", "Size": 100},
+            ]
+        }
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            sagemaker_session.download_data(
+                path=tmpdir, bucket="foo-bucket", key_prefix="data/"
+            )
+
+    sagemaker_session.s3_client.download_file.assert_not_called()
+
+
+def test_download_data_path_traversal_overwrite_credentials(sagemaker_session):
+    """Test the exact attack scenario from the vulnerability report."""
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/../../../../Users/alice/.aws/credentials", "Size": 200},
+            ]
+        }
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            sagemaker_session.download_data(
+                path=tmpdir, bucket="shared-bucket", key_prefix="data/"
+            )
+
+    sagemaker_session.s3_client.download_file.assert_not_called()
+
+
+@patch("os.makedirs")
+def test_download_data_safe_keys_are_allowed(makedirs, sagemaker_session):
+    """Test that normal S3 keys within the target directory are allowed."""
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/train.csv", "Size": 100},
+                {"Key": "data/models/model.pkl", "Size": 500},
+            ]
+        }
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = sagemaker_session.download_data(
+            path=tmpdir, bucket="foo-bucket", key_prefix="data/"
+        )
+
+    assert len(result) == 2
+    assert sagemaker_session.s3_client.download_file.call_count == 2
 
 
 def test_create_hub(sagemaker_session):

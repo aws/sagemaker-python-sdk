@@ -29,7 +29,7 @@ from sagemaker.amazon.amazon_estimator import (
 )
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
-from sagemaker.deprecations import removed_function
+from sagemaker.deprecations import removed_function, warn_v2_deprecation
 from sagemaker.estimator import EstimatorBase, Framework
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.job import _Job
@@ -594,7 +594,7 @@ class HyperparameterTuner(object):
         self,
         estimator: EstimatorBase,
         objective_metric_name: Union[str, PipelineVariable],
-        hyperparameter_ranges: Dict[str, ParameterRange],
+        hyperparameter_ranges: Dict[Union[str, PipelineVariable], ParameterRange],
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         strategy: Union[str, PipelineVariable] = "Bayesian",
         objective_type: Union[str, PipelineVariable] = "Maximize",
@@ -624,10 +624,11 @@ class HyperparameterTuner(object):
                 instance.
             objective_metric_name (str or PipelineVariable): Name of the metric for evaluating
                 training jobs.
-            hyperparameter_ranges (dict[str, sagemaker.parameter.ParameterRange]): Dictionary of
-                parameter ranges. These parameter ranges can be one
+            hyperparameter_ranges (dict[str or PipelineVariable, sagemaker.parameter.ParameterRange]):
+                Dictionary of parameter ranges. These parameter ranges can be one
                 of three types: Continuous, Integer, or Categorical. The keys of
-                the dictionary are the names of the hyperparameter, and the
+                the dictionary are the names of the hyperparameter (a str, or a
+                PipelineVariable such as a pipeline ParameterString), and the
                 values are the appropriate parameter range class to represent
                 the range.
             metric_definitions (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of
@@ -683,6 +684,13 @@ class HyperparameterTuner(object):
                 static and will not be assigned a tunable range with Autotune functionality.
                 (default: None).
         """
+        # The migration guide moves HPT to sagemaker-core but does not publish a
+        # single import path (it spans multiple classes), so we point at the
+        # namespace and defer to the guide.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="the hyperparameter tuning classes under sagemaker.core",
+        )
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
             if not autotune:
                 raise ValueError("Need to specify hyperparameter ranges or set autotune=True.")
@@ -1899,8 +1907,9 @@ class HyperparameterTuner(object):
                 names as in estimator_dict, and there must be one entry for each estimator in
                 estimator_dict. Each value is a dictionary of sagemaker.parameter.ParameterRange
                 instance, which can be one of three types: Continuous, Integer, or Categorical.
-                The keys of each ParameterRange dictionaries are the names of the hyperparameter,
-                and the values are the appropriate parameter range class to represent the range.
+                The keys of each ParameterRange dictionary are the names of the hyperparameter
+                (a str, or a PipelineVariable such as a pipeline ParameterString), and the values
+                are the appropriate parameter range class to represent the range.
             metric_definitions_dict (dict(str, list[dict]]): Dictionary of metric definitions.
                 The keys are the same set or a subset of estimator names as in estimator_dict,
                 and there must be one entry for each estimator in estimator_dict. Each value is
@@ -2116,6 +2125,72 @@ class HyperparameterTuner(object):
             self.metric_definitions_dict[estimator_name] = metric_definitions
 
     delete_endpoint = removed_function("delete_endpoint")
+
+    @staticmethod
+    def visualize_jobs(
+        tuning_jobs: Union[
+            str,
+            "sagemaker.tuner.HyperparameterTuner",
+            List[Union[str, "sagemaker.tuner.HyperparameterTuner"]],
+        ],
+        return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False,
+    ):
+        """Create interactive visualization via altair charts using the sagemaker.amtviz package.
+
+        Args:
+            tuning_jobs (str or sagemaker.tuner.HyperparameterTuner or list[str, sagemaker.tuner.HyperparameterTuner]):
+            One or more tuning jobs to create
+            visualization for.
+            return_dfs: (bool): Option to return trials and full dataframe.
+            job_metrics: (list[str]): Metrics to be used in charts.
+            trials_only: (bool): Whether to show trials only or full dataframe.
+            advanced: (bool): Show a cumulative step line in the progress over time chart.
+        Returns:
+            A collection of charts (altair.VConcatChart); or charts, trials_df (pandas.DataFrame),
+            full_df (pandas.DataFrame) if ``return_dfs=True``.
+        """
+        try:
+            # Check if altair is installed
+            importlib.import_module("altair")
+
+        except ImportError:
+            print("Altair is not installed. Install Altair to use the visualization feature:")
+            print("  pip install altair")
+            print("After installing Altair, use the methods visualize_jobs or visualize_job.")
+            return None
+
+        # If altair is installed, proceed with visualization
+        from sagemaker.amtviz import visualize_tuning_job
+
+        return visualize_tuning_job(
+            tuning_jobs,
+            return_dfs=return_dfs,
+            job_metrics=job_metrics,
+            trials_only=trials_only,
+            advanced=advanced,
+        )
+
+    def visualize_job(
+        self,
+        return_dfs: bool = False,
+        job_metrics: Optional[List[str]] = None,
+        trials_only: bool = False,
+        advanced: bool = False,
+    ):
+        """Convenience method on instance level for visualize_jobs().
+
+        See static method visualize_jobs().
+        """
+        return HyperparameterTuner.visualize_jobs(
+            self,
+            return_dfs=return_dfs,
+            job_metrics=job_metrics,
+            trials_only=trials_only,
+            advanced=advanced,
+        )
 
 
 class _TuningJob(_Job):

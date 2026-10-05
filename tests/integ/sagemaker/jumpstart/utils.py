@@ -12,9 +12,11 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import functools
+import hashlib
 import json
 
 import random
+import tempfile
 import time
 import uuid
 from typing import Any, Dict, List, Tuple
@@ -24,6 +26,7 @@ import os
 
 from botocore.config import Config
 from botocore.exceptions import ClientError
+from filelock import FileLock
 import pytest
 
 
@@ -77,11 +80,92 @@ def x_fail_if_ice(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            if "CapacityError" in str(e):
+            # Insufficient capacity is a transient, region-level AWS condition
+            # (no instances available right now), not a SDK defect. SageMaker
+            # surfaces it either as a "CapacityError" or as an endpoint failure
+            # whose reason contains "InsufficientInstanceCapacity"; treat both as
+            # an expected failure so canaries don't go red on capacity shortages.
+            if "CapacityError" in str(e) or "InsufficientInstanceCapacity" in str(e):
                 pytest.xfail(str(e))
             raise
 
     return wrapper
+
+
+# Default time (in seconds) we allow a training job to sit in
+# "Pending - waiting for capacity" before treating it as a capacity shortage.
+# Scarce accelerators (e.g. Trainium ml.trn1.32xlarge) can queue for hours
+# without ever failing, which would otherwise exhaust the build timeout.
+DEFAULT_CAPACITY_WAIT_TIMEOUT_SECONDS = 30 * 60
+_CAPACITY_POLL_INTERVAL_SECONDS = 60
+
+
+def fit_estimator_with_capacity_xfail(
+    estimator,
+    inputs,
+    capacity_wait_timeout_seconds: int = DEFAULT_CAPACITY_WAIT_TIMEOUT_SECONDS,
+):
+    """Submit a training job and wait for it, but fail fast on capacity queueing.
+
+    Unlike ``estimator.fit()`` (which blocks until the job reaches a terminal
+    state), this submits the job non-blocking and then polls its secondary
+    status. Insufficient capacity for scarce instances (e.g. Trainium) does not
+    surface as an exception; SageMaker simply parks the job in
+    ``Pending`` / "waiting for capacity" indefinitely. If the job stays in that
+    state longer than ``capacity_wait_timeout_seconds`` before training starts,
+    we raise a ``RuntimeError`` whose message contains ``"CapacityError"`` so the
+    ``x_fail_if_ice`` decorator marks the test as xfail instead of letting it hang
+    until the build times out.
+
+    Args:
+        estimator: A SageMaker estimator (e.g. ``JumpStartEstimator``).
+        inputs: The training inputs passed through to ``estimator.fit()``.
+        capacity_wait_timeout_seconds: Max time to allow the job to remain in
+            "waiting for capacity" before declaring a capacity shortage.
+    """
+    estimator.fit(inputs, wait=False)
+
+    training_job_name = estimator.latest_training_job.name
+    sagemaker_client = estimator.sagemaker_session.sagemaker_client
+
+    capacity_wait_deadline = time.time() + capacity_wait_timeout_seconds
+    training_started = False
+
+    while True:
+        desc = sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
+        status = desc["TrainingJobStatus"]
+        secondary_status = desc.get("SecondaryStatus", "")
+        secondary_message = desc.get("SecondaryStatusMessage", "")
+
+        # Once the job leaves the pre-capacity phases, capacity has been granted
+        # and normal training-time limits (MaxRuntimeInSeconds) take over.
+        if secondary_status not in ("Starting", "Pending"):
+            training_started = True
+
+        if status in ("Completed", "Failed", "Stopped"):
+            if status != "Completed":
+                raise RuntimeError(
+                    f"Training job {training_job_name} ended with status {status}: "
+                    f"{desc.get('FailureReason', secondary_message)}"
+                )
+            return desc
+
+        if not training_started and time.time() > capacity_wait_deadline:
+            # Stop the queued job so it does not keep holding the request, then
+            # raise a CapacityError so x_fail_if_ice converts this to an xfail.
+            try:
+                sagemaker_client.stop_training_job(TrainingJobName=training_job_name)
+            except ClientError:
+                pass
+            raise RuntimeError(
+                "CapacityError: training job "
+                f"{training_job_name} stayed in '{secondary_status}' "
+                f"({secondary_message!r}) for over "
+                f"{capacity_wait_timeout_seconds}s without acquiring "
+                f"{estimator.instance_type} capacity."
+            )
+
+        time.sleep(_CAPACITY_POLL_INTERVAL_SECONDS)
 
 
 def download_inference_assets():
@@ -147,6 +231,80 @@ def with_exponential_backoff(max_retries=5, initial_delay=1, max_delay=60):
         return wrapper
 
     return decorator
+
+
+@with_exponential_backoff()
+def _create_model_reference(hub_instance, model_arn):
+    """Create a model reference in the hub, tolerating an already-existing one."""
+    try:
+        hub_instance.create_model_reference(model_arn=model_arn)
+    except ClientError as e:
+        # A reference that already exists is fine (idempotent across xdist
+        # workers sharing a hub). Anything else should surface.
+        if e.response["Error"]["Code"] in ("ResourceInUse", "ResourceLimitExceeded"):
+            return
+        raise
+
+
+def _wait_for_model_reference(sagemaker_session, hub_name, model_name, timeout=300, poll=10):
+    """Block until a model reference is resolvable in the hub.
+
+    ``create_hub_content_reference`` is asynchronous, so a test that uses the
+    reference immediately after creation can race against propagation and see
+    ``ResourceNotFound``. Poll until the reference is listable (or time out).
+    """
+    deadline = time.time() + timeout
+    last_error = None
+    while time.time() < deadline:
+        try:
+            response = sagemaker_session.list_hub_content_versions(
+                hub_name=hub_name,
+                hub_content_type="ModelReference",
+                hub_content_name=model_name,
+            )
+            if response.get("HubContentSummaries"):
+                return
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "ResourceNotFound":
+                raise
+            last_error = e
+        time.sleep(poll)
+    raise TimeoutError(
+        f"Model reference '{model_name}' was not available in hub '{hub_name}' "
+        f"within {timeout}s. Last error: {last_error}"
+    )
+
+
+def add_model_references_to_hub(hub_name, model_ids):
+    """Idempotently add model references to a hub and wait until they resolve.
+
+    Safe to call concurrently from multiple xdist workers sharing a hub: a lock
+    file serializes the creation work and a marker file ensures it only runs
+    once per hub per test run. The marker is keyed by both the hub name and the
+    specific set of model ids, so different callers adding different model sets
+    to the same shared hub each run exactly once.
+    """
+    sagemaker_session = get_sm_session()
+    hub_instance = Hub(hub_name=hub_name, sagemaker_session=sagemaker_session)
+
+    model_ids = sorted(model_ids)
+    models_digest = hashlib.md5(
+        ",".join(model_ids).encode("utf-8"), usedforsecurity=False
+    ).hexdigest()
+    marker = os.path.join(
+        tempfile.gettempdir(), f"jumpstart_model_refs_{hub_name}_{models_digest}.done"
+    )
+    lock_path = f"{marker}.lock"
+
+    with FileLock(lock_path):
+        if not os.path.exists(marker):
+            for model in model_ids:
+                model_arn = get_public_hub_model_arn(hub_instance, model)
+                _create_model_reference(hub_instance, model_arn)
+            for model in model_ids:
+                _wait_for_model_reference(sagemaker_session, hub_name, model)
+            with open(marker, "w") as f:
+                f.write("done")
 
 
 class EndpointInvoker:

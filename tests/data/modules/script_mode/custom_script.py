@@ -76,14 +76,60 @@ def predict_fn(input_data, model):
         return model(input_data.float()).numpy()[0]
 
 
+def parse_args():
+    """
+    Parse the command line arguments
+    """
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--model-dir",
+        type=str,
+        default=os.environ.get("SM_MODEL_DIR", os.path.join(current_dir, "data/model")),
+        help="Directory to save the model",
+    )
+    parser.add_argument(
+        "--train-dir",
+        type=str,
+        default=os.environ.get("SM_CHANNEL_TRAIN", os.path.join(current_dir, "data/train")),
+        help="Directory containing training data",
+    )
+    parser.add_argument(
+        "--test-dir",
+        type=str,
+        default=os.environ.get("SM_CHANNEL_TEST", os.path.join(current_dir, "data/test")),
+        help="Directory containing testing data",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=64,
+        help="Batch size for training",
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=1,
+        help="Number of epochs for training",
+    )
+    parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=0.1,
+        help="Learning rate for training",
+    )
+    return parser.parse_args()
+
+
 def train():
     """
     Train the PyTorch model
     """
+    args = parse_args()
     # Directories: train, test and model
-    train_dir = os.path.join(current_dir, "data/train")
-    test_dir = os.path.join(current_dir, "data/test")
-    model_dir = os.environ.get("SM_MODEL_DIR", os.path.join(current_dir, "data/model"))
+    train_dir = args.train_dir
+    test_dir = args.test_dir
+    model_dir = args.model_dir
 
     # Load the training and testing data
     x_train, y_train = get_train_data(train_dir)
@@ -91,9 +137,9 @@ def train():
     train_ds = TensorDataset(x_train, y_train)
 
     # Training parameters - used to configure the training loop
-    batch_size = 64
-    epochs = 1
-    learning_rate = 0.1
+    batch_size = args.batch_size
+    epochs = args.epochs
+    learning_rate = args.learning_rate
     logger.info(
         "batch_size = {}, epochs = {}, learning rate = {}".format(batch_size, epochs, learning_rate)
     )

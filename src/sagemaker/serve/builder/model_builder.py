@@ -116,7 +116,7 @@ from sagemaker.serve.validations.check_image_and_hardware_type import (
     validate_image_uri_and_hardware,
 )
 from sagemaker.serverless import ServerlessInferenceConfig
-from sagemaker.utils import Tags, unique_name_from_base
+from sagemaker.utils import Tags
 from sagemaker.workflow.entities import PipelineVariable
 from sagemaker.huggingface.llm_utils import (
     get_huggingface_model_metadata,
@@ -225,6 +225,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             available for providing s3 path to fine-tuned model artifacts. ``FINE_TUNING_JOB_NAME``
             is available for providing fine-tuned job name. Both ``FINE_TUNING_MODEL_PATH`` and
             ``FINE_TUNING_JOB_NAME`` are mutually exclusive.
+        model_version (Optional[str]): Override the JumpStart model version to resolve.
+            Defaults to ``"*"`` (latest) when not set. Ignored for non-JumpStart models.
         inference_component_name (Optional[str]): The name for an inference component
             created from this ModelBuilder instance. This or ``resource_requirements`` must be set
             to denote that this instance refers to an inference component.
@@ -335,6 +337,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             "`MLFLOW_MODEL_PATH`, `FINE_TUNING_MODEL_PATH`, `FINE_TUNING_JOB_NAME`, and "
             "`CUSTOM_MODEL_PATH`. HF_TASK should be set for new models without task metadata "
             "in the Hub, Adding unsupported task types will throw an exception."
+        },
+    )
+    model_version: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Override the JumpStart model version to resolve. Defaults to the "
+            "latest version ('*') when not set. Ignored for non-JumpStart models."
         },
     )
     inference_component_name: Optional[str] = field(
@@ -1728,9 +1737,11 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         if self._is_jumpstart_model_id():
             self.build(mode=self.mode, sagemaker_session=self.sagemaker_session)
             if self.pysdk_model:
-                self.pysdk_model.set_deployment_config(
-                    instance_type=instance_type, config_name="lmi"
-                )
+                config_name = self.pysdk_model.config_name
+                if config_name:
+                    self.pysdk_model.set_deployment_config(
+                        instance_type=instance_type, config_name=config_name
+                    )
             input_args = self._optimize_for_jumpstart(
                 output_path=output_path,
                 instance_type=instance_type,
@@ -1983,8 +1994,6 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
         """
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
-        if not update_endpoint:
-            endpoint_name = unique_name_from_base(endpoint_name)
 
         if not hasattr(self, "_deployables"):
             if not inference_config:  # Real-time Deployment

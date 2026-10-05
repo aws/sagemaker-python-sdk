@@ -25,9 +25,9 @@ from sagemaker.session_settings import SessionSettings
 @patch("sagemaker.local.utils.os.path")
 @patch("sagemaker.local.utils.os")
 def test_copy_directory_structure(m_os, m_os_path):
-    m_os_path.exists.return_value = False
+    m_os_path.join.return_value = "/tmp/code/"
     sagemaker.local.utils.copy_directory_structure("/tmp/", "code/")
-    m_os.makedirs.assert_called_with("/tmp/", "code/")
+    m_os.makedirs.assert_called_with("/tmp/code/", exist_ok=True)
 
 
 @patch("shutil.rmtree", Mock())
@@ -133,6 +133,68 @@ def test_get_docker_host(m_subprocess):
             cmd, stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE
         )
         assert host == endpoint["result"]
+
+
+@patch("sagemaker.local.utils.subprocess")
+def test_get_docker_host_rootless_docker(m_subprocess):
+    """Test that rootless Docker is detected and returns fixed IP"""
+    # Mock docker info process for rootless Docker
+    info_process_mock = Mock()
+    info_attrs = {"communicate.return_value": (b"Cgroup Driver: none", b""), "returncode": 0}
+    info_process_mock.configure_mock(**info_attrs)
+    m_subprocess.Popen.return_value = info_process_mock
+
+    host = sagemaker.local.utils.get_docker_host()
+    assert host == "172.17.0.1"
+
+    # Verify docker info was called
+    m_subprocess.Popen.assert_called_with(
+        ["docker", "info"], stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE
+    )
+
+
+@patch("sagemaker.local.utils.subprocess")
+def test_get_docker_host_traditional_docker(m_subprocess):
+    """Test that traditional Docker falls back to existing logic"""
+    scenarios = [
+        {
+            "docker_info": b"Cgroup Driver: cgroupfs",
+            "context_host": "tcp://host:port",
+            "result": "host",
+        },
+        {
+            "docker_info": b"Cgroup Driver: cgroupfs",
+            "context_host": "unix:///var/run/docker.sock",
+            "result": "localhost",
+        },
+        {
+            "docker_info": b"Cgroup Driver: cgroupfs",
+            "context_host": "fd://something",
+            "result": "localhost",
+        },
+    ]
+
+    for scenario in scenarios:
+        # Mock docker info process for traditional Docker
+        info_process_mock = Mock()
+        info_attrs = {"communicate.return_value": (scenario["docker_info"], b""), "returncode": 0}
+        info_process_mock.configure_mock(**info_attrs)
+
+        # Mock docker context inspect process
+        context_return_value = (
+            '[\n{\n"Endpoints":{\n"docker":{\n"Host": "%s"}\n}\n}\n]\n' % scenario["context_host"]
+        )
+        context_process_mock = Mock()
+        context_attrs = {
+            "communicate.return_value": (context_return_value.encode("utf-8"), None),
+            "returncode": 0,
+        }
+        context_process_mock.configure_mock(**context_attrs)
+
+        m_subprocess.Popen.side_effect = [info_process_mock, context_process_mock]
+
+        host = sagemaker.local.utils.get_docker_host()
+        assert host == scenario["result"]
 
 
 @pytest.mark.parametrize(

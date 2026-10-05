@@ -44,6 +44,7 @@ from sagemaker.config.config_schema import (
     MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
     MONITORING_JOB_ROLE_ARN_PATH,
 )
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
 from sagemaker.model_monitor.monitoring_alert import (
@@ -170,6 +171,12 @@ class ModelMonitor(object):
                 inter-container traffic, security group IDs, and subnets.
 
         """
+        # Reports the concrete subclass name (ModelMonitor, DefaultModelMonitor,
+        # ModelQualityMonitor, ...) since they route through ModelMonitor.__init__.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="sagemaker.core.shapes.MonitoringSchedule",
+        )
         self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type

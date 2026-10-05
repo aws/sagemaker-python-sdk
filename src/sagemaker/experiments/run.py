@@ -24,6 +24,7 @@ import dateutil
 from numpy import array
 
 from sagemaker.apiutils import _utils
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.experiments import _api_types
 from sagemaker.experiments._api_types import (
     TrialComponentArtifact,
@@ -68,6 +69,7 @@ RUN_NAME_BASE = "Sagemaker-Run".lower()
 TRIAL_NAME_TEMPLATE = "Default-Run-Group-{}"
 MAX_RUN_TC_ARTIFACTS_LEN = 30
 MAX_NAME_LEN_IN_BACKEND = 120
+MAX_STATUS_MESSAGE_LEN = 1024
 EXPERIMENT_NAME = "ExperimentName"
 TRIAL_NAME = "TrialName"
 RUN_NAME = "RunName"
@@ -167,6 +169,10 @@ class Run(object):
             artifact_prefix (str): The S3 key prefix used to generate the S3 path
                 to upload the artifact to (default: "trial-component-artifacts").
         """
+        warn_v2_deprecation(
+            feature="Run",
+            v3_replacement="the experiment tracking resources under sagemaker.core.experiments",
+        )
         # TODO: we should revert the lower casting once backend fix reaches prod
         self.experiment_name = experiment_name.lower()
         sagemaker_session = sagemaker_session or _utils.default_session()
@@ -759,7 +765,7 @@ class Run(object):
         if exc_value:
             self._trial_component.status = _api_types.TrialComponentStatus(
                 primary_status=_TrialComponentStatusType.Failed.value,
-                message=str(exc_value),
+                message=(str(exc_value) or "")[:MAX_STATUS_MESSAGE_LEN],
             )
         else:
             self._trial_component.status = _api_types.TrialComponentStatus(

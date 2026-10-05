@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
 
@@ -216,16 +217,72 @@ def test_download_s3_artifacts_valid_s3_path(mock_os_makedirs, mock_session):
         {"Contents": [{"Key": "key/file1.txt"}, {"Key": "key/file2.txt"}]}
     ]
     mock_session.boto_session.client.return_value = mock_s3_client
+    # Prevent ExpectedBucketOwner from being injected into download_file calls
+    mock_session._get_account_id_if_default_bucket = lambda bucket: None
 
     _download_s3_artifacts(s3_path, dst_path, mock_session)
 
     mock_os_makedirs.assert_called_with(dst_path, exist_ok=True)
     mock_s3_client.download_file.assert_any_call(
-        "bucket", "key/file1.txt", os.path.join(dst_path, "file1.txt")
+        "bucket", "key/file1.txt", os.path.join(dst_path, "file1.txt"), ExtraArgs=None
     )
     mock_s3_client.download_file.assert_any_call(
-        "bucket", "key/file2.txt", os.path.join(dst_path, "file2.txt")
+        "bucket", "key/file2.txt", os.path.join(dst_path, "file2.txt"), ExtraArgs=None
     )
+
+
+@patch("sagemaker.Session")
+@patch("os.makedirs")
+def test_download_s3_artifacts_path_traversal_via_dotdot_in_key(mock_os_makedirs, mock_session):
+    """Test that S3 keys with '..' traversal sequences are blocked."""
+    mock_s3_client = MagicMock()
+    mock_s3_client.get_paginator.return_value.paginate.return_value = [
+        {"Contents": [{"Key": "model/../../../../etc/passwd"}]}
+    ]
+    mock_session.boto_session.client.return_value = mock_s3_client
+    mock_session._get_account_id_if_default_bucket = lambda bucket: None
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            _download_s3_artifacts("s3://my-bucket/model", tmpdir, mock_session)
+
+    mock_s3_client.download_file.assert_not_called()
+
+
+@patch("sagemaker.Session")
+@patch("os.makedirs")
+def test_download_s3_artifacts_path_traversal_overwrite_ssh_keys(mock_os_makedirs, mock_session):
+    """Test the attack scenario from the vulnerability report targeting SSH keys."""
+    mock_s3_client = MagicMock()
+    mock_s3_client.get_paginator.return_value.paginate.return_value = [
+        {"Contents": [{"Key": "mlruns/exp1/model/../../../../Users/alice/.ssh/authorized_keys"}]}
+    ]
+    mock_session.boto_session.client.return_value = mock_s3_client
+    mock_session._get_account_id_if_default_bucket = lambda bucket: None
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            _download_s3_artifacts(
+                "s3://shared-bucket/mlruns/exp1/model", tmpdir, mock_session
+            )
+
+    mock_s3_client.download_file.assert_not_called()
+
+
+@patch("sagemaker.Session")
+def test_download_s3_artifacts_safe_keys_are_allowed(mock_session):
+    """Test that normal S3 keys within the target directory are allowed."""
+    mock_s3_client = MagicMock()
+    mock_s3_client.get_paginator.return_value.paginate.return_value = [
+        {"Contents": [{"Key": "model/MLmodel"}, {"Key": "model/subdir/model.pkl"}]}
+    ]
+    mock_session.boto_session.client.return_value = mock_s3_client
+    mock_session._get_account_id_if_default_bucket = lambda bucket: None
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _download_s3_artifacts("s3://my-bucket/model", tmpdir, mock_session)
+
+    assert mock_s3_client.download_file.call_count == 2
 
 
 @patch("sagemaker.image_uris.retrieve")

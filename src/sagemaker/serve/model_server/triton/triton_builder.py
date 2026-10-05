@@ -23,7 +23,6 @@ from sagemaker.base_deserializers import JSONDeserializer
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.model_server.triton.config_template import CONFIG_TEMPLATE
 from sagemaker.serve.validations.check_integrity import (
-    generate_secret_key,
     compute_hash,
 )
 
@@ -213,7 +212,7 @@ class Triton:
             export_path.mkdir(parents=True)
 
         if self.model:
-            self.secret_key = "dummy secret key for onnx backend"
+            # ONNX path: no pickle serialization, no serve.pkl, no integrity check needed.
 
             if self._framework == "pytorch":
                 self._export_pytorch_to_onnx(
@@ -237,25 +236,22 @@ class Triton:
 
             self._pack_conda_env(pkl_path=pkl_path)
 
-            self._hmac_signing()
+            self._compute_integrity_hash()
 
             return
 
         raise ValueError("Either model or inference_spec should be provided to ModelBuilder.")
 
-    def _hmac_signing(self):
-        """Perform HMAC signing on picke file for integrity check"""
-        secret_key = generate_secret_key()
+    def _compute_integrity_hash(self):
+        """Compute SHA-256 integrity hash on pickle file for integrity check"""
         pkl_path = Path(self.model_path).joinpath("model_repository").joinpath("model")
 
         with open(str(pkl_path.joinpath("serve.pkl")), "rb") as f:
             buffer = f.read()
-        hash_value = compute_hash(buffer=buffer, secret_key=secret_key)
+        hash_value = compute_hash(buffer=buffer)
 
         with open(str(pkl_path.joinpath("metadata.json")), "wb") as metadata:
             metadata.write(_MetaData(hash_value).to_json())
-
-        self.secret_key = secret_key
 
     def _generate_config_pbtxt(self, pkl_path: Path):
         config_path = pkl_path.joinpath("config.pbtxt")

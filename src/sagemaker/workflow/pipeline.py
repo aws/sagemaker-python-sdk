@@ -26,6 +26,7 @@ from botocore.exceptions import ClientError, WaiterError
 
 from sagemaker import s3, LocalSession
 from sagemaker._studio import _append_project_tags
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.config import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
 from sagemaker.remote_function.core.serialization import deserialize_obj_from_s3
 from sagemaker.remote_function.core.stored_function import RESULTS_FOLDER
@@ -34,6 +35,7 @@ from sagemaker.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.session import Session
 from sagemaker.utils import resolve_value_from_config, retry_with_backoff, format_tags, Tags
+from sagemaker.workflow._utils import EXPERIMENTS_REGIONS
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow._event_bridge_client_helper import (
     EventBridgeSchedulerHelper,
@@ -64,6 +66,8 @@ from sagemaker.workflow.triggers import (
 )
 from sagemaker.workflow.utilities import list_to_request
 from sagemaker.workflow._steps_compiler import StepsCompiler
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +101,8 @@ class Pipeline:
                 the same name already exists. By default, pipeline name is used as
                 experiment name and execution id is used as the trial name.
                 If set to None, no experiment or trial will be created automatically.
+                Note: The default experiment config is only applied in regions where
+                SageMaker Experiments is Available.
             steps (Sequence[Union[Step, StepCollection, StepOutput]]): The list of the
                 non-conditional steps associated with the pipeline. Any steps that are within the
                 `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
@@ -110,6 +116,11 @@ class Pipeline:
                 the workflow customizes the pipeline definition using the configurations
                 specified. By default, custom job-prefixing is turned off.
         """
+        warn_v2_deprecation(
+            feature="Pipeline",
+            v3_replacement="Pipeline",
+            v3_import="from sagemaker.mlops.pipeline import Pipeline",
+        )
         self.name = name
         self.parameters = parameters if parameters else []
         self.pipeline_experiment_config = pipeline_experiment_config
@@ -125,6 +136,22 @@ class Pipeline:
             self.sagemaker_session.boto_session.client("scheduler"),
         )
 
+        # Apply default experiment config only in regions where Experiments is available
+        if pipeline_experiment_config is _DEFAULT_EXPERIMENT_CFG:
+            region = self.sagemaker_session.boto_region_name
+            if region not in EXPERIMENTS_REGIONS:
+                self.pipeline_experiment_config = None
+
+    @property
+    def latest_pipeline_version_id(self):
+        """Retrieves the latest version id of this pipeline"""
+        summaries = self.list_pipeline_versions(max_results=1)["PipelineVersionSummaries"]
+        if not summaries:
+            return None
+        else:
+            return summaries[0].get("PipelineVersionId")
+
+    @_telemetry_emitter(feature=Feature.MLOPS_V2, func_name="pipeline.create")
     def create(
         self,
         role_arn: str = None,
@@ -166,7 +193,8 @@ class Pipeline:
             kwargs,
             Tags=tags,
         )
-        return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
+        response = self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
+        return response
 
     def _create_args(
         self, role_arn: str, description: str, parallelism_config: ParallelismConfiguration
@@ -210,19 +238,28 @@ class Pipeline:
             }
 
         update_args(
-            kwargs, PipelineDescription=description, ParallelismConfiguration=parallelism_config
+            kwargs,
+            PipelineDescription=description,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
         )
         return kwargs
 
-    def describe(self) -> Dict[str, Any]:
+    def describe(self, pipeline_version_id: int = None) -> Dict[str, Any]:
         """Describes a Pipeline in the Workflow service.
+
+        Args:
+            pipeline_version_id (Optional[str]): version ID of the pipeline to describe.
 
         Returns:
             Response dict from the service. See `boto3 client documentation
             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
 sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """
-        return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
+        kwargs = dict(PipelineName=self.name)
+        if pipeline_version_id:
+            kwargs["PipelineVersionId"] = pipeline_version_id
+        return self.sagemaker_session.sagemaker_client.describe_pipeline(**kwargs)
 
     def update(
         self,
@@ -257,7 +294,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             return self.sagemaker_session.sagemaker_client.update_pipeline(self, description)
 
         kwargs = self._create_args(role_arn, description, parallelism_config)
-        return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
+        response = self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
+        return response
 
     def upsert(
         self,
@@ -325,6 +363,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
+    @_telemetry_emitter(feature=Feature.MLOPS_V2, func_name="pipeline.start")
     def start(
         self,
         parameters: Dict[str, Union[str, bool, int, float]] = None,
@@ -332,6 +371,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         execution_description: str = None,
         parallelism_config: ParallelismConfiguration = None,
         selective_execution_config: SelectiveExecutionConfig = None,
+        pipeline_version_id: int = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -345,6 +385,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 over the parallelism configuration of the parent pipeline.
             selective_execution_config (Optional[SelectiveExecutionConfig]): The configuration for
                 selective step execution.
+            pipeline_version_id (Optional[str]): version ID of the pipeline to start the execution from. If not
+                specified, uses the latest version ID.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
@@ -364,8 +406,10 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
-            ParallelismConfiguration=parallelism_config,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
             SelectiveExecutionConfig=selective_execution_config,
+            PipelineVersionId=pipeline_version_id,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
@@ -460,6 +504,32 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             for key in ["PipelineExecutionSummaries", "NextToken"]
             if key in response
         }
+
+    def list_pipeline_versions(
+        self, sort_order: str = None, max_results: int = None, next_token: str = None
+    ) -> str:
+        """Lists a pipeline's versions.
+
+        Args:
+            sort_order (str): The sort order for results (Ascending/Descending).
+            max_results (int): The maximum number of pipeline executions to return in the response.
+            next_token (str):  If the result of the previous `ListPipelineExecutions` request was
+                truncated, the response includes a `NextToken`. To retrieve the next set of pipeline
+                executions, use the token in the next request.
+
+        Returns:
+            List of Pipeline Version Summaries. See
+            boto3 client list_pipeline_versions
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker/client/list_pipeline_versions.html#
+        """
+        kwargs = dict(PipelineName=self.name)
+        update_args(
+            kwargs,
+            SortOrder=sort_order,
+            NextToken=next_token,
+            MaxResults=max_results,
+        )
+        return self.sagemaker_session.sagemaker_client.list_pipeline_versions(**kwargs)
 
     def _get_latest_execution_arn(self):
         """Retrieves the latest execution of this pipeline"""
@@ -796,6 +866,20 @@ def _map_lambda_outputs(steps: List[Step]):
     return lambda_output_map
 
 
+def _resolve_parallelism_config(parallelism_config):
+    """Normalize a parallelism_config into the request dict boto expects.
+
+    boto's create/update/start pipeline APIs expect ``ParallelismConfiguration`` as a dict
+    (``{"MaxParallelExecutionSteps": int}``), not a ``ParallelismConfiguration`` object
+    (issue #5354). This converts the object via ``to_request()``. A dict is passed through
+    unchanged so callers who adopted the pre-fix ``.to_request()`` workaround keep working,
+    and ``None`` is returned as-is so ``update_args`` can drop the key.
+    """
+    if isinstance(parallelism_config, ParallelismConfiguration):
+        return parallelism_config.to_request()
+    return parallelism_config
+
+
 def update_args(args: Dict[str, Any], **kwargs):
     """Updates the request arguments dict with a value, if populated.
 
@@ -855,7 +939,7 @@ class _PipelineExecution:
 sagemaker.html#SageMaker.Client.describe_pipeline_execution>`_.
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline_execution(
-            PipelineExecutionArn=self.arn,
+            PipelineExecutionArn=self.arn
         )
 
     def list_steps(self):
@@ -1033,7 +1117,6 @@ def get_function_step_result(
         return deserialize_obj_from_s3(
             sagemaker_session=sagemaker_session,
             s3_uri=s3_uri,
-            hmac_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
         )
 
     raise RemoteFunctionError(_ERROR_MSG_OF_STEP_INCOMPLETE)

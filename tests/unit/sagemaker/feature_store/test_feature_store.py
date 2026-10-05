@@ -33,7 +33,9 @@ DATAFRAME = pd.DataFrame({"feature_1": [420, 380, 390], "feature_2": [50, 40, 45
 
 @pytest.fixture
 def sagemaker_session_mock():
-    return Mock()
+    mock = Mock()
+    mock.sagemaker_config = None
+    return mock
 
 
 @pytest.fixture

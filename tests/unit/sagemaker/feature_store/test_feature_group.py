@@ -68,7 +68,7 @@ def s3_uri():
 @pytest.fixture
 def sagemaker_session_mock():
     sagemaker_session_mock = Mock()
-    sagemaker_session_mock.sagemaker_config = {}
+    sagemaker_session_mock.sagemaker_config = None
     return sagemaker_session_mock
 
 
@@ -1628,3 +1628,56 @@ def test_athena_query_as_dataframe_query_running(sagemaker_session_mock, query):
     with pytest.raises(RuntimeError) as error:
         query.as_dataframe()
     assert "Current query query_id is still being executed" in str(error)
+
+
+def _write_query_result_csv(**kwargs):
+    with open(kwargs["filename"], "w") as f:
+        f.write("col\n1\n2\n3\n")
+
+
+def _prepare_succeeded_query(sagemaker_session_mock, query):
+    sagemaker_session_mock.get_query_execution.return_value = {
+        "QueryExecution": {"Status": {"State": "SUCCEEDED"}}
+    }
+    sagemaker_session_mock.download_athena_query_result.side_effect = _write_query_result_csv
+    query._current_query_execution_id = "query_id"
+    query._result_bucket = "bucket"
+    query._result_file_prefix = "prefix"
+
+
+def test_athena_query_as_dataframe_removes_temp_file(sagemaker_session_mock, query, tmp_path):
+    _prepare_succeeded_query(sagemaker_session_mock, query)
+    expected_file = tmp_path / "query_id.csv"
+
+    with patch("tempfile.gettempdir", Mock(return_value=str(tmp_path))):
+        df = query.as_dataframe()
+
+    download_kwargs = sagemaker_session_mock.download_athena_query_result.call_args[1]
+    assert df["col"].tolist() == [1, 2, 3]
+    assert download_kwargs["filename"] == str(expected_file)
+    assert not expected_file.exists()
+
+
+@patch("pandas.read_csv", Mock(side_effect=ValueError("bad csv")))
+def test_athena_query_as_dataframe_removes_temp_file_when_read_fails(
+    sagemaker_session_mock, query, tmp_path
+):
+    _prepare_succeeded_query(sagemaker_session_mock, query)
+
+    with patch("tempfile.gettempdir", Mock(return_value=str(tmp_path))):
+        with pytest.raises(ValueError, match="bad csv"):
+            query.as_dataframe()
+
+    assert not (tmp_path / "query_id.csv").exists()
+
+
+def test_athena_query_as_dataframe_cleanup_failure_does_not_raise(
+    sagemaker_session_mock, query, tmp_path
+):
+    _prepare_succeeded_query(sagemaker_session_mock, query)
+
+    with patch("tempfile.gettempdir", Mock(return_value=str(tmp_path))):
+        with patch("os.remove", Mock(side_effect=PermissionError("file in use"))):
+            df = query.as_dataframe()
+
+    assert len(df) == 3

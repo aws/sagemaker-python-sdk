@@ -18,9 +18,12 @@ import time
 from botocore.exceptions import ClientError
 
 from sagemaker.apiutils import _base_types
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.experiments.trial import _Trial
 from sagemaker.experiments.trial_component import _TrialComponent
 from sagemaker.utils import format_tags
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 
 class Experiment(_base_types.Record):
@@ -86,6 +89,10 @@ class Experiment(_base_types.Record):
         Returns:
             experiments.experiment.Experiment: A SageMaker `Experiment` object
         """
+        warn_v2_deprecation(
+            feature="Experiment",
+            v3_replacement="the experiment tracking resources under sagemaker.core.experiments",
+        )
         return cls._construct(
             cls._boto_load_method,
             experiment_name=experiment_name,
@@ -93,6 +100,7 @@ class Experiment(_base_types.Record):
         )
 
     @classmethod
+    @_telemetry_emitter(feature=Feature.MLOPS_V2, func_name="experiment.create")
     def create(
         cls,
         experiment_name,
@@ -118,6 +126,10 @@ class Experiment(_base_types.Record):
         Returns:
             experiments.experiment.Experiment: A SageMaker `Experiment` object
         """
+        warn_v2_deprecation(
+            feature="Experiment",
+            v3_replacement="the experiment tracking resources under sagemaker.core.experiments",
+        )
         return cls._construct(
             cls._boto_create_method,
             experiment_name=experiment_name,

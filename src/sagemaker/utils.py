@@ -60,6 +60,7 @@ ALTERNATE_DOMAINS = {
     "us-isob-east-1": "sc2s.sgov.gov",
     "us-isof-south-1": "csp.hci.ic.gov",
     "us-isof-east-1": "csp.hci.ic.gov",
+    "eu-isoe-west-1": "cloud.adc-e.uk",
 }
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -75,6 +76,20 @@ DEFAULT_SLEEP_TIME_SECONDS = 10
 WAITING_DOT_NUMBER = 10
 MAX_ITEMS = 100
 PAGE_SIZE = 10
+_MAX_BUFFER_SIZE = 100 * 1024 * 1024  # 100 MB - Maximum buffer size for streaming iterators
+
+_SENSITIVE_SYSTEM_PATHS = [
+    abspath(os.path.expanduser("~/.aws")),
+    abspath(os.path.expanduser("~/.ssh")),
+    abspath(os.path.expanduser("~/.kube")),
+    abspath(os.path.expanduser("~/.docker")),
+    abspath(os.path.expanduser("~/.config")),
+    abspath(os.path.expanduser("~/.credentials")),
+    abspath(realpath("/etc")),
+    abspath(realpath("/root")),
+    abspath(realpath("/var/lib")),
+    abspath(realpath("/opt/ml/metadata")),
+]
 
 logger = logging.getLogger(__name__)
 
@@ -402,12 +417,25 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
     prefix = prefix.lstrip("/")
 
+    # Spot check: enforce ownership only when downloading from the session's default
+    # bucket. Cross-account buckets are left untouched.
+    expected_owner = (
+        sagemaker_session._get_account_id_if_default_bucket(bucket_name)
+        if hasattr(sagemaker_session, "_get_account_id_if_default_bucket")
+        else None
+    )
+    extra_args = None
+    if expected_owner:
+        extra_args = {"ExpectedBucketOwner": expected_owner}
+
     # Try to download the prefix as an object first, in case it is a file and not a 'directory'.
     # Do this first, in case the object has broader permissions than the bucket.
     if not prefix.endswith("/"):
         try:
             file_destination = os.path.join(target, os.path.basename(prefix))
-            s3.Object(bucket_name, prefix).download_file(file_destination)
+            s3.Object(bucket_name, prefix).download_file(
+                file_destination, ExtraArgs=extra_args
+            )
             return
         except botocore.exceptions.ClientError as e:
             err_info = e.response["Error"]
@@ -418,10 +446,35 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
             else:
                 raise
 
-    _download_files_under_prefix(bucket_name, prefix, target, s3)
+    _download_files_under_prefix(bucket_name, prefix, target, s3, extra_args=extra_args)
 
 
-def _download_files_under_prefix(bucket_name, prefix, target, s3):
+def validate_path_within_directory(file_path, target_directory, source_description=""):
+    """Validate that file_path resolves to a location within target_directory.
+
+    Prevents path traversal attacks (CWE-22) by resolving both paths to their
+    canonical forms and checking containment.
+
+    Args:
+        file_path (str): The file path to validate.
+        target_directory (str): The directory that file_path must stay within.
+        source_description (str): Optional description of the source (e.g. S3 key)
+            included in the error message for debugging.
+
+    Raises:
+        ValueError: If file_path resolves to a location outside target_directory.
+    """
+    target_real = os.path.realpath(target_directory)
+    file_real = os.path.realpath(file_path)
+    if not file_real.startswith(target_real + os.sep) and file_real != target_real:
+        source_info = f"'{source_description}' resolves to " if source_description else ""
+        raise ValueError(
+            f"Path traversal detected: {source_info}"
+            f"'{file_real}' which is outside the target directory '{target_real}'"
+        )
+
+
+def _download_files_under_prefix(bucket_name, prefix, target, s3, extra_args=None):
     """Download all S3 files which match the given prefix
 
     Args:
@@ -429,6 +482,8 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
         prefix (str): S3 prefix within the bucket that will be downloaded
         target (str): destination path where the downloaded items will be placed
         s3 (boto3.resources.base.ServiceResource): S3 resource
+        extra_args (dict): Optional extra arguments passed to each download_file call.
+            Used to carry ExpectedBucketOwner when the bucket is the session's default.
     """
     bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
@@ -439,6 +494,8 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
         s3_relative_path = obj_sum.key[len(prefix) :].lstrip("/")
         file_path = os.path.join(target, s3_relative_path)
 
+        validate_path_within_directory(file_path, target, source_description=obj_sum.key)
+
         try:
             os.makedirs(os.path.dirname(file_path))
         except OSError as exc:
@@ -446,7 +503,7 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
             # anything else will be raised.
             if exc.errno != errno.EEXIST:
                 raise
-        obj.download_file(file_path)
+        obj.download_file(file_path, ExtraArgs=extra_args)
 
 
 def create_tar_file(source_files, target=None):
@@ -593,6 +650,16 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
             extra_args = {"ServerSideEncryption": "aws:kms"}
         else:
             extra_args = None
+
+        # Spot check: when the model is being uploaded to the session's default bucket,
+        # assert ownership to defend against bucket-squatting on the predictable default
+        # name. Other caller-supplied buckets are left untouched.
+        if sagemaker_session is not None:
+            expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket)
+            if expected_owner:
+                extra_args = dict(extra_args) if extra_args else {}
+                extra_args["ExpectedBucketOwner"] = expected_owner
+
         sagemaker_session.boto_session.resource(
             "s3", region_name=sagemaker_session.boto_region_name
         ).Object(bucket, new_key).upload_file(tmp_model_path, ExtraArgs=extra_args)
@@ -600,11 +667,73 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
         shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
 
 
+def _validate_source_directory(source_directory):
+    """Validate that source_directory is safe to use.
+
+    Ensures the source directory path does not access restricted system locations.
+
+    Args:
+        source_directory (str): The source directory path to validate.
+
+    Raises:
+        ValueError: If the path is not allowed.
+    """
+    if not source_directory or source_directory.lower().startswith("s3://"):
+        # S3 paths and None are safe
+        return
+
+    # Resolve symlinks to get the actual path
+    abs_source = abspath(realpath(source_directory))
+
+    # Check if the source path is under any sensitive directory
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
+        if abs_source != "/" and abs_source.startswith(sensitive_path):
+            raise ValueError(
+                f"source_directory cannot access sensitive system paths. "
+                f"Got: {source_directory} (resolved to {abs_source})"
+            )
+
+
+def _validate_dependency_path(dependency):
+    """Validate that a dependency path is safe to use.
+
+    Ensures the dependency path does not access restricted system locations.
+
+    Args:
+        dependency (str): The dependency path to validate.
+
+    Raises:
+        ValueError: If the path is not allowed.
+    """
+    if not dependency:
+        return
+
+    # Resolve symlinks to get the actual path
+    abs_dependency = abspath(realpath(dependency))
+
+    # Check if the dependency path is under any sensitive directory
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
+        if abs_dependency != "/" and abs_dependency.startswith(sensitive_path):
+            raise ValueError(
+                f"dependency path cannot access sensitive system paths. "
+                f"Got: {dependency} (resolved to {abs_dependency})"
+            )
+
+
 def _create_or_update_code_dir(
     model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
 ):
     """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
+    resolved_code_dir = _get_resolved_path(code_dir)
+
+    # Validate that code_dir does not resolve to a sensitive system path
+    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
+        if resolved_code_dir != "/" and resolved_code_dir.startswith(sensitive_path):
+            raise ValueError(
+                f"Invalid code_dir path: {code_dir} resolves to sensitive system path {resolved_code_dir}"
+            )
+
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
@@ -613,6 +742,8 @@ def _create_or_update_code_dir(
             custom_extractall_tarfile(t, code_dir)
 
     elif source_directory:
+        # Validate source_directory for security
+        _validate_source_directory(source_directory)
         if os.path.exists(code_dir):
             shutil.rmtree(code_dir)
         shutil.copytree(source_directory, code_dir)
@@ -645,6 +776,8 @@ def _create_or_update_code_dir(
                 )
 
     for dependency in dependencies:
+        # Validate dependency path for security
+        _validate_dependency_path(dependency)
         lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
             shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
@@ -691,7 +824,17 @@ def download_file(bucket_name, path, target, sagemaker_session):
 
     s3 = boto_session.resource("s3", region_name=sagemaker_session.boto_region_name)
     bucket = s3.Bucket(bucket_name)
-    bucket.download_file(path, target)
+
+    # Spot check: assert ownership only when downloading from the session's default
+    # bucket. Non-default buckets (e.g. caller-supplied model URIs pointing at shared
+    # or cross-account data) are downloaded without ExpectedBucketOwner to preserve
+    # legitimate cross-account flows.
+    expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket_name)
+    extra_args = None
+    if expected_owner:
+        extra_args = {"ExpectedBucketOwner": expected_owner}
+
+    bucket.download_file(path, target, ExtraArgs=extra_args)
 
 
 def sts_regional_endpoint(region):
@@ -1502,6 +1645,24 @@ def instance_supports_kms(instance_type: str) -> bool:
     return volume_size_supported(instance_type)
 
 
+def get_training_job_name_from_training_job_arn(training_job_arn: str) -> str:
+    """Extract Training job name from Training job arn.
+
+    Args:
+        training_job_arn: Training job arn.
+
+    Returns: Training job name.
+
+    """
+    if training_job_arn is None:
+        return None
+    pattern = "arn:aws[a-z-]*:sagemaker:[a-z0-9-]*:[0-9]{12}:training-job/(.+)"
+    match = re.match(pattern, training_job_arn)
+    if match:
+        return match.group(1)
+    return None
+
+
 def get_instance_type_family(instance_type: str) -> str:
     """Return the family of the instance type.
 
@@ -1510,7 +1671,7 @@ def get_instance_type_family(instance_type: str) -> str:
     """
     instance_type_family = ""
     if isinstance(instance_type, str):
-        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
         if match is not None:
             instance_type_family = match[1]
     return instance_type_family
@@ -1601,6 +1762,38 @@ def _get_safe_members(members):
             yield file_info
 
 
+def _validate_extracted_paths(extract_path):
+    """Validate that extracted paths remain within the expected directory.
+
+    Performs post-extraction validation to ensure all extracted files and directories
+    are within the intended extraction path.
+
+    Args:
+        extract_path (str): The path where files were extracted.
+
+    Raises:
+        ValueError: If any extracted file is outside the expected extraction path.
+    """
+    base = _get_resolved_path(extract_path)
+
+    for root, dirs, files in os.walk(extract_path):
+        # Check directories
+        for dir_name in dirs:
+            dir_path = os.path.join(root, dir_name)
+            resolved = _get_resolved_path(dir_path)
+            if not resolved.startswith(base):
+                logger.error("Extracted directory escaped extraction path: %s", dir_path)
+                raise ValueError(f"Extracted path outside expected directory: {dir_path}")
+
+        # Check files
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
+            resolved = _get_resolved_path(file_path)
+            if not resolved.startswith(base):
+                logger.error("Extracted file escaped extraction path: %s", file_path)
+                raise ValueError(f"Extracted path outside expected directory: {file_path}")
+
+
 def custom_extractall_tarfile(tar, extract_path):
     """Extract a tarfile, optionally using data_filter if available.
 
@@ -1621,6 +1814,8 @@ def custom_extractall_tarfile(tar, extract_path):
         tar.extractall(path=extract_path, filter="data")
     else:
         tar.extractall(path=extract_path, members=_get_safe_members(tar))
+        # Re-validate extracted paths to catch symlink race conditions
+        _validate_extracted_paths(extract_path)
 
 
 def can_model_package_source_uri_autopopulate(source_uri: str):

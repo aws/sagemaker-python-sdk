@@ -13,10 +13,12 @@
 from __future__ import absolute_import
 
 import os
+import pytest
 from sagemaker.huggingface import HuggingFace
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, timeout
 
 
+@pytest.mark.slow_test
 def test_huggingface_torch_distributed_g5_glue(
     sagemaker_session,
     huggingface_training_latest_version,

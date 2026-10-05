@@ -137,6 +137,7 @@ from sagemaker.utils import (
     format_tags,
     Tags,
     TagsDict,
+    validate_path_within_directory,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -405,6 +406,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             bucket=bucket, key_prefix=key_prefix, sagemaker_session=self
         )
 
+        # Spot check: if the resolved bucket is the session's default bucket, enforce
+        # ownership on the upload to defend against bucket-squatting on the predictable
+        # default name. Other buckets are left untouched to preserve cross-account flows.
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            extra_args = dict(extra_args) if extra_args else {}
+            extra_args["ExpectedBucketOwner"] = expected_owner
+
         # Generate a tuple for each file that we want to upload of the form (local_path, s3_key).
         files = []
         key_suffix = None
@@ -463,10 +472,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         s3_object = s3.Object(bucket_name=bucket, key=key)
 
+        # Spot check: enforce ownership only when writing to the session's default
+        # bucket. Cross-account destinations are left untouched.
+        put_kwargs = {"Body": body}
         if kms_key is not None:
-            s3_object.put(Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms")
-        else:
-            s3_object.put(Body=body)
+            put_kwargs["SSEKMSKeyId"] = kms_key
+            put_kwargs["ServerSideEncryption"] = "aws:kms"
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            put_kwargs["ExpectedBucketOwner"] = expected_owner
+
+        s3_object.put(**put_kwargs)
 
         s3_uri = "s3://{}/{}".format(bucket, key)
         return s3_uri
@@ -492,11 +508,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
         else:
             s3 = self.s3_client
 
+        # Spot check: if the caller-supplied bucket is the session's default bucket,
+        # assert ownership on the list/download calls to defend against squatting on
+        # the predictable default bucket name. Non-default buckets are left untouched
+        # to preserve legitimate cross-account flows.
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+
         # Initialize the variables used to loop through the contents of the S3 bucket.
         keys = []
         directories = []
         next_token = ""
         base_parameters = {"Bucket": bucket, "Prefix": key_prefix}
+        if expected_owner:
+            base_parameters["ExpectedBucketOwner"] = expected_owner
 
         # Loop through the contents of the bucket, 1,000 objects at a time. Gathering all keys into
         # a "keys" list.
@@ -523,18 +547,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
+        download_extra_args = dict(extra_args) if extra_args else {}
+        if expected_owner:
+            download_extra_args["ExpectedBucketOwner"] = expected_owner
         downloaded_paths = []
         for dir_path in directories:
+            validate_path_within_directory(dir_path, path)
             os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
+
+            validate_path_within_directory(destination_path, path, source_description=key)
+
             if not os.path.exists(os.path.dirname(destination_path)):
                 os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             s3.download_file(
-                Bucket=bucket, Key=key, Filename=destination_path, ExtraArgs=extra_args
+                Bucket=bucket,
+                Key=key,
+                Filename=destination_path,
+                ExtraArgs=download_extra_args or None,
             )
             downloaded_paths.append(destination_path)
         return downloaded_paths
@@ -554,8 +588,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         else:
             s3 = self.s3_client
 
+        # Spot check: assert ownership only when the caller is reading from the
+        # session's default bucket. Other buckets (e.g. JumpStart content buckets)
+        # are read without ExpectedBucketOwner to preserve cross-account flows.
+        get_kwargs = {"Bucket": bucket, "Key": key_prefix}
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            get_kwargs["ExpectedBucketOwner"] = expected_owner
+
         # Explicitly passing a None kms_key to boto3 throws a validation error.
-        s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
+        s3_object = s3.get_object(**get_kwargs)
 
         return s3_object["Body"].read().decode("utf-8")
 
@@ -681,32 +723,50 @@ class Session(object):  # pylint: disable=too-many-public-methods
         If there is any other error that comes up with calling head bucket, it is raised up here
         If there is no bucket , it will create one
 
+        When the SDK selected the bucket name itself (``_default_bucket_set_by_sdk`` is True),
+        the probe is issued with ``ExpectedBucketOwner`` set to the caller's account id so that
+        S3 returns ``403`` if a bucket with the SDK-chosen name happens to exist in another
+        account (bucket-squatting defense). For user-overridden bucket names the probe is
+        issued without ``ExpectedBucketOwner`` to preserve legitimate cross-account usage.
+
         Args:
             bucket_name (str): Name of the S3 bucket
             s3 (str): S3 object from boto session
             region (str): The region in which to create the bucket.
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
         """
+        extra_args = {}
+        if self._default_bucket_set_by_sdk:
+            extra_args["ExpectedBucketOwner"] = self.account_id()
+
         try:
             if self.default_bucket_prefix:
                 s3.meta.client.list_objects_v2(
-                    Bucket=bucket_name, Prefix=self.default_bucket_prefix
+                    Bucket=bucket_name, Prefix=self.default_bucket_prefix, **extra_args
                 )
             else:
-                s3.meta.client.head_bucket(Bucket=bucket_name)
+                s3.meta.client.head_bucket(Bucket=bucket_name, **extra_args)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
-            # bucket does not exist or forbidden to access
+            # bucket does not exist, is owned by another account, or is forbidden to access
             if bucket_creation_date_none:
                 if error_code == "404" and message == "Not Found":
                     self.create_bucket_for_not_exist_error(bucket_name, region, s3)
                 elif error_code == "403" and message == "Forbidden":
-                    LOGGER.error(
-                        "Bucket %s exists, but access is forbidden. Please try again after "
-                        "adding appropriate access.",
-                        bucket.name,
-                    )
+                    if self._default_bucket_set_by_sdk:
+                        LOGGER.error(
+                            "Bucket %s is not accessible as the default bucket. It may be "
+                            "owned by another account or access is forbidden. To unblock, "
+                            "pass a custom default_bucket parameter to sagemaker.Session.",
+                            bucket.name,
+                        )
+                    else:
+                        LOGGER.error(
+                            "Bucket %s exists, but access is forbidden. Please try again "
+                            "after adding appropriate access.",
+                            bucket.name,
+                        )
                     raise
                 else:
                     raise
@@ -742,6 +802,51 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 pass
             else:
                 raise
+
+    def _get_account_id_if_default_bucket(self, bucket):
+        """Return the caller's account id if ``bucket`` is the SDK-generated default bucket.
+
+        Used by S3 operations that receive a caller-supplied bucket name to apply the
+        "spot check": when the bucket matches the SDK-generated default bucket name,
+        the call should assert ownership via ``ExpectedBucketOwner`` to defend against
+        bucket-squatting on the predictable default name. For any other bucket — including
+        user-overridden default buckets (which may legitimately be cross-account),
+        JumpStart, marketplace artifacts, or shared-team buckets — this returns ``None``
+        so the call proceeds unchanged.
+
+        This check is passive: it does not trigger default-bucket resolution or creation.
+        If ``default_bucket()`` has not been called yet, this returns ``None``.
+
+        Args:
+            bucket (str): The bucket name the caller is about to use.
+
+        Returns:
+            Optional[str]: The expected account id, or ``None`` if the spot check does
+                not apply.
+        """
+        if not bucket:
+            return None
+
+        # Only apply the spot check when the SDK generated the bucket name itself.
+        # User-overridden default buckets (_default_bucket_name_override) may legitimately
+        # be in another account, so we must not assert caller-account ownership on them.
+        if not self._default_bucket_set_by_sdk:
+            return None
+
+        # Use the already-resolved default bucket (fast, no side effects).
+        # _default_bucket is only set after default_bucket() has been called at least once.
+        if self._default_bucket and bucket == self._default_bucket:
+            try:
+                return self.account_id()
+            except Exception:  # pylint: disable=broad-except
+                # account_id() issues an STS call; if it fails we skip the spot check
+                # rather than block the S3 operation.
+                LOGGER.warning(
+                    "Could not resolve caller account id for ExpectedBucketOwner check "
+                    "on bucket %s; proceeding without the check.",
+                    bucket,
+                )
+        return None
 
     def _append_sagemaker_config_tags(self, tags: List[TagsDict], config_path_to_tags: str):
         """Appends tags specified in the sagemaker_config to the given list of tags.
@@ -781,6 +886,268 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
         return all_tags
+
+    def get_train_request(
+        self,
+        input_mode,
+        input_config,
+        role=None,
+        job_name=None,
+        output_config=None,
+        resource_config=None,
+        vpc_config=None,
+        hyperparameters=None,
+        stop_condition=None,
+        tags=None,
+        metric_definitions=None,
+        enable_network_isolation=None,
+        image_uri=None,
+        training_image_config=None,
+        infra_check_config=None,
+        container_entry_point=None,
+        container_arguments=None,
+        algorithm_arn=None,
+        encrypt_inter_container_traffic=None,
+        use_spot_instances=False,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
+        experiment_config=None,
+        debugger_rule_configs=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
+        enable_sagemaker_metrics=None,
+        profiler_rule_configs=None,
+        profiler_config=None,
+        environment: Optional[Dict[str, str]] = None,
+        retry_strategy=None,
+        remote_debug_config=None,
+        session_chaining_config=None,
+    ) -> Dict:
+        """Create an Amazon SageMaker training job.
+
+        Args:
+            input_mode (str): The input mode that the algorithm supports. Valid modes:
+                * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
+                a directory in the Docker container.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
+                Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
+            input_config (list): A list of Channel objects. Each channel is a named input source.
+                Please refer to the format details described:
+                https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts. You must grant sufficient permissions to this
+                role.
+            job_name (str): Name of the training job being created.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            resource_config (dict): Contains values for ResourceConfig:
+                * instance_count (int): Number of EC2 instances to use for training.
+                The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+            vpc_config (dict): Contains values for VpcConfig:
+                * subnets (list[str]): List of subnet ids.
+                The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                The key in vpc_config is 'SecurityGroupIds'.
+            hyperparameters (dict): Hyperparameters for model training. The hyperparameters are
+                made accessible as a dict[str, str] to the training code on SageMaker. For
+                convenience, this accepts other types for keys and values, but ``str()`` will be
+                called to convert them before training.
+            stop_condition (dict): Defines when training shall finish. Contains entries that can
+                be understood by the service like ``MaxRuntimeInSeconds``.
+            tags (Optional[Tags]): Tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
+                used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
+                the name of the metric, and 'Regex' for the regular expression used to extract the
+                metric from the logs.
+            enable_network_isolation (bool): Whether to request for the training job to run with
+                network isolation or not.
+            image_uri (str): Docker image containing training code.
+            training_image_config(dict): Training image configuration.
+                Optionally, the dict can contain 'TrainingRepositoryAccessMode' and
+                'TrainingRepositoryCredentialsProviderArn' (under 'TrainingRepositoryAuthConfig').
+                For example,
+
+                .. code:: python
+
+                    training_image_config = {
+                        "TrainingRepositoryAccessMode": "Vpc",
+                        "TrainingRepositoryAuthConfig": {
+                            "TrainingRepositoryCredentialsProviderArn":
+                              "arn:aws:lambda:us-west-2:1234567890:function:test"
+                        },
+                    }
+
+                If TrainingRepositoryAccessMode is set to Vpc, the training image is accessed
+                through a private Docker registry in customer Vpc. If it's set to Platform or None,
+                the training image is accessed through ECR.
+                If TrainingRepositoryCredentialsProviderArn is provided, the credentials to
+                authenticate to the private Docker registry will be retrieved from this AWS Lambda
+                function. (default: ``None``). When it's set to None, SageMaker will not do
+                authentication before pulling the image in the private Docker registry.
+            container_entry_point (List[str]): Optional. The entrypoint script for a Docker
+                container used to run a training job. This script takes precedence over
+                the default train processing instructions.
+            container_arguments (List[str]): Optional. The arguments for a container used to run
+                a training job.
+            algorithm_arn (str): Algorithm Arn from Marketplace.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
+                containers is encrypted for the training job (default: ``False``).
+            use_spot_instances (bool): whether to use spot instances for training.
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain four keys:
+                'ExperimentName', 'TrialName',  'TrialComponentDisplayName' and 'RunName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
+                * `RunName` is used to record an experiment run.
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html
+                #SageMaker-Type
+                -AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``).
+            profiler_rule_configs (list[dict]): A list of profiler rule
+                configurations.src/sagemaker/lineage/artifact.py:285
+            profiler_config (dict): Configuration for how profiling information is emitted
+                with SageMaker Profiler. (default: ``None``).
+            remote_debug_config(dict): Configuration for RemoteDebug. (default: ``None``)
+                The dict can contain 'EnableRemoteDebug'(bool).
+                For example,
+
+                .. code:: python
+
+                    remote_debug_config = {
+                        "EnableRemoteDebug": True,
+                    }
+            session_chaining_config(dict): Configuration for SessionChaining. (default: ``None``)
+                The dict can contain 'EnableSessionTagChaining'(bool).
+                For example,
+
+                .. code:: python
+
+                    session_chaining_config = {
+                        "EnableSessionTagChaining": True,
+                    }
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
+            retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
+                * max_retry_attsmpts (int): Number of times a job should be retried.
+                The key in RetryStrategy is 'MaxRetryAttempts'.
+            infra_check_config(dict): Infra check configuration.
+                Optionally, the dict can contain 'EnableInfraCheck'(bool).
+                For example,
+
+                .. code:: python
+
+                    infra_check_config = {
+                        "EnableInfraCheck": True,
+                    }
+        Returns:
+            Dict: a Dict containing CreateTrainingJob request.
+        """
+        tags = _append_project_tags(format_tags(tags))
+        tags = self._append_sagemaker_config_tags(
+            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
+        )
+
+        _encrypt_inter_container_traffic = resolve_value_from_config(
+            direct_input=encrypt_inter_container_traffic,
+            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
+            default_value=False,
+            sagemaker_session=self,
+        )
+        role = resolve_value_from_config(role, TRAINING_JOB_ROLE_ARN_PATH, sagemaker_session=self)
+        enable_network_isolation = resolve_value_from_config(
+            direct_input=enable_network_isolation,
+            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+            default_value=False,
+            sagemaker_session=self,
+        )
+        inferred_vpc_config = update_nested_dictionary_with_values_from_config(
+            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_output_config = update_nested_dictionary_with_values_from_config(
+            output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
+        )
+        customer_supplied_kms_key = "VolumeKmsKeyId" in resource_config
+        inferred_resource_config = update_nested_dictionary_with_values_from_config(
+            resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
+        )
+        inferred_profiler_config = update_nested_dictionary_with_values_from_config(
+            profiler_config, TRAINING_JOB_PROFILE_CONFIG_PATH, sagemaker_session=self
+        )
+        if (
+            not customer_supplied_kms_key
+            and "InstanceType" in inferred_resource_config
+            and not instance_supports_kms(inferred_resource_config["InstanceType"])
+            and "VolumeKmsKeyId" in inferred_resource_config
+        ):
+            del inferred_resource_config["VolumeKmsKeyId"]
+
+        environment = resolve_value_from_config(
+            direct_input=environment,
+            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
+            default_value=None,
+            sagemaker_session=self,
+        )
+        train_request = self._get_train_request(
+            input_mode=input_mode,
+            input_config=input_config,
+            role=role,
+            job_name=job_name,
+            output_config=inferred_output_config,
+            resource_config=inferred_resource_config,
+            vpc_config=inferred_vpc_config,
+            hyperparameters=hyperparameters,
+            stop_condition=stop_condition,
+            tags=tags,
+            metric_definitions=metric_definitions,
+            enable_network_isolation=enable_network_isolation,
+            image_uri=image_uri,
+            training_image_config=training_image_config,
+            infra_check_config=infra_check_config,
+            container_entry_point=container_entry_point,
+            container_arguments=container_arguments,
+            algorithm_arn=algorithm_arn,
+            encrypt_inter_container_traffic=_encrypt_inter_container_traffic,
+            use_spot_instances=use_spot_instances,
+            checkpoint_s3_uri=checkpoint_s3_uri,
+            checkpoint_local_path=checkpoint_local_path,
+            experiment_config=experiment_config,
+            debugger_rule_configs=debugger_rule_configs,
+            debugger_hook_config=debugger_hook_config,
+            tensorboard_output_config=tensorboard_output_config,
+            enable_sagemaker_metrics=enable_sagemaker_metrics,
+            profiler_rule_configs=profiler_rule_configs,
+            profiler_config=inferred_profiler_config,
+            remote_debug_config=remote_debug_config,
+            session_chaining_config=session_chaining_config,
+            environment=environment,
+            retry_strategy=retry_strategy,
+        )
+        return train_request
 
     def train(  # noqa: C901
         self,
@@ -967,85 +1334,40 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training job.
             - ValueError: If both image_uri and algorithm are provided, or if neither is provided.
         """
-        tags = _append_project_tags(format_tags(tags))
-        tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, TRAINING_JOB, TAGS)
-        )
-
-        _encrypt_inter_container_traffic = resolve_value_from_config(
-            direct_input=encrypt_inter_container_traffic,
-            config_path=TRAINING_JOB_INTER_CONTAINER_ENCRYPTION_PATH,
-            default_value=False,
-            sagemaker_session=self,
-        )
-        role = resolve_value_from_config(role, TRAINING_JOB_ROLE_ARN_PATH, sagemaker_session=self)
-        enable_network_isolation = resolve_value_from_config(
-            direct_input=enable_network_isolation,
-            config_path=TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
-            default_value=False,
-            sagemaker_session=self,
-        )
-        inferred_vpc_config = update_nested_dictionary_with_values_from_config(
-            vpc_config, TRAINING_JOB_VPC_CONFIG_PATH, sagemaker_session=self
-        )
-        inferred_output_config = update_nested_dictionary_with_values_from_config(
-            output_config, TRAINING_JOB_OUTPUT_DATA_CONFIG_PATH, sagemaker_session=self
-        )
-        customer_supplied_kms_key = "VolumeKmsKeyId" in resource_config
-        inferred_resource_config = update_nested_dictionary_with_values_from_config(
-            resource_config, TRAINING_JOB_RESOURCE_CONFIG_PATH, sagemaker_session=self
-        )
-        inferred_profiler_config = update_nested_dictionary_with_values_from_config(
-            profiler_config, TRAINING_JOB_PROFILE_CONFIG_PATH, sagemaker_session=self
-        )
-        if (
-            not customer_supplied_kms_key
-            and "InstanceType" in inferred_resource_config
-            and not instance_supports_kms(inferred_resource_config["InstanceType"])
-            and "VolumeKmsKeyId" in inferred_resource_config
-        ):
-            del inferred_resource_config["VolumeKmsKeyId"]
-
-        environment = resolve_value_from_config(
-            direct_input=environment,
-            config_path=TRAINING_JOB_ENVIRONMENT_PATH,
-            default_value=None,
-            sagemaker_session=self,
-        )
-        train_request = self._get_train_request(
-            input_mode=input_mode,
-            input_config=input_config,
-            role=role,
-            job_name=job_name,
-            output_config=inferred_output_config,
-            resource_config=inferred_resource_config,
-            vpc_config=inferred_vpc_config,
-            hyperparameters=hyperparameters,
-            stop_condition=stop_condition,
-            tags=tags,
-            metric_definitions=metric_definitions,
-            enable_network_isolation=enable_network_isolation,
-            image_uri=image_uri,
-            training_image_config=training_image_config,
-            infra_check_config=infra_check_config,
-            container_entry_point=container_entry_point,
-            container_arguments=container_arguments,
-            algorithm_arn=algorithm_arn,
-            encrypt_inter_container_traffic=_encrypt_inter_container_traffic,
-            use_spot_instances=use_spot_instances,
-            checkpoint_s3_uri=checkpoint_s3_uri,
-            checkpoint_local_path=checkpoint_local_path,
-            experiment_config=experiment_config,
-            debugger_rule_configs=debugger_rule_configs,
-            debugger_hook_config=debugger_hook_config,
-            tensorboard_output_config=tensorboard_output_config,
-            enable_sagemaker_metrics=enable_sagemaker_metrics,
-            profiler_rule_configs=profiler_rule_configs,
-            profiler_config=inferred_profiler_config,
-            remote_debug_config=remote_debug_config,
-            session_chaining_config=session_chaining_config,
-            environment=environment,
-            retry_strategy=retry_strategy,
+        train_request = self.get_train_request(
+            input_mode,
+            input_config,
+            role,
+            job_name,
+            output_config,
+            resource_config,
+            vpc_config,
+            hyperparameters,
+            stop_condition,
+            tags,
+            metric_definitions,
+            enable_network_isolation,
+            image_uri,
+            training_image_config,
+            infra_check_config,
+            container_entry_point,
+            container_arguments,
+            algorithm_arn,
+            encrypt_inter_container_traffic,
+            use_spot_instances,
+            checkpoint_s3_uri,
+            checkpoint_local_path,
+            experiment_config,
+            debugger_rule_configs,
+            debugger_hook_config,
+            tensorboard_output_config,
+            enable_sagemaker_metrics,
+            profiler_rule_configs,
+            profiler_config,
+            environment,
+            retry_strategy,
+            remote_debug_config,
+            session_chaining_config,
         )
 
         def submit(request):
@@ -4253,6 +4575,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         source_uri=None,
         model_card=None,
         model_life_cycle=None,
+        model_package_registration_type=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -4293,6 +4616,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
             model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+            model_package_registration_type (str or PipelineVariable): Model Package Registration
+                Type (default: None).
         """
         if containers:
             # Containers are provided. Now we can merge missing entries from config.
@@ -4352,6 +4677,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             source_uri=source_uri,
             model_card=model_card,
             model_life_cycle=model_life_cycle,
+            model_package_registration_type=model_package_registration_type,
         )
 
         def submit(request):
@@ -4531,9 +4857,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def create_endpoint_config(
         self,
         name,
-        model_name,
-        initial_instance_count,
-        instance_type,
+        model_name=None,
+        initial_instance_count=None,
+        instance_type=None,
         accelerator_type=None,
         tags=None,
         kms_key=None,
@@ -4546,6 +4872,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         serverless_inference_config_dict=None,
         routing_config: Optional[Dict[str, Any]] = None,
         inference_ami_version: Optional[str] = None,
+        production_variants: Optional[List[Dict[str, Any]]] = None,
+        role: Optional[str] = None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -4607,6 +4935,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
              Specifies an option from a collection of preconfigured
              Amazon Machine Image (AMI) images. For a full list of options, see:
              https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_ProductionVariant.html
+            production_variants (Optional[List[Dict[str, Any]]]): Explicit
+                production variants to use as-is. When given, ``model_name``,
+                ``initial_instance_count`` and ``instance_type`` are ignored and
+                no variant is built. Use this for a variant a single-model
+                configuration cannot express, such as an inference-component
+                endpoint whose variant carries no model name.
+            role (Optional[str]): An AWS IAM role, name or full ARN. Required
+                when no production variant names a model, as with an
+                inference-component endpoint: the endpoint config then carries
+                ``ExecutionRoleArn`` in place of a model.
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -4616,24 +4954,25 @@ class Session(object):  # pylint: disable=too-many-public-methods
             .Client.add_tags
 
         Returns:
-            str: Name of the endpoint point configuration created.
+            str: Name of the endpoint point configuration created. Under a
+            ``PipelineSession`` the captured step arguments are returned instead
+            and no service call is made.
         """
-        logger.info("Creating endpoint-config with name %s", name)
-
         tags = format_tags(tags) or []
-        provided_production_variant = production_variant(
-            model_name,
-            instance_type,
-            initial_instance_count,
-            accelerator_type=accelerator_type,
-            serverless_inference_config=serverless_inference_config_dict,
-            volume_size=volume_size,
-            model_data_download_timeout=model_data_download_timeout,
-            container_startup_health_check_timeout=container_startup_health_check_timeout,
-            routing_config=routing_config,
-            inference_ami_version=inference_ami_version,
-        )
-        production_variants = [provided_production_variant]
+        if production_variants is None:
+            provided_production_variant = production_variant(
+                model_name,
+                instance_type,
+                initial_instance_count,
+                accelerator_type=accelerator_type,
+                serverless_inference_config=serverless_inference_config_dict,
+                volume_size=volume_size,
+                model_data_download_timeout=model_data_download_timeout,
+                container_startup_health_check_timeout=container_startup_health_check_timeout,
+                routing_config=routing_config,
+                inference_ami_version=inference_ami_version,
+            )
+            production_variants = [provided_production_variant]
         # Currently we just inject CoreDumpConfig.KmsKeyId from the config for production variant.
         # But if that parameter is injected, then CoreDumpConfig.DestinationS3Uri needs to be
         # present.
@@ -4649,17 +4988,43 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "ProductionVariants": production_variants,
         }
 
+        role = resolve_value_from_config(
+            role,
+            ENDPOINT_CONFIG_EXECUTION_ROLE_ARN_PATH,
+            sagemaker_session=self,
+        )
+        # For an Amazon SageMaker inference-component based endpoint, no Model name is
+        # passed during endpoint creation. ExecutionRoleArn is needed in the endpoint
+        # config instead, so that the Endpoint can be created.
+        model_names = [pv["ModelName"] for pv in production_variants if "ModelName" in pv]
+        if len(model_names) == 0:
+            # The SDK allows deploying with a role name rather than a full ARN, so
+            # expand it here.
+            role = self.expand_role(role)
+            request["ExecutionRoleArn"] = role
+
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
         )
         if tags is not None:
             request["Tags"] = tags
+        # When explicit variants are supplied there is no single instance_type to
+        # consult, so derive KMS support from the variants themselves, as
+        # endpoint_from_production_variants does.
+        if instance_type is not None:
+            supports_kms = instance_supports_kms(instance_type)
+        else:
+            supports_kms = any(
+                instance_supports_kms(pv["InstanceType"])
+                for pv in production_variants
+                if "InstanceType" in pv
+            )
         kms_key = (
             resolve_value_from_config(
                 kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
             )
-            if instance_supports_kms(instance_type)
+            if supports_kms
             else kms_key
         )
         if kms_key is not None:
@@ -4682,8 +5047,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if explainer_config_dict is not None:
             request["ExplainerConfig"] = explainer_config_dict
 
-        self.sagemaker_client.create_endpoint_config(**request)
-        return name
+        def submit(request):
+            logger.info("Creating endpoint-config with name %s", name)
+            self.sagemaker_client.create_endpoint_config(**request)
+            return name
+
+        return self._intercept_create_request(
+            request, submit, self.create_endpoint_config.__name__
+        )
 
     def create_endpoint_config_from_existing(
         self,
@@ -4843,29 +5214,39 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: None).
 
         Returns:
-            str: Name of the Amazon SageMaker ``Endpoint`` created.
+            str: Name of the Amazon SageMaker ``Endpoint`` created. Under a
+            ``PipelineSession`` the captured step arguments are returned instead
+            and no service call is made.
 
         Raises:
             botocore.exceptions.ClientError: If Sagemaker throws an exception while creating
             endpoint.
         """
-        logger.info("Creating endpoint with name %s", endpoint_name)
-
         tags = format_tags(tags) or []
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
         )
-        try:
-            res = self.sagemaker_client.create_endpoint(
-                EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
-            )
+        create_endpoint_request = {
+            "EndpointName": endpoint_name,
+            "EndpointConfigName": config_name,
+            "Tags": tags,
+        }
+
+        def submit(request):
+            logger.info("Creating endpoint with name %s", endpoint_name)
+            res = self.sagemaker_client.create_endpoint(**request)
             if res:
                 self.endpoint_arn = res["EndpointArn"]
 
             if wait:
                 self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
             return endpoint_name
+
+        try:
+            return self._intercept_create_request(
+                create_endpoint_request, submit, self.create_endpoint.__name__
+            )
         except Exception as e:
             troubleshooting = (
                 "https://docs.aws.amazon.com/sagemaker/latest/dg/"
@@ -5044,13 +5425,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Returns:
             str: Name of the Amazon SageMaker ``InferenceComponent`` if created.
+            Under a ``PipelineSession`` the captured step arguments are returned
+            instead and no service call is made.
         """
-        LOGGER.info(
-            "Creating inference component with name %s for endpoint %s",
-            inference_component_name,
-            endpoint_name,
-        )
-
         if runtime_config is None:
             runtime_config = {"CopyCount": 1}
 
@@ -5070,10 +5447,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags and len(tags) != 0:
             request["Tags"] = tags
 
-        self.sagemaker_client.create_inference_component(**request)
-        if wait:
-            self.wait_for_inference_component(inference_component_name)
-        return inference_component_name
+        def submit(request):
+            LOGGER.info(
+                "Creating inference component with name %s for endpoint %s",
+                inference_component_name,
+                endpoint_name,
+            )
+            self.sagemaker_client.create_inference_component(**request)
+            if wait:
+                self.wait_for_inference_component(inference_component_name)
+            return inference_component_name
+
+        return self._intercept_create_request(
+            request, submit, self.create_inference_component.__name__
+        )
 
     def wait_for_inference_component(self, inference_component_name, poll=20):
         """Wait for an Amazon SageMaker ``Inference Component`` deployment to complete.
@@ -6077,15 +6464,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 user_profile_name = metadata.get("UserProfileName")
                 execution_role_arn = metadata.get("ExecutionRoleArn")
             try:
+                # find execution role from the metadata file if present
+                if execution_role_arn is not None:
+                    return execution_role_arn
+
                 if domain_id is None:
                     instance_desc = self.sagemaker_client.describe_notebook_instance(
                         NotebookInstanceName=instance_name
                     )
                     return instance_desc["RoleArn"]
-
-                # find execution role from the metadata file if present
-                if execution_role_arn is not None:
-                    return execution_role_arn
 
                 user_profile_desc = self.sagemaker_client.describe_user_profile(
                     DomainId=domain_id, UserProfileName=user_profile_name
@@ -6794,7 +7181,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 = self.boto_session.client("s3", region_name=self.boto_region_name)
         else:
             s3 = self.s3_client
-        s3.download_file(Bucket=bucket, Key=f"{prefix}/{query_execution_id}.csv", Filename=filename)
+
+        # Spot check: enforce ownership only when downloading from the session's default
+        # bucket. Cross-account reads are left untouched.
+        download_kwargs = {
+            "Bucket": bucket,
+            "Key": f"{prefix}/{query_execution_id}.csv",
+            "Filename": filename,
+        }
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            download_kwargs["ExtraArgs"] = {"ExpectedBucketOwner": expected_owner}
+        s3.download_file(**download_kwargs)
 
     def account_id(self) -> str:
         """Get the AWS account id of the caller.
@@ -7419,6 +7817,8 @@ def get_model_package_args(
     source_uri=None,
     model_card=None,
     model_life_cycle=None,
+    model_package_registration_type=None,
+    base_model=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -7461,6 +7861,9 @@ def get_model_package_args(
         model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
         model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+        model_package_registration_type (str): Model Package Registration
+                Type (default: None).
+        base_model (ContainerBaseModel): ContainerBaseModel object (default: None).
 
     Returns:
         dict: A dictionary of method argument names and values.
@@ -7473,8 +7876,14 @@ def get_model_package_args(
         }
         if model_data is not None:
             container["ModelDataUrl"] = model_data
-
+        if base_model is not None:
+            container["BaseModel"] = base_model._to_request_dict()
         containers = [container]
+
+    # Convert base_model in containers to request dict if they have _to_request_dict method
+    for container in containers:
+        if "BaseModel" in container and hasattr(container["BaseModel"], "_to_request_dict"):
+            container["BaseModel"] = container["BaseModel"]._to_request_dict()
 
     model_package_args = {
         "containers": containers,
@@ -7518,7 +7927,7 @@ def get_model_package_args(
     if source_uri is not None:
         model_package_args["source_uri"] = source_uri
     if model_life_cycle is not None:
-        model_package_args["model_life_cycle"] = model_life_cycle
+        model_package_args["model_life_cycle"] = model_life_cycle._to_request_dict()
     if model_card is not None:
         original_req = model_card._create_request_args()
         if original_req.get("ModelCardName") is not None:
@@ -7527,6 +7936,8 @@ def get_model_package_args(
             original_req["ModelCardContent"] = original_req["Content"]
             del original_req["Content"]
         model_package_args["model_card"] = original_req
+    if model_package_registration_type is not None:
+        model_package_args["model_package_registration_type"] = model_package_registration_type
     return model_package_args
 
 
@@ -7554,6 +7965,7 @@ def get_create_model_package_request(
     source_uri=None,
     model_card=None,
     model_life_cycle=None,
+    model_package_registration_type=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
@@ -7594,6 +8006,8 @@ def get_create_model_package_request(
         model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
         model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+        model_package_registration_type (str): Model Package Registration
+                Type (default: None).
     """
 
     if all([model_package_name, model_package_group_name]):
@@ -7695,6 +8109,8 @@ def get_create_model_package_request(
         request_dict["ModelCard"] = model_card
     if model_life_cycle is not None:
         request_dict["ModelLifeCycle"] = model_life_cycle
+    if model_package_registration_type is not None:
+        request_dict["ModelPackageRegistrationType"] = model_package_registration_type
     return request_dict
 
 

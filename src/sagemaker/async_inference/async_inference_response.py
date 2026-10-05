@@ -97,7 +97,11 @@ class AsyncInferenceResponse(object):
         """Get inference result from the output Amazon S3 path"""
         bucket, key = parse_s3_url(output_path)
         try:
-            response = self.predictor_async.s3_client.get_object(Bucket=bucket, Key=key)
+            get_kwargs = {"Bucket": bucket, "Key": key}
+            expected_owner = self.predictor_async.sagemaker_session._get_account_id_if_default_bucket(bucket)
+            if expected_owner:
+                get_kwargs["ExpectedBucketOwner"] = expected_owner
+            response = self.predictor_async.s3_client.get_object(**get_kwargs)
             return self.predictor_async.predictor._handle_response(response)
         except ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":
@@ -113,14 +117,22 @@ class AsyncInferenceResponse(object):
         """Get inference result from the output & failure Amazon S3 path"""
         bucket, key = parse_s3_url(output_path)
         try:
-            response = self.predictor_async.s3_client.get_object(Bucket=bucket, Key=key)
+            get_kwargs = {"Bucket": bucket, "Key": key}
+            expected_owner = self.predictor_async.sagemaker_session._get_account_id_if_default_bucket(bucket)
+            if expected_owner:
+                get_kwargs["ExpectedBucketOwner"] = expected_owner
+            response = self.predictor_async.s3_client.get_object(**get_kwargs)
             return self.predictor_async.predictor._handle_response(response)
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchKey":
                 try:
                     failure_bucket, failure_key = parse_s3_url(failure_path)
+                    fail_kwargs = {"Bucket": failure_bucket, "Key": failure_key}
+                    fail_owner = self.predictor_async.sagemaker_session._get_account_id_if_default_bucket(failure_bucket)
+                    if fail_owner:
+                        fail_kwargs["ExpectedBucketOwner"] = fail_owner
                     failure_response = self.predictor_async.s3_client.get_object(
-                        Bucket=failure_bucket, Key=failure_key
+                        **fail_kwargs
                     )
                     failure_response = self.predictor_async.predictor._handle_response(
                         failure_response

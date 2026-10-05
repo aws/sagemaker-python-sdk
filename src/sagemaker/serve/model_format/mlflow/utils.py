@@ -21,6 +21,7 @@ import shutil
 import os
 
 from sagemaker import Session, image_uris
+from sagemaker.utils import validate_path_within_directory
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.detector.image_detector import _cast_to_compatible_version
 from sagemaker.serve.model_format.mlflow.constants import (
@@ -208,7 +209,7 @@ def _get_deployment_flavor(flavor_metadata: Optional[Dict[str, Any]]) -> str:
 
 
 def _get_python_version_from_parsed_mlflow_model_file(
-    parsed_metadata: Dict[str, Any]
+    parsed_metadata: Dict[str, Any],
 ) -> Optional[str]:
     """Checks the python version of a given parsed MLflow model file.
 
@@ -244,12 +245,23 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
 
     os.makedirs(dst_path, exist_ok=True)
 
+    # Spot check: enforce ownership only when downloading from the session's default
+    # bucket. Cross-account reads are left untouched.
+    expected_owner = session._get_account_id_if_default_bucket(s3_bucket)
+    extra_kwargs = {}
+    if expected_owner:
+        extra_kwargs["ExpectedBucketOwner"] = expected_owner
+
     paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_key):
+    paginate_kwargs = {"Bucket": s3_bucket, "Prefix": s3_key}
+    paginate_kwargs.update(extra_kwargs)
+    for page in paginator.paginate(**paginate_kwargs):
         for obj in page.get("Contents", []):
             key = obj["Key"]
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
+
+            validate_path_within_directory(local_file_path, dst_path, source_description=key)
 
             if not key.endswith("/"):
                 local_file_dir = os.path.dirname(local_file_path)
@@ -257,7 +269,10 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
 
                 # Download the file
                 logger.info(f"Downloading {key} to {local_file_path}")
-                s3.download_file(s3_bucket, key, local_file_path)
+                extra_args = None
+                if expected_owner:
+                    extra_args = {"ExpectedBucketOwner": expected_owner}
+                s3.download_file(s3_bucket, key, local_file_path, ExtraArgs=extra_args)
 
 
 def _copy_directory_contents(src_dir, dest_dir) -> None:

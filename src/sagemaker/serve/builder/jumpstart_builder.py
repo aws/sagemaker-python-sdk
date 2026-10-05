@@ -142,7 +142,11 @@ class JumpStart(ABC):
             return False
 
         try:
-            model_uris.retrieve(model_id=self.model, model_version="*", model_scope=_JS_SCOPE)
+            model_uris.retrieve(
+                model_id=self.model,
+                model_version=getattr(self, "model_version", None) or "*",
+                model_scope=_JS_SCOPE,
+            )
         except KeyError:
             logger.warning(_NO_JS_MODEL_EX)
             return False
@@ -154,6 +158,7 @@ class JumpStart(ABC):
         """Placeholder docstring"""
         pysdk_model = JumpStartModel(
             self.model,
+            model_version=getattr(self, "model_version", None) or "*",
             vpc_config=self.vpc_config,
             sagemaker_session=self.sagemaker_session,
             name=self.name,

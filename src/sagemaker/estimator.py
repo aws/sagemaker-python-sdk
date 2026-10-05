@@ -53,7 +53,12 @@ from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     get_rule_container_image_uri,
     RuleBase,
 )
-from sagemaker.deprecations import removed_function, removed_kwargs, renamed_kwargs
+from sagemaker.deprecations import (
+    removed_function,
+    removed_kwargs,
+    renamed_kwargs,
+    warn_v2_deprecation,
+)
 from sagemaker.fw_utils import (
     UploadedCode,
     _region_supports_debugger,
@@ -186,6 +191,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         training_plan: Optional[Union[str, PipelineVariable]] = None,
+        instance_placement_config: Optional[Dict] = None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -560,7 +566,30 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 Specifies whether SessionTagChaining is enabled for the training job.
             training_plan (str or PipelineVariable): Optional.
                 Specifies which training plan arn to use for the training job
+            instance_placement_config (dict): Optional.
+                Specifies UltraServer placement configuration for the training job
+
+                .. code:: python
+
+                    instance_placement_config={
+                        "EnableMultipleJobs": True,
+                        "PlacementSpecifications":[
+                            {
+                                "UltraServerId": "ultraserver-1",
+                                "InstanceCount": "2"
+                            }
+                        ]
+                    }
+
         """
+        # Reports the concrete subclass name (Estimator, PyTorch, TensorFlow,
+        # HuggingFace, SKLearn, XGBoost, AlgorithmEstimator, JumpStartEstimator, ...)
+        # since every estimator routes through EstimatorBase.__init__.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="ModelTrainer",
+            v3_import="from sagemaker.train import ModelTrainer",
+        )
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
         )
@@ -813,6 +842,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.training_plan = training_plan
 
+        self.instance_placement_config = instance_placement_config
+
         # Internal flag
         self._is_output_path_set_from_default_bucket_and_prefix = False
 
@@ -905,6 +936,30 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             }
         return hyperparameters
 
+    @staticmethod
+    def _nova_encode_hyperparameters(hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
+        """Applies JSON encoding for Nova job hyperparameters, preserving string values.
+
+        For Nova jobs, string values should not be JSON-encoded.
+
+        Args:
+            hyperparameters (dict): Dictionary of hyperparameters.
+
+        Returns:
+            dict: Dictionary with encoded hyperparameters.
+        """
+        current_hyperparameters = hyperparameters
+        if current_hyperparameters is not None:
+            hyperparameters = {}
+            for k, v in current_hyperparameters.items():
+                if is_pipeline_variable(v):
+                    hyperparameters[str(k)] = v.to_string()
+                elif isinstance(v, str):
+                    hyperparameters[str(k)] = v
+                else:
+                    hyperparameters[str(k)] = json.dumps(v)
+        return hyperparameters
+
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
 
@@ -938,7 +993,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.source_dir = updated_paths["source_dir"]
             self.dependencies = updated_paths["dependencies"]
 
-        if self.source_dir or self.entry_point or self.dependencies:
+        if (
+            self.source_dir
+            or self.entry_point
+            or (self.dependencies and len(self.dependencies) > 0)
+        ):
             # validate source dir will raise a ValueError if there is something wrong with
             # the source directory. We are intentionally not handling it because this is a
             # critical error.
@@ -1059,6 +1118,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             kms_key=kms_key,
             s3_resource=self.sagemaker_session.s3_resource,
             settings=self.sagemaker_session.settings,
+            expected_bucket_owner=self.sagemaker_session._get_account_id_if_default_bucket(
+                code_bucket
+            ),
         )
 
     def _assign_s3_prefix(self, key_prefix=""):
@@ -1304,7 +1366,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             )
         return None
 
-    @_telemetry_emitter(feature=Feature.ESTIMATOR, func_name="estimator.fit")
+    @_telemetry_emitter(feature=Feature.ESTIMATOR_V2, func_name="estimator.fit")
     @runnable_by_pipeline
     def fit(
         self,
@@ -1771,6 +1833,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         source_uri=None,
         model_life_cycle=None,
         model_card=None,
+        model_package_registration_type=None,
+        base_model=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1822,6 +1886,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model_card (ModeCard or ModelPackageModelCard): document contains qualitative and
                 quantitative information about a model (default: None).
             model_life_cycle (ModelLifeCycle): ModelLifeCycle object (default: None).
+            model_package_registration_type (str): Model Package Registration
+                Type (default: None).
+            base_model (ContainerBaseModel): ContainerBaseModel object (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1878,6 +1945,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             source_uri=source_uri,
             model_card=model_card,
             model_life_cycle=model_life_cycle,
+            model_package_registration_type=model_package_registration_type,
+            base_model=base_model,
         )
 
     @property
@@ -1968,6 +2037,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         if "TrainingPlanArn" in job_details["ResourceConfig"]:
             init_params["training_plan"] = job_details["ResourceConfig"]["TrainingPlanArn"]
+
+        if "InstancePlacementConfig" in job_details["ResourceConfig"]:
+            init_params["instance_placement_config"] = job_details["ResourceConfig"][
+                "InstancePlacementConfig"
+            ]
 
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
@@ -2068,7 +2142,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             instance_type = instance_group.instance_type
             if is_pipeline_variable(instance_type):
                 continue
-            match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+            match = re.match(r"^ml[\._]([a-z\d\-]+)\.?\w*$", instance_type)
 
             if match:
                 family = match[1]
@@ -2519,6 +2593,11 @@ class _TrainingJob(_Job):
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
     @classmethod
+    def get_train_args(cls, estimator, inputs, experiment_config):
+        """A public function which is same as _get_train_args function."""
+        return cls._get_train_args(estimator, inputs, experiment_config)
+
+    @classmethod
     def _get_train_args(cls, estimator, inputs, experiment_config):
         """Constructs a dict of arguments for an Amazon SageMaker training job from the estimator.
 
@@ -2849,6 +2928,7 @@ class Estimator(EstimatorBase):
         enable_remote_debug: Optional[Union[bool, PipelineVariable]] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         training_plan: Optional[Union[str, PipelineVariable]] = None,
+        instance_placement_config: Optional[Dict] = None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -3216,6 +3296,20 @@ class Estimator(EstimatorBase):
                  Specifies whether SessionTagChaining is enabled for the training job
             training_plan (str or PipelineVariable): Optional.
                 Specifies which training plan arn to use for the training job
+            instance_placement_config (dict): Optional.
+                Specifies UltraServer placement configuration for the training job
+
+                .. code:: python
+
+                    instance_placement_config={
+                        "EnableMultipleJobs": True,
+                        "PlacementSpecifications":[
+                            {
+                                "UltraServerId": "ultraserver-1",
+                                "InstanceCount": "2"
+                            }
+                        ]
+                    }
         """
         self.image_uri = image_uri
         self._hyperparameters = hyperparameters.copy() if hyperparameters else {}
@@ -3270,6 +3364,7 @@ class Estimator(EstimatorBase):
             enable_remote_debug=enable_remote_debug,
             enable_session_tag_chaining=enable_session_tag_chaining,
             training_plan=training_plan,
+            instance_placement_config=instance_placement_config,
             **kwargs,
         )
 
@@ -3579,7 +3674,11 @@ class Framework(EstimatorBase):
             git_config=git_config,
             enable_network_isolation=enable_network_isolation,
         )
-        if not is_pipeline_variable(entry_point) and entry_point.startswith("s3://"):
+        if (
+            not is_pipeline_variable(entry_point)
+            and entry_point is not None
+            and entry_point.startswith("s3://")
+        ):
             raise ValueError(
                 "Invalid entry point script: {}. Must be a path to a local file.".format(
                     entry_point
@@ -3599,6 +3698,7 @@ class Framework(EstimatorBase):
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
+        self.is_nova_job = kwargs.get("is_nova_job", False)
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
@@ -3713,7 +3813,10 @@ class Framework(EstimatorBase):
 
     def set_hyperparameters(self, **kwargs):
         """Escapes the dict argument as JSON, updates the private hyperparameter attribute."""
-        self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(kwargs))
+        if self.is_nova_job:
+            self._hyperparameters.update(EstimatorBase._nova_encode_hyperparameters(kwargs))
+        else:
+            self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(kwargs))
 
     def hyperparameters(self):
         """Returns the hyperparameters as a dictionary to use for training.
@@ -3724,7 +3827,10 @@ class Framework(EstimatorBase):
         Returns:
             dict[str, str]: The hyperparameters.
         """
-        return EstimatorBase._json_encode_hyperparameters(self._hyperparameters)
+        if self.is_nova_job:
+            return EstimatorBase._nova_encode_hyperparameters(self._hyperparameters)
+        else:
+            return EstimatorBase._json_encode_hyperparameters(self._hyperparameters)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):

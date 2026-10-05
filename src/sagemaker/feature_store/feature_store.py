@@ -33,6 +33,8 @@ from sagemaker.feature_store.inputs import (
     SortOrderEnum,
     Identifier,
 )
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 
 @attr.s
@@ -47,6 +49,7 @@ class FeatureStore:
 
     sagemaker_session: Session = attr.ib(default=Session)
 
+    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_store.create_dataset")
     def create_dataset(
         self,
         base: Union[FeatureGroup, pd.DataFrame],
@@ -92,6 +95,9 @@ class FeatureStore:
             kms_key_id,
         )
 
+    @_telemetry_emitter(
+        feature=Feature.FEATURE_STORE_V2, func_name="feature_store.list_feature_groups"
+    )
     def list_feature_groups(
         self,
         name_contains: str = None,
@@ -137,6 +143,9 @@ class FeatureStore:
             next_token=next_token,
         )
 
+    @_telemetry_emitter(
+        feature=Feature.FEATURE_STORE_V2, func_name="feature_store.batch_get_record"
+    )
     def batch_get_record(
         self,
         identifiers: Sequence[Identifier],

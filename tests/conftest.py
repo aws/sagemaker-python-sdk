@@ -58,8 +58,6 @@ NO_P3_REGIONS = [
     "ap-south-1",  # no p3 availability
 ]
 
-NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
-
 FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "chainer",
     "coach_mxnet",
@@ -297,6 +295,8 @@ def huggingface_pytorch_training_version(huggingface_training_version):
 
 @pytest.fixture(scope="module")
 def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
+    if Version(huggingface_pytorch_training_version) >= Version("2.6"):
+        return "py312"
     if Version(huggingface_pytorch_training_version) >= Version("2.3"):
         return "py311"
     if Version(huggingface_pytorch_training_version) >= Version("2.0"):
@@ -361,6 +361,8 @@ def huggingface_training_compiler_pytorch_py_version(
 def huggingface_pytorch_latest_training_py_version(
     huggingface_training_pytorch_latest_version,
 ):
+    if Version(huggingface_training_pytorch_latest_version) >= Version("2.6"):
+        return "py312"
     if Version(huggingface_training_pytorch_latest_version) >= Version("2.3"):
         return "py311"
     if Version(huggingface_training_pytorch_latest_version) >= Version("2.0"):
@@ -554,7 +556,9 @@ def _tf_py_version(tf_version, request):
         return "py38"
     if Version("2.8") <= version < Version("2.12"):
         return "py39"
-    return "py310"
+    if Version("2.12") <= version < Version("2.19"):
+        return "py310"
+    return "py312"
 
 
 @pytest.fixture(scope="module")
@@ -597,7 +601,9 @@ def tf_full_py_version(tf_full_version):
         return "py38"
     if version < Version("2.12"):
         return "py39"
-    return "py310"
+    if version < Version("2.19"):
+        return "py310"
+    return "py312"
 
 
 @pytest.fixture(scope="module")
@@ -633,42 +639,17 @@ def cpu_instance_type(sagemaker_session, request):
 
 @pytest.fixture(scope="session")
 def gpu_instance_type(sagemaker_session, request):
-    region = sagemaker_session.boto_session.region_name
-    if region in NO_P3_REGIONS:
-        return "ml.p2.xlarge"
-    else:
-        return "ml.p3.2xlarge"
+    return "ml.g4dn.xlarge"
 
 
 @pytest.fixture()
 def gpu_pytorch_instance_type(sagemaker_session, request):
-    fw_version = None
-    for pytorch_version_fixture in [
-        "pytorch_inference_version",
-        "huggingface_training_pytorch_latest_version",
-        "huggingface_inference_pytorch_latest_version",
-    ]:
-        if pytorch_version_fixture in request.fixturenames:
-            fw_version = request.getfixturevalue(pytorch_version_fixture)
-    if fw_version is None:
-        fw_version = request.param
-    region = sagemaker_session.boto_session.region_name
-    if region in NO_P3_REGIONS:
-        if Version(fw_version) >= Version("1.13"):
-            return PYTORCH_RENEWED_GPU
-        else:
-            return "ml.p2.xlarge"
-    else:
-        return "ml.p3.2xlarge"
+    return "ml.g4dn.xlarge"
 
 
 @pytest.fixture(scope="session")
 def gpu_instance_type_list(sagemaker_session, request):
-    region = sagemaker_session.boto_session.region_name
-    if region in NO_P3_REGIONS:
-        return ["ml.p2.xlarge"]
-    else:
-        return ["ml.p3.2xlarge", "ml.p2.xlarge"]
+    return ["ml.g4dn.xlarge"]
 
 
 @pytest.fixture(scope="session")
@@ -683,12 +664,11 @@ def ec2_instance_type(cpu_instance_type):
 
 @pytest.fixture(scope="session")
 def alternative_cpu_instance_type(sagemaker_session, request):
-    region = sagemaker_session.boto_session.region_name
-    if region in NO_T2_REGIONS:
-        # T3 is not supported by hosting yet
-        return "ml.c5.xlarge"
-    else:
-        return "ml.t2.medium"
+    # SageMaker hosting no longer accepts the T2 family (CreateEndpointConfig
+    # rejects it with 'Deprecated instance type "T2"'). ml.c5.xlarge is
+    # available in every region and differs from cpu_instance_type, which is
+    # all the update-endpoint tests need.
+    return "ml.c5.xlarge"
 
 
 @pytest.fixture(scope="session")
@@ -709,16 +689,7 @@ def pytest_generate_tests(metafunc):
         cpu_instance_type = "ml.m5.xlarge" if region in NO_M4_REGIONS else "ml.m4.xlarge"
 
         params = [cpu_instance_type]
-        if not (
-            region in tests.integ.HOSTING_NO_P3_REGIONS
-            or region in tests.integ.TRAINING_NO_P3_REGIONS
-        ):
-            params.append("ml.p3.2xlarge")
-        elif not (
-            region in tests.integ.HOSTING_NO_P2_REGIONS
-            or region in tests.integ.TRAINING_NO_P2_REGIONS
-        ):
-            params.append("ml.p2.xlarge")
+        params.append("ml.g4dn.xlarge")
 
         metafunc.parametrize("instance_type", params, scope="session")
 

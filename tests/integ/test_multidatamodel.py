@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import base64
 import os
+import time
 import requests
 
 import docker
@@ -138,6 +139,7 @@ def test_multi_data_model_deploy_pretrained_models(
         multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_1)
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        time.sleep(30)
         # Add models after deploy
         multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_2)
 
@@ -266,6 +268,7 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         multi_data_model.add_model(mxnet_model_1.model_data, PRETRAINED_MODEL_PATH_1)
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        time.sleep(30)
 
         # Train another model
         mxnet_model_2 = _mxnet_training_job(
@@ -373,6 +376,7 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         multi_data_model.add_model(rcf_model_v1.model_data, PRETRAINED_MODEL_PATH_1)
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        time.sleep(30)
         # Train another model
         rcf_model_v2 = __rcf_training_job(
             sagemaker_session, container_image, cpu_instance_type, 70, 20
@@ -470,6 +474,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_1)
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        time.sleep(30)
         # Add model after deploy
         multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_2)
 

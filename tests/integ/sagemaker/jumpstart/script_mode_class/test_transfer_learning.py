@@ -53,12 +53,8 @@ def test_jumpstart_transfer_learning_estimator_class(setup):
 
     model_id, model_version = "huggingface-spc-bert-base-cased", "1.2.3"
 
-    inference_instance_type = instance_types.retrieve_default(
-        model_id=model_id, model_version=model_version, scope="inference"
-    )
-    training_instance_type = instance_types.retrieve_default(
-        model_id=model_id, model_version=model_version, scope="training"
-    )
+    inference_instance_type = "ml.g4dn.xlarge"
+    training_instance_type = "ml.g4dn.xlarge"
     instance_count = 1
 
     print("Starting training...")

@@ -12,11 +12,12 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pytest
 import os
-from pathlib import Path
 import subprocess
-from mock import patch, ANY
+from pathlib import Path
+
+import pytest
+from mock import ANY, patch
 
 from sagemaker import git_utils
 
@@ -494,3 +495,317 @@ def test_git_clone_repo_codecommit_https_creds_not_stored_locally(tempdir, mkdte
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config, entry_point)
     assert "returned non-zero exit status" in str(error.value)
+
+
+class TestGitUrlSanitization:
+    """Test cases for Git URL sanitization to prevent injection attacks."""
+
+    def test_sanitize_git_url_valid_https_urls(self):
+        """Test that valid HTTPS URLs pass sanitization."""
+        valid_urls = [
+            "https://github.com/user/repo.git",
+            "https://gitlab.com/user/repo.git",
+            "https://token@github.com/user/repo.git",
+            "https://user:pass@github.com/user/repo.git",
+            "http://internal-git.company.com/repo.git",
+        ]
+
+        for url in valid_urls:
+            # Should not raise any exception
+            result = git_utils._sanitize_git_url(url)
+            assert result == url
+
+    def test_sanitize_git_url_valid_ssh_urls(self):
+        """Test that valid SSH URLs pass sanitization."""
+        valid_urls = [
+            "git@github.com:user/repo.git",
+            "git@gitlab.com:user/repo.git",
+            "ssh://git@github.com/user/repo.git",
+            "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/",  # 0 @ symbols - valid for ssh://
+            "git@internal-git.company.com:repo.git",
+        ]
+
+        for url in valid_urls:
+            # Should not raise any exception
+            result = git_utils._sanitize_git_url(url)
+            assert result == url
+
+    def test_sanitize_git_url_blocks_multiple_at_https(self):
+        """Test that HTTPS URLs with multiple @ symbols are blocked."""
+        malicious_urls = [
+            "https://user@attacker.com@github.com/repo.git",
+            "https://token@evil.com@gitlab.com/user/repo.git",
+            "https://a@b@c@github.com/repo.git",
+            "https://user@malicious-host@github.com/legit/repo.git",
+        ]
+
+        for url in malicious_urls:
+            with pytest.raises(ValueError) as error:
+                git_utils._sanitize_git_url(url)
+            assert "multiple @ symbols detected" in str(error.value)
+
+    def test_sanitize_git_url_blocks_multiple_at_ssh(self):
+        """Test that SSH URLs with multiple @ symbols are blocked."""
+        malicious_urls = [
+            "git@attacker.com@github.com:repo.git",
+            "git@evil@gitlab.com:user/repo.git",
+            "ssh://git@malicious@github.com/repo.git",
+            "git@a@b@c:repo.git",
+        ]
+
+        for url in malicious_urls:
+            with pytest.raises(ValueError) as error:
+                git_utils._sanitize_git_url(url)
+            # git@ URLs should give "exactly one @ symbol" error
+            # ssh:// URLs should give "multiple @ symbols detected" error
+            assert any(
+                phrase in str(error.value)
+                for phrase in ["multiple @ symbols detected", "exactly one @ symbol"]
+            )
+
+    def test_sanitize_git_url_blocks_invalid_schemes_and_git_at_format(self):
+        """Test that invalid schemes and git@ format violations are blocked."""
+        # Test unsupported schemes
+        unsupported_scheme_urls = [
+            "git-github.com:user/repo.git",  # Doesn't start with git@, ssh://, http://, https://
+        ]
+
+        for url in unsupported_scheme_urls:
+            with pytest.raises(ValueError) as error:
+                git_utils._sanitize_git_url(url)
+            assert "Unsupported URL scheme" in str(error.value)
+
+        # Test git@ URLs with wrong @ count
+        invalid_git_at_urls = [
+            "git@github.com@evil.com:repo.git",  # 2 @ symbols
+        ]
+
+        for url in invalid_git_at_urls:
+            with pytest.raises(ValueError) as error:
+                git_utils._sanitize_git_url(url)
+            assert "exactly one @ symbol" in str(error.value)
+
+    def test_sanitize_git_url_blocks_url_encoding_obfuscation(self):
+        """Test that URL-encoded obfuscation attempts are blocked."""
+        obfuscated_urls = [
+            "https://github.com%25evil.com/repo.git",
+            "https://user@github.com%40attacker.com/repo.git",
+            "https://github.com%2Fevil.com/repo.git",
+            "https://github.com%3Aevil.com/repo.git",
+        ]
+
+        for url in obfuscated_urls:
+            with pytest.raises(ValueError) as error:
+                git_utils._sanitize_git_url(url)
+            # The error could be either suspicious encoding or invalid characters
+            assert any(
+                phrase in str(error.value)
+                for phrase in ["Suspicious URL encoding detected", "Invalid characters in hostname"]
+            )
+
+    def test_sanitize_git_url_blocks_invalid_hostname_chars(self):
+        """Test that hostnames with invalid characters are blocked."""
+        invalid_urls = [
+            "https://github<script>.com/repo.git",
+            "https://github>.com/repo.git",
+            "https://github[].com/repo.git",
+            "https://github{}.com/repo.git",
+        ]
+
+        for url in invalid_urls:
+            with pytest.raises(ValueError) as error:
+                git_utils._sanitize_git_url(url)
+            # The error could be various types due to URL parsing edge cases
+            assert any(
+                phrase in str(error.value)
+                for phrase in [
+                    "Invalid characters in hostname",
+                    "Failed to parse URL",
+                    "does not appear to be an IPv4 or IPv6 address",
+                ]
+            )
+
+    def test_sanitize_git_url_blocks_unsupported_schemes(self):
+        """Test that unsupported URL schemes are blocked."""
+        unsupported_urls = [
+            "ftp://github.com/repo.git",
+            "file:///local/repo.git",
+            "javascript:alert('xss')",
+            "data:text/html,<script>alert('xss')</script>",
+        ]
+
+        for url in unsupported_urls:
+            with pytest.raises(ValueError) as error:
+                git_utils._sanitize_git_url(url)
+            assert "Unsupported URL scheme" in str(error.value)
+
+    def test_git_clone_repo_blocks_malicious_https_url(self):
+        """Test that git_clone_repo blocks malicious HTTPS URLs."""
+        malicious_git_config = {
+            "repo": "https://user@attacker.com@github.com/legit/repo.git",
+            "branch": "main",
+        }
+        entry_point = "train.py"
+
+        with pytest.raises(ValueError) as error:
+            git_utils.git_clone_repo(malicious_git_config, entry_point)
+        assert "multiple @ symbols detected" in str(error.value)
+
+    def test_git_clone_repo_blocks_malicious_ssh_url(self):
+        """Test that git_clone_repo blocks malicious SSH URLs."""
+        malicious_git_config = {
+            "repo": "git@OBVIOUS@github.com:sage-maker/temp-sev2.git",
+            "branch": "main",
+        }
+        entry_point = "train.py"
+
+        with pytest.raises(ValueError) as error:
+            git_utils.git_clone_repo(malicious_git_config, entry_point)
+        assert "exactly one @ symbol" in str(error.value)
+
+    def test_git_clone_repo_blocks_url_encoded_attack(self):
+        """Test that git_clone_repo blocks URL-encoded attacks."""
+        malicious_git_config = {
+            "repo": "https://github.com%40attacker.com/repo.git",
+            "branch": "main",
+        }
+        entry_point = "train.py"
+
+        with pytest.raises(ValueError) as error:
+            git_utils.git_clone_repo(malicious_git_config, entry_point)
+        assert "Suspicious URL encoding detected" in str(error.value)
+
+    def test_sanitize_git_url_comprehensive_attack_scenarios(self):
+        attack_scenarios = [
+            # Original PoC attack
+            "https://USER@YOUR_NGROK_OR_LOCALHOST/malicious.git@github.com%25legit%25repo.git",
+            # Variations of the attack
+            "https://user@malicious-host@github.com/legit/repo.git",
+            "git@attacker.com@github.com:user/repo.git",
+            "ssh://git@evil.com@github.com/repo.git",
+            # URL encoding variations
+            "https://github.com%40evil.com/repo.git",
+            "https://user@github.com%2Fevil.com/repo.git",
+        ]
+
+        entry_point = "train.py"
+
+        for malicious_url in attack_scenarios:
+            git_config = {"repo": malicious_url}
+            with pytest.raises(ValueError) as error:
+                git_utils.git_clone_repo(git_config, entry_point)
+            # Should be blocked by sanitization
+            assert any(
+                phrase in str(error.value)
+                for phrase in [
+                    "multiple @ symbols detected",
+                    "exactly one @ symbol",
+                    "Suspicious URL encoding detected",
+                    "Invalid characters in hostname",
+                ]
+            )
+
+
+class TestCredentialRedaction:
+    """Test cases for credential redaction in clone error handling."""
+
+    def test_redact_token_from_url(self):
+        """Test that a token embedded in an HTTPS URL is redacted."""
+        url = "https://ghp_SuperSecretToken123@github.com/user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert "ghp_SuperSecretToken123" not in result
+        assert result == "https://<credentials-redacted>@github.com/user/repo.git"
+
+    def test_redact_username_password_from_url(self):
+        """Test that username:password embedded in an HTTPS URL is redacted."""
+        url = "https://myuser:mypassword@github.com/user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert "myuser" not in result
+        assert "mypassword" not in result
+        assert result == "https://<credentials-redacted>@github.com/user/repo.git"
+
+    def test_redact_url_encoded_password(self):
+        """Test that URL-encoded credentials are redacted."""
+        url = "https://user:p%40ss%20word@git-codecommit.us-east-1.amazonaws.com/v1/repos/myrepo"
+        result = git_utils._redact_credentials_from_url(url)
+        assert "p%40ss%20word" not in result
+        assert "<credentials-redacted>" in result
+
+    def test_no_redaction_without_credentials(self):
+        """Test that URLs without credentials are unchanged."""
+        url = "https://github.com/user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert result == url
+
+    def test_no_redaction_for_ssh_url(self):
+        """Test that SSH URLs are not affected by redaction."""
+        url = "git@github.com:user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert result == url
+
+    def test_clone_failure_redacts_token(self):
+        """Test that CalledProcessError from a failed clone does not contain the token."""
+        token_url = "https://ghp_secret123@github.com/user/repo.git"
+        with patch(
+            "subprocess.check_call",
+            side_effect=subprocess.CalledProcessError(
+                128, ["git", "clone", token_url, "/tmp/dest"]
+            ),
+        ):
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                git_utils._run_clone_command(token_url, "/tmp/dest")
+
+            assert "ghp_secret123" not in str(exc_info.value)
+            assert "ghp_secret123" not in str(exc_info.value.cmd)
+            assert "<credentials-redacted>" in str(exc_info.value.cmd)
+
+    def test_clone_failure_redacts_username_password(self):
+        """Test that CalledProcessError from a failed clone does not contain username/password."""
+        cred_url = "https://admin:hunter2@github.com/org/repo.git"
+        with patch(
+            "subprocess.check_call",
+            side_effect=subprocess.CalledProcessError(
+                128, ["git", "clone", cred_url, "/tmp/dest"]
+            ),
+        ):
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                git_utils._run_clone_command(cred_url, "/tmp/dest")
+
+            assert "admin" not in str(exc_info.value.cmd)
+            assert "hunter2" not in str(exc_info.value.cmd)
+            assert "<credentials-redacted>" in str(exc_info.value.cmd)
+
+    def test_clone_failure_redacts_codecommit_credentials(self):
+        """Test that CodeCommit HTTPS credentials are redacted on failure."""
+        cc_url = "https://user:pass@git-codecommit.us-east-1.amazonaws.com/v1/repos/myrepo"
+        with patch(
+            "subprocess.check_call",
+            side_effect=subprocess.CalledProcessError(
+                128, ["git", "clone", cc_url, "/tmp/dest"]
+            ),
+        ):
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                git_utils._run_clone_command(cc_url, "/tmp/dest")
+
+            assert "user:pass" not in str(exc_info.value.cmd)
+            assert "<credentials-redacted>" in str(exc_info.value.cmd)
+
+    def test_clone_failure_suppresses_exception_chain(self):
+        """Test that the original exception chain is suppressed (from None)."""
+        token_url = "https://ghp_secret@github.com/user/repo.git"
+        with patch(
+            "subprocess.check_call",
+            side_effect=subprocess.CalledProcessError(
+                128, ["git", "clone", token_url, "/tmp/dest"]
+            ),
+        ):
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                git_utils._run_clone_command(token_url, "/tmp/dest")
+
+            assert exc_info.value.__cause__ is None
+
+    def test_clone_success_no_exception(self):
+        """Test that successful clone does not raise."""
+        url = "https://ghp_token@github.com/user/repo.git"
+        with patch("subprocess.check_call"):
+            git_utils._run_clone_command(url, "/tmp/dest")

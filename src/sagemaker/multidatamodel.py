@@ -330,7 +330,17 @@ class MultiDataModel(Model):
                 dst_s3_uri = s3.s3_path_join(dst_prefix, model_data_path)
             else:
                 dst_s3_uri = s3.s3_path_join(dst_prefix, os.path.basename(model_data_source))
-            self.s3_client.upload_file(model_data_source, destination_bucket, dst_s3_uri)
+            # Spot check: enforce ownership only when uploading to the session's default
+            # bucket. Cross-account destinations are left untouched.
+            extra_args = None
+            expected_owner = self.sagemaker_session._get_account_id_if_default_bucket(
+                destination_bucket
+            )
+            if expected_owner:
+                extra_args = {"ExpectedBucketOwner": expected_owner}
+            self.s3_client.upload_file(
+                model_data_source, destination_bucket, dst_s3_uri, ExtraArgs=extra_args
+            )
             # return upload_path
             return s3.s3_path_join("s3://", destination_bucket, dst_s3_uri)
 

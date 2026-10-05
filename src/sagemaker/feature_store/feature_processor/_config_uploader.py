@@ -120,9 +120,6 @@ class ConfigUploader:
         stored_function = StoredFunction(
             sagemaker_session=sagemaker_session,
             s3_base_uri=s3_base_uri,
-            hmac_key=self.remote_decorator_config.environment_variables[
-                "REMOTE_FUNCTION_SECRET_KEY"
-            ],
             s3_kms_key=self.remote_decorator_config.s3_kms_key,
         )
         stored_function.save(func)

@@ -95,6 +95,8 @@ mock_optimization_job_output = {
     [
         ("ml.trn1.2xlarge", True),
         ("ml.inf2.xlarge", True),
+        ("ml.trn1-n.2xlarge", True),
+        ("ml.inf2-b.xlarge", True),
         ("ml.c7gd.4xlarge", False),
     ],
 )

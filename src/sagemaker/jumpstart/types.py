@@ -2445,6 +2445,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         "model_reference_arn",
         "specs",
         "training_plan",
+        "instance_placement_config",
     ]
 
     SERIALIZATION_EXCLUSION_SET = {
@@ -2519,6 +2520,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         config_name: Optional[str] = None,
         enable_session_tag_chaining: Optional[Union[bool, PipelineVariable]] = None,
         training_plan: Optional[Union[str, PipelineVariable]] = None,
+        instance_placement_config: Optional[Dict] = None,
     ) -> None:
         """Instantiates JumpStartEstimatorInitKwargs object."""
 
@@ -2582,6 +2584,7 @@ class JumpStartEstimatorInitKwargs(JumpStartKwargs):
         self.config_name = config_name
         self.enable_session_tag_chaining = enable_session_tag_chaining
         self.training_plan = training_plan
+        self.instance_placement_config = instance_placement_config
 
 
 class JumpStartEstimatorFitKwargs(JumpStartKwargs):

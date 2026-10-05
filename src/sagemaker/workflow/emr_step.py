@@ -21,8 +21,9 @@ from sagemaker.workflow.entities import (
 from sagemaker.workflow.properties import (
     Properties,
 )
+from sagemaker.workflow.retry import StepRetryPolicy
 from sagemaker.workflow.step_collections import StepCollection
-from sagemaker.workflow.steps import Step, StepTypeEnum, CacheConfig
+from sagemaker.workflow.steps import ConfigurableRetryStep, Step, StepTypeEnum, CacheConfig
 
 
 class EMRStepConfig:
@@ -110,8 +111,8 @@ ERR_STR_WITHOUT_CLUSTER_ID_AND_CLUSTER_CFG = (
 )
 
 
-class EMRStep(Step):
-    """EMR step for workflow."""
+class EMRStep(ConfigurableRetryStep):
+    """EMR step for workflow with configurable retry policies."""
 
     def _validate_cluster_config(self, cluster_config, step_name):
         """Validates user provided cluster_config.
@@ -164,6 +165,7 @@ class EMRStep(Step):
         cache_config: Optional[CacheConfig] = None,
         cluster_config: Optional[Dict[str, Any]] = None,
         execution_role_arn: Optional[str] = None,
+        retry_policies: Optional[List[StepRetryPolicy]] = None,
     ):
         """Constructs an `EMRStep`.
 
@@ -200,7 +202,14 @@ class EMRStep(Step):
                 called on the cluster specified by ``cluster_id``, so you can only include this
                 field if ``cluster_id`` is not None.
         """
-        super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
+        super().__init__(
+            name=name,
+            step_type=StepTypeEnum.EMR,
+            display_name=display_name,
+            description=description,
+            depends_on=depends_on,
+            retry_policies=retry_policies,
+        )
 
         emr_step_args = {"StepConfig": step_config.to_request()}
         root_property = Properties(step_name=name, step=self, shape_name="Step", service_name="emr")
@@ -248,7 +257,7 @@ class EMRStep(Step):
         return self._properties
 
     def to_request(self) -> RequestType:
-        """Updates the dictionary with cache configuration."""
+        """Updates the dictionary with cache configuration and retry policies"""
         request_dict = super().to_request()
         if self.cache_config:
             request_dict.update(self.cache_config.config)

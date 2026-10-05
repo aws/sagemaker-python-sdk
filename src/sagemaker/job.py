@@ -85,6 +85,7 @@ class _Job(object):
             estimator.volume_kms_key,
             estimator.keep_alive_period_in_seconds,
             estimator.training_plan,
+            estimator.instance_placement_config,
         )
         stop_condition = _Job._prepare_stop_condition(estimator.max_run, estimator.max_wait)
         vpc_config = estimator.get_vpc_config()
@@ -333,6 +334,7 @@ class _Job(object):
         volume_kms_key,
         keep_alive_period_in_seconds,
         training_plan,
+        instance_placement_config=None,
     ):
         """Placeholder docstring"""
         resource_config = {
@@ -360,6 +362,8 @@ class _Job(object):
             resource_config["InstanceType"] = instance_type
         if training_plan is not None:
             resource_config["TrainingPlanArn"] = training_plan
+        if instance_placement_config is not None:
+            resource_config["InstancePlacementConfig"] = instance_placement_config
 
         return resource_config
 

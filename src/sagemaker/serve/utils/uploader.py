@@ -50,6 +50,7 @@ class Uploader(object):
         region_name: str,
         bucket: str,
         key: str,
+        sagemaker_session: Session = None,
     ):
         """Compress and upload the model tar object to S3"""
         self.total_left = total_size
@@ -66,7 +67,17 @@ class Uploader(object):
                 aws_secret_access_key=credentials.secret_key,
                 aws_session_token=credentials.token,
             ).client("s3")
-            s3.upload_file(os.path.join(temp, "model.tar.gz"), bucket, key, Callback=self.observe)
+            # Spot check: enforce ownership only when uploading to the session's default
+            # bucket. Cross-account destinations are left untouched.
+            extra_args = None
+            if sagemaker_session is not None:
+                expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket)
+                if expected_owner:
+                    extra_args = {"ExpectedBucketOwner": expected_owner}
+            s3.upload_file(
+                os.path.join(temp, "model.tar.gz"), bucket, key,
+                Callback=self.observe, ExtraArgs=extra_args,
+            )
             os.remove(tar_file)
             self.pbar.update(self.total_left)
             self.pbar.close()
@@ -105,6 +116,7 @@ def upload(sagemaker_session: Session, model_dir: str, bucket: str, key_prefix: 
         sagemaker_session.boto_session.region_name,
         bucket,
         key,
+        sagemaker_session=sagemaker_session,
     )
     return s3_path_join("s3://", bucket, key)
 

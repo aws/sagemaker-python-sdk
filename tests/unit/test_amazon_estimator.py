@@ -83,6 +83,8 @@ def sagemaker_session():
     )
     # For tests which doesn't verify config file injection, operate with empty config
     sms.sagemaker_config = {}
+    # Prevent _get_account_id_if_default_bucket from polluting method_calls assertions
+    sms._get_account_id_if_default_bucket = lambda bucket: None
     return sms
 
 
@@ -222,7 +224,7 @@ def test_prepare_for_training_encrypt(sagemaker_session):
         pca.record_set(np.array(train), np.array(labels), encrypt=True)
 
     def make_upload_call(encrypt):
-        return call(ANY, ANY, ANY, ANY, ANY, ANY, encrypt)
+        return call(ANY, ANY, ANY, ANY, ANY, ANY, encrypt, sagemaker_session=ANY)
 
     mock_upload.assert_has_calls([make_upload_call(False), make_upload_call(True)])
 

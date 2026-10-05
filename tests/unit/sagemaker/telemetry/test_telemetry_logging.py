@@ -34,7 +34,7 @@ from sagemaker.serve.utils.exceptions import ModelBuilderException, LocalModelOu
 
 MOCK_SESSION = Mock()
 MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
-MOCK_FEATURE = Feature.SDK_DEFAULTS
+MOCK_FEATURE = Feature.SDK_DEFAULTS_V2
 MOCK_FUNC_NAME = "Mock.local_session.create_model"
 MOCK_ENDPOINT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:endpoint/test"
 

@@ -28,6 +28,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     get_training_dataset_for_model_and_version,
     x_fail_if_ice,
+    fit_estimator_with_capacity_xfail,
 )
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
@@ -60,9 +61,13 @@ def test_jumpstart_estimator(setup):
         sagemaker_session=get_sm_session(),
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         max_run=259200,  # avoid exceeding resource limits
+        instance_type="ml.g4dn.xlarge",
+        # Canary only needs to exercise the train/deploy flow, so cap training
+        # to a single epoch to keep fit() fast.
+        hyperparameters={"epochs": "1"},
     )
 
-    # uses ml.p3.2xlarge instance
+    # uses ml.g4dn.xlarge instance
     estimator.fit(
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
@@ -78,11 +83,12 @@ def test_jumpstart_estimator(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.p3.2xlarge instance
+    # uses ml.g4dn.xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
+        instance_type="ml.g4dn.xlarge",
     )
 
     response = predictor.predict(["hello", "world"])
@@ -90,6 +96,7 @@ def test_jumpstart_estimator(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
 @x_fail_if_ice
 @pytest.mark.skipif(
     tests.integ.test_region() not in GATED_TRAINING_MODEL_V1_SUPPORTED_REGIONS,
@@ -109,6 +116,9 @@ def test_gated_model_training_v1(setup):
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
         tolerate_vulnerable_model=True,
+        # Canary only verifies the train/deploy flow, so cap training to a
+        # single step to keep fit() fast (sec_amazon has no tiny variant).
+        hyperparameters={"max_steps": "1"},
     )
 
     # uses ml.g5.12xlarge instance
@@ -136,6 +146,7 @@ def test_gated_model_training_v1(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
 @x_fail_if_ice
 def test_gated_model_training_v2(setup):
 
@@ -151,6 +162,9 @@ def test_gated_model_training_v2(setup):
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
         tolerate_vulnerable_model=True,  # tolerate old version of model
+        # Canary only verifies the train/deploy flow, so cap training to a
+        # single step to keep fit() fast (sec_amazon has no tiny variant).
+        hyperparameters={"max_steps": "1"},
     )
 
     # uses ml.g5.12xlarge instance
@@ -188,6 +202,7 @@ def test_gated_model_training_v2(setup):
 
 
 @x_fail_if_ice
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() not in TRN2_SUPPORTED_REGIONS,
     reason=f"TRN2 instances unavailable in {tests.integ.test_region()}.",
@@ -203,14 +218,18 @@ def test_gated_model_training_v2_neuron(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
+        # Canary only verifies the train/deploy flow, so cap training to a
+        # single epoch to keep fit() fast.
+        hyperparameters={"epochs": "1"},
     )
 
     # uses ml.trn1.32xlarge instance
-    estimator.fit(
+    fit_estimator_with_capacity_xfail(
+        estimator,
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, '*')}",
-        }
+        },
     )
 
     # uses ml.inf2.xlarge instance

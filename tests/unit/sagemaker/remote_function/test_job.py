@@ -68,7 +68,7 @@ TEST_REGION = "us-west-2"
 RUNTIME_SCRIPTS_CHANNEL_NAME = "sagemaker_remote_function_bootstrap"
 REMOTE_FUNCTION_WORKSPACE = "sm_rf_user_ws"
 SCRIPT_AND_DEPENDENCIES_CHANNEL_NAME = "pre_exec_script_and_dependencies"
-HMAC_KEY = "some-hmac-key"
+
 
 EXPECTED_FUNCTION_URI = S3_URI + "/function.pkl"
 EXPECTED_OUTPUT_URI = S3_URI + "/output"
@@ -249,11 +249,7 @@ export SM_FI_EFA_USE_DEVICE_RDMA=''
 DESCRIBE_TRAINING_JOB_RESPONSE = {
     "TrainingJobArn": TRAINING_JOB_ARN,
     "TrainingJobStatus": "{}",
-    "ResourceConfig": {
-        "InstanceCount": 1,
-        "InstanceType": "ml.c4.xlarge",
-        "VolumeSizeInGB": 30,
-    },
+    "ResourceConfig": {"InstanceCount": 1, "InstanceType": "ml.c4.xlarge", "VolumeSizeInGB": 30},
     "OutputDataConfig": {"S3OutputPath": "s3://sagemaker-123/image_uri/output"},
 }
 
@@ -359,24 +355,19 @@ def serialized_data():
     return _SerializedData(func=b"serialized_func", args=b"serialized_args")
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
-def test_sagemaker_config_job_settings(get_execution_role, session, secret_token):
+def test_sagemaker_config_job_settings(get_execution_role, session):
 
     job_settings = _JobSettings(image_uri="image_uri", instance_type="ml.m5.xlarge")
     assert job_settings.image_uri == "image_uri"
     assert job_settings.s3_root_uri == f"s3://{BUCKET}"
     assert job_settings.role == DEFAULT_ROLE_ARN
-    assert job_settings.environment_variables == {
-        "AWS_DEFAULT_REGION": "us-west-2",
-        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
-    }
+    assert job_settings.environment_variables == {"AWS_DEFAULT_REGION": "us-west-2"}
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch(
     "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
     return_value="some_image_uri",
@@ -384,7 +375,7 @@ def test_sagemaker_config_job_settings(get_execution_role, session, secret_token
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
 def test_sagemaker_config_job_settings_with_spark_config(
-    get_execution_role, session, mock_get_default_spark_image, secret_token
+    get_execution_role, session, mock_get_default_spark_image
 ):
 
     spark_config = SparkConfig()
@@ -393,10 +384,7 @@ def test_sagemaker_config_job_settings_with_spark_config(
     assert job_settings.image_uri == "some_image_uri"
     assert job_settings.s3_root_uri == f"s3://{BUCKET}"
     assert job_settings.role == DEFAULT_ROLE_ARN
-    assert job_settings.environment_variables == {
-        "AWS_DEFAULT_REGION": "us-west-2",
-        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
-    }
+    assert job_settings.environment_variables == {"AWS_DEFAULT_REGION": "us-west-2"}
     assert job_settings.include_local_workdir is False
     assert job_settings.instance_type == "ml.m5.xlarge"
     assert job_settings.spark_config == spark_config
@@ -434,12 +422,9 @@ def test_sagemaker_config_job_settings_with_not_supported_param_by_spark():
         )
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.remote_function.job.get_execution_role", return_value=DEFAULT_ROLE_ARN)
-def test_sagemaker_config_job_settings_with_configuration_file(
-    get_execution_role, session, secret_token
-):
+def test_sagemaker_config_job_settings_with_configuration_file(get_execution_role, session):
     config_tags = [
         {"Key": "someTagKey", "Value": "someTagValue"},
         {"Key": "someTagKey2", "Value": "someTagValue2"},
@@ -458,7 +443,6 @@ def test_sagemaker_config_job_settings_with_configuration_file(
     assert job_settings.pre_execution_commands == ["command_1", "command_2"]
     assert job_settings.environment_variables == {
         "AWS_DEFAULT_REGION": "us-west-2",
-        "REMOTE_FUNCTION_SECRET_KEY": "some-hmac-key",
         "EnvVarKey": "EnvVarValue",
     }
     assert job_settings.job_conda_env == "my_conda_env"
@@ -541,8 +525,8 @@ def test_sagemaker_config_job_settings_studio_image_uri(get_execution_role, sess
     monkeypatch.delenv("SAGEMAKER_INTERNAL_IMAGE_URI")
 
 
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -556,8 +540,10 @@ def test_start(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -575,13 +561,11 @@ def test_start(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=None,
     )
 
     mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
 
-    local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
@@ -595,7 +579,7 @@ def test_start(
     )
 
     mock_dependency_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
         include_local_workdir=True,
         pre_execution_commands=None,
         pre_execution_script_local_path=None,
@@ -648,7 +632,7 @@ def test_start(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--run_in_context",
                 '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
             ],
@@ -662,12 +646,12 @@ def test_start(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -681,8 +665,10 @@ def test_start_with_checkpoint_location(
     mock_runtime_manager,
     mock_script_upload,
     mock_user_workspace_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -707,7 +693,6 @@ def test_start_with_checkpoint_location(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=None,
     )
 
@@ -765,7 +750,7 @@ def test_start_with_checkpoint_location(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--run_in_context",
                 '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
             ],
@@ -779,7 +764,7 @@ def test_start_with_checkpoint_location(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
@@ -819,7 +804,7 @@ def test_start_with_checkpoint_location_failed_with_multiple_checkpoint_location
         )
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -833,11 +818,14 @@ def test_start_with_complete_job_settings(
     mock_runtime_manager,
     mock_bootstrap_script_upload,
     mock_user_workspace_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # This test has explicit dependencies, so mock returns the same path
+    dependencies_path = "path/to/dependencies/req.txt"
+    mock_ensure_sagemaker.return_value = dependencies_path
 
     job_settings = _JobSettings(
-        dependencies="path/to/dependencies/req.txt",
+        dependencies=dependencies_path,
         pre_execution_script="path/to/script.sh",
         environment_variables={"AWS_DEFAULT_REGION": "us-east-2"},
         image_uri=IMAGE,
@@ -860,11 +848,9 @@ def test_start_with_complete_job_settings(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=KMS_KEY_ARN,
     )
 
-    local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
@@ -878,7 +864,7 @@ def test_start_with_complete_job_settings(
     )
 
     mock_user_workspace_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path=dependencies_path,
         include_local_workdir=False,
         pre_execution_commands=None,
         pre_execution_script_local_path="path/to/script.sh",
@@ -913,7 +899,10 @@ def test_start_with_complete_job_settings(
                 },
             ),
         ],
-        OutputDataConfig={"S3OutputPath": f"{S3_URI}/{job.job_name}", "KmsKeyId": KMS_KEY_ARN},
+        OutputDataConfig={
+            "S3OutputPath": f"{S3_URI}/{job.job_name}",
+            "KmsKeyId": KMS_KEY_ARN,
+        },
         AlgorithmSpecification=dict(
             TrainingImage=IMAGE,
             TrainingInputMode="File",
@@ -949,12 +938,12 @@ def test_start_with_complete_job_settings(
         EnableInterContainerTrafficEncryption=False,
         VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
 @patch("sagemaker.workflow.utilities._pipeline_config", MOCKED_PIPELINE_CONFIG)
-@patch("secrets.token_hex", MagicMock(return_value=HMAC_KEY))
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch(
     "sagemaker.remote_function.job._prepare_dependencies_and_pre_execution_scripts",
     return_value="some_s3_uri",
@@ -973,7 +962,11 @@ def test_get_train_args_under_pipeline_context(
     mock_bootstrap_scripts_upload,
     mock_user_workspace_upload,
     mock_user_dependencies_upload,
+    mock_ensure_sagemaker,
 ):
+    # This test has explicit dependencies, so mock returns the same path
+    dependencies_path = "path/to/dependencies/req.txt"
+    mock_ensure_sagemaker.return_value = dependencies_path
 
     from sagemaker.workflow.parameters import ParameterInteger
 
@@ -988,7 +981,7 @@ def test_get_train_args_under_pipeline_context(
     function_step._properties.OutputDataConfig.S3OutputPath = func_step_s3_output_prop
 
     job_settings = _JobSettings(
-        dependencies="path/to/dependencies/req.txt",
+        dependencies=dependencies_path,
         pre_execution_script="path/to/script.sh",
         environment_variables={"AWS_DEFAULT_REGION": "us-east-2"},
         image_uri=IMAGE,
@@ -1027,7 +1020,6 @@ def test_get_train_args_under_pipeline_context(
     mock_stored_function_ctr.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=s3_base_uri,
-        hmac_key="token-from-pipeline",
         s3_kms_key=KMS_KEY_ARN,
         context=Context(
             step_name=MOCKED_PIPELINE_CONFIG.step_name,
@@ -1050,7 +1042,7 @@ def test_get_train_args_under_pipeline_context(
     )
 
     mock_user_workspace_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path=dependencies_path,
         include_local_workdir=False,
         pre_execution_commands=None,
         pre_execution_script_local_path="path/to/script.sh",
@@ -1160,14 +1152,10 @@ def test_get_train_args_under_pipeline_context(
         EnableInterContainerTrafficEncryption=False,
         VpcConfig=dict(Subnets=["subnet"], SecurityGroupIds=["sg"]),
         EnableManagedSpotTraining=False,
-        Environment={
-            "AWS_DEFAULT_REGION": "us-west-2",
-            "REMOTE_FUNCTION_SECRET_KEY": "token-from-pipeline",
-        },
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch(
     "sagemaker.remote_function.job._JobSettings._get_default_spark_image",
     return_value="some_image_uri",
@@ -1176,6 +1164,7 @@ def test_get_train_args_under_pipeline_context(
     "sagemaker.remote_function.job._prepare_and_upload_spark_dependent_files",
     return_value=tuple(["jars_s3_uri", "py_files_s3_uri", "files_s3_uri", "config_file_s3_uri"]),
 )
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
@@ -1190,10 +1179,13 @@ def test_start_with_spark(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
+    mock_ensure_sagemaker,
     mock_spark_dependency_upload,
     mock_get_default_spark_image,
-    secrete_token,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
+
     spark_config = SparkConfig()
     job_settings = _JobSettings(
         spark_config=spark_config,
@@ -1287,7 +1279,7 @@ def test_start_with_spark(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--run_in_context",
                 '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}',
             ],
@@ -1301,7 +1293,7 @@ def test_start_with_spark(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
@@ -1833,8 +1825,8 @@ def test_extend_spark_config_to_request(
     )
 
 
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -1848,8 +1840,10 @@ def test_start_with_torchrun_single_node(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -1869,13 +1863,11 @@ def test_start_with_torchrun_single_node(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=None,
     )
 
     mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
 
-    local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
@@ -1889,7 +1881,7 @@ def test_start_with_torchrun_single_node(
     )
 
     mock_dependency_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
         include_local_workdir=True,
         pre_execution_commands=None,
         pre_execution_script_local_path=None,
@@ -1942,7 +1934,7 @@ def test_start_with_torchrun_single_node(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--distribution",
                 "torchrun",
                 "--run_in_context",
@@ -1958,12 +1950,12 @@ def test_start_with_torchrun_single_node(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -1977,8 +1969,10 @@ def test_start_with_torchrun_multi_node(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -1999,13 +1993,11 @@ def test_start_with_torchrun_multi_node(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=None,
     )
 
     mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
 
-    local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
@@ -2019,7 +2011,7 @@ def test_start_with_torchrun_multi_node(
     )
 
     mock_dependency_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
         include_local_workdir=True,
         pre_execution_commands=None,
         pre_execution_script_local_path=None,
@@ -2074,7 +2066,7 @@ def test_start_with_torchrun_multi_node(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--distribution",
                 "torchrun",
                 "--run_in_context",
@@ -2090,7 +2082,7 @@ def test_start_with_torchrun_multi_node(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
@@ -2354,8 +2346,8 @@ def test_set_env_multi_node_multi_gpu_mpirun(
                 assert env_file == expected_env
 
 
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -2369,8 +2361,10 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -2391,13 +2385,11 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=None,
     )
 
     mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
 
-    local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
@@ -2411,7 +2403,7 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
     )
 
     mock_dependency_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
         include_local_workdir=True,
         pre_execution_commands=None,
         pre_execution_script_local_path=None,
@@ -2464,7 +2456,7 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--distribution",
                 "torchrun",
                 "--user_nproc_per_node",
@@ -2482,12 +2474,12 @@ def test_start_with_torchrun_single_node_with_nproc_per_node(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 
+@patch("sagemaker.remote_function.job._ensure_sagemaker_dependency")
 @patch("sagemaker.experiments._run_context._RunContext.get_current_run", new=mock_get_current_run)
-@patch("secrets.token_hex", return_value=HMAC_KEY)
 @patch("sagemaker.remote_function.job._prepare_and_upload_workspace", return_value="some_s3_uri")
 @patch(
     "sagemaker.remote_function.job._prepare_and_upload_runtime_scripts", return_value="some_s3_uri"
@@ -2501,8 +2493,10 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
     mock_runtime_manager,
     mock_script_upload,
     mock_dependency_upload,
-    secret_token,
+    mock_ensure_sagemaker,
 ):
+    # Mock returns a fixed temp file path for tests without explicit dependencies
+    mock_ensure_sagemaker.return_value = "/tmp/sagemaker_requirements_test.txt"
 
     job_settings = _JobSettings(
         image_uri=IMAGE,
@@ -2523,13 +2517,11 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
     mock_stored_function.assert_called_once_with(
         sagemaker_session=session(),
         s3_base_uri=f"{S3_URI}/{job.job_name}",
-        hmac_key=HMAC_KEY,
         s3_kms_key=None,
     )
 
     mock_stored_function().save.assert_called_once_with(job_function, *(1, 2), **{"c": 3, "d": 4})
 
-    local_dependencies_path = mock_runtime_manager().snapshot()
     mock_python_version = mock_runtime_manager()._current_python_version()
     mock_sagemaker_pysdk_version = mock_runtime_manager()._current_sagemaker_pysdk_version()
 
@@ -2543,7 +2535,7 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
     )
 
     mock_dependency_upload.assert_called_once_with(
-        local_dependencies_path=local_dependencies_path,
+        local_dependencies_path="/tmp/sagemaker_requirements_test.txt",
         include_local_workdir=True,
         pre_execution_commands=None,
         pre_execution_script_local_path=None,
@@ -2596,7 +2588,7 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
                 "--client_sagemaker_pysdk_version",
                 mock_sagemaker_pysdk_version,
                 "--dependency_settings",
-                '{"dependency_file": null}',
+                '{"dependency_file": "sagemaker_requirements_test.txt"}',
                 "--distribution",
                 "mpirun",
                 "--user_nproc_per_node",
@@ -2614,7 +2606,7 @@ def test_start_with_mpirun_single_node_with_nproc_per_node(
         EnableNetworkIsolation=False,
         EnableInterContainerTrafficEncryption=True,
         EnableManagedSpotTraining=False,
-        Environment={"AWS_DEFAULT_REGION": "us-west-2", "REMOTE_FUNCTION_SECRET_KEY": HMAC_KEY},
+        Environment={"AWS_DEFAULT_REGION": "us-west-2"},
     )
 
 

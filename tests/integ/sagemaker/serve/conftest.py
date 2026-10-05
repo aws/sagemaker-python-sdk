@@ -18,7 +18,55 @@ import boto3
 import sagemaker
 import sagemaker_core.helper.session_helper as core_session
 
+from botocore.config import Config
+from sagemaker import Session
+
 DEFAULT_REGION = "us-west-2"
+CUSTOM_S3_OBJECT_KEY_PREFIX = "session-default-prefix"
+
+
+@pytest.fixture(scope="session")
+def sagemaker_session(
+    sagemaker_client_config, sagemaker_runtime_config, boto_session, sagemaker_metrics_config
+):
+    """Isolated Session for the serve (ModelBuilder) integ tests.
+
+    Overrides the repo-wide ``sagemaker_session`` fixture (defined in
+    ``tests/conftest.py``) for everything under ``tests/integ/sagemaker/serve``.
+
+    ModelBuilder mutates the global ``session.settings._local_download_dir`` to a
+    temporary ``/tmp/sagemaker/model-builder/<uuid>`` path. When the shared
+    session-scoped fixture is reused by other test modules, that temp dir gets
+    cleaned up while the polluted setting lingers, breaking unrelated tests such
+    as ``tests/integ/sagemaker/workflow/test_tuning_steps.py::test_tuning_multi_algos``
+    (``ValueError: Inputted directory ... does not exist``). Scoping a dedicated
+    session to the serve package keeps that mutation contained here.
+    """
+    sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
+    sagemaker_client = (
+        boto_session.client("sagemaker", **sagemaker_client_config)
+        if sagemaker_client_config
+        else None
+    )
+    runtime_client = (
+        boto_session.client("sagemaker-runtime", **sagemaker_runtime_config)
+        if sagemaker_runtime_config
+        else None
+    )
+    metrics_client = (
+        boto_session.client("sagemaker-metrics", **sagemaker_metrics_config)
+        if sagemaker_metrics_config
+        else None
+    )
+
+    return Session(
+        boto_session=boto_session,
+        sagemaker_client=sagemaker_client,
+        sagemaker_runtime_client=runtime_client,
+        sagemaker_metrics_client=metrics_client,
+        sagemaker_config={},
+        default_bucket_prefix=CUSTOM_S3_OBJECT_KEY_PREFIX,
+    )
 
 
 @pytest.fixture(scope="module")

@@ -12,8 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
-
 import pytest
 from mock import patch, Mock, ANY
 from sagemaker.remote_function import invoke_function
@@ -25,7 +23,6 @@ TEST_REGION = "us-west-2"
 TEST_S3_BASE_URI = "s3://my-bucket/"
 TEST_S3_KMS_KEY = "my-kms-key"
 TEST_RUN_IN_CONTEXT = '{"experiment_name": "my-exp-name", "run_name": "my-run-name"}'
-TEST_HMAC_KEY = "some-hmac-key"
 TEST_STEP_NAME = "training-step"
 TEST_EXECUTION_ID = "some-execution-id"
 FUNC_STEP_S3_DIR = sagemaker_timestamp()
@@ -89,7 +86,6 @@ def mock_session():
     return_value=mock_session(),
 )
 def test_main_success(_get_sagemaker_session, load_and_invoke, _exit_process, _load_run_object):
-    os.environ["REMOTE_FUNCTION_SECRET_KEY"] = TEST_HMAC_KEY
     invoke_function.main(mock_args())
 
     _get_sagemaker_session.assert_called_with(TEST_REGION)
@@ -108,7 +104,6 @@ def test_main_success(_get_sagemaker_session, load_and_invoke, _exit_process, _l
 def test_main_success_with_run(
     _get_sagemaker_session, load_and_invoke, _exit_process, _load_run_object
 ):
-    os.environ["REMOTE_FUNCTION_SECRET_KEY"] = TEST_HMAC_KEY
     invoke_function.main(mock_args_with_run_in_context())
 
     _get_sagemaker_session.assert_called_with(TEST_REGION)
@@ -137,7 +132,6 @@ def test_main_success_with_run(
 def test_main_success_with_pipeline_context(
     _get_sagemaker_session, mock_stored_function, _exit_process, _load_run_object, args
 ):
-    os.environ["REMOTE_FUNCTION_SECRET_KEY"] = TEST_HMAC_KEY
 
     args_input, expected_serialize_output_to_json = args
     invoke_function.main(args_input)
@@ -147,7 +141,6 @@ def test_main_success_with_pipeline_context(
         sagemaker_session=ANY,
         s3_base_uri=TEST_S3_BASE_URI,
         s3_kms_key=TEST_S3_KMS_KEY,
-        hmac_key=TEST_HMAC_KEY,
         context=Context(
             execution_id=TEST_EXECUTION_ID,
             step_name=TEST_STEP_NAME,
@@ -174,7 +167,6 @@ def test_main_success_with_pipeline_context(
 def test_main_failure(
     _get_sagemaker_session, load_and_invoke, _exit_process, handle_error, _load_run_object
 ):
-    os.environ["REMOTE_FUNCTION_SECRET_KEY"] = TEST_HMAC_KEY
     ser_err = SerializationError("some failure reason")
     load_and_invoke.side_effect = ser_err
     handle_error.return_value = 1
@@ -189,7 +181,6 @@ def test_main_failure(
         sagemaker_session=_get_sagemaker_session(),
         s3_base_uri=TEST_S3_BASE_URI,
         s3_kms_key=TEST_S3_KMS_KEY,
-        hmac_key=TEST_HMAC_KEY,
     )
     _exit_process.assert_called_with(1)
 
@@ -205,7 +196,6 @@ def test_main_failure(
 def test_main_failure_with_step(
     _get_sagemaker_session, load_and_invoke, _exit_process, handle_error, _load_run_object
 ):
-    os.environ["REMOTE_FUNCTION_SECRET_KEY"] = TEST_HMAC_KEY
     ser_err = SerializationError("some failure reason")
     load_and_invoke.side_effect = ser_err
     handle_error.return_value = 1
@@ -221,6 +211,5 @@ def test_main_failure_with_step(
         sagemaker_session=_get_sagemaker_session(),
         s3_base_uri=s3_uri,
         s3_kms_key=TEST_S3_KMS_KEY,
-        hmac_key=TEST_HMAC_KEY,
     )
     _exit_process.assert_called_with(1)

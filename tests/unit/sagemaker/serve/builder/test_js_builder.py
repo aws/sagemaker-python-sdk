@@ -1272,12 +1272,14 @@ class TestJumpStartBuilder(unittest.TestCase):
 
         mock_js_speculative_decoding.assert_called_once()
 
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     def test_optimize_quantize_and_compile_for_jumpstart(
         self,
         mock_serve_settings,
         mock_telemetry,
+        mock_js_model,
     ):
         mock_sagemaker_session = Mock()
         mock_metadata_config = Mock()
@@ -1318,6 +1320,10 @@ class TestJumpStartBuilder(unittest.TestCase):
         )
 
         model_builder.pysdk_model = mock_pysdk_model
+
+        # Avoid a real JumpStartModel construction (which would hit S3 for the
+        # JumpStart manifest); return a deterministic env for neuron lookup.
+        mock_js_model.return_value.env = {"SAGEMAKER_ENV": "1"}
 
         out_put = model_builder._optimize_for_jumpstart(
             accept_eula=True,
@@ -1696,7 +1702,7 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
 
         assert mock_lmi_js_model.set_deployment_config.call_args_list[0].kwargs == {
             "instance_type": "ml.g5.24xlarge",
-            "config_name": "lmi",
+            "config_name": mock_lmi_js_model.config_name,
         }
         assert optimized_model.env == {
             "SAGEMAKER_PROGRAM": "inference.py",
@@ -1784,7 +1790,7 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
 
         assert mock_lmi_js_model.set_deployment_config.call_args_list[0].kwargs == {
             "instance_type": "ml.g5.24xlarge",
-            "config_name": "lmi",
+            "config_name": mock_lmi_js_model.config_name,
         }
         assert optimized_model.env == {
             "SAGEMAKER_PROGRAM": "inference.py",
@@ -1957,3 +1963,38 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
             optimization_args["OptimizationConfigs"][0]["ModelQuantizationConfig"]["Image"],
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi13.0.1-cu124",
         )
+
+
+class TestModelBuilderJumpStartModelVersion(unittest.TestCase):
+    """``ModelBuilder.model_version`` should be threaded into JumpStart resolution."""
+
+    @patch("sagemaker.serve.builder.jumpstart_builder.model_uris.retrieve")
+    def test_is_jumpstart_model_id_defaults_to_star(self, mock_retrieve):
+        mb = ModelBuilder(model=mock_model_id, schema_builder=mock_schema_builder)
+        self.assertTrue(mb._is_jumpstart_model_id())
+        mock_retrieve.assert_called_once()
+        self.assertEqual(mock_retrieve.call_args.kwargs["model_version"], "*")
+
+    @patch("sagemaker.serve.builder.jumpstart_builder.model_uris.retrieve")
+    def test_is_jumpstart_model_id_uses_override(self, mock_retrieve):
+        mb = ModelBuilder(
+            model=mock_model_id, schema_builder=mock_schema_builder, model_version="4.*"
+        )
+        self.assertTrue(mb._is_jumpstart_model_id())
+        self.assertEqual(mock_retrieve.call_args.kwargs["model_version"], "4.*")
+
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
+    def test_create_pre_trained_js_model_defaults_to_star(self, mock_js_model_cls):
+        mock_js_model_cls.return_value = MagicMock(deploy=MagicMock())
+        mb = ModelBuilder(model=mock_model_id, schema_builder=mock_schema_builder)
+        mb._create_pre_trained_js_model()
+        self.assertEqual(mock_js_model_cls.call_args.kwargs["model_version"], "*")
+
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
+    def test_create_pre_trained_js_model_uses_override(self, mock_js_model_cls):
+        mock_js_model_cls.return_value = MagicMock(deploy=MagicMock())
+        mb = ModelBuilder(
+            model=mock_model_id, schema_builder=mock_schema_builder, model_version="4.*"
+        )
+        mb._create_pre_trained_js_model()
+        self.assertEqual(mock_js_model_cls.call_args.kwargs["model_version"], "4.*")

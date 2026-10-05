@@ -85,7 +85,9 @@ def test_default_bucket_s3_needs_access(sagemaker_session, caplog):
         sagemaker_session.boto_session.resource("s3").meta.client.head_bucket.side_effect = error
         sagemaker_session.default_bucket()
     error_message = (
-        " exists, but access is forbidden. Please try again after adding appropriate access."
+        "is not accessible as the default bucket. It may be "
+        "owned by another account or access is forbidden. To unblock, "
+        "pass a custom default_bucket parameter to sagemaker.Session."
     )
     assert error_message in caplog.text
     assert sagemaker_session._default_bucket is None

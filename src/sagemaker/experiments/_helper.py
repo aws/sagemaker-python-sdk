@@ -95,6 +95,16 @@ class _ArtifactUploader(object):
         artifact_s3_key = "{}/{}/{}".format(
             self.artifact_prefix, self.trial_component_name, artifact_name
         )
+
+        # Spot check: enforce ownership only when uploading to the session's default
+        # bucket. Cross-account destinations are left untouched.
+        expected_owner = self.sagemaker_session._get_account_id_if_default_bucket(
+            self.artifact_bucket
+        )
+        if expected_owner:
+            extra_args = dict(extra_args) if extra_args else {}
+            extra_args["ExpectedBucketOwner"] = expected_owner
+
         self._s3_client.upload_file(
             file_path,
             self.artifact_bucket,
@@ -133,9 +143,21 @@ class _ArtifactUploader(object):
         artifact_s3_key = "{}/{}/{}".format(
             self.artifact_prefix, self.trial_component_name, artifact_name
         )
-        self._s3_client.put_object(
-            Body=json.dumps(artifact_object), Bucket=self.artifact_bucket, Key=artifact_s3_key
+
+        # Spot check: enforce ownership only when uploading to the session's default
+        # bucket. Cross-account destinations are left untouched.
+        put_kwargs = {
+            "Body": json.dumps(artifact_object),
+            "Bucket": self.artifact_bucket,
+            "Key": artifact_s3_key,
+        }
+        expected_owner = self.sagemaker_session._get_account_id_if_default_bucket(
+            self.artifact_bucket
         )
+        if expected_owner:
+            put_kwargs["ExpectedBucketOwner"] = expected_owner
+
+        self._s3_client.put_object(**put_kwargs)
         etag = self._try_get_etag(artifact_s3_key)
         return "s3://{}/{}".format(self.artifact_bucket, artifact_s3_key), etag
 
@@ -149,7 +171,14 @@ class _ArtifactUploader(object):
             str: The S3 object ETag if it allows, otherwise return None.
         """
         try:
-            response = self._s3_client.head_object(Bucket=self.artifact_bucket, Key=key)
+            head_kwargs = {"Bucket": self.artifact_bucket, "Key": key}
+            expected_owner = self.sagemaker_session._get_account_id_if_default_bucket(
+                self.artifact_bucket
+            )
+            if expected_owner:
+                head_kwargs["ExpectedBucketOwner"] = expected_owner
+
+            response = self._s3_client.head_object(**head_kwargs)
             return response["ETag"]
         except botocore.exceptions.ClientError as error:
             # requires read permissions

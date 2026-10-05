@@ -190,6 +190,7 @@ def test_pipeline_session_context_for_model_step_without_instance_types(
         framework="TENSORFLOW",
         framework_version="2.9",
         nearest_model_name="resnet50",
+        model_package_registration_type="Registered",
     )
 
     expected_output = {
@@ -221,6 +222,7 @@ def test_pipeline_session_context_for_model_step_without_instance_types(
         "SkipModelValidation": "None",
         "SamplePayloadUrl": "s3://test-bucket/model",
         "Task": "IMAGE_CLASSIFICATION",
+        "ModelPackageRegistrationType": "Registered",
     }
 
     assert register_step_args.create_model_package_request == expected_output
@@ -249,6 +251,7 @@ def test_pipeline_session_context_for_model_step_with_one_instance_types(
         framework_version="2.9",
         nearest_model_name="resnet50",
         data_input_configuration='{"input_1":[1,224,224,3]}',
+        model_package_registration_type="Registered",
     )
 
     expected_output = {
@@ -284,6 +287,7 @@ def test_pipeline_session_context_for_model_step_with_one_instance_types(
         "SkipModelValidation": "None",
         "SamplePayloadUrl": "s3://test-bucket/model",
         "Task": "IMAGE_CLASSIFICATION",
+        "ModelPackageRegistrationType": "Registered",
     }
 
     assert register_step_args.create_model_package_request == expected_output

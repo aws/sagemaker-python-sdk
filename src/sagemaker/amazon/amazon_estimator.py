@@ -317,7 +317,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         key_prefix = key_prefix.lstrip("/")
         logger.debug("Uploading to bucket %s and key_prefix %s", bucket, key_prefix)
         manifest_s3_file = upload_numpy_to_s3_shards(
-            self.instance_count, s3, bucket, key_prefix, train, labels, encrypt
+            self.instance_count, s3, bucket, key_prefix, train, labels, encrypt,
+            sagemaker_session=self.sagemaker_session
         )
         logger.debug("Created manifest file %s", manifest_s3_file)
         return RecordSet(
@@ -455,7 +456,7 @@ def _build_shards(num_shards, array):
 
 
 def upload_numpy_to_s3_shards(
-    num_shards, s3, bucket, key_prefix, array, labels=None, encrypt=False
+    num_shards, s3, bucket, key_prefix, array, labels=None, encrypt=False, sagemaker_session=None
 ):
     """Upload the training ``array`` and ``labels`` arrays to ``num_shards``.
 
@@ -470,6 +471,8 @@ def upload_numpy_to_s3_shards(
         array:
         labels:
         encrypt:
+        sagemaker_session: Optional. SageMaker session used to resolve the
+            ExpectedBucketOwner spot check for the default bucket.
     """
     shards = _build_shards(num_shards, array)
     if labels is not None:
@@ -478,6 +481,12 @@ def upload_numpy_to_s3_shards(
     if key_prefix[-1] != "/":
         key_prefix = key_prefix + "/"
     extra_put_kwargs = {"ServerSideEncryption": "AES256"} if encrypt else {}
+    # Spot check: enforce ownership only when uploading to the session's default
+    # bucket. Cross-account destinations are left untouched.
+    if sagemaker_session is not None:
+        expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            extra_put_kwargs["ExpectedBucketOwner"] = expected_owner
     try:
         for shard_index, shard in enumerate(shards):
             with tempfile.TemporaryFile() as file:

@@ -23,7 +23,8 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN update-alternatives --install /usr/local/bin/pip pip /usr/local/bin/pip3 1
 
 # Install MXNet, MMS, and SageMaker Inference Toolkit to set up MMS
-RUN pip3 --no-cache-dir install mxnet \
+RUN pip3 --no-cache-dir install 'setuptools<72.0.0' \
+                                mxnet \
                                 multi-model-server \
                                 sagemaker-inference \
                                 retrying
