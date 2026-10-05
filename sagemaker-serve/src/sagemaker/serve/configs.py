@@ -11,16 +11,19 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains logic for setting defaults in ModelBuilder."""
+
 from __future__ import absolute_import
 
-from typing import Optional, Dict, List, Union
-from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from dataclasses import dataclass
+from typing import Optional, Dict, List, Union
+
+from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
 
 @dataclass
 class Network:
     """Network configuration for model deployment."""
+
     subnets: Optional[List[str]] = None
     security_group_ids: Optional[List[str]] = None
     enable_network_isolation: bool = False
@@ -30,5 +33,6 @@ class Network:
 @dataclass
 class Compute:
     """Compute configuration for model deployment."""
+
     instance_type: Optional[str]
     instance_count: Optional[int] = 1

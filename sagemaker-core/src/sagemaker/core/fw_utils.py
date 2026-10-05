@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utility methods used by framework classes."""
+
 from __future__ import absolute_import
 
 import json
@@ -400,6 +401,7 @@ def tar_and_upload_dir(
     kms_key=None,
     s3_resource=None,
     settings: Optional[SessionSettings] = None,
+    expected_bucket_owner: Optional[str] = None,
 ) -> UploadedCode:
     """Package source files and upload a compress tar file to S3.
 
@@ -430,6 +432,12 @@ def tar_and_upload_dir(
         settings (sagemaker.session_settings.SessionSettings): Optional. The settings
             of the SageMaker ``Session``, can be used to override the default encryption
             behavior (default: None).
+        expected_bucket_owner (str): Optional. AWS account id passed as
+            ``ExpectedBucketOwner`` on the upload. Callers should supply this when
+            ``bucket`` is the session's default bucket (via
+            ``Session._get_account_id_if_default_bucket``) to defend against
+            bucket-squatting on the predictable default name. Leave as ``None`` for
+            cross-account destination buckets.
     Returns:
         sagemaker.fw_utils.UploadedCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
@@ -458,9 +466,7 @@ def tar_and_upload_dir(
 
     try:
         source_files = _list_files_to_compress(script, directory) + dependencies
-        tar_file = utils.create_tar_file(
-            source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME)
-        )
+        tar_file = utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
         if kms_key:
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
@@ -470,6 +476,10 @@ def tar_and_upload_dir(
             extra_args = {"ServerSideEncryption": "aws:kms"}
         else:
             extra_args = None
+
+        if expected_bucket_owner:
+            extra_args = dict(extra_args) if extra_args else {}
+            extra_args["ExpectedBucketOwner"] = expected_bucket_owner
 
         if s3_resource is None:
             s3_resource = session.resource("s3", region_name=session.region_name)
@@ -665,11 +675,9 @@ def profiler_config_deprecation_warning(
         )
         framework_profile = version.parse(framework_version)
         if framework_profile >= framework_profile_thresh:
-            deprecation_warn_base(
-                f"Framework profiling is deprecated from\
+            deprecation_warn_base(f"Framework profiling is deprecated from\
                  {framework_name} version {framework_version}.\
-                 No framework metrics will be collected"
-            )
+                 No framework metrics will be collected")
 
 
 def validate_smdistributed(
@@ -1208,7 +1216,7 @@ def create_image_uri(
         the image uri
     """
     from sagemaker.core import image_uris
-    
+
     renamed_warning("The method create_image_uri")
     return image_uris.retrieve(
         framework=framework,

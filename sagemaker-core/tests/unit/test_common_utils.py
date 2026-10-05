@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.common_utils module."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -18,7 +19,7 @@ import time
 import tempfile
 import os
 import tarfile
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
 from sagemaker.core.common_utils import (
@@ -961,6 +962,94 @@ class TestDownloadFolder:
                 download_folder("bucket", "/../prefix/", tmpdir, mock_session)
 
 
+class TestDownloadFilesUnderPrefixPathTraversal:
+    """Test _download_files_under_prefix blocks path traversal attacks."""
+
+    def test_path_traversal_via_dotdot_in_key(self):
+        """Test that S3 keys with '..' traversal sequences are blocked."""
+        from sagemaker.core.common_utils import _download_files_under_prefix
+
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        # Simulate an S3 object with a traversal key
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/../../../../etc/passwd"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        # Ensure no file was actually downloaded
+        mock_obj.download_file.assert_not_called()
+
+    def test_path_traversal_via_relative_escape(self):
+        """Test that keys resolving outside target via relpath are blocked."""
+        from sagemaker.core.common_utils import _download_files_under_prefix
+
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "prefix/../../../etc/cron.d/backdoor"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                _download_files_under_prefix("bucket", "prefix/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_not_called()
+
+    def test_safe_keys_are_allowed(self):
+        """Test that normal S3 keys within the target directory are allowed."""
+        from sagemaker.core.common_utils import _download_files_under_prefix
+
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/subdir/file.txt"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_called_once()
+
+    def test_folder_objects_are_skipped(self):
+        """Test that S3 folder objects (keys ending with /) are skipped."""
+        from sagemaker.core.common_utils import _download_files_under_prefix
+
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/subdir/"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_s3.Object.assert_not_called()
+
+
 class TestRepackModel:
     """Test repack_model function."""
 
@@ -1140,6 +1229,173 @@ class TestCustomExtractallTarfile:
         assert (extract_path / "file.txt").exists()
 
 
+class TestTarExtractionPathTraversal:
+    """Regression tests for path traversal in the pre-3.12 tar extraction fallback.
+
+    The fallback branch of custom_extractall_tarfile runs only when
+    tarfile.data_filter is unavailable (Python < 3.12, before the 3.9.17 / 3.10.12 /
+    3.11.4 backports). These tests force that branch so the member filtering is
+    exercised regardless of the interpreter the suite runs on.
+    """
+
+    @staticmethod
+    def _no_data_filter():
+        """Patch the module's tarfile reference with one that has no data_filter."""
+        from types import SimpleNamespace
+
+        return patch("sagemaker.core.common_utils.tarfile", SimpleNamespace())
+
+    @staticmethod
+    def _tar_with_member(tar_path, member_name, content=b"pwned"):
+        """Write a tar archive containing a single member under an arbitrary name."""
+        import io
+
+        with tarfile.open(tar_path, "w:gz") as tar:
+            info = tarfile.TarInfo(name=member_name)
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
+
+    def test_is_within_base_containment(self, tmp_path):
+        """_is_within_base accepts the base and nested paths, rejects outside paths."""
+        from sagemaker.core.common_utils import _get_resolved_path, _is_within_base
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+
+        assert _is_within_base(base, base) is True
+        assert _is_within_base(_get_resolved_path(str(tmp_path / "extract" / "a")), base) is True
+        assert _is_within_base(_get_resolved_path(str(tmp_path / "other")), base) is False
+
+    def test_is_within_base_rejects_sibling_prefix(self, tmp_path):
+        """A sibling directory sharing a textual prefix with base is not contained.
+
+        A plain startswith() comparison would accept "<base>-evil" because it is a
+        string prefix match.
+        """
+        from sagemaker.core.common_utils import _get_resolved_path, _is_within_base
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+        sibling = _get_resolved_path(str(tmp_path / "extract-evil" / "f.txt"))
+
+        assert sibling.startswith(base)  # the bug a prefix check would let through
+        assert _is_within_base(sibling, base) is False
+
+    def test_is_bad_path_rejects_sibling_prefix(self, tmp_path):
+        """_is_bad_path blocks a member escaping into a prefix-sharing sibling dir."""
+        from sagemaker.core.common_utils import _get_resolved_path, _is_bad_path
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+
+        assert _is_bad_path("../extract-evil/f.txt", base) is True
+
+    def test_is_bad_path_rejects_absolute_member(self, tmp_path):
+        """_is_bad_path blocks absolute member paths outright."""
+        from sagemaker.core.common_utils import _get_resolved_path, _is_bad_path
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+
+        assert _is_bad_path("/etc/passwd", base) is True
+
+    def test_is_bad_path_allows_nested_member(self, tmp_path):
+        """_is_bad_path permits ordinary members nested under the base directory."""
+        from sagemaker.core.common_utils import _get_resolved_path, _is_bad_path
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+
+        assert _is_bad_path("code/inference.py", base) is False
+
+    def test_get_safe_members_filters_member_escaping_extract_path(self, tmp_path):
+        """_get_safe_members blocks a member that escapes the base it is given."""
+        from sagemaker.core.common_utils import _get_resolved_path, _get_safe_members
+
+        base = _get_resolved_path(str(tmp_path / "target" / "extract"))
+        escaping = tarfile.TarInfo(name="../extract-evil/escaped.txt")
+        benign = tarfile.TarInfo(name="model.tar")
+
+        safe = list(_get_safe_members([escaping, benign], base))
+
+        assert [m.name for m in safe] == ["model.tar"]
+
+    def test_members_are_validated_against_extract_path(self, tmp_path):
+        """Members must be validated against extract_path, not the working directory."""
+        from sagemaker.core.common_utils import _get_resolved_path, custom_extractall_tarfile
+
+        extract_path = tmp_path / "extract"
+        extract_path.mkdir()
+        mock_tar = Mock()
+        mock_tar.getmembers = Mock(return_value=[])
+
+        with self._no_data_filter():
+            with patch("sagemaker.core.common_utils._get_safe_members") as mock_safe:
+                mock_safe.return_value = []
+                custom_extractall_tarfile(mock_tar, str(extract_path))
+
+        assert mock_safe.call_args[0][1] == _get_resolved_path(str(extract_path))
+
+    def test_fallback_extraction_blocks_escape_outside_extract_path(self, tmp_path, monkeypatch):
+        """End-to-end: a crafted member must not be written outside extract_path.
+
+        Mirrors the reported proof of concept. The member escapes into a directory whose
+        name shares a textual prefix with the working directory's path
+        ("<tmp>/work" vs "<tmp>/workevil"), so a startswith() check anchored to the
+        working directory accepts it while extraction still writes it outside
+        extract_path. _validate_extracted_paths only walks extract_path, so it does not
+        catch the escape either.
+        """
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        cwd = tmp_path / "work"
+        cwd.mkdir()
+        monkeypatch.chdir(cwd)
+
+        extract_path = tmp_path / "target" / "extract"
+        extract_path.mkdir(parents=True)
+
+        tar_path = tmp_path / "malicious.tar.gz"
+        self._tar_with_member(tar_path, "../workevil/escaped.txt")
+
+        escaped = tmp_path / "target" / "workevil" / "escaped.txt"
+
+        with tarfile.open(tar_path, "r:gz") as tar:
+            with self._no_data_filter():
+                custom_extractall_tarfile(tar, str(extract_path))
+
+        assert not escaped.exists(), "member escaped the extraction directory"
+        assert list(extract_path.rglob("*")) == []
+
+    def test_fallback_extraction_blocks_absolute_member(self, tmp_path):
+        """An absolute member path must not be written to its absolute location."""
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        outside = tmp_path / "absolute_target.txt"
+        extract_path = tmp_path / "extract"
+        extract_path.mkdir()
+
+        tar_path = tmp_path / "absolute.tar.gz"
+        self._tar_with_member(tar_path, str(outside))
+
+        with tarfile.open(tar_path, "r:gz") as tar:
+            with self._no_data_filter():
+                custom_extractall_tarfile(tar, str(extract_path))
+
+        assert not outside.exists()
+
+    def test_fallback_extraction_allows_benign_archive(self, tmp_path):
+        """The fallback branch still extracts legitimate nested members."""
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        extract_path = tmp_path / "extract"
+        extract_path.mkdir()
+
+        tar_path = tmp_path / "benign.tar.gz"
+        self._tar_with_member(tar_path, "code/inference.py", content=b"print('hi')")
+
+        with tarfile.open(tar_path, "r:gz") as tar:
+            with self._no_data_filter():
+                custom_extractall_tarfile(tar, str(extract_path))
+
+        assert (extract_path / "code" / "inference.py").read_bytes() == b"print('hi')"
+
+
 class TestCanModelPackageSourceUriAutopopulate:
     """Test can_model_package_source_uri_autopopulate function."""
 
@@ -1271,7 +1527,7 @@ class TestGetInstanceRatePerHour:
         mock_pricing.get_products.return_value = {"PriceList": []}
 
         try:
-            result = get_instance_rate_per_hour("ml.m5.xlarge", "us-west-2")
+            get_instance_rate_per_hour("ml.m5.xlarge", "us-west-2")
             # If no exception, test passes (function may return None or raise)
         except Exception as e:
             # Expected behavior - function raises exception
@@ -2226,7 +2482,6 @@ class TestNestedSetDict:
         assert d["a"]["b"]["c"] == "value"
 
 
-
 class TestValidateSourceDirectory:
     """Test _validate_source_directory function."""
 
@@ -2514,3 +2769,233 @@ class TestCreateOrUpdateCodeDir:
                         None,
                         tmpdir,
                     )
+
+
+class TestDownloadFileSpotCheck:
+    """Spot-check behavior in common_utils.download_file."""
+
+    def test_download_from_default_bucket_includes_expected_owner(self, tmp_path):
+        from sagemaker.core.common_utils import download_file
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_session._get_account_id_if_default_bucket.return_value = "111111111111"
+
+        download_file("sagemaker-us-west-2-111111111111", "k", str(tmp_path / "f"), mock_session)
+
+        mock_session._get_account_id_if_default_bucket.assert_called_once_with(
+            "sagemaker-us-west-2-111111111111"
+        )
+        mock_bucket.download_file.assert_called_once_with(
+            "k", str(tmp_path / "f"), ExtraArgs={"ExpectedBucketOwner": "111111111111"}
+        )
+
+    def test_download_from_non_default_bucket_omits_expected_owner(self, tmp_path):
+        from sagemaker.core.common_utils import download_file
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_session._get_account_id_if_default_bucket.return_value = None
+
+        download_file("cross-account-bucket", "k", str(tmp_path / "f"), mock_session)
+
+        mock_bucket.download_file.assert_called_once_with("k", str(tmp_path / "f"), ExtraArgs=None)
+
+
+class TestSaveModelSpotCheck:
+    """Spot-check behavior in common_utils._save_model."""
+
+    def test_save_to_default_bucket_includes_expected_owner(self, tmp_path):
+        from sagemaker.core.common_utils import _save_model
+        from sagemaker.core.session_settings import SessionSettings
+
+        model_file = tmp_path / "m.tar.gz"
+        model_file.write_text("x")
+
+        mock_session = Mock()
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.settings = SessionSettings(encrypt_repacked_artifacts=False)
+        mock_s3 = Mock()
+        mock_obj = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Object.return_value = mock_obj
+
+        mock_session._get_account_id_if_default_bucket.return_value = "111111111111"
+
+        _save_model(
+            "s3://sagemaker-us-west-2-111111111111/m.tar.gz",
+            str(model_file),
+            mock_session,
+            kms_key=None,
+        )
+
+        call_args = mock_obj.upload_file.call_args
+        assert call_args[1]["ExtraArgs"] == {"ExpectedBucketOwner": "111111111111"}
+
+    def test_save_to_non_default_bucket_omits_expected_owner(self, tmp_path):
+        from sagemaker.core.common_utils import _save_model
+        from sagemaker.core.session_settings import SessionSettings
+
+        model_file = tmp_path / "m.tar.gz"
+        model_file.write_text("x")
+
+        mock_session = Mock()
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.settings = SessionSettings(encrypt_repacked_artifacts=False)
+        mock_s3 = Mock()
+        mock_obj = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Object.return_value = mock_obj
+
+        mock_session._get_account_id_if_default_bucket.return_value = None
+
+        _save_model(
+            "s3://marketplace-vendor-bucket/m.tar.gz",
+            str(model_file),
+            mock_session,
+            kms_key=None,
+        )
+
+        call_args = mock_obj.upload_file.call_args
+        assert call_args[1]["ExtraArgs"] is None
+
+    def test_save_to_default_bucket_preserves_kms(self, tmp_path):
+        from sagemaker.core.common_utils import _save_model
+        from sagemaker.core.session_settings import SessionSettings
+
+        model_file = tmp_path / "m.tar.gz"
+        model_file.write_text("x")
+
+        mock_session = Mock()
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.settings = SessionSettings()
+        mock_s3 = Mock()
+        mock_obj = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Object.return_value = mock_obj
+
+        mock_session._get_account_id_if_default_bucket.return_value = "111111111111"
+
+        _save_model(
+            "s3://sagemaker-us-west-2-111111111111/m.tar.gz",
+            str(model_file),
+            mock_session,
+            kms_key="kms-key-id",
+        )
+
+        merged = mock_obj.upload_file.call_args[1]["ExtraArgs"]
+        assert merged["ServerSideEncryption"] == "aws:kms"
+        assert merged["SSEKMSKeyId"] == "kms-key-id"
+        assert merged["ExpectedBucketOwner"] == "111111111111"
+
+
+class TestIsResourceAlreadyExistsError:
+    """Test the shared already-exists predicate used by load-or-create/upsert flows."""
+
+    @staticmethod
+    def _client_error(code, message):
+        from botocore.exceptions import ClientError
+
+        return ClientError({"Error": {"Code": code, "Message": message}}, "create_pipeline")
+
+    def test_matches_legacy_already_exists_message(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error("ValidationException", "Pipeline pipe-1 already exists")
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_matches_new_names_must_be_unique_message(self):
+        """The service now returns 'names must be unique' instead of 'already exists'."""
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ValidationException",
+            "Pipeline names must be unique within an AWS account and region",
+        )
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_matches_experiment_names_must_be_unique_message(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ValidationException",
+            "Experiment names must be unique within an AWS account and region",
+        )
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_matches_cannot_create_already_existing_message(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ValidationException", "Cannot create already existing endpoint configuration"
+        )
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_matches_resource_in_use_code(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ResourceInUse", "Job name must be unique within an AWS account and region"
+        )
+        assert _is_resource_already_exists_error(error) is True
+
+    def test_rejects_other_validation_errors(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error("ValidationException", "1 validation error detected")
+        assert _is_resource_already_exists_error(error) is False
+
+    def test_rejects_uniqueness_errors_scoped_within_a_resource(self):
+        """Uniqueness violations INSIDE a definition (e.g. duplicate step names) are
+        not name collisions -- treating them as already-exists would make upsert()
+        wrongly fall through to update() and mask the real validation error."""
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error(
+            "ValidationException", "Step names must be unique within a pipeline"
+        )
+        assert _is_resource_already_exists_error(error) is False
+
+    def test_rejects_other_error_codes(self):
+        from sagemaker.core.common_utils import _is_resource_already_exists_error
+
+        error = self._client_error("ResourceLimitExceeded", "names must be unique")
+        assert _is_resource_already_exists_error(error) is False
+
+    def test_create_resource_accepts_names_must_be_unique(self):
+        """_create_resource treats the new service wording as already-exists."""
+        from botocore.exceptions import ClientError
+        from sagemaker.core.common_utils import _create_resource
+
+        def _raise():
+            raise ClientError(
+                {
+                    "Error": {
+                        "Code": "ValidationException",
+                        "Message": "Pipeline names must be unique within an AWS account",
+                    }
+                },
+                "create_pipeline",
+            )
+
+        assert _create_resource(_raise) is False

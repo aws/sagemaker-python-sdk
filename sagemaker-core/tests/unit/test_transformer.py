@@ -12,9 +12,8 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.core.transformer import Transformer
-from sagemaker.core.shapes import BatchDataCaptureConfig
 
 
 @pytest.fixture
@@ -541,7 +540,9 @@ class TestTransformer:
         assert "resource_config" in config
         assert config["resource_config"]["instance_count"] == 2
         assert config["resource_config"]["instance_type"] == "ml.g4dn.xlarge"
-        assert config["resource_config"]["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
+        assert (
+            config["resource_config"]["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
+        )
 
     def test_delete_model(self, mock_session):
         """Test delete_model method"""
@@ -639,3 +640,48 @@ class TestTransformer:
         assert "resource_config" in config
         assert config["output_config"]["s3_output_path"] == "s3://bucket/output"
         assert config["resource_config"]["instance_count"] == 2
+
+
+class TestTransformerTransformWithTags:
+    """Regression tests for tags handling in Transformer.transform() (issue #6090)."""
+
+    def test_transform_removes_tags_before_building_transform_job(self, mock_session):
+        """Tags must be dropped from the transformed dict before TransformJob(**transformed).
+
+        TransformJob resource model has no tags field and sets extra="forbid", so leaving
+        tags in the dict raises a pydantic ValidationError after the job is already submitted.
+        """
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            output_path="s3://bucket/output",
+            tags=[{"Key": "team", "Value": "ml"}],
+            sagemaker_session=mock_session,
+        )
+
+        # Session is not a PipelineSession, so intercept just invokes submit(request).
+        mock_session._intercept_create_request = Mock(
+            side_effect=lambda request, submit, *args, **kwargs: submit(request)
+        )
+
+        with patch(
+            "sagemaker.core.utils.code_injection.codec.transform",
+            return_value={
+                "transform_job_name": "test-job",
+                "tags": [{"Key": "team", "Value": "ml"}],
+            },
+        ):
+            with patch("sagemaker.core.transformer.TransformJob") as mock_transform_job_class:
+                transformer.transform(
+                    data="s3://bucket/input",
+                    content_type="text/csv",
+                    job_name="test-job",
+                    wait=False,
+                )
+
+        # TransformJob must be constructed without the tags key.
+        mock_transform_job_class.assert_called_once()
+        call_kwargs = mock_transform_job_class.call_args[1]
+        assert "tags" not in call_kwargs
+        assert call_kwargs["transform_job_name"] == "test-job"

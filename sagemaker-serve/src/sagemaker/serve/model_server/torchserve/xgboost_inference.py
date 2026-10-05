@@ -3,14 +3,17 @@
 from __future__ import absolute_import
 import os
 import io
+import sys
 import subprocess
-import cloudpickle
 import shutil
 import platform
 import importlib
+import logging
 from pathlib import Path
 from functools import partial
-import logging
+
+import cloudpickle
+
 from sagemaker.serve.constants import Framework
 
 logger = logging.getLogger(__name__)
@@ -44,7 +47,7 @@ def model_fn(model_dir):
             schema_builder = obj
             loaded_model = _load_mlflow_model(deployment_flavor=mlflow_flavor, model_dir=model_dir)
             return loaded_model if callable(loaded_model) else loaded_model.predict
-        elif isinstance(obj[0], InferenceSpec):
+        if isinstance(obj[0], InferenceSpec):
             inference_spec, schema_builder = obj
         elif isinstance(obj[0], Framework) and obj[0] == Framework.XGBOOST:
             model_class_name = os.getenv("MODEL_CLASS_NAME")
@@ -69,7 +72,7 @@ def model_fn(model_dir):
         if framework == "pytorch":
             native_model.eval()
         return native_model if callable(native_model) else native_model.predict
-    elif inference_spec:
+    if inference_spec:
         return partial(inference_spec.invoke, model=inference_spec.load(model_dir))
 
 
@@ -118,10 +121,9 @@ def output_fn(predictions, accept_type):
     try:
         if hasattr(schema_builder, "custom_output_translator"):
             return schema_builder.custom_output_translator.serialize(predictions, accept_type)
-        else:
-            return schema_builder.output_serializer.serialize(predictions)
+        return schema_builder.output_serializer.serialize(predictions)
     except Exception as e:
-        logger.error("Encountered error: %s in serialize_response." % e)
+        logger.error("Encountered error: %s in serialize_response.", e)
         raise Exception("Encountered error in serialize_response.") from e
 
 
@@ -155,13 +157,10 @@ def _pickle_file_integrity_check():
 
 def install_package(package_name, version=None):
     """Placeholder docstring"""
-    if version:
-        command = f"pip install {package_name}=={version}"
-    else:
-        command = f"pip install {package_name}"
+    package_spec = f"{package_name}=={version}" if version else package_name
 
     try:
-        subprocess.check_call(command, shell=True)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_spec])
         print(f"Successfully installed {package_name} using install_package")
     except subprocess.CalledProcessError as e:
         print(f"Failed to install {package_name}. Error: {e}")

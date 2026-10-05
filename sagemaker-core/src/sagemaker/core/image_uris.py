@@ -11,14 +11,15 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Functions for generating ECR image URIs for pre-built SageMaker Docker images."""
+
 from __future__ import absolute_import
 
 import json
 import logging
 import os
 import re
-from typing import Optional
-from packaging.version import Version
+from typing import List, Optional
+from packaging.version import InvalidVersion, Version
 
 from sagemaker.core import common_utils as utils
 from sagemaker.core.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
@@ -277,8 +278,17 @@ def retrieve(
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
-    if repo == f"{framework}-inference-graviton":
+    if repo in (f"{framework}-inference-graviton", f"{framework}-inference-arm64"):
         container_version = f"{container_version}-sagemaker"
+
+    # Some images encode the accelerator directly in the tag (e.g. the amzn2023
+    # "<version>-cu133-amzn2023-sagemaker" tag has no "gpu" token), so the standard
+    # cpu/gpu processor token must not be appended. The processor is still used
+    # above to select the container_version; drop it from the tag when the version
+    # config opts out via "processor_in_tag": false.
+    if not version_config.get("processor_in_tag", True):
+        processor = None
+
     _validate_instance_deprecation(framework, instance_type, version)
 
     tag = _get_image_tag(
@@ -442,6 +452,190 @@ def config_for_framework(framework):
     fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
     with open(fname) as f:
         return json.load(f)
+
+
+def _version_sort_key(version):
+    """Sort key that orders PEP 440 versions semantically, others lexically.
+
+    Some config version keys are not valid PEP 440 versions (e.g. ``"latest"``,
+    ``"1.x"``). Parseable versions are grouped first and ordered by
+    ``packaging.version.Version``; the rest fall back to lexical ordering.
+    """
+    try:
+        return (0, Version(version))
+    except InvalidVersion:
+        return (1, version)
+
+
+def _has_version_data(config):
+    """Return ``True`` if a loaded config exposes framework version data.
+
+    Handles both top-level ``versions`` configs and scope-nested configs
+    (e.g. ``training``/``inference`` -> ``versions``). Non-framework config
+    files (such as ``instance_gpu_info``) return ``False``.
+    """
+    if not isinstance(config, dict):
+        return False
+    if "versions" in config:
+        return True
+    return any(isinstance(scope, dict) and "versions" in scope for scope in config.values())
+
+
+def _iter_config_subtrees(framework, image_scope=None):
+    """Yield the config subtree(s) that hold ``versions``/``version_aliases``.
+
+    Mirrors :func:`_config_for_framework_and_scope` in supporting both config
+    shapes: a top-level ``versions`` mapping, or scope-nested mappings keyed by
+    image scope (``training``, ``inference``, ...). Each yielded subtree is the
+    dict that owns the ``versions`` (and optional ``version_aliases``) keys.
+
+    When ``image_scope`` is provided for a scope-nested config, only that
+    scope's subtree is yielded; otherwise every scope is yielded (callers union
+    across them). For single-map configs ``image_scope`` is validated against
+    the config's ``scope`` list when present, then the top-level subtree is
+    yielded (the same images serve every scope).
+
+    Raises:
+        ValueError: If the framework is unknown, or ``image_scope`` is not a
+            valid scope for the framework.
+    """
+    try:
+        config = config_for_framework(framework)
+    except OSError:
+        raise ValueError(
+            "Unsupported framework: {}. Supported framework(s): {}.".format(
+                framework, ", ".join(list_frameworks())
+            )
+        )
+
+    if "versions" in config:
+        available_scopes = config.get("scope")
+        if image_scope is not None and available_scopes and image_scope not in available_scopes:
+            raise ValueError(
+                "Unsupported image scope: {} for framework: {}. Supported scope(s): {}.".format(
+                    image_scope, framework, ", ".join(sorted(available_scopes))
+                )
+            )
+        yield config
+        return
+
+    scopes = {
+        name: scope
+        for name, scope in config.items()
+        if isinstance(scope, dict) and "versions" in scope
+    }
+
+    if image_scope is not None:
+        if image_scope not in scopes:
+            raise ValueError(
+                "Unsupported image scope: {} for framework: {}. Supported scope(s): {}.".format(
+                    image_scope, framework, ", ".join(sorted(scopes))
+                )
+            )
+        yield scopes[image_scope]
+        return
+
+    for scope in scopes.values():
+        yield scope
+
+
+def list_frameworks() -> List[str]:
+    """Lists the frameworks that have a bundled image URI config.
+
+    Returns:
+        list[str]: Sorted framework names accepted by :func:`retrieve` and
+        :func:`list_versions`. Non-framework config files are excluded.
+    """
+    config_dir = os.path.join(os.path.dirname(__file__), "image_uri_config")
+    frameworks = []
+    for fname in os.listdir(config_dir):
+        if not fname.endswith(".json"):
+            continue
+        framework = fname[: -len(".json")]
+        try:
+            config = config_for_framework(framework)
+        except (OSError, ValueError):
+            continue
+        if _has_version_data(config):
+            frameworks.append(framework)
+    return sorted(frameworks)
+
+
+def list_versions(framework: str, image_scope: Optional[str] = None) -> List[str]:
+    """Lists the available versions for a framework.
+
+    Both concrete versions and version aliases (e.g. ``"2.0"`` -> ``"2.0.1"``)
+    are returned, since :func:`retrieve` accepts either as its ``version``
+    argument.
+
+    Args:
+        framework (str): The framework name (see :func:`list_frameworks`).
+        image_scope (str): Optional image scope (e.g. ``"training"`` or
+            ``"inference"``). For scope-nested configs, versions are unioned
+            across all scopes when omitted; for single-map configs it is
+            validated (when the config declares a ``scope`` list) but does not
+            change the returned versions. (default: None).
+
+    Returns:
+        list[str]: Sorted, de-duplicated available versions and aliases.
+
+    Raises:
+        ValueError: If the framework is unknown, or ``image_scope`` is invalid.
+    """
+    versions = set()
+    for subtree in _iter_config_subtrees(framework, image_scope):
+        versions.update(subtree.get("versions", {}).keys())
+        versions.update(subtree.get("version_aliases", {}).keys())
+    return sorted(versions, key=_version_sort_key)
+
+
+def list_py_versions(framework: str, version: str, image_scope: Optional[str] = None) -> List[str]:
+    """Lists the available Python versions for a framework version.
+
+    A version alias (e.g. ``"2.0"``) is resolved to its concrete target before
+    lookup, matching :func:`retrieve`.
+
+    Args:
+        framework (str): The framework name (see :func:`list_frameworks`).
+        version (str): The framework version or alias (see
+            :func:`list_versions`).
+        image_scope (str): Optional image scope (e.g. ``"training"`` or
+            ``"inference"``). Only applies to scope-nested configs; when
+            omitted, Python versions are unioned across all scopes that define
+            the given ``version``. (default: None).
+
+    Returns:
+        list[str]: Sorted, de-duplicated Python versions (e.g. ``["py310"]``).
+        Empty if the version defines no Python versions -- either because the
+        image has none (e.g. algorithm images) or because the framework nests
+        Python versions under a base-framework version (e.g. ``huggingface``),
+        which this helper does not descend into.
+
+    Raises:
+        ValueError: If the framework, ``image_scope``, or ``version`` is unknown.
+    """
+    py_versions = set()
+    available_versions = set()
+    found = False
+    for subtree in _iter_config_subtrees(framework, image_scope):
+        versions_dict = subtree.get("versions", {})
+        aliases = subtree.get("version_aliases", {})
+        available_versions.update(versions_dict.keys())
+        available_versions.update(aliases.keys())
+        resolved = aliases.get(version, version)
+        if resolved in versions_dict:
+            found = True
+            py_versions.update(versions_dict[resolved].get("py_versions", []))
+
+    if not found:
+        raise ValueError(
+            "Unsupported version: {} for framework: {}. Supported version(s): {}.".format(
+                version,
+                framework,
+                ", ".join(sorted(available_versions, key=_version_sort_key)),
+            )
+        )
+    return sorted(py_versions, key=_version_sort_key)
 
 
 def _get_final_image_scope(framework, instance_type, image_scope):
