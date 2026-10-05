@@ -14,12 +14,13 @@ Note: This module imports from sagemaker.core.workflow for primitives (entities,
 functions, conditions, properties) and can import from sagemaker.train and sagemaker.serve
 for orchestration purposes.
 """
+
 from __future__ import absolute_import
 
 __version__ = "0.1.0"
 
 # Pipeline and configuration
-from sagemaker.mlops.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.mlops.workflow.pipeline import Pipeline, PipelineGraph, PipelineExecution
 from sagemaker.mlops.workflow.pipeline_experiment_config import (
     PipelineExperimentConfig,
     PipelineExperimentConfigProperty,
@@ -37,6 +38,7 @@ from sagemaker.mlops.workflow.steps import (
     TrainingStep,
     ProcessingStep,
     TransformStep,
+    JobStep,
     TuningStep,
 )
 
@@ -46,8 +48,15 @@ from sagemaker.mlops.workflow.callback_step import CallbackStep, CallbackOutput
 from sagemaker.mlops.workflow.clarify_check_step import ClarifyCheckStep
 from sagemaker.mlops.workflow.condition_step import ConditionStep
 from sagemaker.mlops.workflow.emr_step import EMRStep, EMRStepConfig
+from sagemaker.mlops.workflow.endpoint_step import EndpointConfigStep, EndpointStep
 from sagemaker.mlops.workflow.fail_step import FailStep
+from sagemaker.mlops.workflow.inference_component_step import InferenceComponentStep
 from sagemaker.mlops.workflow.lambda_step import LambdaStep, LambdaOutput
+from sagemaker.mlops.workflow.lineage_step import (
+    LineageAssociation,
+    LineageEntityReference,
+    LineageStep,
+)
 from sagemaker.mlops.workflow.model_step import ModelStep
 from sagemaker.mlops.workflow.monitor_batch_transform_step import MonitorBatchTransformStep
 from sagemaker.mlops.workflow.notebook_job_step import NotebookJobStep
@@ -74,6 +83,7 @@ from sagemaker.mlops.workflow.check_job_config import CheckJobConfig
 __all__ = [
     # Pipeline and configuration
     "Pipeline",
+    "PipelineExecution",
     "PipelineGraph",
     "PipelineExperimentConfig",
     "PipelineExperimentConfigProperty",
@@ -88,6 +98,7 @@ __all__ = [
     "TrainingStep",
     "ProcessingStep",
     "TransformStep",
+    "JobStep",
     "TuningStep",
     # Step implementations
     "AutoMLStep",
@@ -97,9 +108,15 @@ __all__ = [
     "ConditionStep",
     "EMRStep",
     "EMRStepConfig",
+    "EndpointConfigStep",
+    "EndpointStep",
     "FailStep",
+    "InferenceComponentStep",
     "LambdaStep",
     "LambdaOutput",
+    "LineageAssociation",
+    "LineageEntityReference",
+    "LineageStep",
     "ModelStep",
     "MonitorBatchTransformStep",
     "NotebookJobStep",

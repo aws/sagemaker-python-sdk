@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Pipeline parameters and conditions for workflow."""
+
 from __future__ import absolute_import
 
 from enum import Enum
@@ -50,7 +51,10 @@ class ParameterTypeEnum(Enum, metaclass=DefaultEnumMeta):
         return mapping[self]
 
 
-@attr.s
+# ``hash=False`` prevents attrs from clobbering the ``__hash__`` defined in the class body
+# with ``None`` (its default behavior for an eq-enabled, non-frozen class). ``__eq__`` is
+# still generated. This keeps all Parameter subtypes hashable, not just ``ParameterString``.
+@attr.s(hash=False)
 class Parameter(PipelineVariable, Entity):
     """Pipeline parameter for workflow.
 
@@ -63,6 +67,16 @@ class Parameter(PipelineVariable, Entity):
     name: str = attr.ib(factory=str)
     parameter_type: ParameterTypeEnum = attr.ib(factory=ParameterTypeEnum.factory)
     default_value: PrimitiveType = attr.ib(default=None)
+
+    def __hash__(self):
+        """Hash a parameter on its name and type.
+
+        Keys on a subset of the fields used for equality so that the
+        ``a == b`` implies ``hash(a) == hash(b)`` invariant always holds.
+        Do not mutate ``name`` after using an instance as a set member or
+        dict key, as that strands the entry (standard Python hashing hazard).
+        """
+        return hash((self.name, self.parameter_type.value))
 
     @default_value.validator
     def _check_default_value(self, _, value):
@@ -166,10 +180,6 @@ class ParameterString(Parameter):
             name=name, parameter_type=ParameterTypeEnum.STRING, default_value=default_value
         )
         self.enum_values = enum_values
-
-    def __hash__(self):
-        """Hash function for parameter types"""
-        return hash(tuple(self.to_request()))
 
     def to_string(self) -> PipelineVariable:
         """Prompt the pipeline to convert the pipeline variable to String in runtime

@@ -17,6 +17,9 @@ import pytest
 from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
+from sagemaker.core.resources import TrainingJob
+from sagemaker.core.shapes import ModelArtifacts, OutputDataConfig
+from sagemaker.core.utils.utils import Unassigned
 from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder, _is_nova_model
 
 MODULE = "sagemaker.serve.bedrock_model_builder"
@@ -69,8 +72,11 @@ class TestIsNovaModel:
     def test_nova_via_hub_content_name(self):
         assert _is_nova_model(_make_container(hub_content_name="amazon-nova-lite")) is True
 
-    def test_non_nova(self):
-        assert _is_nova_model(_make_container(recipe_name="llama-3-8b", hub_content_name="llama")) is False
+    def test_oss(self):
+        assert (
+            _is_nova_model(_make_container(recipe_name="llama-3-8b", hub_content_name="llama"))
+            is False
+        )
 
     def test_no_base_model(self):
         assert _is_nova_model(_make_container()) is False
@@ -94,8 +100,9 @@ class TestInit:
 
     def test_with_model(self):
         m = Mock()
-        with patch.object(BedrockModelBuilder, "_fetch_model_package", return_value=Mock()), \
-             patch.object(BedrockModelBuilder, "_get_s3_artifacts", return_value="s3://b/k"):
+        with patch.object(
+            BedrockModelBuilder, "_fetch_model_package", return_value=Mock()
+        ), patch.object(BedrockModelBuilder, "_get_s3_artifacts", return_value="s3://b/k"):
             b = BedrockModelBuilder(model=m)
         assert b.model is m
         assert b.s3_model_artifacts == "s3://b/k"
@@ -152,9 +159,9 @@ class TestFetchModelPackage:
         b = _builder()
         b.model = Mock()
         # ModelPackage = type(b.model) so isinstance matches; others are sentinels
-        with patch(f"{MODULE}.ModelPackage", type(b.model)), \
-             patch(f"{MODULE}.TrainingJob", _SentinelA), \
-             patch(f"{MODULE}.ModelTrainer", _SentinelB):
+        with patch(f"{MODULE}.ModelPackage", type(b.model)), patch(
+            f"{MODULE}.TrainingJob", _SentinelA
+        ), patch(f"{MODULE}.ModelTrainer", _SentinelB):
             result = b._fetch_model_package()
         assert result is b.model
 
@@ -171,9 +178,9 @@ class TestFetchModelPackage:
             def get(arn):
                 return expected
 
-        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), \
-             patch(f"{MODULE}.TrainingJob", type(b.model)), \
-             patch(f"{MODULE}.ModelTrainer", _SentinelA):
+        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), patch(
+            f"{MODULE}.TrainingJob", type(b.model)
+        ), patch(f"{MODULE}.ModelTrainer", _SentinelA):
             result = b._fetch_model_package()
         assert result is expected
 
@@ -188,9 +195,9 @@ class TestFetchModelPackage:
             def get(arn):
                 return expected
 
-        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), \
-             patch(f"{MODULE}.TrainingJob", _SentinelA), \
-             patch(f"{MODULE}.ModelTrainer", type(b.model)):
+        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), patch(
+            f"{MODULE}.TrainingJob", _SentinelA
+        ), patch(f"{MODULE}.ModelTrainer", type(b.model)):
             result = b._fetch_model_package()
         assert result is expected
 
@@ -198,6 +205,67 @@ class TestFetchModelPackage:
         b = _builder()
         b.model = "unknown"
         assert b._fetch_model_package() is None
+
+    def test_from_base_trainer_with_model_package_arn(self):
+        """BaseTrainer with _latest_training_job.output_model_package_arn resolves package."""
+        b = _builder()
+        mock_trainer = Mock()
+        mock_trainer._latest_training_job = Mock()
+        mock_trainer._latest_training_job.output_model_package_arn = "arn:pkg"
+        b.model = mock_trainer
+        expected = Mock()
+
+        class _FakeModelPackage:
+            @staticmethod
+            def get(arn):
+                return expected
+
+        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), patch(
+            f"{MODULE}.TrainingJob", type(None)
+        ), patch(f"{MODULE}.ModelTrainer", type(None)), patch(
+            f"{MODULE}.MultiTurnRLTrainer", type(None)
+        ), patch(
+            f"{MODULE}.AgentRFTJob", type(None)
+        ), patch(
+            f"{MODULE}.BaseTrainer", type(mock_trainer)
+        ):
+            result = b._fetch_model_package()
+        assert result is expected
+
+    def test_from_base_trainer_without_model_package_arn(self):
+        """BaseTrainer without output_model_package_arn returns None."""
+        b = _builder()
+        mock_trainer = Mock()
+        mock_trainer._latest_training_job = Mock()
+        mock_trainer._latest_training_job.output_model_package_arn = None
+        b.model = mock_trainer
+
+        with patch(f"{MODULE}.TrainingJob", type(None)), patch(
+            f"{MODULE}.ModelTrainer", type(None)
+        ), patch(f"{MODULE}.MultiTurnRLTrainer", type(None)), patch(
+            f"{MODULE}.AgentRFTJob", type(None)
+        ), patch(
+            f"{MODULE}.BaseTrainer", type(mock_trainer)
+        ):
+            result = b._fetch_model_package()
+        assert result is None
+
+    def test_from_base_trainer_no_training_job(self):
+        """BaseTrainer with no _latest_training_job returns None."""
+        b = _builder()
+        mock_trainer = Mock()
+        mock_trainer._latest_training_job = None
+        b.model = mock_trainer
+
+        with patch(f"{MODULE}.TrainingJob", type(None)), patch(
+            f"{MODULE}.ModelTrainer", type(None)
+        ), patch(f"{MODULE}.MultiTurnRLTrainer", type(None)), patch(
+            f"{MODULE}.AgentRFTJob", type(None)
+        ), patch(
+            f"{MODULE}.BaseTrainer", type(mock_trainer)
+        ):
+            result = b._fetch_model_package()
+        assert result is None
 
 
 # ── _get_s3_artifacts ───────────────────────────────────────────────────────
@@ -209,13 +277,13 @@ class TestGetS3Artifacts:
         b.model_package = None
         assert b._get_s3_artifacts() is None
 
-    def test_non_nova_returns_s3_uri(self):
+    def test_oss_returns_s3_uri(self):
         c = _make_container(recipe_name="llama", hub_content_name="llama", s3_uri="s3://b/m.tar.gz")
         b = _builder()
         b.model_package = _make_model_package(c)
         assert b._get_s3_artifacts() == "s3://b/m.tar.gz"
 
-    def test_non_nova_no_data_source(self):
+    def test_oss_no_data_source(self):
         c = _make_container(recipe_name="llama", hub_content_name="llama")
         b = _builder()
         b.model_package = _make_model_package(c)
@@ -226,9 +294,9 @@ class TestGetS3Artifacts:
         b = _builder()
         b.model = Mock()
         b.model_package = _make_model_package(c)
-        with patch(f"{MODULE}.TrainingJob", type(b.model)), \
-             patch.object(BedrockModelBuilder, "_get_checkpoint_uri_from_manifest",
-                          return_value="s3://b/ckpt"):
+        with patch(f"{MODULE}.TrainingJob", type(b.model)), patch.object(
+            BedrockModelBuilder, "_get_checkpoint_uri_from_manifest", return_value="s3://b/ckpt"
+        ):
             result = b._get_s3_artifacts()
         assert result == "s3://b/ckpt"
 
@@ -244,10 +312,11 @@ class TestGetS3Artifacts:
 
 
 class TestGetCheckpointUri:
-    def _make_builder(self, s3_artifacts, manifest_body=None, s3_error=None):
+    def _make_builder(self, s3_output_path, manifest_body=None, s3_error=None, job_name="myjob"):
         mock_job = Mock()
-        mock_job.model_artifacts = Mock()
-        mock_job.model_artifacts.s3_model_artifacts = s3_artifacts
+        mock_job.output_data_config = Mock()
+        mock_job.output_data_config.s3_output_path = s3_output_path
+        mock_job.training_job_name = job_name
 
         mock_s3 = Mock()
         # Always set exceptions.NoSuchKey to a real exception class so
@@ -272,19 +341,20 @@ class TestGetCheckpointUri:
 
     def test_success(self):
         b, s3 = self._make_builder(
-            "s3://bucket/path/output/model.tar.gz",
+            "s3://bucket/path/",
             manifest_body={"checkpoint_s3_bucket": "s3://bucket/ckpt/step_4"},
+            job_name="myjob",
         )
         with patch(f"{MODULE}.TrainingJob", type(b.model)):
             result = b._get_checkpoint_uri_from_manifest()
         assert result == "s3://bucket/ckpt/step_4"
         s3.get_object.assert_called_once_with(
-            Bucket="bucket", Key="path/output/output/manifest.json"
+            Bucket="bucket", Key="path/myjob/output/output/manifest.json"
         )
 
     def test_missing_checkpoint_key(self):
         b, _ = self._make_builder(
-            "s3://bucket/path/output/model.tar.gz",
+            "s3://bucket/path/",
             manifest_body={"other_key": "value"},
         )
         with patch(f"{MODULE}.TrainingJob", type(b.model)):
@@ -293,7 +363,7 @@ class TestGetCheckpointUri:
 
     def test_manifest_not_found(self):
         err = ClientError({"Error": {"Code": "NoSuchKey"}}, "GetObject")
-        b, _ = self._make_builder("s3://bucket/path/output/model.tar.gz", s3_error=err)
+        b, _ = self._make_builder("s3://bucket/path/", s3_error=err)
         with patch(f"{MODULE}.TrainingJob", type(b.model)):
             with pytest.raises(ValueError, match="manifest.json not found"):
                 b._get_checkpoint_uri_from_manifest()
@@ -304,16 +374,17 @@ class TestGetCheckpointUri:
         with pytest.raises(ValueError, match="TrainingJob"):
             b._get_checkpoint_uri_from_manifest()
 
-    def test_no_s3_artifacts_raises(self):
+    def test_no_s3_output_path_raises(self):
         b, _ = self._make_builder(None)
         with patch(f"{MODULE}.TrainingJob", type(b.model)):
-            with pytest.raises(ValueError, match="No S3 model artifacts"):
+            with pytest.raises(ValueError, match="No S3 output path"):
                 b._get_checkpoint_uri_from_manifest()
 
     def test_invalid_json_raises(self):
         mock_job = Mock()
-        mock_job.model_artifacts = Mock()
-        mock_job.model_artifacts.s3_model_artifacts = "s3://bucket/path/output/m.tar.gz"
+        mock_job.output_data_config = Mock()
+        mock_job.output_data_config.s3_output_path = "s3://bucket/path/"
+        mock_job.training_job_name = "myjob"
 
         body = Mock()
         body.read.return_value = b"not-json"
@@ -402,7 +473,9 @@ class TestCreateDeployment:
         }
         b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
 
-        b.create_deployment(model_arn="arn:model", deployment_name="d", commitmentDuration="ONE_MONTH")
+        b.create_deployment(
+            model_arn="arn:model", deployment_name="d", commitmentDuration="ONE_MONTH"
+        )
         kw = b._bedrock_client.create_custom_model_deployment.call_args[1]
         assert kw["commitmentDuration"] == "ONE_MONTH"
 
@@ -469,15 +542,73 @@ class TestWaitForDeploymentActive:
 
 
 class TestDeploy:
-    def test_non_nova(self):
+    @pytest.fixture(autouse=True)
+    def _stub_role_validation(self):
+        """deploy() now validates the provided role via resolve_and_validate_role.
+
+        These tests pass a placeholder role ("r") and exercise the deploy flow, not
+        IAM validation, so stub the resolver to echo the provided role back (or fall
+        back to an auto-role when none is given). Tests that specifically assert the
+        auto-resolve path patch the resolver themselves.
+        """
+        with patch(
+            f"{MODULE}.resolve_and_validate_role",
+            side_effect=lambda provided_role, **kwargs: provided_role or "auto-role",
+        ):
+            yield
+
+    @pytest.fixture(autouse=True)
+    def _stub_find_existing_bedrock_model(self):
+        """Patch find_existing_bedrock_model to return None by default for non-reuse tests."""
+        with patch(f"{MODULE}.find_existing_bedrock_model", return_value=None):
+            yield
+
+    def test_oss_waits_for_import_and_returns_job_details(self):
+        """OSS deploy: import job → wait → return job details."""
         c = _make_container(s3_uri="s3://b/m.tar.gz")
         b = _builder()
         b.model_package = _make_model_package(c)
         b.s3_model_artifacts = "s3://b/m.tar.gz"
         b._bedrock_client = Mock()
         b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
-        result = b.deploy(job_name="j", imported_model_name="m", role_arn="r")
-        assert result == {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "my-imported-model",
+            "importedModelArn": "arn:aws:bedrock:us-west-2:123:imported-model/abc",
+        }
+
+        with patch(f"{MODULE}.time.sleep"), patch.object(
+            b, "_extract_tar_gz_to_s3", return_value="s3://b/extracted/checkpoints/hf/"
+        ):
+            result = b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+
+        b._bedrock_client.create_model_import_job.assert_called_once()
+        b._bedrock_client.get_model_import_job.assert_called()
+        # Should NOT call create_provisioned_model_throughput
+        b._bedrock_client.create_provisioned_model_throughput.assert_not_called()
+        assert result["status"] == "Completed"
+        assert result["importedModelName"] == "my-imported-model"
+
+    def test_oss_does_not_create_provisioned_throughput(self):
+        """deploy() for OSS models should never call CreateProvisionedModelThroughput."""
+        c = _make_container(s3_uri="s3://b/m.tar.gz")
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.s3_model_artifacts = "s3://b/m.tar.gz"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.time.sleep"), patch.object(
+            b, "_extract_tar_gz_to_s3", return_value="s3://b/extracted/checkpoints/hf/"
+        ):
+            b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+
+        b._bedrock_client.create_provisioned_model_throughput.assert_not_called()
+        b._bedrock_client.get_provisioned_model_throughput.assert_not_called()
 
     def test_nova_full_chain(self):
         c = _make_container(recipe_name="nova-micro", hub_content_name="nova")
@@ -548,12 +679,15 @@ class TestDeploy:
         tags = [{"Key": "env", "Value": "test"}]
         b.deploy(custom_model_name="m", role_arn="r", model_tags=tags)
         kw = b._bedrock_client.create_custom_model.call_args[1]
-        assert kw["modelTags"] == tags
+        assert {"Key": "env", "Value": "test"} in kw["modelTags"]
+        source_tag = {"key": "sagemaker.amazonaws.com/model-source", "value": "s3://b/k"}
+        assert source_tag in kw["modelTags"]
 
     def test_no_model_package_raises(self):
         b = _builder()
         b.model_package = None
-        with pytest.raises(ValueError, match="model_package is not set"):
+        b.s3_model_artifacts = None
+        with pytest.raises(ValueError, match="No model source available"):
             b.deploy(job_name="j", role_arn="r")
 
     def test_nova_missing_custom_model_name_raises(self):
@@ -564,22 +698,930 @@ class TestDeploy:
         with pytest.raises(ValueError, match="custom_model_name is required"):
             b.deploy(role_arn="r")
 
-    def test_nova_missing_role_arn_raises(self):
+    def test_nova_missing_role_arn_auto_resolves(self):
+        """When no role_arn is given, a least-privilege Bedrock role is auto-resolved."""
         c = _make_container(recipe_name="nova-micro")
         b = _builder()
         b.model_package = _make_model_package(c)
         b.s3_model_artifacts = "s3://b/k"
-        with pytest.raises(ValueError, match="role_arn is required"):
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "model-arn"}
+
+        with patch(
+            f"{MODULE}.resolve_and_validate_role", return_value="auto-role"
+        ) as mock_resolve, patch.object(
+            b, "create_deployment", return_value={"ok": True}
+        ) as mock_create_deploy:
             b.deploy(custom_model_name="m")
 
-    def test_non_nova_strips_none_params(self):
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="bedrock",
+            sagemaker_session=b.sagemaker_session,
+        )
+        # The auto-resolved role is threaded into the Bedrock create call.
+        assert b._bedrock_client.create_custom_model.call_args[1]["roleArn"] == "auto-role"
+        mock_create_deploy.assert_called_once()
+
+    def test_oss_missing_role_arn_auto_resolves(self):
+        """OSS import path also auto-resolves a Bedrock role when none is provided."""
         c = _make_container()
         b = _builder()
         b.model_package = _make_model_package(c)
         b.s3_model_artifacts = "s3://b/k"
         b._bedrock_client = Mock()
         b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn"}
-        b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(
+            f"{MODULE}.resolve_and_validate_role", return_value="auto-role"
+        ) as mock_resolve, patch(f"{MODULE}.time.sleep"):
+            b.deploy(job_name="j", imported_model_name="m")
+
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="bedrock",
+            sagemaker_session=b.sagemaker_session,
+        )
+        assert b._bedrock_client.create_model_import_job.call_args[1]["roleArn"] == "auto-role"
+
+    def test_oss_strips_none_params(self):
+        c = _make_container()
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.s3_model_artifacts = "s3://b/k"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.time.sleep"):
+            b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+
         kw = b._bedrock_client.create_model_import_job.call_args[1]
         assert "importedModelKmsKeyId" not in kw
         assert "clientRequestToken" not in kw
+
+    def test_s3_uri_string_with_custom_model_name_uses_nova_path(self):
+        """Direct S3 URI + custom_model_name triggers create_custom_model path."""
+        b = BedrockModelBuilder(model="s3://my-bucket/my-checkpoint/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:model"}
+
+        with patch.object(
+            b, "create_deployment", return_value={"customModelDeploymentArn": "arn:dep"}
+        ) as mock_deploy:
+            b.deploy(custom_model_name="my-nova-model", role_arn="arn:role")
+
+        b._bedrock_client.create_custom_model.assert_called_once()
+        kw = b._bedrock_client.create_custom_model.call_args[1]
+        assert kw["modelName"] == "my-nova-model"
+        assert kw["modelSourceConfig"] == {
+            "s3DataSource": {"s3Uri": "s3://my-bucket/my-checkpoint/"}
+        }
+        assert kw["roleArn"] == "arn:role"
+        mock_deploy.assert_called_once_with(
+            model_arn="arn:model", deployment_name="my-nova-model-deployment"
+        )
+
+    def test_s3_uri_string_without_custom_model_name_uses_oss_path(self):
+        """Direct S3 URI without custom_model_name triggers import job path."""
+        b = BedrockModelBuilder(model="s3://my-bucket/my-checkpoint/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "my-imported",
+        }
+
+        with patch(f"{MODULE}.time.sleep"):
+            b.deploy(job_name="j", imported_model_name="my-imported", role_arn="arn:role")
+
+        b._bedrock_client.create_model_import_job.assert_called_once()
+        kw = b._bedrock_client.create_model_import_job.call_args[1]
+        # _resolve_hf_model_path strips the trailing slash when no
+        # hf_merged/hf checkpoint is found under the base path.
+        assert kw["modelDataSource"] == {"s3DataSource": {"s3Uri": "s3://my-bucket/my-checkpoint"}}
+
+    def test_s3_uri_string_invalid_raises(self):
+        """Non-S3 string as model raises ValueError."""
+        with pytest.raises(ValueError, match="must be an S3 URI"):
+            BedrockModelBuilder(model="not-an-s3-uri")
+
+    def test_model_trainer_with_checkpoint_no_model_package_uses_nova_path(self):
+        """ModelTrainer with model_artifacts on _latest_training_job but no output_model_package_arn deploys via S3."""
+        mock_trainer = Mock()
+        mock_training_job = Mock()
+        mock_training_job.output_model_package_arn = None
+        mock_training_job.model_artifacts = Mock()
+        mock_training_job.model_artifacts.s3_model_artifacts = (
+            "s3://bucket/hp-job/outputs/checkpoints/step_4/"
+        )
+        mock_trainer._latest_training_job = mock_training_job
+
+        with patch(f"{MODULE}.ModelPackage", _SentinelA), patch(
+            f"{MODULE}.TrainingJob", _SentinelB
+        ), patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), patch(
+            f"{MODULE}.MultiTurnRLTrainer", _SentinelA
+        ), patch(
+            f"{MODULE}.AgentRFTJob", _SentinelA
+        ), patch(
+            f"{MODULE}.is_restricted_model_package", return_value=False
+        ), patch(
+            f"{MODULE}.Session"
+        ) as mock_session:
+            mock_session.return_value.boto_session = Mock()
+            b = BedrockModelBuilder(model=mock_trainer)
+
+        assert b.model_package is None
+        assert b.s3_model_artifacts == "s3://bucket/hp-job/outputs/checkpoints/step_4/"
+
+    def test_model_trainer_with_checkpoint_deploys_via_create_custom_model(self):
+        """ModelTrainer with checkpoint S3 URI can deploy via create_custom_model."""
+        b = _builder()
+        b.model_package = None
+        b.s3_model_artifacts = "s3://bucket/hp-job/outputs/checkpoints/step_4/"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:model"}
+
+        with patch.object(
+            b, "create_deployment", return_value={"customModelDeploymentArn": "arn:dep"}
+        ):
+            b.deploy(custom_model_name="my-hp-model", role_arn="arn:role")
+
+        kw = b._bedrock_client.create_custom_model.call_args[1]
+        assert kw["modelName"] == "my-hp-model"
+        assert kw["modelSourceConfig"] == {
+            "s3DataSource": {"s3Uri": "s3://bucket/hp-job/outputs/checkpoints/step_4/"}
+        }
+        assert kw["roleArn"] == "arn:role"
+
+    def test_model_trainer_no_checkpoint_no_model_package_raises(self):
+        """ModelTrainer with neither checkpoint nor model package raises on deploy."""
+        b = _builder()
+        b.model_package = None
+        b.s3_model_artifacts = None
+        with pytest.raises(ValueError, match="No model source available"):
+            b.deploy(custom_model_name="m", role_arn="r")
+
+
+# ── _wait_for_import_job_complete ───────────────────────────────────────────
+
+
+class TestWaitForImportJobComplete:
+    def test_immediate_completed(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.return_value = {"status": "Completed"}
+        b._wait_for_import_job_complete("arn:job")
+        b._bedrock_client.get_model_import_job.assert_called_once_with(jobIdentifier="arn:job")
+
+    def test_polls_then_completed(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.side_effect = [
+            {"status": "InProgress"},
+            {"status": "InProgress"},
+            {"status": "Completed"},
+        ]
+        with patch(f"{MODULE}.time.sleep"):
+            b._wait_for_import_job_complete("arn:job", poll_interval=1, max_wait=10)
+        assert b._bedrock_client.get_model_import_job.call_count == 3
+
+    def test_failed_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Failed",
+            "failureMessage": "Invalid model format",
+        }
+        with pytest.raises(RuntimeError, match="Invalid model format"):
+            b._wait_for_import_job_complete("arn:job")
+
+    def test_failed_unknown_reason(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.return_value = {"status": "Failed"}
+        with pytest.raises(RuntimeError, match="Unknown"):
+            b._wait_for_import_job_complete("arn:job")
+
+    def test_timeout_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.return_value = {"status": "InProgress"}
+        with patch(f"{MODULE}.time.sleep"):
+            with pytest.raises(RuntimeError, match="Timed out"):
+                b._wait_for_import_job_complete("arn:job", poll_interval=1, max_wait=2)
+
+
+# ── create_provisioned_throughput ───────────────────────────────────────────
+
+
+class TestCreateProvisionedThroughput:
+    def test_creates_and_polls(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
+
+        result = b.create_provisioned_throughput(
+            model_id="arn:model", provisioned_model_name="my-pt"
+        )
+
+        b._bedrock_client.create_provisioned_model_throughput.assert_called_once_with(
+            modelId="arn:model",
+            provisionedModelName="my-pt",
+            modelUnits=1,
+        )
+        b._bedrock_client.get_provisioned_model_throughput.assert_called_once()
+        assert result["provisionedModelArn"] == "arn:pt"
+
+    def test_passes_commitment_duration(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
+
+        b.create_provisioned_throughput(
+            model_id="arn:model",
+            provisioned_model_name="pt",
+            model_units=5,
+            commitment_duration="OneMonth",
+        )
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["modelUnits"] == 5
+        assert kw["commitmentDuration"] == "OneMonth"
+
+    def test_passes_tags(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
+
+        tags = [{"Key": "team", "Value": "ml"}]
+        b.create_provisioned_throughput(
+            model_id="arn:model", provisioned_model_name="pt", tags=tags
+        )
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["tags"] == tags
+
+    def test_skips_polling_when_no_arn_in_response(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {}
+
+        b.create_provisioned_throughput(model_id="arn:model", provisioned_model_name="pt")
+        b._bedrock_client.get_provisioned_model_throughput.assert_not_called()
+
+    def test_empty_model_id_raises(self):
+        b = _builder()
+        with pytest.raises(ValueError, match="model_id is required"):
+            b.create_provisioned_throughput(model_id="", provisioned_model_name="pt")
+
+    def test_none_model_id_raises(self):
+        b = _builder()
+        with pytest.raises(ValueError, match="model_id is required"):
+            b.create_provisioned_throughput(model_id=None, provisioned_model_name="pt")
+
+    def test_empty_provisioned_model_name_raises(self):
+        b = _builder()
+        with pytest.raises(ValueError, match="provisioned_model_name is required"):
+            b.create_provisioned_throughput(model_id="arn:model", provisioned_model_name="")
+
+    def test_uses_imported_model_id_from_deploy(self):
+        """model_id falls back to _imported_model_id set by deploy()."""
+        b = _builder()
+        b._imported_model_id = "my-deployed-model"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
+
+        result = b.create_provisioned_throughput(provisioned_model_name="my-pt")
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["modelId"] == "my-deployed-model"
+        assert result["provisionedModelArn"] == "arn:pt"
+
+    def test_explicit_model_id_overrides_stored(self):
+        """Explicit model_id takes precedence over _imported_model_id."""
+        b = _builder()
+        b._imported_model_id = "stored-model"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
+
+        b.create_provisioned_throughput(model_id="explicit-model", provisioned_model_name="my-pt")
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["modelId"] == "explicit-model"
+
+
+# ── _wait_for_provisioned_throughput_in_service ─────────────────────────────
+
+
+class TestWaitForProvisionedThroughputInService:
+    def test_immediate_in_service(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
+        b._wait_for_provisioned_throughput_in_service("arn:pt")
+        b._bedrock_client.get_provisioned_model_throughput.assert_called_once_with(
+            provisionedModelId="arn:pt"
+        )
+
+    def test_polls_then_in_service(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.side_effect = [
+            {"status": "Creating"},
+            {"status": "Creating"},
+            {"status": "InService"},
+        ]
+        with patch(f"{MODULE}.time.sleep"):
+            b._wait_for_provisioned_throughput_in_service("arn:pt", poll_interval=1, max_wait=10)
+        assert b._bedrock_client.get_provisioned_model_throughput.call_count == 3
+
+    def test_failed_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "Failed",
+            "failureMessage": "Insufficient capacity",
+        }
+        with pytest.raises(RuntimeError, match="Insufficient capacity"):
+            b._wait_for_provisioned_throughput_in_service("arn:pt")
+
+    def test_failed_unknown_reason(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "Failed"}
+        with pytest.raises(RuntimeError, match="Unknown"):
+            b._wait_for_provisioned_throughput_in_service("arn:pt")
+
+    def test_timeout_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "Creating"}
+        with patch(f"{MODULE}.time.sleep"):
+            with pytest.raises(RuntimeError, match="Timed out"):
+                b._wait_for_provisioned_throughput_in_service("arn:pt", poll_interval=1, max_wait=2)
+
+
+def _apply_model_artifacts_postprocessing(training_job):
+    if (
+        training_job.training_job_status == "Completed"
+        and isinstance(training_job.model_artifacts, Unassigned)
+        and not isinstance(training_job.output_data_config, Unassigned)
+        and training_job.output_data_config
+    ):
+        s3_output_path = training_job.output_data_config.s3_output_path
+        if s3_output_path and isinstance(s3_output_path, str):
+            synthesized_path = (
+                f"{s3_output_path.rstrip('/')}/{training_job.training_job_name}/output/"
+            )
+            training_job.model_artifacts = ModelArtifacts(s3_model_artifacts=synthesized_path)
+    return training_job
+
+
+class TestModelArtifactsPostProcessing:
+    def test_api_model_artifacts_preserved_no_override(self):
+        """Synthesis only activates when model_artifacts is Unassigned."""
+        api_s3_path = "s3://real-bucket/real-prefix/model.tar.gz"
+        job_name = "completed-job-with-artifacts"
+
+        job = TrainingJob(
+            training_job_name=job_name,
+            training_job_status="Completed",
+            model_artifacts=ModelArtifacts(s3_model_artifacts=api_s3_path),
+            output_data_config=OutputDataConfig(s3_output_path="s3://output-bucket/output"),
+        )
+
+        _apply_model_artifacts_postprocessing(job)
+
+        assert not isinstance(job.model_artifacts, Unassigned)
+        assert job.model_artifacts.s3_model_artifacts == api_s3_path
+
+        synthesized_path = f"s3://output-bucket/output/{job_name}/output/"
+        assert job.model_artifacts.s3_model_artifacts != synthesized_path
+
+    def test_api_model_artifacts_preserved_even_with_output_data_config(self):
+        api_s3_path = "s3://training-output/job123/output/model.tar.gz"
+        job_name = "job-with-both-artifacts-and-output-config"
+
+        job = TrainingJob(
+            training_job_name=job_name,
+            training_job_status="Completed",
+            model_artifacts=ModelArtifacts(s3_model_artifacts=api_s3_path),
+            output_data_config=OutputDataConfig(s3_output_path="s3://different-bucket/prefix"),
+        )
+
+        _apply_model_artifacts_postprocessing(job)
+        assert job.model_artifacts.s3_model_artifacts == api_s3_path
+
+    def test_synthesis_applies_when_model_artifacts_is_unassigned(self):
+        job_name = "completed-job-no-artifacts"
+
+        job = TrainingJob(
+            training_job_name=job_name,
+            training_job_status="Completed",
+            output_data_config=OutputDataConfig(s3_output_path="s3://my-bucket/output"),
+        )
+
+        assert isinstance(job.model_artifacts, Unassigned)
+        _apply_model_artifacts_postprocessing(job)
+
+        assert not isinstance(job.model_artifacts, Unassigned)
+        expected_path = f"s3://my-bucket/output/{job_name}/output/"
+        assert job.model_artifacts.s3_model_artifacts == expected_path
+
+    @pytest.mark.parametrize("status", ["InProgress", "Failed", "Stopped", "Stopping"])
+    def test_non_completed_status_no_synthesis(self, status):
+        job = TrainingJob(
+            training_job_name=f"job-{status.lower()}",
+            training_job_status=status,
+            output_data_config=OutputDataConfig(s3_output_path="s3://my-bucket/output"),
+        )
+
+        assert isinstance(job.model_artifacts, Unassigned)
+        _apply_model_artifacts_postprocessing(job)
+        assert isinstance(job.model_artifacts, Unassigned)
+
+
+class TestGetS3ArtifactsFromTrainingJob:
+    def test_training_job_with_valid_model_artifacts(self):
+        job = TrainingJob(
+            training_job_name="my-job",
+            model_artifacts=ModelArtifacts(s3_model_artifacts="s3://bucket/path/output/"),
+        )
+        b = BedrockModelBuilder(model=job)
+        b.model_package = None
+        assert b._get_s3_artifacts() == "s3://bucket/path/output/"
+
+    def test_training_job_with_unassigned_model_artifacts(self):
+        job = TrainingJob(training_job_name="my-job")
+        b = BedrockModelBuilder(model=job)
+        b.model_package = None
+        assert b._get_s3_artifacts() is None
+
+    def test_model_trainer_with_valid_model_artifacts(self):
+        mock_trainer = Mock()
+        mock_training_job = Mock()
+        mock_training_job.output_model_package_arn = None
+        mock_training_job.model_artifacts = Mock()
+        mock_training_job.model_artifacts.s3_model_artifacts = "s3://bucket/checkpoint/"
+        mock_trainer._latest_training_job = mock_training_job
+
+        with patch(f"{MODULE}.ModelPackage", _SentinelA), patch(
+            f"{MODULE}.TrainingJob", _SentinelB
+        ), patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), patch(
+            f"{MODULE}.MultiTurnRLTrainer", _SentinelA
+        ), patch(
+            f"{MODULE}.AgentRFTJob", _SentinelA
+        ), patch(
+            f"{MODULE}.is_restricted_model_package", return_value=False
+        ), patch(
+            f"{MODULE}.Session"
+        ) as mock_session:
+            mock_session.return_value.boto_session = Mock()
+            b = BedrockModelBuilder(model=mock_trainer)
+
+        assert b.model_package is None
+        assert b.s3_model_artifacts == "s3://bucket/checkpoint/"
+
+    def test_model_trainer_no_latest_training_job(self):
+        mock_trainer = Mock()
+        mock_trainer._latest_training_job = None
+
+        with patch(f"{MODULE}.ModelPackage", _SentinelA), patch(
+            f"{MODULE}.TrainingJob", _SentinelB
+        ), patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), patch(
+            f"{MODULE}.MultiTurnRLTrainer", _SentinelA
+        ), patch(
+            f"{MODULE}.AgentRFTJob", _SentinelA
+        ), patch(
+            f"{MODULE}.is_restricted_model_package", return_value=False
+        ), patch(
+            f"{MODULE}.Session"
+        ) as mock_session:
+            mock_session.return_value.boto_session = Mock()
+            b = BedrockModelBuilder(model=mock_trainer)
+
+        assert b.s3_model_artifacts is None
+
+
+class TestResolveModelSourceId:
+    def test_training_job_manifest_json(self):
+        b = _builder()
+        mock_job = Mock(spec=TrainingJob)
+        mock_job.output_data_config = Mock()
+        mock_job.output_data_config.s3_output_path = "s3://bucket/output/"
+        mock_job.training_job_name = "my-job"
+        b.model = mock_job
+
+        nova_container = _make_container(recipe_name="nova-micro")
+        b.model_package = _make_model_package(nova_container)
+        b._is_rmp = False
+        b.s3_model_artifacts = "s3://bucket/ckpt"
+
+        manifest = {"checkpoint_s3_bucket": "s3://bucket/ckpt/step_100"}
+        body = Mock()
+        body.read.return_value = json.dumps(manifest).encode()
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {"Body": body}
+        mock_s3.exceptions = Mock()
+        mock_s3.exceptions.NoSuchKey = ClientError
+        session = Mock()
+        session.client.return_value = mock_s3
+        b.boto_session = session
+
+        with patch(f"{MODULE}.TrainingJob", type(mock_job)):
+            result = b._resolve_nova_model_source_id()
+
+        assert result == "s3://bucket/ckpt/step_100"
+
+    def test_training_job_output_tar_gz_fallback(self):
+        b = _builder()
+        mock_job = Mock(spec=TrainingJob)
+        mock_job.output_data_config = Mock()
+        mock_job.output_data_config.s3_output_path = "s3://bucket/output/"
+        mock_job.training_job_name = "my-job"
+        b.model = mock_job
+
+        nova_container = _make_container(recipe_name="nova-micro")
+        b.model_package = _make_model_package(nova_container)
+        b._is_rmp = False
+        b.s3_model_artifacts = "s3://bucket/ckpt"
+
+        import tarfile
+        import io
+
+        manifest_content = json.dumps({"checkpoint_s3_bucket": "s3://bucket/ckpt/step_50"}).encode()
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            info = tarfile.TarInfo(name="manifest.json")
+            info.size = len(manifest_content)
+            tar.addfile(info, io.BytesIO(manifest_content))
+        tar_bytes = buf.getvalue()
+
+        mock_s3 = Mock()
+        manifest_err = ClientError({"Error": {"Code": "NoSuchKey"}}, "GetObject")
+        mock_s3.exceptions = Mock()
+        mock_s3.exceptions.NoSuchKey = ClientError
+
+        def get_object_side_effect(Bucket, Key):
+            if Key.endswith("manifest.json"):
+                raise manifest_err
+            body = Mock()
+            body.read.return_value = tar_bytes
+            return {"Body": body}
+
+        mock_s3.get_object.side_effect = get_object_side_effect
+        session = Mock()
+        session.client.return_value = mock_s3
+        b.boto_session = session
+
+        with patch(f"{MODULE}.TrainingJob", type(mock_job)):
+            result = b._resolve_nova_model_source_id()
+
+        assert result == "s3://bucket/ckpt/step_50"
+
+    def test_model_package_arn_for_rmp(self):
+        b = _builder()
+        b.model = Mock()
+        b._is_rmp = True
+        b.model_package = Mock()
+        b.model_package.model_package_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-pkg"
+        )
+        b.s3_model_artifacts = None
+
+        with patch(f"{MODULE}.TrainingJob", _SentinelA), patch(
+            f"{MODULE}.ModelTrainer", _SentinelB
+        ), patch(f"{MODULE}.BaseTrainer", _SentinelC):
+            result = b._resolve_nova_model_source_id()
+
+        assert result == "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-pkg"
+
+    def test_s3_model_artifacts_direct(self):
+        b = _builder()
+        b.model = "not-a-known-type"
+        b._is_rmp = False
+        b.model_package = None
+        b.s3_model_artifacts = "s3://my-bucket/checkpoints/"
+
+        with patch(f"{MODULE}.TrainingJob", _SentinelA), patch(
+            f"{MODULE}.ModelTrainer", _SentinelB
+        ), patch(f"{MODULE}.BaseTrainer", _SentinelC):
+            result = b._resolve_nova_model_source_id()
+
+        assert result == "s3://my-bucket/checkpoints/"
+
+    def test_returns_none_when_no_source(self):
+        b = _builder()
+        b.model = None
+        b._is_rmp = False
+        b.model_package = None
+        b.s3_model_artifacts = None
+
+        result = b._resolve_nova_model_source_id()
+
+        assert result is None
+
+
+class TestModelReuseDeploy:
+    @pytest.fixture(autouse=True)
+    def _stub_role_validation(self):
+        with patch(
+            f"{MODULE}.resolve_and_validate_role",
+            side_effect=lambda provided_role, **kwargs: provided_role or "auto-role",
+        ):
+            yield
+
+    def test_deploy_existing_model_skips_create(self):
+        c = _make_container(recipe_name="nova-micro")
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.s3_model_artifacts = "s3://b/ckpt"
+        b._is_rmp = False
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
+        b._bedrock_client.create_custom_model_deployment.return_value = {
+            "customModelDeploymentArn": "arn:dep"
+        }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
+        with (
+            patch(f"{MODULE}.find_existing_bedrock_model", return_value="arn:existing-model"),
+            patch(f"{MODULE}.find_active_bedrock_deployment_for_model", return_value=None),
+        ):
+            result = b.deploy(custom_model_name="m", role_arn="r", reuse_resources=True)
+
+        b._bedrock_client.create_custom_model.assert_not_called()
+        assert result["customModelDeploymentArn"] == "arn:dep"
+        assert result["modelArn"] == "arn:existing-model"
+
+    def test_deploy_existing_model_and_deployment_reused(self):
+        c = _make_container(recipe_name="nova-micro")
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.s3_model_artifacts = "s3://b/ckpt"
+        b._is_rmp = False
+        b._bedrock_client = Mock()
+
+        with (
+            patch(f"{MODULE}.find_existing_bedrock_model", return_value="arn:existing-model"),
+            patch(
+                f"{MODULE}.find_active_bedrock_deployment_for_model",
+                return_value="arn:existing-dep",
+            ),
+        ):
+            result = b.deploy(custom_model_name="m", role_arn="r", reuse_resources=True)
+
+        # Neither a new model nor a new deployment should be created.
+        b._bedrock_client.create_custom_model.assert_not_called()
+        b._bedrock_client.create_custom_model_deployment.assert_not_called()
+        assert result["modelArn"] == "arn:existing-model"
+        assert result["customModelDeploymentArn"] == "arn:existing-dep"
+
+    def test_deploy_no_existing_model_creates_and_tags(self):
+        c = _make_container(recipe_name="nova-micro")
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.s3_model_artifacts = "s3://b/ckpt"
+        b._is_rmp = False
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:new-model"}
+        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
+        b._bedrock_client.create_custom_model_deployment.return_value = {
+            "customModelDeploymentArn": "arn:dep"
+        }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
+        with patch(f"{MODULE}.find_existing_bedrock_model", return_value=None):
+            result = b.deploy(custom_model_name="m", role_arn="r", reuse_resources=True)
+
+        b._bedrock_client.create_custom_model.assert_called_once()
+        kw = b._bedrock_client.create_custom_model.call_args[1]
+        source_tag = {"key": "sagemaker.amazonaws.com/model-source", "value": "s3://b/ckpt"}
+        assert source_tag in kw["modelTags"]
+        assert result["customModelDeploymentArn"] == "arn:dep"
+
+    def test_deploy_default_skips_lookup_but_tags(self):
+        c = _make_container(recipe_name="nova-micro")
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.s3_model_artifacts = "s3://b/ckpt"
+        b._is_rmp = False
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:new-model"}
+        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
+        b._bedrock_client.create_custom_model_deployment.return_value = {
+            "customModelDeploymentArn": "arn:dep"
+        }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
+        # Default is reuse_resources=False: no lookup, but new model is still tagged.
+        with patch(f"{MODULE}.find_existing_bedrock_model") as mock_find:
+            b.deploy(custom_model_name="m", role_arn="r")
+
+        mock_find.assert_not_called()
+        b._bedrock_client.create_custom_model.assert_called_once()
+        kw = b._bedrock_client.create_custom_model.call_args[1]
+        source_tag = {"key": "sagemaker.amazonaws.com/model-source", "value": "s3://b/ckpt"}
+        assert source_tag in kw["modelTags"]
+
+    def test_deploy_without_target_still_applies_source_tag(self):
+        b = BedrockModelBuilder(model="s3://bucket/my-artifacts/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:m"}
+        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
+        b._bedrock_client.create_custom_model_deployment.return_value = {
+            "customModelDeploymentArn": "arn:dep"
+        }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
+        with patch(f"{MODULE}.find_existing_bedrock_model", return_value=None):
+            result = b.deploy(custom_model_name="my-model", role_arn="r")
+
+        b._bedrock_client.create_custom_model.assert_called_once()
+        kw = b._bedrock_client.create_custom_model.call_args[1]
+        source_tag = {
+            "key": "sagemaker.amazonaws.com/model-source",
+            "value": "s3://bucket/my-artifacts/",
+        }
+        assert source_tag in kw["modelTags"]
+        assert result["customModelDeploymentArn"] == "arn:dep"
+
+
+class TestOSSModelReuseDeploy:
+    """Tests for OSS imported model reuse in deploy()."""
+
+    @pytest.fixture(autouse=True)
+    def _stub_role_resolver(self):
+        with patch(
+            f"{MODULE}.resolve_and_validate_role",
+            side_effect=lambda provided_role, **kwargs: provided_role or "auto-role",
+        ):
+            yield
+
+    def test_oss_reuse_existing_imported_model(self):
+        """When reuse_resources=True and a completed imported model exists, skip import."""
+        b = BedrockModelBuilder(model="s3://bucket/artifacts/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_imported_model.return_value = {
+            "modelArn": "arn:aws:bedrock:us-west-2:123:imported-model/existing",
+            "modelName": "existing",
+        }
+
+        with patch(
+            f"{MODULE}.find_existing_imported_model",
+            return_value="arn:aws:bedrock:us-west-2:123:imported-model/existing",
+        ), patch(f"{MODULE}.find_existing_model_import_job") as mock_find_job:
+            result = b.deploy(
+                job_name="j", imported_model_name="m", role_arn="r", reuse_resources=True
+            )
+
+        b._bedrock_client.create_model_import_job.assert_not_called()
+        # Completed model reuse resolves via get_imported_model, not the job API.
+        b._bedrock_client.get_imported_model.assert_called_once_with(
+            modelIdentifier="arn:aws:bedrock:us-west-2:123:imported-model/existing"
+        )
+        mock_find_job.assert_not_called()
+        assert result["modelArn"] == "arn:aws:bedrock:us-west-2:123:imported-model/existing"
+        assert b._imported_model_id == "existing"
+
+    def test_oss_reuse_existing_in_progress_job(self):
+        """When no completed model but an in-progress job matches, wait on it."""
+        b = BedrockModelBuilder(model="s3://bucket/artifacts/")
+        b._bedrock_client = Mock()
+        job_arn = "arn:aws:bedrock:us-west-2:123:model-import-job/abcd1234wxyz"
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "reused-model",
+        }
+
+        with patch(f"{MODULE}.find_existing_imported_model", return_value=None), patch(
+            f"{MODULE}.find_existing_model_import_job", return_value=job_arn
+        ), patch(f"{MODULE}.time.sleep"):
+            result = b.deploy(
+                job_name="j", imported_model_name="m", role_arn="r", reuse_resources=True
+            )
+
+        b._bedrock_client.create_model_import_job.assert_not_called()
+        b._bedrock_client.get_model_import_job.assert_called_with(jobIdentifier=job_arn)
+        assert result["status"] == "Completed"
+        assert b._imported_model_id == "reused-model"
+
+    def test_oss_reuse_not_found_creates_new_import(self):
+        """When reuse_resources=True but nothing exists, create a new import."""
+        b = BedrockModelBuilder(model="s3://bucket/artifacts/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "new-model",
+        }
+
+        with patch(f"{MODULE}.find_existing_imported_model", return_value=None), patch(
+            f"{MODULE}.find_existing_model_import_job", return_value=None
+        ), patch(f"{MODULE}.time.sleep"):
+            result = b.deploy(
+                job_name="j", imported_model_name="m", role_arn="r", reuse_resources=True
+            )
+
+        b._bedrock_client.create_model_import_job.assert_called_once()
+        assert result["status"] == "Completed"
+
+    def test_oss_reuse_false_skips_lookup_but_tags(self):
+        """Default reuse_resources=False: no lookup, but source tag is applied."""
+        b = BedrockModelBuilder(model="s3://bucket/artifacts/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.find_existing_imported_model") as mock_find, patch(
+            f"{MODULE}.time.sleep"
+        ):
+            b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+
+        mock_find.assert_not_called()
+        # Source tag should still be applied to new imports
+        kw = b._bedrock_client.create_model_import_job.call_args[1]
+        source_tag = {
+            "key": "sagemaker.amazonaws.com/model-source",
+            "value": "s3://bucket/artifacts/",
+        }
+        assert source_tag in kw["importedModelTags"]
+
+    def test_oss_reuse_uses_model_package_arn_as_source(self):
+        """Source ID prefers model package ARN over S3 artifacts."""
+        c = _make_container(s3_uri="s3://b/m/")
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.model_package.model_package_arn = "arn:aws:sagemaker:us-west-2:123:model-package/mp/1"
+        b.s3_model_artifacts = "s3://b/m/"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.find_existing_imported_model") as mock_find, patch(
+            f"{MODULE}.find_existing_model_import_job", return_value=None
+        ), patch(f"{MODULE}.time.sleep"):
+            mock_find.return_value = None
+            b.deploy(job_name="j", imported_model_name="m", role_arn="r", reuse_resources=True)
+
+        # Should pass model package ARN as source_id, not s3 artifacts
+        mock_find.assert_called_once()
+        call_source_id = mock_find.call_args[0][1]
+        assert call_source_id == "arn:aws:sagemaker:us-west-2:123:model-package/mp/1"
+
+    def test_oss_reuse_preserves_user_tags(self):
+        """User-provided imported_model_tags are preserved alongside the source tag."""
+        b = BedrockModelBuilder(model="s3://bucket/path/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+        user_tag = {"key": "team", "value": "ml-platform"}
+
+        with patch(f"{MODULE}.find_existing_imported_model", return_value=None), patch(
+            f"{MODULE}.find_existing_model_import_job", return_value=None
+        ), patch(f"{MODULE}.time.sleep"):
+            b.deploy(
+                job_name="j",
+                imported_model_name="m",
+                role_arn="r",
+                imported_model_tags=[user_tag],
+                reuse_resources=True,
+            )
+
+        kw = b._bedrock_client.create_model_import_job.call_args[1]
+        tags = kw["importedModelTags"]
+        assert user_tag in tags
+        source_tag = {"key": "sagemaker.amazonaws.com/model-source", "value": "s3://bucket/path/"}
+        assert source_tag in tags

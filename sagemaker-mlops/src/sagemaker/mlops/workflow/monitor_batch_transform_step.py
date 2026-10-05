@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The `MonitorBatchTransform` definition for SageMaker Pipelines Workflows"""
+
 from __future__ import absolute_import
 import logging
 from typing import Union, Optional

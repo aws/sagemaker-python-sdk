@@ -64,6 +64,7 @@ def test_ingest_udf_output(df, feature_store_manager, spark_output_receiver):
         input_data_frame=df,
         feature_group_arn=fp_config.output,
         target_stores=fp_config.target_stores,
+        use_lake_formation_credentials=fp_config.use_lake_formation_credentials,
     )
 
 

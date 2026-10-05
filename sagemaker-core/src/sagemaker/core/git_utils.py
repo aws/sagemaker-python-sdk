@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import os
@@ -21,8 +22,8 @@ import warnings
 import six
 from six.moves import urllib
 import re
-from pathlib import Path
 from urllib.parse import urlparse
+
 
 def _sanitize_git_url(repo_url):
     """Sanitize Git repository URL to prevent URL injection attacks.
@@ -83,6 +84,7 @@ def _sanitize_git_url(repo_url):
         )
 
     return repo_url
+
 
 def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     """Git clone repo containing the training code and serving code.
@@ -330,6 +332,22 @@ def _clone_command_for_codecommit_https(git_config, dest_dir):
     _run_clone_command(updated_url, dest_dir)
 
 
+def _redact_credentials_from_url(url):
+    """Redact credentials embedded in an HTTPS Git URL.
+
+    Replaces any username, password, or token embedded before the '@' in an
+    HTTPS URL with a placeholder so that credentials are never exposed in
+    logs or exception messages.
+
+    Args:
+        url (str): The Git repository URL that may contain embedded credentials.
+
+    Returns:
+        str: The URL with credentials replaced by '<credentials-redacted>'.
+    """
+    return re.sub(r"(https://)([^@]+)@", r"\1<credentials-redacted>@", url)
+
+
 def _run_clone_command(repo_url, dest_dir):
     """Run the 'git clone' command with the repo url and the directory to clone the repo into.
 
@@ -343,7 +361,24 @@ def _run_clone_command(repo_url, dest_dir):
     my_env = os.environ.copy()
     if repo_url.startswith("https://"):
         my_env["GIT_TERMINAL_PROMPT"] = "0"
-        subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
+        try:
+            subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
+        except subprocess.CalledProcessError as e:
+            # Re-raise with credentials redacted from the command to prevent
+            # plaintext tokens/passwords from leaking into logs or tracebacks.
+            safe_url = _redact_credentials_from_url(repo_url)
+            raise subprocess.CalledProcessError(
+                e.returncode,
+                ["git", "clone", safe_url, dest_dir],
+                output=e.output,
+                stderr=e.stderr,
+            ) from None
+        except Exception as e:
+            safe_url = _redact_credentials_from_url(repo_url)
+            try:
+                raise type(e)(str(e).replace(repo_url, safe_url)) from None
+            except TypeError:
+                raise RuntimeError(str(e).replace(repo_url, safe_url)) from None
     elif repo_url.startswith("git@") or repo_url.startswith("ssh://"):
         try:
             with tempfile.TemporaryDirectory() as tmp_dir:

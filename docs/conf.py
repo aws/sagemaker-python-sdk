@@ -26,6 +26,13 @@ extensions = [
 ]
 
 templates_path = ['_templates']
+
+# Serve robots.txt at the docs site root. ReadTheDocs serves robots.txt only from
+# the default version, so it must live on this V3/default build (not the V2 build).
+# It opts the deprecated V2 docs (/en/v2/) out of AI-training crawls. Sphinx copies
+# files listed here verbatim into the build root.
+html_extra_path = ['robots.txt']
+
 exclude_patterns = [
     '_build', 
     'Thumbs.db', 

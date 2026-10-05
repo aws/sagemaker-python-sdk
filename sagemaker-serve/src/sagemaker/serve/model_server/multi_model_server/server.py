@@ -2,10 +2,11 @@
 
 from __future__ import absolute_import
 
-import requests
 import logging
 import platform
 from pathlib import Path
+
+import requests
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core import fw_utils
@@ -22,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 class LocalMultiModelServer:
     """Local Multi Model server instance"""
+
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets self.container during _start_*, not in __init__, by design.
 
     def _start_serving(
         self,

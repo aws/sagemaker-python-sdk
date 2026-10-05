@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Model Card utilities for SageMaker Python SDK."""
+
 from __future__ import absolute_import
 
 # Re-export ModelCard from resources
