@@ -64,6 +64,7 @@ def _additional_model_data_sources(s3_uri):
 
 
 @pytest.mark.gpu_intensive
+@pytest.mark.xfail_on_insufficient_capacity
 def test_deploy_sdkt_model_as_inference_component():
     """A model carrying SD/KT AdditionalModelDataSources deploys as an
     Inference Component and reaches InService via ``ModelBuilder.deploy``."""

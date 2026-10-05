@@ -23,6 +23,7 @@ from sagemaker.core.processing import (
     _processing_output_to_request_dict,
     _get_process_request,
     logs_for_processing_job,
+    _wait_for_processing_job,
 )
 from sagemaker.core.shapes import (
     ProcessingInput,
@@ -1099,6 +1100,7 @@ class TestScriptProcessorRun:
 
         mock_job = Mock()
         mock_job.wait = Mock()
+        mock_job.processing_job_name = "test-processing-job"
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
             f.write("print('test')")
@@ -1110,11 +1112,77 @@ class TestScriptProcessorRun:
                     with patch(
                         "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
                     ):
-                        processor.run(code=temp_file, wait=True, logs=False)
-                        mock_job.wait.assert_called_once()
+                        with patch(
+                            "sagemaker.core.processing._wait_for_processing_job"
+                        ) as mock_wait:
+                            processor.run(code=temp_file, wait=True, logs=False)
+                            # The wait path must go through the session-aware helper
+                            # (which uses the session's region), not latest_job.wait()
+                            # which resolves a default-region client (issue #5796).
+                            mock_job.wait.assert_not_called()
+                            mock_wait.assert_called_once_with(
+                                sagemaker_session=mock_session,
+                                job_name="test-processing-job",
+                            )
         finally:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
+
+    def test_run_with_wait_and_logs_uses_session(self, mock_session):
+        processor = ScriptProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            command=["python3"],
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        mock_job = Mock()
+        mock_job.processing_job_name = "test-processing-job"
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
+            f.write("print('test')")
+            temp_file = f.name
+
+        try:
+            with patch.object(processor, "_start_new", return_value=mock_job):
+                with patch("os.path.isfile", return_value=True):
+                    with patch(
+                        "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
+                    ):
+                        with patch(
+                            "sagemaker.core.processing.logs_for_processing_job"
+                        ) as mock_logs:
+                            processor.run(code=temp_file, wait=True, logs=True)
+                            # logs path must also be session-aware (issue #5796).
+                            mock_logs.assert_called_once_with(
+                                sagemaker_session=mock_session,
+                                job_name="test-processing-job",
+                                wait=True,
+                            )
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    def test_wait_for_processing_job_uses_session_region(self, mock_session):
+        """_wait_for_processing_job describes via the session's region-aware client."""
+        mock_session.sagemaker_client.describe_processing_job = Mock(
+            return_value={"ProcessingJobStatus": "Completed"}
+        )
+        with patch("sagemaker.core.processing._wait_until", side_effect=lambda fn, poll: fn()):
+            _wait_for_processing_job(mock_session, "test-job", poll=1)
+        mock_session.sagemaker_client.describe_processing_job.assert_called_with(
+            ProcessingJobName="test-job"
+        )
+
+    def test_wait_for_processing_job_raises_on_failure(self, mock_session):
+        mock_session.sagemaker_client.describe_processing_job = Mock(
+            return_value={"ProcessingJobStatus": "Failed", "FailureReason": "boom"}
+        )
+        with patch("sagemaker.core.processing._wait_until", side_effect=lambda fn, poll: fn()):
+            with pytest.raises(Exception):
+                _wait_for_processing_job(mock_session, "test-job", poll=1)
 
     def test_run_without_wait(self, mock_session):
         processor = ScriptProcessor(
