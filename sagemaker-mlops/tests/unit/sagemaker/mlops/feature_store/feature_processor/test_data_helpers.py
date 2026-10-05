@@ -152,6 +152,7 @@ def create_fp_config(
     enable_ingestion=True,
     parameters=None,
     spark_config=None,
+    use_lake_formation_credentials=False,
 ):
     """Helper method to create a FeatureProcessorConfig with fewer arguments."""
 
@@ -163,4 +164,5 @@ def create_fp_config(
         enable_ingestion=enable_ingestion,
         parameters=parameters,
         spark_config=spark_config,
+        use_lake_formation_credentials=use_lake_formation_credentials,
     )

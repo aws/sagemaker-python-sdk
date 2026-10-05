@@ -21,6 +21,14 @@ Workflow Management
    :undoc-members:
    :show-inheritance:
 
+Feature Store
+-------------
+
+.. automodule:: sagemaker.mlops.feature_store
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Local Development
 -----------------
 
@@ -28,6 +36,8 @@ Local Development
    :members:
    :undoc-members:
    :show-inheritance:
+
+
 
 
 Feature Store

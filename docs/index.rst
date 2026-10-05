@@ -11,6 +11,7 @@ SageMaker Python SDK V3
    overview
    installation
    quickstart
+   lifecycle
 
 .. toctree::
    :maxdepth: 2
@@ -36,3 +37,10 @@ SageMaker Python SDK V3
    :hidden:
    
    api/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Full Module Reference
+   :hidden:
+
+   api/full_reference

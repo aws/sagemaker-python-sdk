@@ -43,6 +43,7 @@ S3_OUTPUT_PATH = "s3://my-bucket/output"
 # Batch configuration
 SCHEDULING_PRIORITY = 1
 SHARE_IDENTIFIER = "test-share-id"
+QUOTA_SHARE_NAME = "test-quota-share"
 ATTEMPT_DURATION_IN_SECONDS = 86400
 REASON = "Test termination reason"
 NEXT_TOKEN = "test-next-token"
@@ -136,7 +137,11 @@ LIST_SERVICE_JOB_RESP_EMPTY = {
 LIST_SERVICE_JOB_RESP_WITH_JOBS = {
     "jobSummaryList": [
         {"jobName": JOB_NAME, "jobArn": JOB_ARN, "jobId": JOB_ID},
-        {"jobName": "another-job", "jobArn": "arn:aws:batch:us-west-2:123456789012:job/another-id", "jobId": "another-id"},
+        {
+            "jobName": "another-job",
+            "jobArn": "arn:aws:batch:us-west-2:123456789012:job/another-id",
+            "jobId": "another-id",
+        },
     ],
     "nextToken": None,
 }
@@ -154,6 +159,24 @@ LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS = {
             "jobArn": "arn:aws:batch:us-west-2:123456789012:job/another-id",
             "jobId": "another-id",
             "shareIdentifier": "another-share-identifier",
+        },
+    ],
+    "nextToken": None,
+}
+
+LIST_SERVICE_JOB_BY_QUOTA_SHARE_RESP_WITH_JOBS = {
+    "jobSummaryList": [
+        {
+            "jobName": JOB_NAME,
+            "jobArn": JOB_ARN,
+            "jobId": JOB_ID,
+            "quotaShareName": QUOTA_SHARE_NAME,
+        },
+        {
+            "jobName": "another-job",
+            "jobArn": "arn:aws:batch:us-west-2:123456789012:job/another-id",
+            "jobId": "another-id",
+            "quotaShareName": "another-quota-share",
         },
     ],
     "nextToken": None,
@@ -182,3 +205,7 @@ TRAINING_JOB_PAYLOAD = {
         "TrainingInputMode": "File",
     },
 }
+
+# Quota Management
+QUOTA_SHARE_NAME = "test-quota-share"
+PREEMPTION_CONFIG = {"preemptionRetriesBeforeTermination": 10}

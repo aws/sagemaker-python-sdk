@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import datetime
@@ -28,7 +29,12 @@ from sagemaker.core.local.utils import (
     move_to_destination,
     get_docker_host,
 )
-from sagemaker.core.common_utils import DeferredError, get_config_value, format_tags
+from sagemaker.core.common_utils import (
+    DeferredError,
+    get_config_value,
+    format_tags,
+    validate_path_within_directory,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -514,8 +520,11 @@ class _LocalTransformJob(object):
 
             relative_path = os.path.dirname(os.path.relpath(fn, dataset_dir))
             filename = os.path.basename(fn)
-            copy_directory_structure(working_dir, relative_path)
             destination_path = os.path.join(working_dir, relative_path, filename + ".out")
+
+            validate_path_within_directory(destination_path, working_dir, source_description=fn)
+
+            copy_directory_structure(working_dir, relative_path)
 
             with open(destination_path, "wb") as f:
                 for item in batch_provider.pad(fn, max_payload):

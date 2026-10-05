@@ -1,0 +1,104 @@
+# robots.txt — served at the docs site root (https://sagemaker.readthedocs.io/robots.txt).
+#
+# This file MUST live on the DEFAULT ReadTheDocs version (the V3 / master build):
+# ReadTheDocs only serves robots.txt from the default version at the domain root.
+# A robots.txt shipped inside the non-default V2 build would land at
+# /en/v2/robots.txt, which crawlers never read, so it would have no effect.
+#
+# Purpose: opt the deprecated SageMaker Python SDK V2 docs (/en/v2/) OUT of AI
+# training / data-collection crawls. This is an ADVISORY signal: only compliant
+# crawlers honor it (well-behaved bots from major AI vendors do; abusive crawlers
+# ignore it). It is the crawl opt-out lever.
+#
+# Search de-indexing of the V2 docs is handled SEPARATELY, on the V2 build, by a
+# <meta name="robots" content="noindex"> tag injected on every page plus a
+# <link rel="canonical"> pointing at the V3 page. Those are per-page <head> tags
+# and live on the V2 branch, not here.
+#
+# IMPORTANT — do NOT add a "User-agent: *  Disallow: /en/v2/" rule:
+#   robots.txt Disallow and the noindex meta tag are mutually exclusive on the same
+#   path. A path blocked here is never fetched, so a search crawler would never see
+#   the page's noindex meta and could keep a bare, snippet-less URL in its index.
+#   Generic search bots (Googlebot, Bingbot, ...) must stay ALLOWED so they can read
+#   noindex + canonical and consolidate on V3. Only AI-training/collection crawlers
+#   are blocked below.
+
+# --- OpenAI ---
+User-agent: GPTBot
+Disallow: /en/v2/
+
+User-agent: OAI-SearchBot
+Disallow: /en/v2/
+
+User-agent: ChatGPT-User
+Disallow: /en/v2/
+
+# --- Anthropic ---
+User-agent: ClaudeBot
+Disallow: /en/v2/
+
+User-agent: anthropic-ai
+Disallow: /en/v2/
+
+User-agent: Claude-Web
+Disallow: /en/v2/
+
+# --- Google (Gemini / Vertex AI training; distinct from Googlebot search) ---
+User-agent: Google-Extended
+Disallow: /en/v2/
+
+# --- Common Crawl (open dataset that feeds many LLM training corpora) ---
+User-agent: CCBot
+Disallow: /en/v2/
+
+# --- Meta (Llama training) ---
+User-agent: Meta-ExternalAgent
+Disallow: /en/v2/
+
+User-agent: meta-externalagent
+Disallow: /en/v2/
+
+User-agent: FacebookBot
+Disallow: /en/v2/
+
+# --- Amazon ---
+User-agent: Amazonbot
+Disallow: /en/v2/
+
+# --- Apple (Apple Intelligence training) ---
+User-agent: Applebot-Extended
+Disallow: /en/v2/
+
+# --- ByteDance ---
+User-agent: Bytespider
+Disallow: /en/v2/
+
+# --- Perplexity ---
+User-agent: PerplexityBot
+Disallow: /en/v2/
+
+# --- Cohere ---
+User-agent: cohere-ai
+Disallow: /en/v2/
+
+# --- Others (search-adjacent AI answer engines / data collectors) ---
+User-agent: Diffbot
+Disallow: /en/v2/
+
+User-agent: Omgilibot
+Disallow: /en/v2/
+
+User-agent: Omgili
+Disallow: /en/v2/
+
+User-agent: YouBot
+Disallow: /en/v2/
+
+User-agent: ImagesiftBot
+Disallow: /en/v2/
+
+User-agent: PetalBot
+Disallow: /en/v2/
+
+User-agent: Timpibot
+Disallow: /en/v2/

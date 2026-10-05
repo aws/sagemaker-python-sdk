@@ -11,15 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Comprehensive unit tests for uncovered lines in sagemaker.core.remote_function.job module."""
+
 from __future__ import absolute_import
 
 import json
 import os
 import pytest
 import sys
-import tempfile
-from unittest.mock import Mock, patch, MagicMock, mock_open
-from io import BytesIO
+from unittest.mock import Mock, patch, MagicMock
 
 from sagemaker.core.remote_function.job import (
     _JobSettings,
@@ -35,7 +34,6 @@ from sagemaker.core.remote_function.job import (
     _logs_init,
     _get_initial_job_state,
     LogState,
-    _RunInfo,
 )
 from sagemaker.core.remote_function.checkpoint_location import CheckpointLocation
 
@@ -131,9 +129,20 @@ class TestJobSettingsValidation:
         with patch.object(sys, "version_info", (3, 8, 0)):
             with pytest.raises(
                 ValueError,
-                match="SageMaker Spark image for remote job only supports Python version 3.9",
+                match="SageMaker Spark image for remote job only supports Python versions 3.9 and 3.12",
             ):
                 _JobSettings._get_default_spark_image(mock_session)
+
+    @patch("sagemaker.core.remote_function.job.image_uris.retrieve", return_value="mock-image-uri")
+    def test_get_default_spark_image_auto_detects_pyspark_version(
+        self, mock_retrieve, mock_session
+    ):
+        mock_pyspark = MagicMock(__version__="3.5.1")
+        with patch.object(sys, "version_info", (3, 9, 0)):
+            with patch.dict("sys.modules", {"pyspark": mock_pyspark}):
+                result = _JobSettings._get_default_spark_image(mock_session)
+        assert result == "mock-image-uri"
+        assert mock_retrieve.call_args.kwargs["version"] == "3.5"
 
 
 class TestJobMethods:
@@ -144,15 +153,16 @@ class TestJobMethods:
         response = {
             "TrainingJobName": "test-job",
             "OutputDataConfig": {"S3OutputPath": "s3://bucket/output"},
+            "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "test-key"},
         }
         job = _Job.from_describe_response(response, mock_session)
         assert job.job_name == "test-job"
         assert job.s3_uri == "s3://bucket/output"
-        assert job._last_describe_response == response
+        assert job.verification_key == "test-key"
 
     def test_describe_cached_completed(self, mock_session):
         """Test lines 865-871: describe with cached completed job."""
-        job = _Job("test-job", "s3://bucket/output", mock_session)
+        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         job._last_describe_response = {"TrainingJobStatus": "Completed"}
 
         result = job.describe()
@@ -161,7 +171,7 @@ class TestJobMethods:
 
     def test_describe_cached_failed(self, mock_session):
         """Test lines 865-871: describe with cached failed job."""
-        job = _Job("test-job", "s3://bucket/output", mock_session)
+        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         job._last_describe_response = {"TrainingJobStatus": "Failed"}
 
         result = job.describe()
@@ -170,7 +180,7 @@ class TestJobMethods:
 
     def test_describe_cached_stopped(self, mock_session):
         """Test lines 865-871: describe with cached stopped job."""
-        job = _Job("test-job", "s3://bucket/output", mock_session)
+        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         job._last_describe_response = {"TrainingJobStatus": "Stopped"}
 
         result = job.describe()
@@ -179,7 +189,7 @@ class TestJobMethods:
 
     def test_stop(self, mock_session):
         """Test lines 886-887: stop method."""
-        job = _Job("test-job", "s3://bucket/output", mock_session)
+        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         job.stop()
         mock_session.sagemaker_client.stop_training_job.assert_called_once_with(
             TrainingJobName="test-job"
@@ -188,7 +198,7 @@ class TestJobMethods:
     @patch("sagemaker.core.remote_function.job._logs_for_job")
     def test_wait(self, mock_logs, mock_session):
         """Test lines 889-903: wait method."""
-        job = _Job("test-job", "s3://bucket/output", mock_session)
+        job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         mock_logs.return_value = {"TrainingJobStatus": "Completed"}
 
         job.wait(timeout=100)

@@ -15,6 +15,7 @@
 This module contains constant values that are shared across different
 components of the SageMaker SDK.
 """
+
 from __future__ import absolute_import
 
 # Script mode environment variable names

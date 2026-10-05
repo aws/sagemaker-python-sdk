@@ -55,11 +55,11 @@ def _set_tokens_to_tokens_threshold(tokens: int) -> int:
         return 128
     if tokens <= 256:
         return 256
-    elif tokens <= 512:
+    if tokens <= 512:
         return 512
-    elif tokens <= 1024:
+    if tokens <= 1024:
         return 1024
-    elif tokens <= 2048:
+    if tokens <= 2048:
         return 2048
     return 4096
 
@@ -104,7 +104,7 @@ def _get_default_djl_configurations(
     if default_tensor_parallel_degree is None:
         default_tensor_parallel_degree = "max"
     default_data_type = _get_default_data_type()
-    default_max_tokens, default_max_new_tokens = _get_default_max_tokens(
+    _, default_max_new_tokens = _get_default_max_tokens(
         schema_builder.sample_input, schema_builder.sample_output
     )
 
