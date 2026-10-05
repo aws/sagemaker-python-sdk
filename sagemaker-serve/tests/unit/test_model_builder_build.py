@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 import tempfile
 import os
 
+from sagemaker.core.exceptions import UnexpectedStatusException
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -520,8 +521,9 @@ class TestModelBuilderWaitForEndpoint(unittest.TestCase):
             sagemaker_session=self.mock_session,
         )
 
-        # _wait_for_endpoint doesn't raise, just waits
-        builder._wait_for_endpoint("test-endpoint", wait=True, show_progress=False)
+        # A deployment that does not reach InService raises
+        with self.assertRaises(UnexpectedStatusException):
+            builder._wait_for_endpoint("test-endpoint", wait=True, show_progress=False)
 
         # Verify wait was called
         mock_wait.assert_called_once()
