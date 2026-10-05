@@ -15,7 +15,10 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from sagemaker.serve.utils.model_package_utils import is_restricted_model_package, get_s3_uri_from_inference_spec
+from sagemaker.serve.utils.model_package_utils import (
+    is_restricted_model_package,
+    get_s3_uri_from_inference_spec,
+)
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 
@@ -79,6 +82,7 @@ class TestIsRestrictedModelPackage(unittest.TestCase):
 
     def test_unassigned_managed_storage_type_returns_false(self):
         from sagemaker.core.utils.utils import Unassigned
+
         pkg = Mock()
         pkg.managed_storage_type = Unassigned()
         self.assertFalse(is_restricted_model_package(pkg))
@@ -102,7 +106,9 @@ class TestGetS3UriFromInferenceSpec(unittest.TestCase):
 
     def test_returns_uri_for_normal(self):
         pkg = _make_normal_model_package("s3://bucket/path/")
-        self.assertEqual(get_s3_uri_from_inference_spec(pkg.inference_specification), "s3://bucket/path/")
+        self.assertEqual(
+            get_s3_uri_from_inference_spec(pkg.inference_specification), "s3://bucket/path/"
+        )
 
     def test_returns_none_when_spec_is_none(self):
         self.assertIsNone(get_s3_uri_from_inference_spec(None))
@@ -143,8 +149,14 @@ class TestModelBuilderRMPBuild(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization", return_value=True)
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
     def test_build_rmp_nova_includes_env_vars(
-        self, mock_serve, mock_is_mc, mock_fetch_mp, mock_arn,
-        mock_is_nova, mock_nova_config, mock_create
+        self,
+        mock_serve,
+        mock_is_mc,
+        mock_fetch_mp,
+        mock_arn,
+        mock_is_nova,
+        mock_nova_config,
+        mock_create,
     ):
         """Nova RMP build includes environment variables from hosting config."""
         mock_fetch_mp.return_value = self.rmp_package
@@ -163,9 +175,15 @@ class TestModelBuilderRMPBuild(unittest.TestCase):
 
         call_kwargs = mock_create.call_args[1]
         container = call_kwargs["containers"][0]
-        self.assertEqual(container.model_package_name, "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp-nova/1")
+        self.assertEqual(
+            container.model_package_name,
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp-nova/1",
+        )
         self.assertEqual(container.environment, {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"})
-        self.assertEqual(container.image, "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-inference-repo:latest")
+        self.assertEqual(
+            container.image,
+            "708977205387.dkr.ecr.us-east-1.amazonaws.com/nova-inference-repo:latest",
+        )
 
     @patch("sagemaker.core.resources.Model.create")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
@@ -174,8 +192,7 @@ class TestModelBuilderRMPBuild(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization", return_value=True)
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
     def test_build_rmp_non_nova_with_user_image(
-        self, mock_serve, mock_is_mc, mock_fetch_mp, mock_arn,
-        mock_is_nova, mock_create
+        self, mock_serve, mock_is_mc, mock_fetch_mp, mock_arn, mock_is_nova, mock_create
     ):
         """Non-Nova RMP with user-provided image_uri uses it."""
         mock_fetch_mp.return_value = self.rmp_package
@@ -190,8 +207,13 @@ class TestModelBuilderRMPBuild(unittest.TestCase):
 
         call_kwargs = mock_create.call_args[1]
         container = call_kwargs["containers"][0]
-        self.assertEqual(container.model_package_name, "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp-nova/1")
-        self.assertEqual(container.image, "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.36.0")
+        self.assertEqual(
+            container.model_package_name,
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp-nova/1",
+        )
+        self.assertEqual(
+            container.image, "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.36.0"
+        )
 
     @patch("sagemaker.core.resources.Model.create")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
@@ -200,8 +222,7 @@ class TestModelBuilderRMPBuild(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization", return_value=True)
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
     def test_build_rmp_non_nova_no_image(
-        self, mock_serve, mock_is_mc, mock_fetch_mp, mock_arn,
-        mock_is_nova, mock_create
+        self, mock_serve, mock_is_mc, mock_fetch_mp, mock_arn, mock_is_nova, mock_create
     ):
         """Non-Nova RMP without image_uri passes only model_package_name."""
         mock_fetch_mp.return_value = self.rmp_package
@@ -215,7 +236,10 @@ class TestModelBuilderRMPBuild(unittest.TestCase):
 
         call_kwargs = mock_create.call_args[1]
         container = call_kwargs["containers"][0]
-        self.assertEqual(container.model_package_name, "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp-nova/1")
+        self.assertEqual(
+            container.model_package_name,
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp-nova/1",
+        )
 
     @patch("sagemaker.core.resources.Model.create")
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_peft", return_value="FULL")
@@ -225,8 +249,14 @@ class TestModelBuilderRMPBuild(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization", return_value=True)
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
     def test_build_non_lora_normal_uses_s3_uri(
-        self, mock_serve, mock_is_mc, mock_fetch_mp, mock_is_nova,
-        mock_recipe, mock_peft, mock_create
+        self,
+        mock_serve,
+        mock_is_mc,
+        mock_fetch_mp,
+        mock_is_nova,
+        mock_recipe,
+        mock_peft,
+        mock_create,
     ):
         """Regression: normal non-LORA build still uses s3_data_source with s3_uri."""
         mock_fetch_mp.return_value = self.normal_package
@@ -240,7 +270,9 @@ class TestModelBuilderRMPBuild(unittest.TestCase):
 
         call_kwargs = mock_create.call_args[1]
         container = call_kwargs["containers"][0]
-        self.assertEqual(container.model_data_source.s3_data_source.s3_uri, "s3://bucket/model/output/")
+        self.assertEqual(
+            container.model_data_source.s3_data_source.s3_uri, "s3://bucket/model/output/"
+        )
 
 
 class TestModelBuilderRMPRecipeConfig(unittest.TestCase):
@@ -250,11 +282,24 @@ class TestModelBuilderRMPRecipeConfig(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model")
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_model_package")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization", return_value=True)
-    def test_no_crash_when_s3_uri_is_none(self, mock_is_mc, mock_fetch_mp, mock_fetch_hub, mock_is_nova):
+    def test_no_crash_when_s3_uri_is_none(
+        self, mock_is_mc, mock_fetch_mp, mock_fetch_hub, mock_is_nova
+    ):
         rmp = _make_rmp_model_package()
         mock_fetch_mp.return_value = rmp
         mock_fetch_hub.return_value = {
-            "RecipeCollection": [{"Name": "nova-lite", "HostingConfigs": [{"Profile": "Default", "EcrAddress": "img", "InstanceType": "ml.g6.48xlarge"}]}]
+            "RecipeCollection": [
+                {
+                    "Name": "nova-lite",
+                    "HostingConfigs": [
+                        {
+                            "Profile": "Default",
+                            "EcrAddress": "img",
+                            "InstanceType": "ml.g6.48xlarge",
+                        }
+                    ],
+                }
+            ]
         }
 
         builder = ModelBuilder(model=rmp, role_arn="arn:aws:iam::123:role/Role")
@@ -270,7 +315,14 @@ class TestModelBuilderRMPRecipeConfig(unittest.TestCase):
         normal = _make_normal_model_package()
         mock_fetch_mp.return_value = normal
         mock_fetch_hub.return_value = {
-            "RecipeCollection": [{"Name": "llama-3", "HostingConfigs": [{"Profile": "Default", "EcrAddress": "img", "InstanceType": "ml.g5.2xlarge"}]}]
+            "RecipeCollection": [
+                {
+                    "Name": "llama-3",
+                    "HostingConfigs": [
+                        {"Profile": "Default", "EcrAddress": "img", "InstanceType": "ml.g5.2xlarge"}
+                    ],
+                }
+            ]
         }
 
         builder = ModelBuilder(model=normal, role_arn="arn:aws:iam::123:role/Role")
@@ -283,18 +335,28 @@ class TestModelBuilderRMPConvertLocal(unittest.TestCase):
     """Tests for _convert_model_data_source_to_local with restricted model packages."""
 
     def test_returns_none_for_rmp(self):
-        builder = ModelBuilder(model=_make_rmp_model_package(), role_arn="arn:aws:iam::123:role/Role")
-        data_source = _make_rmp_model_package().inference_specification.containers[0].model_data_source
+        builder = ModelBuilder(
+            model=_make_rmp_model_package(), role_arn="arn:aws:iam::123:role/Role"
+        )
+        data_source = (
+            _make_rmp_model_package().inference_specification.containers[0].model_data_source
+        )
         self.assertIsNone(builder._convert_model_data_source_to_local(data_source))
 
     def test_works_for_normal(self):
-        builder = ModelBuilder(model=_make_normal_model_package(), role_arn="arn:aws:iam::123:role/Role")
-        data_source = _make_normal_model_package().inference_specification.containers[0].model_data_source
+        builder = ModelBuilder(
+            model=_make_normal_model_package(), role_arn="arn:aws:iam::123:role/Role"
+        )
+        data_source = (
+            _make_normal_model_package().inference_specification.containers[0].model_data_source
+        )
         result = builder._convert_model_data_source_to_local(data_source)
         self.assertEqual(result["S3DataSource"]["S3Uri"], "s3://bucket/model/output/")
 
     def test_returns_none_when_data_source_is_none(self):
-        builder = ModelBuilder(model=_make_normal_model_package(), role_arn="arn:aws:iam::123:role/Role")
+        builder = ModelBuilder(
+            model=_make_normal_model_package(), role_arn="arn:aws:iam::123:role/Role"
+        )
         self.assertIsNone(builder._convert_model_data_source_to_local(None))
 
 

@@ -28,6 +28,7 @@ Compute parameter:
     - TrainingJobCompute: For standard SageMaker Training Jobs
     - HyperPodCompute: For SageMaker HyperPod (validates 'SageMaker' in Lambda name)
 """
+
 from __future__ import absolute_import
 
 import os
@@ -36,7 +37,6 @@ import pytest
 
 from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
 from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
-
 
 # ---------------------------------------------------------------------------
 # Lambda ARNs are provided by the oss_lambda_arn / nova_lambda_arn fixtures
@@ -47,12 +47,8 @@ from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 # ---------------------------------------------------------------------------
 # Constants: Local reward function file paths (from tests/integ/train/code/)
 # ---------------------------------------------------------------------------
-OSS_LOCAL_REWARD_FN = os.path.join(
-    os.path.dirname(__file__), "code", "oss_reward_fn.py"
-)
-NOVA_LOCAL_REWARD_FN = os.path.join(
-    os.path.dirname(__file__), "code", "nova_reward_fn.py"
-)
+OSS_LOCAL_REWARD_FN = os.path.join(os.path.dirname(__file__), "code", "oss_reward_fn.py")
+NOVA_LOCAL_REWARD_FN = os.path.join(os.path.dirname(__file__), "code", "nova_reward_fn.py")
 
 
 # ---------------------------------------------------------------------------
@@ -386,7 +382,9 @@ class TestNovaRemoteLambda:
             assert "aggregate_reward_score" in r["output"]
             assert isinstance(r["output"]["aggregate_reward_score"], (int, float))
 
-    def test_lambda_nova_training_job_compute_single_sample(self, nova_sample_data, nova_lambda_arn):
+    def test_lambda_nova_training_job_compute_single_sample(
+        self, nova_sample_data, nova_lambda_arn
+    ):
         """Test Nova Lambda ARN with a single sample."""
         result = verify_reward_function(
             reward_function=nova_lambda_arn,
@@ -425,6 +423,7 @@ class TestNovaRemoteLambda:
         assert result["total_samples"] == 2
         assert result["successful_samples"] == 2
 
+
 # ---------------------------------------------------------------------------
 # Test class: OSS Remote Lambda (is_nova=False)
 # ---------------------------------------------------------------------------
@@ -451,7 +450,9 @@ class TestOSSRemoteLambda:
         assert result["total_samples"] == 1
         assert result["successful_samples"] == 1
 
-    def test_lambda_oss_training_job_compute_multiple_samples(self, oss_sample_data, oss_lambda_arn):
+    def test_lambda_oss_training_job_compute_multiple_samples(
+        self, oss_sample_data, oss_lambda_arn
+    ):
         """Test OSS Lambda ARN with TrainingJobCompute and multiple samples."""
         result = verify_reward_function(
             reward_function=oss_lambda_arn,
@@ -532,7 +533,6 @@ class TestErrorHandling:
                 validate_format=True,
                 is_nova=True,
             )
-
 
     def test_hyperpod_compute_requires_sagemaker_in_function_name(
         self, nova_sample_data, nova_lambda_arn

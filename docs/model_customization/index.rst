@@ -23,3 +23,4 @@ Key Benefits
    open_weight_model_customization
    nova
    evaluation
+   notifications_setup

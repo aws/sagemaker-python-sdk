@@ -11,12 +11,11 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for local pipeline executor."""
+
 from __future__ import absolute_import
 
 import pytest
-import json
-from unittest.mock import Mock, MagicMock, patch
-from botocore.exceptions import ClientError
+from unittest.mock import Mock, patch
 
 from sagemaker.mlops.local.pipeline import (
     LocalPipelineExecutor,
@@ -30,10 +29,9 @@ from sagemaker.mlops.local.pipeline import (
 )
 from sagemaker.mlops.local.exceptions import StepExecutionException
 from sagemaker.mlops.workflow.steps import StepTypeEnum
-from sagemaker.core.workflow.parameters import ParameterString, ParameterInteger
+from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.core.workflow.execution_variables import ExecutionVariables
-from sagemaker.core.workflow.functions import Join, JsonGet
-from sagemaker.core.workflow.properties import Properties
+from sagemaker.core.workflow.functions import Join
 
 
 @pytest.fixture
@@ -74,7 +72,7 @@ class TestLocalPipelineExecutor:
 
     def test_init(self, mock_execution, mock_session):
         """Test LocalPipelineExecutor initialization."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -89,7 +87,7 @@ class TestLocalPipelineExecutor:
 
     def test_execute_empty_pipeline(self, mock_execution, mock_session):
         """Test execute with empty pipeline."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -107,16 +105,14 @@ class TestLocalPipelineExecutor:
         mock_step.name = "failing-step"
         mock_step.step_type = StepTypeEnum.TRAINING
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {"failing-step": mock_step}
             mock_dag.__iter__ = Mock(return_value=iter([mock_step]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
-            with patch.object(LocalPipelineExecutor, '_execute_step') as mock_execute:
-                mock_execute.side_effect = StepExecutionException(
-                    "failing-step", "Test error"
-                )
+            with patch.object(LocalPipelineExecutor, "_execute_step") as mock_execute:
+                mock_execute.side_effect = StepExecutionException("failing-step", "Test error")
 
                 executor = LocalPipelineExecutor(mock_execution, mock_session)
                 result = executor.execute()
@@ -131,7 +127,7 @@ class TestLocalPipelineExecutor:
         param = ParameterString(name="test-param", default_value="default")
         mock_execution.pipeline_parameters = {"test-param": "test-value"}
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -144,14 +140,14 @@ class TestLocalPipelineExecutor:
 
     def test_evaluate_pipeline_variable_primitive(self, mock_execution, mock_session):
         """Test evaluate_pipeline_variable with primitive value."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             assert executor.evaluate_pipeline_variable("string", "test-step") == "string"
             assert executor.evaluate_pipeline_variable(123, "test-step") == 123
             assert executor.evaluate_pipeline_variable(True, "test-step") is True
@@ -159,14 +155,14 @@ class TestLocalPipelineExecutor:
 
     def test_evaluate_join_function(self, mock_execution, mock_session):
         """Test _evaluate_join_function."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             join_func = Join(on="/", values=["s3://bucket", "prefix", "file.txt"])
             result = executor._evaluate_join_function(join_func, "test-step")
 
@@ -174,80 +170,80 @@ class TestLocalPipelineExecutor:
 
     def test_evaluate_execution_variable_pipeline_name(self, mock_execution, mock_session):
         """Test _evaluate_execution_variable for pipeline name."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             result = executor._evaluate_execution_variable(ExecutionVariables.PIPELINE_NAME)
             assert result == "test-pipeline"
 
     def test_evaluate_execution_variable_pipeline_arn(self, mock_execution, mock_session):
         """Test _evaluate_execution_variable for pipeline ARN."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             result = executor._evaluate_execution_variable(ExecutionVariables.PIPELINE_ARN)
             assert result == "test-pipeline"
 
     def test_evaluate_execution_variable_execution_id(self, mock_execution, mock_session):
         """Test _evaluate_execution_variable for execution ID."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             result = executor._evaluate_execution_variable(ExecutionVariables.PIPELINE_EXECUTION_ID)
             assert result == "exec-123"
 
     def test_evaluate_execution_variable_start_datetime(self, mock_execution, mock_session):
         """Test _evaluate_execution_variable for start datetime."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             result = executor._evaluate_execution_variable(ExecutionVariables.START_DATETIME)
             assert result == "2024-01-01T00:00:00"
 
     def test_evaluate_execution_variable_current_datetime(self, mock_execution, mock_session):
         """Test _evaluate_execution_variable for current datetime."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             result = executor._evaluate_execution_variable(ExecutionVariables.CURRENT_DATETIME)
             # Should return a datetime object
             assert result is not None
 
     def test_parse_arguments_dict(self, mock_execution, mock_session):
         """Test _parse_arguments with dictionary."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             args = {"key1": "value1", "key2": 123}
             result = executor._parse_arguments(args, "test-step")
 
@@ -255,14 +251,14 @@ class TestLocalPipelineExecutor:
 
     def test_parse_arguments_list(self, mock_execution, mock_session):
         """Test _parse_arguments with list."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
+
             args = ["value1", 123, True]
             result = executor._parse_arguments(args, "test-step")
 
@@ -270,20 +266,15 @@ class TestLocalPipelineExecutor:
 
     def test_parse_arguments_nested(self, mock_execution, mock_session):
         """Test _parse_arguments with nested structures."""
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             executor = LocalPipelineExecutor(mock_execution, mock_session)
-            
-            args = {
-                "outer": {
-                    "inner": ["value1", 123]
-                },
-                "list": [{"key": "value"}]
-            }
+
+            args = {"outer": {"inner": ["value1", 123]}, "list": [{"key": "value"}]}
             result = executor._parse_arguments(args, "test-step")
 
             assert result == args
@@ -293,7 +284,7 @@ class TestLocalPipelineExecutor:
         mock_step = Mock()
         mock_step.arguments = {"TrainingJobName": "job-123"}
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -314,23 +305,24 @@ class TestTrainingStepExecutor:
         mock_step.name = "training-step"
         mock_step.step_type = StepTypeEnum.TRAINING
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             pipeline_executor = LocalPipelineExecutor(mock_execution, mock_session)
-            pipeline_executor.evaluate_step_arguments = Mock(return_value={
-                "TrainingJobName": "job-123",
-                "RoleArn": "arn:aws:iam::123:role/SageMakerRole"
-            })
+            pipeline_executor.evaluate_step_arguments = Mock(
+                return_value={
+                    "TrainingJobName": "job-123",
+                    "RoleArn": "arn:aws:iam::123:role/SageMakerRole",
+                }
+            )
 
             mock_session.sagemaker_client.create_training_job = Mock()
-            mock_session.sagemaker_client.describe_training_job = Mock(return_value={
-                "TrainingJobName": "job-123",
-                "TrainingJobStatus": "Completed"
-            })
+            mock_session.sagemaker_client.describe_training_job = Mock(
+                return_value={"TrainingJobName": "job-123", "TrainingJobStatus": "Completed"}
+            )
 
             executor = _TrainingStepExecutor(pipeline_executor, mock_step)
             result = executor.execute()
@@ -344,7 +336,7 @@ class TestTrainingStepExecutor:
         mock_step.name = "training-step"
         mock_step.step_type = StepTypeEnum.TRAINING
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -374,30 +366,32 @@ class TestProcessingStepExecutor:
         mock_step.name = "processing-step"
         mock_step.step_type = StepTypeEnum.PROCESSING
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             pipeline_executor = LocalPipelineExecutor(mock_execution, mock_session)
-            pipeline_executor.evaluate_step_arguments = Mock(return_value={
-                "ProcessingJobName": "proc-123"
-            })
+            pipeline_executor.evaluate_step_arguments = Mock(
+                return_value={"ProcessingJobName": "proc-123"}
+            )
 
             mock_session.sagemaker_client.create_processing_job = Mock()
-            mock_session.sagemaker_client.describe_processing_job = Mock(return_value={
-                "ProcessingJobName": "proc-123",
-                "ProcessingJobStatus": "Completed",
-                "ProcessingOutputConfig": {
-                    "Outputs": [
-                        {"OutputName": "output1", "S3Output": {"S3Uri": "s3://bucket/output"}}
-                    ]
-                },
-                "ProcessingInputs": [
-                    {"InputName": "input1", "S3Input": {"S3Uri": "s3://bucket/input"}}
-                ]
-            })
+            mock_session.sagemaker_client.describe_processing_job = Mock(
+                return_value={
+                    "ProcessingJobName": "proc-123",
+                    "ProcessingJobStatus": "Completed",
+                    "ProcessingOutputConfig": {
+                        "Outputs": [
+                            {"OutputName": "output1", "S3Output": {"S3Uri": "s3://bucket/output"}}
+                        ]
+                    },
+                    "ProcessingInputs": [
+                        {"InputName": "input1", "S3Input": {"S3Uri": "s3://bucket/input"}}
+                    ],
+                }
+            )
 
             executor = _ProcessingStepExecutor(pipeline_executor, mock_step)
             result = executor.execute()
@@ -419,12 +413,10 @@ class TestConditionStepExecutor:
         mock_step.if_steps = []
         mock_step.else_steps = []
         mock_step.step_only_arguments = {
-            "Conditions": [
-                {"Type": "Equals", "LeftValue": 1, "RightValue": 1}
-            ]
+            "Conditions": [{"Type": "Equals", "LeftValue": 1, "RightValue": 1}]
         }
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -445,12 +437,10 @@ class TestConditionStepExecutor:
         mock_step.if_steps = []
         mock_step.else_steps = []
         mock_step.step_only_arguments = {
-            "Conditions": [
-                {"Type": "Equals", "LeftValue": 1, "RightValue": 2}
-            ]
+            "Conditions": [{"Type": "Equals", "LeftValue": 1, "RightValue": 2}]
         }
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -473,22 +463,24 @@ class TestTransformStepExecutor:
         mock_step.name = "transform-step"
         mock_step.step_type = StepTypeEnum.TRANSFORM
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             pipeline_executor = LocalPipelineExecutor(mock_execution, mock_session)
-            pipeline_executor.evaluate_step_arguments = Mock(return_value={
-                "TransformJobName": "transform-123"
-            })
+            pipeline_executor.evaluate_step_arguments = Mock(
+                return_value={"TransformJobName": "transform-123"}
+            )
 
             mock_session.sagemaker_client.create_transform_job = Mock()
-            mock_session.sagemaker_client.describe_transform_job = Mock(return_value={
-                "TransformJobName": "transform-123",
-                "TransformJobStatus": "Completed"
-            })
+            mock_session.sagemaker_client.describe_transform_job = Mock(
+                return_value={
+                    "TransformJobName": "transform-123",
+                    "TransformJobStatus": "Completed",
+                }
+            )
 
             executor = _TransformStepExecutor(pipeline_executor, mock_step)
             result = executor.execute()
@@ -505,7 +497,7 @@ class TestCreateModelStepExecutor:
         mock_step.name = "create-model-step"
         mock_step.step_type = StepTypeEnum.CREATE_MODEL
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -515,9 +507,9 @@ class TestCreateModelStepExecutor:
             pipeline_executor.evaluate_step_arguments = Mock(return_value={})
 
             mock_session.sagemaker_client.create_model = Mock()
-            mock_session.sagemaker_client.describe_model = Mock(return_value={
-                "ModelName": "model-123"
-            })
+            mock_session.sagemaker_client.describe_model = Mock(
+                return_value={"ModelName": "model-123"}
+            )
 
             executor = _CreateModelStepExecutor(pipeline_executor, mock_step)
             result = executor.execute()
@@ -534,19 +526,19 @@ class TestFailStepExecutor:
         mock_step.name = "fail-step"
         mock_step.step_type = StepTypeEnum.FAIL
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
             mock_graph.from_pipeline = Mock(return_value=mock_dag)
 
             pipeline_executor = LocalPipelineExecutor(mock_execution, mock_session)
-            pipeline_executor.evaluate_step_arguments = Mock(return_value={
-                "ErrorMessage": "Test failure message"
-            })
+            pipeline_executor.evaluate_step_arguments = Mock(
+                return_value={"ErrorMessage": "Test failure message"}
+            )
 
             executor = _FailStepExecutor(pipeline_executor, mock_step)
-            result = executor.execute()
+            executor.execute()
 
             # Should update step properties and then fail
             mock_execution.update_step_properties.assert_called_once()
@@ -564,7 +556,7 @@ class TestStepExecutorFactory:
         mock_step.name = "training-step"
         mock_step.step_type = StepTypeEnum.TRAINING
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -583,7 +575,7 @@ class TestStepExecutorFactory:
         mock_step.name = "processing-step"
         mock_step.step_type = StepTypeEnum.PROCESSING
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -602,7 +594,7 @@ class TestStepExecutorFactory:
         mock_step.name = "condition-step"
         mock_step.step_type = StepTypeEnum.CONDITION
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -621,7 +613,7 @@ class TestStepExecutorFactory:
         mock_step.name = "transform-step"
         mock_step.step_type = StepTypeEnum.TRANSFORM
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -640,7 +632,7 @@ class TestStepExecutorFactory:
         mock_step.name = "create-model-step"
         mock_step.step_type = StepTypeEnum.CREATE_MODEL
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -659,7 +651,7 @@ class TestStepExecutorFactory:
         mock_step.name = "fail-step"
         mock_step.step_type = StepTypeEnum.FAIL
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))
@@ -678,7 +670,7 @@ class TestStepExecutorFactory:
         mock_step.name = "unsupported-step"
         mock_step.step_type = StepTypeEnum.LAMBDA  # Unsupported in local mode
 
-        with patch('sagemaker.mlops.local.pipeline.PipelineGraph') as mock_graph:
+        with patch("sagemaker.mlops.local.pipeline.PipelineGraph") as mock_graph:
             mock_dag = Mock()
             mock_dag.step_map = {}
             mock_dag.__iter__ = Mock(return_value=iter([]))

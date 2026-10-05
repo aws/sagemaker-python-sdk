@@ -6,6 +6,7 @@
 #
 #     http://aws.amazon.com/apache2.0/
 """Unit tests for AI inference recommender exceptions."""
+
 from __future__ import absolute_import
 
 from sagemaker.core.utils.exceptions import SageMakerCoreError, ValidationError

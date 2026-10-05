@@ -24,9 +24,9 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_sft_trainer_data_mixing_integration.py -v -s
 """
+
 from __future__ import absolute_import
 
-import io
 import json
 import logging
 import time
@@ -56,7 +56,9 @@ def _generate_training_data() -> str:
         sample = {
             "schemaVersion": "bedrock-conversation-2024",
             "system": [
-                {"text": "You are a helpful assistant who answers the question based on the task assigned"}
+                {
+                    "text": "You are a helpful assistant who answers the question based on the task assigned"
+                }
             ],
             "messages": [
                 {"role": "user", "content": [{"text": f"Q{i}"}]},
@@ -183,9 +185,9 @@ def test_sft_trainer_nova_lite2_with_data_mixing(sagemaker_session_us_east_1, tr
         time.sleep(poll_interval)
 
     # Verify job completed successfully
-    assert training_job.training_job_status == "Completed", (
-        f"Training job did not complete. Status: {training_job.training_job_status}"
-    )
+    assert (
+        training_job.training_job_status == "Completed"
+    ), f"Training job did not complete. Status: {training_job.training_job_status}"
     assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
     logger.info("SFT training with data mixing completed successfully.")

@@ -24,6 +24,7 @@ Prerequisites:
 
 Related ticket: V2184920638
 """
+
 import json
 import pytest
 import boto3
@@ -38,7 +39,6 @@ from sagemaker.mlops.workflow.clarify_check_step import (
     DataBiasCheckConfig,
 )
 from sagemaker.mlops.workflow.check_job_config import CheckJobConfig
-
 
 # Use a fake KMS key ARN — we never actually encrypt anything, we just verify
 # the key appears in the compiled request dict.
@@ -135,9 +135,7 @@ class TestDataQualityCheckStepKms:
         args = step.arguments
 
         s3_output = args["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]
-        assert "KmsKeyId" in s3_output, (
-            f"Expected KmsKeyId in S3Output but got: {s3_output}"
-        )
+        assert "KmsKeyId" in s3_output, f"Expected KmsKeyId in S3Output but got: {s3_output}"
         assert s3_output["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
 
     def test_volume_kms_key_in_arguments(self, check_job_config_with_kms, bucket):
@@ -146,9 +144,9 @@ class TestDataQualityCheckStepKms:
         args = step.arguments
 
         cluster_config = args["ProcessingResources"]["ClusterConfig"]
-        assert "VolumeKmsKeyId" in cluster_config, (
-            f"Expected VolumeKmsKeyId in ClusterConfig but got: {cluster_config}"
-        )
+        assert (
+            "VolumeKmsKeyId" in cluster_config
+        ), f"Expected VolumeKmsKeyId in ClusterConfig but got: {cluster_config}"
         assert cluster_config["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
 
     def test_no_kms_keys_when_not_configured(self, check_job_config_no_kms, bucket):
@@ -169,8 +167,13 @@ class TestDataQualityCheckStepKms:
 
         json_str = json.dumps(args, default=str)
         parsed = json.loads(json_str)
-        assert parsed["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
-        assert parsed["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
+        assert (
+            parsed["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["KmsKeyId"]
+            == _TEST_OUTPUT_KMS_KEY
+        )
+        assert (
+            parsed["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
+        )
 
 
 class TestDataBiasCheckStepKms:
@@ -210,9 +213,7 @@ class TestDataBiasCheckStepKms:
         args = step.arguments
 
         s3_output = args["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]
-        assert "KmsKeyId" in s3_output, (
-            f"Expected KmsKeyId in S3Output but got: {s3_output}"
-        )
+        assert "KmsKeyId" in s3_output, f"Expected KmsKeyId in S3Output but got: {s3_output}"
         assert s3_output["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
 
     def test_volume_kms_key_in_arguments(self, check_job_config_with_kms, bucket):
@@ -221,9 +222,9 @@ class TestDataBiasCheckStepKms:
         args = step.arguments
 
         cluster_config = args["ProcessingResources"]["ClusterConfig"]
-        assert "VolumeKmsKeyId" in cluster_config, (
-            f"Expected VolumeKmsKeyId in ClusterConfig but got: {cluster_config}"
-        )
+        assert (
+            "VolumeKmsKeyId" in cluster_config
+        ), f"Expected VolumeKmsKeyId in ClusterConfig but got: {cluster_config}"
         assert cluster_config["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
 
     def test_no_kms_keys_when_not_configured(self, check_job_config_no_kms, bucket):
@@ -244,5 +245,10 @@ class TestDataBiasCheckStepKms:
 
         json_str = json.dumps(args, default=str)
         parsed = json.loads(json_str)
-        assert parsed["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
-        assert parsed["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
+        assert (
+            parsed["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["KmsKeyId"]
+            == _TEST_OUTPUT_KMS_KEY
+        )
+        assert (
+            parsed["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
+        )
