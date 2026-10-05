@@ -402,6 +402,21 @@ EXPLAINABILITY_ANALYSIS_CONFIG_WITH_LABEL_HEADERS["predictor"][
 ] = ANALYSIS_CONFIG_LABEL_HEADERS
 
 
+def _unique_name_from_base(base, *args, **kwargs):
+    """Deterministic, collision-free stand-in for name_from_base in tests.
+
+    The real name_from_base appends a millisecond timestamp, so two calls in the
+    same millisecond (create + update within one test) can return identical names.
+    This counter-based helper keeps each generated name unique and still prefixed
+    by the base, which is what these tests assert.
+    """
+    _unique_name_from_base.counter += 1
+    return "{}-{:08d}".format(base, _unique_name_from_base.counter)
+
+
+_unique_name_from_base.counter = 0
+
+
 @pytest.fixture()
 def sagemaker_client():
     return MagicMock()
@@ -905,7 +920,13 @@ def test_model_bias_monitor_creation_failure(model_bias_monitor, sagemaker_sessi
     sagemaker_session.sagemaker_client.delete_model_bias_job_definition.assert_called_once()
 
 
-def test_model_bias_monitor_update_failure(model_bias_monitor, sagemaker_session):
+@patch(
+    "sagemaker.model_monitor.model_monitoring.name_from_base",
+    side_effect=_unique_name_from_base,
+)
+def test_model_bias_monitor_update_failure(
+    mock_name_from_base, model_bias_monitor, sagemaker_session
+):
     model_bias_monitor.create_monitoring_schedule(
         endpoint_input=ENDPOINT_NAME,
         ground_truth_input=GROUND_TRUTH_S3_URI,
@@ -1493,8 +1514,12 @@ def test_model_explainability_monitor_creation_failure(
     sagemaker_session.sagemaker_client.delete_model_explainability_job_definition.assert_called_once()
 
 
+@patch(
+    "sagemaker.model_monitor.model_monitoring.name_from_base",
+    side_effect=_unique_name_from_base,
+)
 def test_model_explainability_monitor_update_failure(
-    model_explainability_monitor, sagemaker_session
+    mock_name_from_base, model_explainability_monitor, sagemaker_session
 ):
     model_explainability_monitor.create_monitoring_schedule(
         endpoint_input=ENDPOINT_NAME,
