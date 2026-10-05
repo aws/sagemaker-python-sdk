@@ -6,8 +6,9 @@ import asyncio
 import io
 import logging
 import threading
-import torch
 from typing import Optional, Type
+
+import torch
 
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.builder.schema_builder import SchemaBuilder

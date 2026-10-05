@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Requirements Manager class to pull in client dependencies from a .txt or .yml file"""
+
 from __future__ import absolute_import
 import logging
 import os

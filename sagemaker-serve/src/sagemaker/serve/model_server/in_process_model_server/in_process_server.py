@@ -2,14 +2,18 @@
 
 from __future__ import absolute_import
 
-import requests
 import logging
+
+import requests
 
 logger = logging.getLogger(__name__)
 
 
 class InProcessServing:
     """In Process Mode server instance"""
+
+    # pylint: disable=attribute-defined-outside-init
+    # self.server is set during _start_serving, not in __init__, by design.
 
     def _start_serving(self):
         """Initializes the start of the server"""
@@ -41,4 +45,4 @@ class InProcessServing:
                 raise Exception(
                     "Unable to send request to the local server: Connection refused."
                 ) from e
-            raise Exception("Unable to send request to the local container server %s", str(e))
+            raise Exception(f"Unable to send request to the local container server {str(e)}")

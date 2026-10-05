@@ -1,3 +1,5 @@
+"""JSON schema definition for the SageMaker Python SDK configuration file."""
+
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -261,6 +263,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                     },
                                                 }
                                             },
+                                            "studio_web_portal_settings": {
+                                                "execution_role_session_name_mode": {
+                                                    "type": "string"
+                                                }
+                                            },
                                         },
                                         "domain_settings": {
                                             "security_group_ids": {
@@ -449,6 +456,10 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         },
                                     },
                                 },
+                                "Job": {
+                                    "type": "object",
+                                    "properties": {"role_arn": {"type": "string"}},
+                                },
                                 "LabelingJob": {
                                     "type": "object",
                                     "properties": {
@@ -506,8 +517,8 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         "primary_container": {
                                             "model_data_source": {
                                                 "s3_data_source": {
-                                                    "s3_uri": {"type": "string"},
                                                     "s3_data_type": {"type": "string"},
+                                                    "s3_uri": {"type": "string"},
                                                     "manifest_s3_uri": {"type": "string"},
                                                 }
                                             }
@@ -929,6 +940,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                         "type": "array",
                                                         "items": {"type": "string"},
                                                     },
+                                                }
+                                            },
+                                            "studio_web_portal_settings": {
+                                                "execution_role_session_name_mode": {
+                                                    "type": "string"
                                                 }
                                             },
                                         }

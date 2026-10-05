@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Test for JumpStart HubContentDocument Model."""
+
 from __future__ import absolute_import
 
 from botocore.config import Config

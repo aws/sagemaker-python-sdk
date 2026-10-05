@@ -1,4 +1,179 @@
 # Changelog
+
+## v2.23.0 (2026-09-24)
+
+### Bug Fixes
+
+- fix(core): recognize new duplicate-name wording; actionable train() errors (#6256)
+- fix(core): keep environment variable names intact when parsing private hub model documents (#6204)
+- fix: migrate llama-cpp-arm64 to cpu processor schema and align image_uri unit tests (#6290)
+
+### Other
+
+- change: update image_uri_configs 09-23-2026 (#6308)
+- change: update image_uri_configs 09-22-2026 (#6304)
+- add: metadata for huggingface vllm v0.29 (#6300)
+
+### Tests
+
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v2.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix(jumpstart): name JumpStart in the content bucket error (#6243)
+- fix(core): send NextToken when Hub.list_models pages through hub contents (#6263)
+
+### Other
+
+- add: metadata for hf-vllm 0.22.1, 0.25.1, 0.26, 0.27.1 and 0.28 (#6060)
+- add sklearn 1.9-0 image URI config (#6037)
+
+
+## v2.22.0 (2026-09-14)
+
+### New Features
+
+- feat(core): add InstancePreferences for multi-instance-type training and processing (#6249)
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+- fix(core): resolve default training role from sagemaker config (#6228)
+
+### Other
+
+- change(core): add image URI configs for DLC serving frameworks and Amazon Linux 2023 PyTorch (#6220)
+- change(core): add image URI configs for vLLM and SGLang (#6218)
+- ci(core): add botocore-sync workflows (#6226)
+- change(core): add TensorFlow inference 2.20 and training 2.21 image URI configs (#6230)
+- change(core): add Ray/llama-cpp CPU images and device-selectable DLC serving configs (#6229)
+- change(core): refresh generated image URI configs (55c2a9bd)
+
+## v2.21.0 (2026-08-25)
+
+### Bug Fixes
+
+- fix(core,mlops): honor caller region in feature_store ingest_dataframe and stop telemetry from blocking SDK calls (#6197)
+- fix(core): anchor tar member validation to extract_path (#6195)
+
+
+## v2.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(core): propagate user-supplied tags to created resources (#6167)
+
+
+## v2.19.0 (2026-08-10)
+
+### New Features
+
+- feat(core): Nova follow-ups — IAM role resolution and training utils (#6051)
+
+
+## v2.18.0 (2026-07-30)
+
+### Bug Fixes
+
+- fix(sagemaker-core): remove dev-only endpoint override and fix client singleton pinning (#6120)
+- fix(sagemaker-core): use caller session for sagemaker control-plane client (#6107)
+- fix(sagemaker-core): drop tags before rebuilding TransformJob in transform() (#6110)
+- fix: Telemetry INFO logging to print only once per process (#6083)
+
+
+## v2.17.0 (2026-07-24)
+
+### New Features
+
+- feat: update SDK to use latest LMI v27 image for sdk v3.x (#5976)
+
+### Bug Fixes
+
+- fix: Fix source_dir in FrameworkProcessor (#6047)
+
+## v2.16.0 (2026-07-15)
+
+### New Features
+
+- feat: actionable guidance for removed v2 interfaces (#6004)
+- feat(feature-store): add BatchWriteRecord and ListRecords to FeatureGroup (#5983)
+
+### Bug Fixes
+
+- fix(iam): scope repo-level ECR actions to prevent false deny in preflight validation (#6024)
+
+## v2.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+### Bug Fixes
+
+- fix: Correct DJL-LMI ISO/ADC accounts + add THF/ISO-E (djl-lmi, huggingface-llm-neuronx) (#5980)
+- fix: ModelBuilder resolves private hub artifacts correctly (session_helper) (#5985)
+
+### Other
+
+- Add Triton Server v26.05 image URI config (#5999)
+- Add sklearn 1.4-2-py312 and xgboost 3.2-0 image URI configs (#6008)
+
+## v2.15.0 (2026-06-22)
+
+### New Features
+
+- feat: IAM role creation — auto-create least-privilege execution roles, SDK-wide (#2041)
+
+### Bug Fixes
+
+- fix(iam): Validate roles by default, opt-in creation, and add MLflow perms (#2080)
+
+## v2.14.0 (2026-06-18)
+
+### Other
+
+- Update SDK to use latest LMI image for v3.x (#5954)
+- chore: deprecate Python 3.9 support (#5941)
+
+## v2.13.1 (2026-06-04)
+### Other 
+- Update version
+  
+## v2.13.0 (2026-06-02)
+
+### Bug Fixes
+
+- Fix: Restore BatchTransformInput.destination attribute in v3 (#5865)
+
+## v2.12.0 (2026-05-19)
+
+### New Features
+
+- Embed the `aws-sagemaker-token-generator` library into `sagemaker.core` so users can generate SageMaker bearer tokens without installing a separate wheel (#5868)
+- Add Lake Formation credential vending, Spark 3.5/Python 3.12 support, stored function signing key, and export `IcebergProperties` in feature processor (#5816)
+
+### Bug Fixes
+
+- Fix `AttributeError` on `vpc_config` in networking and telemetry region fallback for classmethods (#5839)
+- Add missing `CustomAttributes` field to `DefaultPayloadsModel` (#5870)
+- Preserve falsy values in `serialize()` output — `False`, `0`, and `""` were silently dropped due to truthy check (#5860)
+
+## v2.11.0 (2026-05-12)
+
+### New Features
+
+- Create asymmetric ECDSA signing key in feature processor step compiler for remote function payload verification
+
+## v2.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix image retriever tests
+
 ## v2.10.0 (2026-05-01)
 
 ### New Features

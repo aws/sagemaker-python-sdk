@@ -5,7 +5,7 @@ from pathlib import Path
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Dict, Type
+from typing import Dict, Optional, Type
 import base64
 import time
 import subprocess
@@ -25,9 +25,18 @@ from sagemaker.serve.model_server.triton.server import LocalTritonServer
 from sagemaker.serve.model_server.tgi.server import LocalTgiServing
 from sagemaker.serve.model_server.tei.server import LocalTeiServing
 from sagemaker.serve.model_server.multi_model_server.server import LocalMultiModelServer
+from sagemaker.serve.validations.check_image_uri import ECR_HOST_RE
 from sagemaker.core.helper.session_helper import Session
 
 logger = logging.getLogger(__name__)
+
+# Strict ECR registry host pattern, shared with the hub-consumption validation in
+# check_image_uri so the "is this an ECR image?" classifier, the "which host do I docker login
+# to?" extractor, and the hub EcrAddress validation all operate on the SAME value. This is
+# intentionally an exact host match, preventing a crafted URI (e.g.
+# attacker.com/x.dkr.ecr.<region>.amazonaws.com/repo) from being classified as ECR while login is
+# pointed at an attacker-controlled host.
+_ECR_HOST_RE = ECR_HOST_RE
 
 _PING_HEALTH_CHECK_INTERVAL_SEC = 5
 
@@ -112,7 +121,7 @@ class LocalContainerMode(
         container_timeout_seconds: int,
         secret_key: str,
         container_config: Dict,
-        ping_fn = None,
+        ping_fn=None,
         env_vars: Dict[str, str] = None,
         model_path: str = None,
         jumpstart: bool = False,
@@ -231,7 +240,7 @@ class LocalContainerMode(
 
     def _pull_image(self, image: str):
         """Pull image with proper error handling and early failure detection."""
-        
+
         # Check if Docker is available first
         try:
             self.client = _get_docker_client()
@@ -241,7 +250,7 @@ class LocalContainerMode(
                 f"Docker is not available or not running. Please ensure Docker is installed and running. "
                 f"Error: {e}"
             ) from e
-        
+
         # Handle ECR authentication for ECR images
         if self._is_ecr_image(image):
             try:
@@ -252,12 +261,15 @@ class LocalContainerMode(
                 )
                 decoded_token = base64.b64decode(encoded_token).decode("utf-8")
                 username, password = decoded_token.split(":")
-                ecr_uri = image.split("/")[0]
+                # Reuse the same validated host the classifier accepted, so the ECR credential is
+                # only ever sent to a verified ECR endpoint (never to an attacker-controlled host
+                # embedded elsewhere in the image URI).
+                ecr_uri = self._ecr_registry_host(image)
                 login_command = ["docker", "login", "-u", username, "-p", password, ecr_uri]
-                
-                result = subprocess.run(login_command, check=True, capture_output=True, text=True)
+
+                subprocess.run(login_command, check=True, capture_output=True, text=True)
                 logger.info("Successfully authenticated with ECR")
-                
+
             except subprocess.CalledProcessError as e:
                 error_msg = f"ECR authentication failed: {e.stderr if e.stderr else str(e)}"
                 logger.error(error_msg)
@@ -266,7 +278,7 @@ class LocalContainerMode(
                 error_msg = f"ECR authentication error: {str(e)}"
                 logger.error(error_msg)
                 raise RuntimeError(error_msg) from e
-        
+
         # Pull the image
         try:
             logger.info("Pulling image %s from repository...", image)
@@ -277,7 +289,22 @@ class LocalContainerMode(
         except docker.errors.APIError as e:
             raise RuntimeError(f"Failed to pull image '{image}': {e}") from e
 
-    def _is_ecr_image(self, image: str) -> bool:
-        """Check if image is from ECR."""
-        return ".dkr.ecr." in image and ".amazonaws.com" in image
+    def _ecr_registry_host(self, image: str) -> Optional[str]:
+        """Return the ECR registry host if ``image``'s registry is a valid ECR endpoint, else None.
 
+        The registry host is the first "/"-delimited segment of the image URI -- i.e. the exact
+        value that would be passed to ``docker login``. It is validated against a strict ECR
+        endpoint pattern so that classification and the login target are derived from the same
+        value.
+        """
+        host = image.split("/")[0]
+        return host if _ECR_HOST_RE.match(host) else None
+
+    def _is_ecr_image(self, image: str) -> bool:
+        """Check if image is from ECR.
+
+        Uses the registry host that would actually be used for ``docker login`` and validates it
+        against a strict ECR endpoint pattern, so the classifier and the login-host extractor can
+        never disagree.
+        """
+        return self._ecr_registry_host(image) is not None

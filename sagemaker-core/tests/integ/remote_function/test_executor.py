@@ -16,14 +16,12 @@ import time
 
 import pytest
 
-from sagemaker.core.experiments.trial_component import _TrialComponent
 from sagemaker.core.remote_function import RemoteExecutor
 from sagemaker.core.remote_function.client import get_future, list_futures
 from sagemaker.core.remote_function.core.serialization import CloudpickleSerializer
 from sagemaker.core.remote_function.errors import DeserializationError
 from sagemaker.core.s3 import S3Uploader
 from sagemaker.core.s3 import s3_path_join
-from sagemaker.core.common_utils import unique_name_from_base
 
 ROLE = "SageMakerRole"
 

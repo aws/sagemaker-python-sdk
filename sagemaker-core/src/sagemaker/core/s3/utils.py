@@ -16,6 +16,7 @@ This has a subset of the functions available through s3.py. This module was init
 functions that were originally in `s3.py` so that those functions could be imported inside
 `session.py` without circular dependencies. (`s3.py` imports Session as a dependency.)
 """
+
 from __future__ import print_function, absolute_import
 
 import logging
@@ -173,3 +174,24 @@ def determine_bucket_and_prefix(
     # once in total.
 
     return final_bucket, final_key_prefix
+
+
+def resolve_s3_uri_placeholders(s3_uri: str, sagemaker_session) -> str:
+    """Resolve placeholders in an S3 URI using the current session context.
+
+    Currently resolves the following placeholders:
+    - {customer_id}: Replaced with the AWS account ID from the session.
+
+    Args:
+        s3_uri: The S3 URI potentially containing placeholders.
+        sagemaker_session: SageMaker session for API calls.
+
+    Returns:
+        The S3 URI with all known placeholders resolved.
+    """
+    if "{customer_id}" in s3_uri:
+        current_account = sagemaker_session.boto_session.client("sts").get_caller_identity()[
+            "Account"
+        ]
+        s3_uri = s3_uri.replace("{customer_id}", current_account)
+    return s3_uri
