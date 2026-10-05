@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains data classes for the FeatureProcessor."""
+
 from __future__ import absolute_import
 
 from typing import Dict, List, Optional, Sequence, Union
@@ -47,6 +48,7 @@ class FeatureProcessorConfig:
     parameters: Optional[Dict[str, Union[str, Dict]]] = attr.ib()
     enable_ingestion: bool = attr.ib()
     spark_config: Dict[str, str] = attr.ib()
+    use_lake_formation_credentials: bool = attr.ib()
 
     @staticmethod
     def create(
@@ -59,6 +61,7 @@ class FeatureProcessorConfig:
         parameters: Optional[Dict[str, Union[str, Dict]]],
         enable_ingestion: bool,
         spark_config: Dict[str, str],
+        use_lake_formation_credentials: bool = False,
     ) -> "FeatureProcessorConfig":
         """Static initializer."""
         return FeatureProcessorConfig(
@@ -69,4 +72,5 @@ class FeatureProcessorConfig:
             parameters=parameters,
             enable_ingestion=enable_ingestion,
             spark_config=spark_config,
+            use_lake_formation_credentials=use_lake_formation_credentials,
         )

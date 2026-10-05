@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Implements base methods for deserializing data returned from an inference endpoint."""
+
 from __future__ import absolute_import
 
 import csv
@@ -232,18 +233,18 @@ class NumpyDeserializer(SimpleBaseDeserializer):
                 try:
                     return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
                 except ValueError as ve:
-                    raise ValueError(
-                        "Please set the param allow_pickle=True \
-                        to deserialize pickle objects in NumpyDeserializer"
-                    ).with_traceback(ve.__traceback__)
+                    raise ValueError("Please set the param allow_pickle=True \
+                        to deserialize pickle objects in NumpyDeserializer").with_traceback(
+                        ve.__traceback__
+                    )
             if content_type == "application/x-npz":
                 try:
                     return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
                 except ValueError as ve:
-                    raise ValueError(
-                        "Please set the param allow_pickle=True \
-                        to deserialize pickle objectsin NumpyDeserializer"
-                    ).with_traceback(ve.__traceback__)
+                    raise ValueError("Please set the param allow_pickle=True \
+                        to deserialize pickle objectsin NumpyDeserializer").with_traceback(
+                        ve.__traceback__
+                    )
                 finally:
                     stream.close()
         finally:
@@ -389,10 +390,8 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
             )
             return self.convert_npy_to_tensor(numpy_array)
         except Exception:
-            raise ValueError(
-                "Unable to deserialize your data to torch.Tensor.\
-                    Please provide custom deserializer in InferenceSpec."
-            )
+            raise ValueError("Unable to deserialize your data to torch.Tensor.\
+                    Please provide custom deserializer in InferenceSpec.")
 
 
 # TODO fix the unit test for this deserializer

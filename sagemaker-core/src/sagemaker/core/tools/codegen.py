@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Generates the code for the service model."""
+
 from sagemaker.core.utils.utils import reformat_file_with_black
 from sagemaker.core.tools.shapes_codegen import ShapesCodeGen
 from sagemaker.core.tools.resources_codegen import ResourcesCodeGen
@@ -23,9 +24,10 @@ def generate_code(
     shapes_code_gen: Optional[ShapesCodeGen] = None,
     resources_code_gen: Optional[ShapesCodeGen] = None,
 ) -> None:
-    """
-    Generates the code for the given code generators. If any code generator is not
-    provided when calling this function, the function will initiate the generator.
+    """Generate the code for the given code generators.
+
+    If any code generator is not provided when calling this function, the function
+    will initiate the generator.
 
     Note ordering is important, generate the utils and lower level classes first
     then generate the higher level classes.
@@ -44,8 +46,15 @@ def generate_code(
         service_json=service_json_data.sagemaker
     )
 
-    shapes_code_gen.generate_shapes()
-    reformat_file_with_black(".")
+    # Collect paths of all generated files, then reformat only those.
+    generated_files = []
+
+    generated_files.append(shapes_code_gen.generate_shapes())
+    generated_files.append(resources_code_gen.generate_resources())
+    generated_files.append(resources_code_gen.generate_config_schema())
+
+    for filepath in generated_files:
+        reformat_file_with_black(filepath)
 
 
 """

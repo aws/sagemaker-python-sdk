@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Compute Resource Requirements needed to deploy a model"""
+
 from __future__ import absolute_import
 
 from sagemaker.core.compute_resource_requirements.resource_requirements import (  # noqa: F401

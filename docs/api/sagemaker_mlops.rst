@@ -38,3 +38,12 @@ Local Development
    :show-inheritance:
 
 
+
+
+Feature Store
+-------------
+
+.. automodule:: sagemaker.mlops.feature_store
+   :members:
+   :undoc-members:
+   :show-inheritance:

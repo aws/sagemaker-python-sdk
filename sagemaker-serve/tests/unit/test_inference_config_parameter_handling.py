@@ -6,8 +6,7 @@ Requirements: 2.3, 2.4, 2.5
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, call
-import pytest
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
@@ -126,6 +125,7 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         )
 
         # Execute
+        builder.built_model = Mock(model_name="test-model")
         builder._deploy_model_customization(
             endpoint_name="test-endpoint", inference_config=inference_config
         )
@@ -229,6 +229,7 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         )
 
         # Execute
+        builder.built_model = Mock(model_name="test-model")
         builder._deploy_model_customization(
             endpoint_name="test-endpoint", inference_config=inference_config
         )
@@ -358,6 +359,7 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         builder._cached_compute_requirements = cached_requirements
 
         # Execute deployment WITHOUT inference_config
+        builder.built_model = Mock(model_name="test-model")
         builder._deploy_model_customization(endpoint_name="test-endpoint", inference_config=None)
 
         # Verify: InferenceComponent.create was called with cached requirements
@@ -451,7 +453,6 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         )
 
         # Set cached requirements (from build())
-        from sagemaker.core.utils.utils import Unassigned
 
         cached_requirements = InferenceComponentComputeResourceRequirements(
             number_of_cpu_cores_required=4,
@@ -466,6 +467,7 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         )
 
         # Execute
+        builder.built_model = Mock(model_name="test-model")
         builder._deploy_model_customization(
             endpoint_name="test-endpoint", inference_config=inference_config
         )
@@ -567,6 +569,7 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         )
 
         # Execute
+        builder.built_model = Mock(model_name="test-model")
         builder._deploy_model_customization(
             endpoint_name="test-endpoint", inference_config=inference_config
         )
@@ -661,6 +664,7 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         inference_config = ResourceRequirements(requests={"num_accelerators": 1, "memory": 4096})
 
         # Execute
+        builder.built_model = Mock(model_name="test-model")
         builder._deploy_model_customization(
             endpoint_name="existing-endpoint", inference_config=inference_config
         )
@@ -758,6 +762,7 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         )
 
         # Execute
+        builder.built_model = Mock(model_name="test-model")
         builder._deploy_model_customization(
             endpoint_name="test-endpoint", inference_config=inference_config
         )

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains code related to the MonitoringAlerts."""
+
 from __future__ import print_function, absolute_import
 
 import attr
