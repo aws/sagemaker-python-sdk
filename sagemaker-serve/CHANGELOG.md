@@ -1,4 +1,207 @@
 # Changelog
+
+## v1.23.0 (2026-09-24)
+
+### New Features
+
+- feat(serve): update SDK to use latest LMI v29 image for sdk v3.x (#6301)
+
+### Bug Fixes
+
+- fix(serve): use the correct AMI when on cu130 to avoid crashes at launch (#6281)
+
+### Tests
+
+- fix PR check tests (#6272)
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v1.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix: vllm and vllm-omni tasks in routing logic (#6007)
+- fix: restore model customization reuse state (#6264)
+
+
+## v1.22.0 (2026-09-14)
+
+### Other
+
+- change(serve): emit the JumpStart model ID in ModelBuilder telemetry (#6234)
+
+## v1.21.0 (2026-08-25)
+
+### Bug Fixes
+
+- fix(serve): pre-deploy JumpStart benchmark data + public HuggingFace download helper (#6175)
+- fix(tgi): honor S3 model_path as weight source for TGI builds (#5964)
+
+### Tests
+
+- test(serve): add skip_in_pr_check marker for hang-prone integ tests (#6190)
+
+
+## v1.20.0 (2026-08-14)
+
+### New Features
+
+- feat(serve): list/filter jobs, deploy from recommendation row, compare benchmarks, DataFrame views (#6148)
+
+### Bug Fixes
+
+- fix(serve): validate ECR registry host before docker login (#6160)
+
+### Tests
+
+- test(serve): SD/KT-IC integ must use g6.2xlarge, not g4dn (#6141)
+
+
+## v1.19.0 (2026-08-10)
+
+### New Features
+
+- feat(serve): Model Reuse — reuse previously built models across deployments (#6051)
+
+### Bug Fixes
+
+- fix(serve): propagate additional_model_data_sources for JumpStart models (#6151)
+- fix(serve): forward tolerance flags from get_jumpstart_configs (#6137)
+- fix(serve): create local model_path dir before using it as download dir (#6147)
+- fix(serve): remove IC data-source collapse hack from recommendation deploy (#6101)
+
+
+## v1.18.0 (2026-07-30)
+
+### New Features
+
+- feat(serve): make BenchmarkResult sweep-aware for concurrency search runs (#6098)
+
+### Bug Fixes
+
+- fix(serve): repack source_code for image_uri/ModelTrainer builds (#6112)
+
+
+## v1.17.0 (2026-07-24)
+
+### New Features
+
+- feat(serve): support fine-tuned models in deployment-config API (#6041)
+
+### Bug Fixes
+
+- fix: Fix private hub (#6036)
+- fix(serve): support aliased hub content names in private hub deploys (#6039)
+- fix(serve): dedicated INFERENCE_RECOMMENDER telemetry feature + type workload param (#6028)
+- fix: Fixing EULA check, relying on HostingEulaUri field (#6077)
+
+### Tests
+
+- test: move two tests in serve to gpu-integ-tests (#6096)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
+## v1.16.0 (2026-07-15)
+
+### New Features
+
+- feat(serve): add SageMaker GenAI inference benchmarking and recommendation (#5874)
+
+## v1.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+### Bug Fixes
+
+- fix: ModelBuilder resolves private hub artifacts correctly (#5985)
+- fix(serve): Invoke pip without shell in xgboost install_package (#5981)
+
+## v1.15.0 (2026-06-22)
+
+### New Features
+
+- feat: Add Nova SMI config bounds validation to ModelBuilder (#2040)
+- feat: IAM role creation — auto-create least-privilege execution roles, SDK-wide (#2041)
+
+## v1.14.0 (2026-06-18)
+
+### Bug Fixes
+
+- fix: repair HuggingFace -> JumpStart redirect in ModelBuilder (#5958)
+
+### Other
+
+- chore: deprecate Python 3.9 support (#5941)
+
+## v1.13.1 (2026-06-04)
+
+### Features
+
+- feat: add import job polling and provisioned throughput for Bedrock OSS deployments
+
+## v1.13.0 (2026-06-02)
+
+### Features
+
+- **feat: Deployment** - Add MTRL support for BedrockModelBuilder and ModelBuilder.
+
+### Bug Fixes
+
+- fix: set sagemaker_config=None on mock session in test_from_jumpstart_config_applies_volume_size (#5882)
+
+## v1.12.0 (2026-05-19)
+
+### Bug Fixes
+
+- Fix `AttributeError` on `vpc_config` in networking and telemetry region fallback for classmethods (#5839)
+- Prevent code injection in `capture_dependencies` path interpolation via crafted directory names in `ModelBuilder` (#5792)
+- Fix `VolumeSizeInGB` not being passed through when deploying JumpStart models with `inference_volume_size` (#5847)
+
+## v1.11.0 (2026-05-12)
+
+### Other
+
+- Update module dependencies
+
+## v1.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix JumpStart network isolation in ModelBuilder
+- Fix handling of unrecognized JumpStart container images in ModelBuilder
+
+## v1.10.0 (2026-05-01)
+
+### Bug Fixes
+
+- Fix potential S3 path traversal
+
+## v1.9.0 (2026-04-23)
+
+### Bug Fixes
+
+- **ModelBuilder**: Stop overwriting user-provided `HF_MODEL_ID` for DJL Serving
+- **ModelBuilder**: Keep `/opt/ml/model` writable when using `source_code` with DJL LMI
+
+## v1.8.0 (2026-04-16)
+
+### Bug Fixes
+
+- **HuggingFace**: Improve SDK v3 Hugging Face support
+
+## v1.7.1 (2026-03-31)
+
+### Features
+
+- **Telemetry**: Added telemetry emitter to `ScriptProcessor` and `FrameworkProcessor`, enabling SDK usage tracking for processing jobs via the telemetry attribution module (new `PROCESSING` feature enum added to telemetry constants)
+
+### Bug Fixes
+
+- **ModelBuilder**: Fixed `accept_eula` handling in ModelBuilder's LoRA deployment path — previously hardcoded to `True`, now respects the user-provided value and raises a `ValueError` if not explicitly set to `True`
+- **Evaluate**: Fixed Lambda handler name derivation in the Evaluator — hardcoded the handler to `lambda_function.lambda_handler` instead of deriving it from the source filename, which caused invocation failures when the source file had a non-default name
+
 ## v1.7.0 (2026-03-25)
 
 ### Bug fixes and Other Changes

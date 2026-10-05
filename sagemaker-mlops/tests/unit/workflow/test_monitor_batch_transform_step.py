@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow monitor_batch_transform_step."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -20,6 +21,7 @@ def test_monitor_batch_transform_step_module_exists():
     """Test MonitorBatchTransformStep module can be imported"""
     try:
         from sagemaker.mlops.workflow import monitor_batch_transform_step
+
         assert monitor_batch_transform_step is not None
     except ImportError:
         pytest.skip("MonitorBatchTransformStep not available")

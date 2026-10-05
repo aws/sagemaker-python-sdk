@@ -12,25 +12,31 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import os
+import threading
 import unittest
+from time import perf_counter
 import pytest
 import requests
 from unittest.mock import Mock, patch, MagicMock
 import boto3
-import sagemaker
-from sagemaker.core.telemetry.constants import Feature
+from sagemaker.core.telemetry.constants import Feature, DEFAULT_AWS_REGION
 from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.telemetry_logging import (
     _send_telemetry_request,
+    _send_telemetry_request_sync,
+    _emit_failure_telemetry,
     _telemetry_emitter,
     _construct_url,
     _get_accountId,
     _requests_helper,
     _get_region_or_default,
     _get_default_sagemaker_session,
+    STATUS_TO_CODE,
     OS_NAME_VERSION,
     PYTHON_VERSION,
+    TELEMETRY_REQUEST_TIMEOUT,
 )
+from sagemaker.core.telemetry.constants import Status
 from sagemaker.core.user_agent import SDK_VERSION, process_studio_metadata_file
 
 # Try to import sagemaker-serve exceptions, skip tests if not available
@@ -76,18 +82,18 @@ class TestTelemetryLogging(unittest.TestCase):
         """Test to check if the telemetry logging is successful"""
         MOCK_SESSION.boto_session.region_name = "us-west-2"
         mock_get_accountId.return_value = "testAccountId"
-        _send_telemetry_request("someStatus", "1", MOCK_SESSION)
+        _send_telemetry_request_sync("someStatus", "1", MOCK_SESSION)
         mock_request_helper.assert_called_with(
             "https://sm-pysdk-t-us-west-2.s3.us-west-2.amazonaws.com/"
             "telemetry?x-accountId=testAccountId&x-status=someStatus&x-feature=1",
-            2,
+            TELEMETRY_REQUEST_TIMEOUT,
         )
 
     @patch("sagemaker.core.telemetry.telemetry_logging._get_accountId")
     def test_log_handle_exception(self, mock_get_accountId):
         """Test to check if the exception is handled while logging telemetry"""
         mock_get_accountId.side_effect = Exception("Internal error")
-        _send_telemetry_request("someStatus", "1", MOCK_SESSION)
+        _send_telemetry_request_sync("someStatus", "1", MOCK_SESSION)
         self.assertRaises(Exception)
 
     @patch("sagemaker.core.telemetry.telemetry_logging._get_accountId")
@@ -101,11 +107,11 @@ class TestTelemetryLogging(unittest.TestCase):
             "sagemaker.core.telemetry.telemetry_logging._requests_helper"
         ) as mock_requests_helper:
             mock_requests_helper.return_value = None
-            _send_telemetry_request(1, [1, 2], MagicMock(), None, None, "extra_info")
+            _send_telemetry_request_sync(1, [1, 2], MagicMock(), None, None, "extra_info")
             mock_requests_helper.assert_called_with(
                 "https://sm-pysdk-t-us-west-2.s3.us-west-2.amazonaws.com/"
                 "telemetry?x-accountId=testAccountId&x-status=1&x-feature=1,2&x-extra=extra_info",
-                2,
+                TELEMETRY_REQUEST_TIMEOUT,
             )
 
     @patch("sagemaker.core.telemetry.telemetry_logging._get_accountId")
@@ -119,14 +125,14 @@ class TestTelemetryLogging(unittest.TestCase):
             "sagemaker.core.telemetry.telemetry_logging._requests_helper"
         ) as mock_requests_helper:
             mock_requests_helper.return_value = None
-            _send_telemetry_request(
+            _send_telemetry_request_sync(
                 0, [1, 2], MagicMock(), "failure_reason", "failure_type", "extra_info"
             )
             mock_requests_helper.assert_called_with(
                 "https://sm-pysdk-t-us-west-2.s3.us-west-2.amazonaws.com/"
                 "telemetry?x-accountId=testAccountId&x-status=0&x-feature=1,2"
                 "&x-failureReason=failure_reason&x-failureType=failure_type&x-extra=extra_info",
-                2,
+                TELEMETRY_REQUEST_TIMEOUT,
             )
 
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
@@ -249,7 +255,9 @@ class TestTelemetryLogging(unittest.TestCase):
 
         response = _requests_helper(url, timeout)
 
-        mock_requests_get.assert_called_once_with(url, timeout)
+        # timeout must be a keyword argument: positionally it becomes `params`,
+        # which leaves the request with no timeout at all.
+        mock_requests_get.assert_called_once_with(url, timeout=timeout)
         self.assertEqual(response, mock_response)
 
     @patch("sagemaker.core.telemetry.telemetry_logging.requests.get")
@@ -261,7 +269,7 @@ class TestTelemetryLogging(unittest.TestCase):
 
         response = _requests_helper(url, timeout)
 
-        mock_requests_get.assert_called_once_with(url, timeout)
+        mock_requests_get.assert_called_once_with(url, timeout=timeout)
         self.assertIsNone(response)
 
     def test_get_accountId_success(self):
@@ -340,12 +348,12 @@ class TestTelemetryLogging(unittest.TestCase):
         with patch(
             "sagemaker.core.telemetry.telemetry_logging._requests_helper"
         ) as mock_requests_helper:
-            _send_telemetry_request(1, [1, 2], mock_session)
+            _send_telemetry_request_sync(1, [1, 2], mock_session)
             # Assert telemetry request was sent
             mock_requests_helper.assert_called_once_with(
                 "https://sm-pysdk-t-us-east-1.s3.us-east-1.amazonaws.com/telemetry?"
                 "x-accountId=testAccountId&x-status=1&x-feature=1,2",
-                2,
+                TELEMETRY_REQUEST_TIMEOUT,
             )
 
     @patch("sagemaker.core.telemetry.telemetry_logging._get_accountId")
@@ -360,7 +368,7 @@ class TestTelemetryLogging(unittest.TestCase):
         with patch(
             "sagemaker.core.telemetry.telemetry_logging._requests_helper"
         ) as mock_requests_helper:
-            _send_telemetry_request(1, [1, 2], mock_session)
+            _send_telemetry_request_sync(1, [1, 2], mock_session)
             # Assert telemetry request was not sent
             mock_requests_helper.assert_not_called()
 
@@ -496,7 +504,6 @@ class TestTelemetryLogging(unittest.TestCase):
         self.assertEqual(url, expected_url)
         self.assertIn("x-createdBy=awslabs%2Fagent-plugins%2Fsagemaker-ai", url)
 
-
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
     def test_telemetry_emitter_with_resource_arn(
@@ -542,3 +549,424 @@ class TestTelemetryLogging(unittest.TestCase):
         args = mock_send_telemetry_request.call_args.args
         extra_str = str(args[5])
         self.assertNotIn("x-resourceArn", extra_str)
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_appends_nova_sub_feature(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that MODEL_CUSTOMIZATION_NOVA (19) is appended when instance reports Nova model."""
+        mock_resolve_config.return_value = False
+
+        class NovaModelMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            def _is_nova_model_for_telemetry(self):
+                return True
+
+            @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "NovaModelMock.train")
+            def train(self):
+                pass
+
+        NovaModelMock().train()
+
+        args = mock_send_telemetry_request.call_args.args
+        feature_list = args[1]
+        self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION
+        self.assertIn(19, feature_list)  # MODEL_CUSTOMIZATION_NOVA
+        self.assertNotIn(20, feature_list)  # MODEL_CUSTOMIZATION_OSS should NOT be present
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_appends_oss_sub_feature(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that MODEL_CUSTOMIZATION_OSS (20) is appended when instance reports non-Nova model."""
+        mock_resolve_config.return_value = False
+
+        class OssModelMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            def _is_nova_model_for_telemetry(self):
+                return False
+
+            @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "OssModelMock.train")
+            def train(self):
+                pass
+
+        OssModelMock().train()
+
+        args = mock_send_telemetry_request.call_args.args
+        feature_list = args[1]
+        self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION
+        self.assertIn(20, feature_list)  # MODEL_CUSTOMIZATION_OSS
+        self.assertNotIn(19, feature_list)  # MODEL_CUSTOMIZATION_NOVA should NOT be present
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_no_sub_feature_without_detection_method(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that no NOVA/OSS sub-feature is appended when instance lacks detection method."""
+        mock_resolve_config.return_value = False
+
+        class NoDetectionMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "NoDetectionMock.do_work")
+            def do_work(self):
+                pass
+
+        NoDetectionMock().do_work()
+
+        args = mock_send_telemetry_request.call_args.args
+        feature_list = args[1]
+        self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION
+        self.assertNotIn(19, feature_list)  # No NOVA
+        self.assertNotIn(20, feature_list)  # No OSS
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_handles_detection_method_exception(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that telemetry still works when _is_nova_model_for_telemetry raises an exception."""
+        mock_resolve_config.return_value = False
+
+        class BrokenDetectionMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            def _is_nova_model_for_telemetry(self):
+                raise RuntimeError("detection failed")
+
+            @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "BrokenDetectionMock.train")
+            def train(self):
+                pass
+
+        BrokenDetectionMock().train()
+
+        args = mock_send_telemetry_request.call_args.args
+        feature_list = args[1]
+        self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION still present
+        self.assertNotIn(19, feature_list)  # No NOVA (detection failed gracefully)
+        self.assertNotIn(20, feature_list)  # No OSS
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_opt_out_message_shown_only_once(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that the telemetry opt-out INFO message is logged only once per process."""
+        import sagemaker.core.telemetry.telemetry_logging as telemetry_module
+
+        mock_resolve_config.return_value = False
+        # Reset the flag to simulate a fresh process
+        telemetry_module._telemetry_msg_shown = False
+
+        mock_local_client = LocalSagemakerClientMock()
+
+        with patch.object(telemetry_module.logger, "info") as mock_logger_info:
+            mock_local_client.mock_create_model()
+            mock_local_client.mock_create_model()
+            mock_local_client.mock_create_model()
+
+            info_calls = [
+                call
+                for call in mock_logger_info.call_args_list
+                if "telemetry" in str(call).lower() and "opt out" in str(call).lower()
+            ]
+            self.assertEqual(
+                len(info_calls), 1, "Telemetry opt-out message should be logged exactly once"
+            )
+
+        # Reset the flag for other tests
+        telemetry_module._telemetry_msg_shown = False
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_opt_out_message_not_shown_when_opted_out(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that the telemetry opt-out INFO message is not shown when user has opted out."""
+        import sagemaker.core.telemetry.telemetry_logging as telemetry_module
+
+        mock_resolve_config.return_value = True  # opted out
+        # Reset the flag to simulate a fresh process
+        telemetry_module._telemetry_msg_shown = False
+
+        mock_local_client = LocalSagemakerClientMock()
+
+        with patch.object(telemetry_module.logger, "info") as mock_logger_info:
+            mock_local_client.mock_create_model()
+
+            info_calls = [
+                call
+                for call in mock_logger_info.call_args_list
+                if "telemetry" in str(call).lower() and "opt out" in str(call).lower()
+            ]
+            self.assertEqual(
+                len(info_calls), 0, "Telemetry opt-out message should not appear when opted out"
+            )
+
+        # Reset the flag for other tests
+        telemetry_module._telemetry_msg_shown = False
+
+
+class TestRequestsHelperTimeout(unittest.TestCase):
+    """The telemetry GET must actually carry a timeout.
+
+    `requests.get(url, params=None, **kwargs)` takes `params` second, so passing
+    the timeout positionally appended it to the query string and left the
+    request with no timeout, letting an unreachable telemetry endpoint block the
+    caller indefinitely.
+    """
+
+    @patch("sagemaker.core.telemetry.telemetry_logging.requests.get")
+    def test_timeout_passed_as_keyword_not_params(self, mock_requests_get):
+        _requests_helper("https://example.com/telemetry?x-status=1", 2)
+
+        _, kwargs = mock_requests_get.call_args
+        self.assertEqual(kwargs["timeout"], 2)
+        self.assertNotIn("params", kwargs)
+
+    def test_timeout_reaches_prepared_request_not_the_url(self):
+        """Guard against the regression at the layer where it was observable."""
+        captured = {}
+
+        def fake_get(url, **kwargs):
+            captured["url"] = url
+            captured["kwargs"] = kwargs
+            return None
+
+        target = "sagemaker.core.telemetry.telemetry_logging.requests.get"
+        with patch(target, side_effect=fake_get):
+            _requests_helper("https://example.com/telemetry?x-status=1", 2)
+
+        # The old code produced a URL ending in "&2" and no timeout kwarg.
+        self.assertFalse(captured["url"].endswith("&2"))
+        self.assertEqual(captured["kwargs"], {"timeout": 2})
+
+
+class TestTelemetryIsNonBlocking(unittest.TestCase):
+    """Telemetry must never add latency to the SDK call that triggered it.
+
+    Regression guard: a Feature Store ingest returned in under a second
+    server-side but the notebook cell took ~47 minutes, because each telemetry
+    emission blocked on an endpoint the caller's VPC had no route to.
+    """
+
+    def setUp(self):
+        import sagemaker.core.telemetry.telemetry_logging as telemetry_module
+
+        self.telemetry_module = telemetry_module
+
+    def test_send_returns_before_the_request_completes(self):
+        release = threading.Event()
+        entered = threading.Event()
+
+        def blocking_send(*args, **kwargs):
+            entered.set()
+            release.wait(timeout=10)
+
+        with patch.object(
+            self.telemetry_module, "_send_telemetry_request_sync", side_effect=blocking_send
+        ):
+            start = perf_counter()
+            thread = _send_telemetry_request(1, [1], MagicMock())
+            elapsed = perf_counter() - start
+
+            try:
+                self.assertLess(elapsed, 1, "_send_telemetry_request blocked on the network call")
+                self.assertTrue(entered.wait(timeout=5))
+            finally:
+                release.set()
+                thread.join(timeout=5)
+
+    def test_send_runs_on_a_daemon_thread(self):
+        """Daemon threads are killed at exit, so a pending send cannot hang shutdown."""
+        with patch.object(self.telemetry_module, "_send_telemetry_request_sync"):
+            thread = _send_telemetry_request(1, [1], MagicMock())
+            self.assertTrue(thread.daemon)
+            thread.join(timeout=5)
+
+    def test_send_forwards_all_arguments(self):
+        session = MagicMock()
+        with patch.object(self.telemetry_module, "_send_telemetry_request_sync") as mock_sync:
+            thread = _send_telemetry_request(
+                0, [1, 2], session, "failure_reason", "failure_type", "extra_info"
+            )
+            thread.join(timeout=5)
+
+        mock_sync.assert_called_once_with(
+            0, [1, 2], session, "failure_reason", "failure_type", "extra_info"
+        )
+
+    def test_thread_swallows_exceptions(self):
+        """An exception in the thread has no caller to catch it, so it must not escape."""
+        with patch.object(
+            self.telemetry_module,
+            "_send_telemetry_request_sync",
+            side_effect=RuntimeError("boom"),
+        ):
+            thread = _send_telemetry_request(1, [1], MagicMock())
+            thread.join(timeout=5)
+
+        self.assertFalse(thread.is_alive())
+
+    def test_no_event_is_dropped_when_many_are_in_flight(self):
+        """Making the send async must not cost us events, however many are pending."""
+        release = threading.Event()
+        started = threading.Semaphore(0)
+        event_count = 25
+
+        def blocking_send(*args, **kwargs):
+            started.release()
+            release.wait(timeout=10)
+
+        with patch.object(
+            self.telemetry_module, "_send_telemetry_request_sync", side_effect=blocking_send
+        ):
+            threads = [_send_telemetry_request(1, [1], MagicMock()) for _ in range(event_count)]
+            try:
+                self.assertTrue(all(t is not None for t in threads))
+                for _ in range(event_count):
+                    self.assertTrue(started.acquire(timeout=5), "an event was never sent")
+            finally:
+                release.set()
+                for t in threads:
+                    t.join(timeout=5)
+
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_decorated_function_returns_without_waiting_for_telemetry(self, mock_resolve_config):
+        mock_resolve_config.return_value = False
+        release = threading.Event()
+
+        def blocking_send(*args, **kwargs):
+            release.wait(timeout=10)
+
+        with patch.object(
+            self.telemetry_module, "_send_telemetry_request_sync", side_effect=blocking_send
+        ):
+            try:
+                start = perf_counter()
+                LocalSagemakerClientMock().mock_create_model()
+                elapsed = perf_counter() - start
+                self.assertLess(elapsed, 1, "the decorated call waited on the telemetry request")
+            finally:
+                release.set()
+
+
+class TestDefaultSessionRegion(unittest.TestCase):
+    """The synthesized fallback session must use the caller's own region.
+
+    Module-level functions such as `ingest_dataframe` have no session, so the
+    decorator builds one. Hardcoding us-west-2 pointed telemetry at a region the
+    caller may have no network route to.
+    """
+
+    @patch("sagemaker.core.telemetry.telemetry_logging.Session")
+    @patch("sagemaker.core.telemetry.telemetry_logging.boto3.Session")
+    def test_uses_region_resolved_from_environment(self, mock_boto_session, mock_session):
+        mock_boto_session.return_value.region_name = "ca-central-1"
+
+        _get_default_sagemaker_session()
+
+        # Called with no region_name so boto3 resolves it from the environment
+        # or the active profile, rather than being pinned to us-west-2.
+        mock_boto_session.assert_called_once_with()
+        mock_session.assert_called_once_with(boto_session=mock_boto_session.return_value)
+
+    @patch("sagemaker.core.telemetry.telemetry_logging.Session")
+    @patch("sagemaker.core.telemetry.telemetry_logging.boto3.Session")
+    def test_falls_back_to_default_region_when_none_resolved(self, mock_boto_session, mock_session):
+        mock_boto_session.return_value.region_name = None
+
+        _get_default_sagemaker_session()
+
+        # Session requires a region, so the default is still the last resort.
+        self.assertEqual(
+            mock_boto_session.call_args_list[-1],
+            unittest.mock.call(region_name=DEFAULT_AWS_REGION),
+        )
+
+
+class TestEmitFailureTelemetry(unittest.TestCase):
+    """Tests for the failure-only _emit_failure_telemetry helper."""
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_emits_failure_event(self, mock_send, mock_default_session, mock_optout):
+        mock_default_session.return_value = Mock()
+        exc = ValueError("bad value")
+
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", exc)
+
+        mock_send.assert_called_once()
+        args = mock_send.call_args.args
+        assert args[0] == STATUS_TO_CODE[str(Status.FAILURE)]  # status code
+        assert args[3] == "bad value"  # failure_reason
+        assert args[4] == "ValueError"  # failure_type
+        assert "MyClass.method" in args[5]  # extra_info carries func_name
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=True
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_opt_out_suppresses_emit(self, mock_send, mock_default_session, mock_optout):
+        # A user who has opted out of telemetry must not have these events emitted.
+        mock_default_session.return_value = Mock()
+
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))
+
+        mock_send.assert_not_called()
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_no_session_does_not_emit(self, mock_send, mock_default_session, mock_optout):
+        mock_default_session.return_value = None
+
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))
+
+        mock_send.assert_not_called()
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_uses_provided_session_without_default_lookup(
+        self, mock_send, mock_default_session, mock_optout
+    ):
+        _emit_failure_telemetry(
+            Feature.MODEL_CUSTOMIZATION,
+            "MyClass.method",
+            ValueError("x"),
+            sagemaker_session=Mock(),
+        )
+
+        mock_default_session.assert_not_called()
+        mock_send.assert_called_once()
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_backend_error_is_swallowed(self, mock_send, mock_default_session, mock_optout):
+        # Telemetry is best-effort: an error while emitting must never propagate.
+        mock_default_session.return_value = Mock()
+        mock_send.side_effect = RuntimeError("telemetry backend down")
+
+        # Should not raise.
+        _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))

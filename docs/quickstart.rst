@@ -6,7 +6,7 @@ Get started with SageMaker Python SDK V3 in minutes. This guide walks you throug
 Prerequisites
 -------------
 
-* Python 3.9+ installed
+* Python 3.10+ installed
 * AWS account with appropriate permissions
 * AWS credentials configured
 

@@ -11,9 +11,8 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
-from sagemaker.core.jumpstart.enums import JumpStartModelType, JumpStartScriptScope
+from unittest.mock import Mock
+from sagemaker.core.jumpstart.enums import JumpStartModelType
 
 
 class TestFactoryUtilsHelpers:
@@ -207,9 +206,6 @@ class TestFactoryUtilsHelpers:
         """Test tag structure for JumpStart models"""
         model_id = "test-model"
         model_version = "1.0.0"
-        model_type = JumpStartModelType.OPEN_WEIGHTS
-        config_name = "default"
-        scope = JumpStartScriptScope.INFERENCE
 
         # Simulate tag creation
         tags = [

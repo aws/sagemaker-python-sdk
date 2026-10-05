@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Implements base methods for serializing data for an inference endpoint."""
+
 from __future__ import absolute_import
 
 import abc
@@ -443,9 +444,16 @@ class TorchTensorSerializer(SimpleBaseSerializer):
 
     def __init__(self, content_type="tensor/pt"):
         super(TorchTensorSerializer, self).__init__(content_type=content_type)
-        from torch import Tensor
+        try:
+            from torch import Tensor
 
-        self.torch_tensor = Tensor
+            self.torch_tensor = Tensor
+        except ImportError as e:
+            raise ImportError(
+                "Unable to import torch. Please install torch to use TorchTensorSerializer: "
+                "pip install 'sagemaker-core[torch]'"
+            ) from e
+
         self.numpy_serializer = NumpySerializer()
 
     def serialize(self, data):
@@ -461,11 +469,8 @@ class TorchTensorSerializer(SimpleBaseSerializer):
             try:
                 return self.numpy_serializer.serialize(data.detach().numpy())
             except Exception as e:
-                raise ValueError(
-                    "Unable to serialize your data because: %s.\
-                        Please provide custom serialization in InferenceSpec. "
-                    % e
-                )
+                raise ValueError("Unable to serialize your data because: %s.\
+                        Please provide custom serialization in InferenceSpec. " % e)
 
         raise ValueError("Object of type %s is not a torch.Tensor" % type(data))
 

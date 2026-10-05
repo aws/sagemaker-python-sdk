@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Constants used in the code_generator modules."""
+
 import os
 
 CLASS_METHODS = set(["create", "add", "register", "import", "list", "get"])
@@ -21,6 +22,11 @@ OBJECT_METHODS = set(
 TERMINAL_STATES = set(["Completed", "Stopped", "Deleted", "Failed", "Succeeded", "Cancelled"])
 
 RESOURCE_WITH_LOGS = set(["TrainingJob", "ProcessingJob", "TransformJob"])
+
+DEFAULT_TIMEOUT_MESSAGE = "Increase the timeout and try again."
+RESOURCE_TIMEOUT_MESSAGES = {
+    "TrainingJob": "Your training job is still running. Call .refresh() to check its current status.",
+}
 
 CONFIGURABLE_ATTRIBUTE_SUBSTRINGS = [
     "kms",
@@ -51,6 +57,7 @@ PYTHON_TYPES_TO_BASIC_JSON_TYPES = {
     "str": "string",
     "StrPipeVar": "string",
     "int": "integer",
+    "IntPipeVar": "integer",
     "bool": "boolean",
     "float": "double",
     "datetime.datetime": "timestamp",
@@ -103,6 +110,7 @@ INTELLIGENT_DEFAULTS_HELPER_CODEGEN_FILE_NAME = "intelligent_defaults_helper.py"
 RESOURCES_CODEGEN_FILE_NAME = "resources.py"
 
 SHAPES_CODEGEN_FILE_NAME = "shapes.py"
+SHAPES_CODEGEN_OUTPUT_DIR = os.getcwd() + "/src/sagemaker/core/shapes"
 
 CONFIG_SCHEMA_FILE_NAME = "config_schema.py"
 
@@ -112,4 +120,39 @@ API_COVERAGE_JSON_FILE_PATH = os.getcwd() + "/src/sagemaker/core/tools/api_cover
 # E.g. DescribeInferenceComponent returns empty ComputeResourceRequirements for adapter ICs.
 REQUIRED_TO_OPTIONAL_OVERRIDES = {
     "InferenceComponentComputeResourceRequirements": ["MinMemoryRequiredInMb"],
+    # ModelPackageName is not applicable to versioned model packages (group-based).
+    # ModelPackageSecurityConfig.KmsKeyId is absent when no KMS key is configured.
+    "DescribeModelPackageOutput": ["ModelPackageName"],
+    "ModelPackageSecurityConfig": ["KmsKeyId"],
+    # S3Uri is optional when ModelDataSource references escrow-managed artifacts (RMP).
+    "S3ModelDataSource": ["S3Uri"],
+    # DescribeEndpoint omits DataCaptureConfig.KmsKeyId when data capture is enabled
+    # without a customer-managed KMS key (S3 default encryption is used instead).
+    "DataCaptureConfigSummary": ["KmsKeyId"],
+}
+
+# Members where the generated primitive type should be replaced with a PipelineVariable
+# Key: shape name, Value: dict of member name -> replacement type.
+PIPE_VAR_OVERRIDES = {
+    "ResourceConfig": {
+        "InstanceCount": "IntPipeVar",
+        "VolumeSizeInGB": "IntPipeVar",
+        "KeepAlivePeriodInSeconds": "IntPipeVar",
+        "SelectedInstanceCount": "IntPipeVar",
+    },
+    "InstancePreference": {
+        "InstanceCount": "IntPipeVar",
+    },
+    "ProcessingClusterConfig": {
+        "InstanceCount": "IntPipeVar",
+        "SelectedInstanceCount": "IntPipeVar",
+    },
+    "ProcessingInstancePreference": {
+        "InstanceCount": "IntPipeVar",
+    },
+    # RandomSeed accepts a pipeline variable (e.g. a ParameterInteger) so tuning pipelines
+    # can parameterize reproducibility (issue #5614 / #6171).
+    "HyperParameterTuningJobConfig": {
+        "RandomSeed": "IntPipeVar",
+    },
 }

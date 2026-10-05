@@ -6,14 +6,15 @@ import logging
 import importlib
 import platform
 
+import docker
+from docker.types import DeviceRequest
+
 from sagemaker.core import fw_utils
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.common_utils import _is_s3_uri
 from sagemaker.serve.utils.uploader import upload
 from sagemaker.core.s3.utils import determine_bucket_and_prefix, parse_s3_url
 from sagemaker.core.local.local_session import get_docker_host
-import docker
-from docker.types import DeviceRequest
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,9 @@ _SHM_SIZE = "2G"
 
 class LocalTritonServer:
     """Placeholder docstring"""
+
+    # pylint: disable=attribute-defined-outside-init
+    # container/container_name set during _start_*, not in __init__, by design.
 
     def __init__(self) -> None:
         self.triton_client = None
@@ -41,7 +45,6 @@ class LocalTritonServer:
         env_vars.update(
             {
                 "TRITON_MODEL_DIR": "/models/model",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
             }
         )
@@ -133,7 +136,6 @@ class SageMakerTritonServer:
         env_vars = {
             "SAGEMAKER_TRITON_DEFAULT_MODEL_NAME": "model",
             "TRITON_MODEL_DIR": "/opt/ml/model/model",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars
