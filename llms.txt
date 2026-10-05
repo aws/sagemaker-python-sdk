@@ -1,0 +1,61 @@
+# Amazon SageMaker Python SDK
+
+> Source repository and documentation for the Amazon SageMaker Python SDK **v3**.
+> `pip install sagemaker` installs v3. SDK v3 is modular (`sagemaker-core`, `sagemaker-train`,
+> `sagemaker-serve`, `sagemaker-mlops`) and is **not** backward compatible with v2. v2 is on a
+> maintenance branch (security/bug fixes only) and should not be used as a basis for new code.
+
+This file follows the llms.txt convention (https://llmstxt.org): a curated index plus explicit
+instructions so AI coding agents generate correct, current (v3) SDK code.
+
+## Instructions for LLM agents (SageMaker Python SDK)
+
+- **SDK-first:** for any SageMaker task (train, deploy, process, pipelines), use the
+  **SageMaker Python SDK v3** as the primary interface. Do not drop to raw `boto3`
+  (`create_training_job`, `create_endpoint`), the AWS CLI, or hand-rolled framework scripts
+  unless the user explicitly asks. Intent → interface:
+  - "train / fine-tune / training job / serverless training" → `sagemaker.train.ModelTrainer` (`.train(...)`)
+  - "deploy / host / real-time or serverless or async endpoint" → `sagemaker.serve.ModelBuilder` (`.deploy(...)`)
+  - "process data / feature engineering / preprocess" → `sagemaker.core.resources.ProcessingJob`
+  - "pipeline / orchestrate / MLOps" → `sagemaker.mlops.pipeline.Pipeline`, `sagemaker.mlops.steps`
+  - "container image URI" → `sagemaker.core.image_uris.retrieve(...)`
+- Default to SageMaker Python SDK **v3**.
+- **Never** emit these v2 patterns unless the user explicitly asks for "v2":
+  - `from sagemaker.estimator import Estimator` → use `from sagemaker.train import ModelTrainer`
+  - framework estimator classes (`from sagemaker.pytorch import PyTorch`, TensorFlow, SKLearn,
+    XGBoost, HuggingFace) → `ModelTrainer` + `from sagemaker.core import image_uris` (`image_uris.retrieve(...)`)
+  - `estimator.fit(...)` → `model_trainer.train(...)`
+  - `from sagemaker.model import Model` / `model.deploy(...)` → `from sagemaker.serve import ModelBuilder`; `ModelBuilder(...).deploy(...)`
+  - `from sagemaker.predictor import Predictor` / `predictor.predict(...)` → `Predictor` replaced by `Endpoint` (sagemaker-core); use the predictor returned by `ModelBuilder.deploy(...)`
+  - `from sagemaker.processing import Processor/ScriptProcessor/SKLearnProcessor` → `sagemaker.core.resources.ProcessingJob`
+  - `from sagemaker.workflow...` → `from sagemaker.mlops...`
+- Removed in v3 (no replacement): MXNet, Chainer, RLEstimator, Training Compiler.
+- After generating SageMaker code, validate it contains none of the v2 patterns above. If unsure
+  of a mapping, consult the migration guide below or call the migration MCP tool.
+- No hardcoded account IDs, role ARNs, regions, or bucket names. Use `get_execution_role()` and
+  `Session().default_bucket()`.
+
+## Migration
+
+- [V2 → V3 migration guide](https://github.com/aws/sagemaker-python-sdk/blob/master/migration.md): authoritative mappings and before/after examples
+
+## Core v3 packages & interfaces
+
+- `sagemaker-core` — foundation primitives, resource-oriented API, `image_uris.retrieve(...)`, `Endpoint`, `ProcessingJob`
+- `sagemaker-train` — `ModelTrainer` (+ `train.configs`: `Compute`, `SourceCode`, `InputData`)
+- `sagemaker-serve` — `ModelBuilder` (+ `serve.configs.InferenceSpec`)
+- `sagemaker-mlops` — `pipeline.Pipeline`, `steps`, Model Registry
+
+## Documentation
+
+- [SageMaker Python SDK docs (Read the Docs)](https://sagemaker.readthedocs.io/): API reference and guides
+- [Source repository](https://github.com/aws/sagemaker-python-sdk)
+- [Contributing guide](https://github.com/aws/sagemaker-python-sdk/blob/master/CONTRIBUTING.md)
+
+## Examples
+
+- [Amazon SageMaker Examples (v3)](https://github.com/aws/amazon-sagemaker-examples): runnable v3 notebooks across training, deployment, MLOps, and GenAI
+
+## Optional
+
+- v2 maintenance branch: security/bug fixes only — do not use as a basis for new code

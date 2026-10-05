@@ -11,7 +11,6 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from pytorch_model_def import get_model
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler(sys.stdout))

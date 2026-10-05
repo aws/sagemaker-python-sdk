@@ -1,0 +1,52 @@
+[
+  {
+    "input": [{"role": "user", "content": "Is the sun a star? Answer True or False."}],
+    "target": "A",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Is water wet? Answer True or False."}],
+    "target": "A",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Can penguins fly? Answer True or False."}],
+    "target": "B",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Is the Earth flat? Answer True or False."}],
+    "target": "B",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Do humans need oxygen? Answer True or False."}],
+    "target": "A",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Is Python a programming language? Answer True or False."}],
+    "target": "A",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Is the moon made of cheese? Answer True or False."}],
+    "target": "B",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Can fish breathe underwater? Answer True or False."}],
+    "target": "A",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Is 2 + 2 = 5? Answer True or False."}],
+    "target": "B",
+    "choices": ["True", "False"]
+  },
+  {
+    "input": [{"role": "user", "content": "Does the Amazon River flow in South America? Answer True or False."}],
+    "target": "A",
+    "choices": ["True", "False"]
+  }
+]

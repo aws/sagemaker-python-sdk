@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import, annotations
 
 import base64
@@ -163,7 +164,7 @@ class _SageMakerContainer(object):
             )
 
         if output:
-            match = re.search(r"v(\d+)", output.strip())
+            match = re.search(r"version\s+v?(\d+)", output.strip())
             if match and int(match.group(1)) >= 2:
                 logger.info("'Docker Compose' found using Docker CLI.")
                 compose_cmd_prefix.extend(["docker", "compose"])

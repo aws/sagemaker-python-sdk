@@ -16,6 +16,7 @@ information to effectively respond to your bug report or contribution.
   * [Run the Unit Tests](#run-the-unit-tests)
   * [Run the Integration Tests](#run-the-integration-tests)
   * [Make and Test Your Change](#make-and-test-your-change)
+  * [Instrument New Features with Telemetry](#instrument-new-features-with-telemetry)
   * [Lint Your Change](#lint-your-change)
   * [Commit Your Change](#commit-your-change)
   * [Send a Pull Request](#send-a-pull-request)
@@ -117,6 +118,27 @@ If you are writing or modifying a test that creates a SageMaker job (training, t
    1. Note that this also runs tools that may be necessary for the automated build to pass (ex: code reformatting by 'black').
 1. If your changes include documentation changes, please see the [Documentation Guidelines](#documentation-guidelines).
 1. If you include integration tests, do not mark them as canaries if they will not run in all regions.
+
+### Instrument New Features with Telemetry
+
+When you add or change a **public** API in one of the V3 modules (`sagemaker-core`,
+`sagemaker-train`, `sagemaker-serve`, `sagemaker-mlops`), instrument its public entry points
+with usage telemetry using the SDK's standard `@_telemetry_emitter` decorator from
+`sagemaker.core.telemetry`. Consistent telemetry helps us understand feature usage and
+prioritize investment, and applying the decorator does not change your feature's behavior.
+
+To make this repeatable, the repository includes an **Agent SOP** — a step-by-step procedure
+that an AI coding agent (or a person) can follow — at
+[`agent-sops/add-feature-telemetry.sop.md`](./agent-sops/add-feature-telemetry.sop.md). It:
+
+1. Locates the public entry points in a target file.
+1. Resolves the appropriate `Feature` enum value, creating a new one if none fits.
+1. Applies the `@_telemetry_emitter(Feature.<X>, "<name>")` decorator.
+1. Adds matching unit tests and verifies the module builds — without altering behavior.
+
+To use it, point your agent at the SOP and provide its parameters (at minimum `target_path`
+and `feature_name`); the SOP documents the rest. The SOP is a guide you invoke on demand — it
+does **not** run automatically on pull requests — so you can equally follow its steps by hand.
 
 ### Lint Your Change
 

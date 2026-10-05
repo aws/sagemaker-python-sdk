@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 
 """The SageMaker partner application SDK auth module"""
+
 from __future__ import absolute_import
 
 import os
