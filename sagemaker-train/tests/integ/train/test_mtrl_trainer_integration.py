@@ -53,8 +53,10 @@ ACCOUNT_CONFIGS = {
     # PROD — Main account (729646638167)
     "729646638167": {
         "env_name": "PROD",
-        # "existing_job_name": "mock-oss-test-mtrl-20260611170946",
-        "existing_job_name": "mock-oss-test-mtrl-20260910094327",
+        # Fixture job; its output package (mock-oss-test-mtrl-mpg/219) is pinned via the
+        # `pysdk-ci-protected=true` tag so the CI resource cleaner keeps it.
+        # Keep in sync with test_mtrl_evaluator_3p_agent.py.
+        "existing_job_name": "mock-oss-test-mtrl-20260929124814",
         "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/"
         "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
