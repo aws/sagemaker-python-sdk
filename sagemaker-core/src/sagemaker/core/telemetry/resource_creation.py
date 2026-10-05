@@ -11,12 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Resource creation module for tracking ARNs of resources created via SDK calls."""
+
 from __future__ import absolute_import
 
 # Maps class name (string) to the attribute name holding the resource ARN.
 # String-based keys avoid cross-package imports and circular dependencies.
 _RESOURCE_ARN_ATTRIBUTES = {
     "TrainingJob": "training_job_arn",
+    "AgentRFTJob": "job_arn",
 }
 
 

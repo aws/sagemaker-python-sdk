@@ -31,7 +31,13 @@ GRAVITON_INSTANCE_TYPES = [
 
 
 def _test_graviton_framework_uris(
-    framework, version, py_version, account, region, container_version="ubuntu20.04-sagemaker"
+    framework,
+    version,
+    py_version,
+    account,
+    region,
+    container_version="ubuntu20.04-sagemaker",
+    repository=None,
 ):
     for instance_type in GRAVITON_INSTANCE_TYPES:
         uri = image_uris.retrieve(framework, region, instance_type=instance_type, version=version)
@@ -42,6 +48,7 @@ def _test_graviton_framework_uris(
             account,
             region=region,
             container_version=container_version,
+            repository=repository,
         )
         assert expected == uri
 
@@ -57,6 +64,9 @@ def test_graviton_framework_uris(load_config_and_file_name, scope):
     for version in VERSIONS:
         ACCOUNTS = config[scope]["versions"][version]["registries"]
         py_versions = config[scope]["versions"][version]["py_versions"]
+        repository = config[scope]["versions"][version].get(
+            "repository", "{}-inference-graviton".format(framework)
+        )
         container_version = (
             config[scope]["versions"][version].get("container_version", {}).get("cpu", None)
         )
@@ -66,11 +76,22 @@ def test_graviton_framework_uris(load_config_and_file_name, scope):
             for region in ACCOUNTS.keys():
                 if container_version:
                     _test_graviton_framework_uris(
-                        framework, version, py_version, ACCOUNTS[region], region, container_version
+                        framework,
+                        version,
+                        py_version,
+                        ACCOUNTS[region],
+                        region,
+                        container_version,
+                        repository,
                     )
                 else:
                     _test_graviton_framework_uris(
-                        framework, version, py_version, ACCOUNTS[region], region
+                        framework,
+                        version,
+                        py_version,
+                        ACCOUNTS[region],
+                        region,
+                        repository=repository,
                     )
 
 
@@ -201,10 +222,10 @@ def test_graviton_sklearn_image_scope_specified_x86_instance(graviton_sklearn_un
 
 
 def _expected_graviton_framework_uri(
-    framework, version, py_version, account, region, container_version
+    framework, version, py_version, account, region, container_version, repository=None
 ):
     return expected_uris.graviton_framework_uri(
-        "{}-inference-graviton".format(framework),
+        repository or "{}-inference-graviton".format(framework),
         fw_version=version,
         py_version=py_version,
         account=account,

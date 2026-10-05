@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Helper classes that interact with SageMaker Training service."""
+
 from __future__ import absolute_import
 
 import dataclasses
@@ -332,10 +333,10 @@ then
 else
     printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
     printf "INFO: torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
-    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function \\n"
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function \\n"  # noqa: E501
 
     torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
-    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function "$@"
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function "$@"  # noqa: E501
 fi
 """
 
@@ -670,6 +671,30 @@ class _JobSettings:
             sagemaker_session=self.sagemaker_session,
         )
 
+        # When using Spark, ensure sagemaker-feature-store-pyspark is installed
+        # and its version-matched JAR is on Spark's classpath before spark-submit
+        if spark_config:
+            install_cmd = (
+                "pip install --root-user-action=ignore" " 'sagemaker-feature-store-pyspark>=2,<3'"
+            )
+            copy_jar_cmd = (
+                'python3 -c "'
+                "import feature_store_pyspark, shutil, os, glob, re; "
+                "release_file = os.path.join(os.environ.get('SPARK_HOME', '/usr/lib/spark'), 'RELEASE'); "
+                "spark_ver = '3.5'; "
+                "rf = open(release_file).read() if os.path.exists(release_file) else ''; "
+                "m = re.search(r'Spark (\\d+\\.\\d+)', rf); "
+                "spark_ver = m.group(1) if m else spark_ver; "
+                "jars_dir = os.path.join(os.path.dirname(feature_store_pyspark.__file__), 'jars'); "
+                "[shutil.copy(j, '/usr/lib/spark/jars/') "
+                "for j in glob.glob(os.path.join(jars_dir, '*' + spark_ver + '*.jar'))]\""
+            )
+            if self.pre_execution_commands is None:
+                self.pre_execution_commands = [install_cmd, copy_jar_cmd]
+            elif install_cmd not in self.pre_execution_commands:
+                self.pre_execution_commands.append(install_cmd)
+                self.pre_execution_commands.append(copy_jar_cmd)
+
         self.pre_execution_script = resolve_value_from_config(
             direct_input=pre_execution_script,
             config_path=REMOTE_FUNCTION_PRE_EXECUTION_SCRIPT,
@@ -822,15 +847,28 @@ class _JobSettings:
 
         py_version = str(sys.version_info[0]) + str(sys.version_info[1])
 
-        if py_version not in ["39"]:
+        if py_version not in ["39", "312"]:
             raise ValueError(
-                "The SageMaker Spark image for remote job only supports Python version 3.9. "
+                "The SageMaker Spark image for remote job only supports Python versions 3.9 and 3.12."
             )
+
+        # Detect Spark version from installed pyspark, fall back to default
+        spark_version = DEFAULT_SPARK_VERSION
+        try:
+            import pyspark
+
+            spark_version = ".".join(pyspark.__version__.split(".")[:2])
+        except ImportError:
+            pass
+
+        # Spark 3.3 and below do not support py312; use 3.5 which supports both py39 and py312
+        if py_version == "312" and spark_version in ("2.4", "3.0", "3.1", "3.2", "3.3"):
+            spark_version = "3.5"
 
         image_uri = image_uris.retrieve(
             framework=SPARK_NAME,
             region=region,
-            version=DEFAULT_SPARK_VERSION,
+            version=spark_version,
             instance_type=None,
             py_version=f"py{py_version}",
             container_version=DEFAULT_SPARK_CONTAINER_VERSION,
@@ -842,7 +880,9 @@ class _JobSettings:
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
-    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, verification_key: str):
+    def __init__(
+        self, job_name: str, s3_uri: str, sagemaker_session: Session, verification_key: str
+    ):
         """Initialize a _Job object.
 
         Args:
@@ -870,7 +910,9 @@ class _Job:
         """
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        verification_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
+        verification_key = describe_training_job_response["Environment"][
+            "REMOTE_FUNCTION_SECRET_KEY"
+        ]
 
         job = _Job(job_name, s3_uri, sagemaker_session, verification_key)
         job._last_describe_response = describe_training_job_response
@@ -1830,13 +1872,6 @@ class _RunInfo:
 
     experiment_name: str
     run_name: str
-
-
-def _get_initial_job_state(description, status_key, wait):
-    """Placeholder docstring"""
-    status = description[status_key]
-    job_already_completed = status in ("Completed", "Failed", "Stopped")
-    return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
 
 
 def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method

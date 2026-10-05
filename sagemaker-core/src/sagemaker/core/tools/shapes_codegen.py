@@ -15,13 +15,14 @@
 To run the script be sure to set the PYTHONPATH
 export PYTHONPATH=<sagemaker-code-gen repo directory>:$PYTHONPATH
 """
+
 import os
 
 from sagemaker.core.utils.code_injection.codec import pascal_to_snake
 from sagemaker.core.tools.constants import (
     LICENCES_STRING,
-    GENERATED_CLASSES_LOCATION,
     SHAPES_CODEGEN_FILE_NAME,
+    SHAPES_CODEGEN_OUTPUT_DIR,
 )
 from sagemaker.core.tools.shapes_extractor import ShapesExtractor
 from sagemaker.core.utils.utils import (
@@ -39,8 +40,7 @@ from .resources_extractor import ResourcesExtractor
 
 
 class ShapesCodeGen:
-    """
-    Generates shape classes based on an input Botocore service.json.
+    """Generates shape classes based on an input Botocore service.json.
 
     Args:
         service_json (dict): The Botocore service.json containing the shape definitions.
@@ -52,7 +52,8 @@ class ShapesCodeGen:
 
     Methods:
         build_graph(): Builds a directed acyclic graph (DAG) representing the dependencies between shapes.
-        topological_sort(): Performs a topological sort on the DAG to determine the order in which shapes should be generated.
+        topological_sort(): Performs a topological sort on the DAG to determine the order in which
+            shapes should be generated.
         generate_data_class_for_shape(shape): Generates a data class for a given shape.
         _generate_doc_string_for_shape(shape): Generates the docstring for a given shape.
         generate_imports(): Generates the import statements for the generated shape classes.
@@ -71,8 +72,7 @@ class ShapesCodeGen:
         self.resource_methods = self.resources_extractor.get_resource_methods()
 
     def build_graph(self):
-        """
-        Builds a directed acyclic graph (DAG) representing the dependencies between shapes.
+        """Builds a directed acyclic graph (DAG) representing the dependencies between shapes.
 
         Steps:
         1. Loop over the Service Json shapes.
@@ -115,8 +115,7 @@ class ShapesCodeGen:
         return graph
 
     def topological_sort(self):
-        """
-        Performs a topological sort on the DAG to determine the order in which shapes should be generated.
+        """Performs a topological sort on the DAG to determine the order in which shapes should be generated.
 
         :return: A list of shape names in the order of topological sort.
         """
@@ -140,8 +139,7 @@ class ShapesCodeGen:
         return stack
 
     def generate_data_class_for_shape(self, shape):
-        """
-        Generates a data class for a given shape.
+        """Generates a data class for a given shape.
 
         :param shape: The name of the shape.
         :return: The generated data class as a string.
@@ -164,8 +162,7 @@ class ShapesCodeGen:
         )
 
     def _generate_doc_string_for_shape(self, shape):
-        """
-        Generates the docstring for a given shape.
+        """Generates the docstring for a given shape.
 
         :param shape: The name of the shape.
         :return: The generated docstring as a string.
@@ -189,8 +186,7 @@ class ShapesCodeGen:
         return escape_special_rst_characters(docstring)
 
     def generate_license(self):
-        """
-        Generates the license string.
+        """Generates the license string.
 
         Returns:
             str: The license string.
@@ -198,8 +194,7 @@ class ShapesCodeGen:
         return LICENCES_STRING
 
     def generate_imports(self):
-        """
-        Generates the import statements for the generated shape classes.
+        """Generates the import statements for the generated shape classes.
 
         :return: The generated import statements as a string.
         """
@@ -209,7 +204,7 @@ class ShapesCodeGen:
         imports += "from pydantic import BaseModel, ConfigDict\n"
         imports += "from typing import List, Dict, Optional, Any, Union\n"
         imports += "from sagemaker.core.utils.utils import Unassigned\n"
-        imports += "from sagemaker.core.helper.pipeline_variable import StrPipeVar\n"
+        imports += "from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar\n"
         imports += "\n"
         imports += "# Suppress Pydantic warnings about field names shadowing parent attributes\n"
         imports += "warnings.filterwarnings('ignore', message='.*shadows an attribute.*')\n"
@@ -217,8 +212,7 @@ class ShapesCodeGen:
         return imports
 
     def generate_base_class(self):
-        """
-        Generates the base class for the shape classes.
+        """Generates the base class for the shape classes.
 
         :return: The generated base class as a string.
         """
@@ -228,8 +222,7 @@ class ShapesCodeGen:
         )
 
     def _filter_input_output_shapes(self, shape):
-        """
-        Filters out shapes that are used as input or output for operations.
+        """Filters out shapes that are used as input or output for operations.
 
         :param shape: The name of the shape.
         :return: True if the shape should be generated, False otherwise.
@@ -252,13 +245,13 @@ class ShapesCodeGen:
 
     def generate_shapes(
         self,
-        output_folder=GENERATED_CLASSES_LOCATION,
+        output_folder=SHAPES_CODEGEN_OUTPUT_DIR,
         file_name=SHAPES_CODEGEN_FILE_NAME,
-    ) -> None:
-        """
-        Generates the shape classes and writes them to the specified output folder.
+    ) -> str:
+        """Generates the shape classes and writes them to the specified output folder.
 
         :param output_folder: The path to the output folder.
+        :return: The path to the generated output file.
         """
         # Check if the output folder exists, if not, create it
         os.makedirs(output_folder, exist_ok=True)
@@ -294,3 +287,5 @@ class ShapesCodeGen:
                         # Generate and write data class for shape
                         shape_class = self.generate_data_class_for_shape(shape)
                         file.write(shape_class)
+
+        return output_file

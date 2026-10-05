@@ -1,4 +1,5 @@
 """Unit tests for sagemaker.serve.configs module."""
+
 import unittest
 from sagemaker.serve.configs import Network, Compute
 
@@ -34,10 +35,7 @@ class TestNetwork(unittest.TestCase):
 
     def test_network_with_vpc_config(self):
         """Test Network with VPC config."""
-        vpc_config = {
-            "Subnets": ["subnet-123"],
-            "SecurityGroupIds": ["sg-123"]
-        }
+        vpc_config = {"Subnets": ["subnet-123"], "SecurityGroupIds": ["sg-123"]}
         network = Network(vpc_config=vpc_config)
         self.assertEqual(network.vpc_config, vpc_config)
 
@@ -46,14 +44,14 @@ class TestNetwork(unittest.TestCase):
         subnets = ["subnet-123"]
         sg_ids = ["sg-456"]
         vpc_config = {"Subnets": subnets, "SecurityGroupIds": sg_ids}
-        
+
         network = Network(
             subnets=subnets,
             security_group_ids=sg_ids,
             enable_network_isolation=True,
-            vpc_config=vpc_config
+            vpc_config=vpc_config,
         )
-        
+
         self.assertEqual(network.subnets, subnets)
         self.assertEqual(network.security_group_ids, sg_ids)
         self.assertTrue(network.enable_network_isolation)

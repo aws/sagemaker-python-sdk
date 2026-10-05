@@ -22,7 +22,7 @@ class TestCustomOrchestrator(unittest.TestCase):
     def test_client_property(self, mock_session):
         mock_client = Mock()
         mock_session.return_value.client.return_value = mock_client
-        
+
         orchestrator = ConcreteOrchestrator()
         client = orchestrator.client
         self.assertEqual(client, mock_client)

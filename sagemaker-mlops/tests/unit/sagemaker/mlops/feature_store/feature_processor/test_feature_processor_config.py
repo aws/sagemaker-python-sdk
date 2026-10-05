@@ -44,3 +44,13 @@ def test_feature_processor_config_is_immutable():
         match="'FeatureProcessorConfig' object does not support item assignment",
     ):
         fp_config["inputs"] = []
+
+
+def test_feature_processor_config_use_lake_formation_credentials_default():
+    fp_config = tdh.create_fp_config()
+    assert fp_config.use_lake_formation_credentials is False
+
+
+def test_feature_processor_config_use_lake_formation_credentials_enabled():
+    fp_config = tdh.create_fp_config(use_lake_formation_credentials=True)
+    assert fp_config.use_lake_formation_credentials is True

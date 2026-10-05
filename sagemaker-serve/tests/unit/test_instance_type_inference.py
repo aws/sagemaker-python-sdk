@@ -4,7 +4,7 @@ Tests the _infer_instance_type_from_jumpstart method with various scenarios.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pytest
 
 from sagemaker.serve.model_builder import ModelBuilder
@@ -437,6 +437,7 @@ class TestInstanceTypeInferenceIntegration(unittest.TestCase):
 
         # Manually set instance_type to None to simulate the scenario
         builder.instance_type = None
+        builder._user_provided_instance_type = False
 
         # Execute: Call _fetch_and_cache_recipe_config which should trigger inference
         builder._fetch_and_cache_recipe_config()
@@ -494,6 +495,7 @@ class TestInstanceTypeInferenceIntegration(unittest.TestCase):
         )
 
         builder.instance_type = None
+        builder._user_provided_instance_type = False
 
         # Execute
         builder._fetch_and_cache_recipe_config()

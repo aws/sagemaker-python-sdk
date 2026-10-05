@@ -21,7 +21,6 @@ import logging
 from pathlib import Path
 from sagemaker.serve.validations.check_integrity import perform_integrity_check
 
-
 logger = LOGGER = logging.getLogger("sagemaker")
 
 

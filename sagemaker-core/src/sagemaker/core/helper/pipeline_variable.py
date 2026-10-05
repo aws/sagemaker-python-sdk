@@ -1,3 +1,5 @@
+"""Base type for SageMaker pipeline variables."""
+
 import abc
 from typing import Dict, List, Union, Any
 

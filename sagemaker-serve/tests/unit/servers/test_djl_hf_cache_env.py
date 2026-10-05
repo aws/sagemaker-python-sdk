@@ -15,7 +15,6 @@ from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.core.resources import Model
 
-
 MOCK_ROLE_ARN = "arn:aws:iam::000000000000:role/SageMakerRole"
 MOCK_IMAGE_URI = "000000000000.dkr.ecr.us-east-1.amazonaws.com/djl-inference:latest"
 MOCK_HF_MODEL_CONFIG = {"model_type": "gpt2", "architectures": ["GPT2LMHeadModel"]}
@@ -113,9 +112,7 @@ class TestDjlHfCacheAndModelId:
 
     def test_preserves_user_provided_hf_model_id(self, tmp_path):
         """User-provided HF_MODEL_ID must NOT be overridden by model param."""
-        builder = _create_djl_builder(
-            tmp_path, env_vars={"HF_MODEL_ID": "/opt/ml/model"}
-        )
+        builder = _create_djl_builder(tmp_path, env_vars={"HF_MODEL_ID": "/opt/ml/model"})
         builder._build_for_djl()
 
         assert builder.env_vars["HF_MODEL_ID"] == "/opt/ml/model"
