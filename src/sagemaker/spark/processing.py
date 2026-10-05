@@ -448,17 +448,29 @@ class _SparkProcessorBase(ScriptProcessor):
                 # S3 URIs are included as-is in the spark-submit argument
                 if dep_url.scheme in ["s3", "s3a"]:
                     spark_opt_s3_uris.append(dep_path)
-                # Local files are copied to temp directory to be uploaded to S3
+                # Local files and directories are copied to a temp directory to be
+                # uploaded to S3
                 elif not dep_url.scheme or dep_url.scheme == "file":
-                    if not os.path.isfile(dep_path):
-                        raise ValueError(
-                            f"submit_deps path {dep_path} is not a valid local file. "
-                            f"{self._submit_deps_error_message}"
+                    if os.path.isdir(dep_path):
+                        logger.info(
+                            "Copying dependency directory from local path %s to tmpdir %s",
+                            dep_path,
+                            tmpdir,
                         )
-                    logger.info(
-                        "Copying dependency from local path %s to tmpdir %s", dep_path, tmpdir
-                    )
-                    shutil.copy(dep_path, tmpdir)
+                        shutil.copytree(
+                            dep_path,
+                            os.path.join(tmpdir, os.path.basename(os.path.normpath(dep_path))),
+                        )
+                    elif os.path.isfile(dep_path):
+                        logger.info(
+                            "Copying dependency from local path %s to tmpdir %s", dep_path, tmpdir
+                        )
+                        shutil.copy(dep_path, tmpdir)
+                    else:
+                        raise ValueError(
+                            f"submit_deps path {dep_path} is not a valid local file "
+                            f"or directory. {self._submit_deps_error_message}"
+                        )
                 else:
                     raise ValueError(
                         f"submit_deps path {dep_path} references unsupported filesystem "
