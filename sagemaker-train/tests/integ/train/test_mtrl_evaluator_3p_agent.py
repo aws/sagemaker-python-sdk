@@ -20,12 +20,11 @@ fronted by a Lambda adapter).
 The test creates (or reuses) a Lambda forwarder that bridges RFT rollout
 requests to an external agent endpoint.
 """
+
 from __future__ import absolute_import
 
 import io
-import json
 import os
-import time
 import zipfile
 import pytest
 import logging
@@ -142,6 +141,7 @@ def handler(event, context):
         return _handle_agent_error(exc)
 '''
 
+
 # Test configuration for 3P agent evaluation.
 def _get_3p_test_config():
     """Build test configuration lazily (only when tests actually run)."""
@@ -160,10 +160,6 @@ def _get_3p_test_config():
         "mlflow_resource_arn": os.environ.get(
             "MTRL_3P_MLFLOW_ARN",
             f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
-        ),
-        "role": os.environ.get(
-            "MTRL_3P_ROLE",
-            f"arn:aws:iam::{account_id}:role/Admin",
         ),
         "region": os.environ.get("MTRL_3P_REGION", _REGION),
         "account_id": account_id,
@@ -258,7 +254,6 @@ class TestMTRLEvaluator3PAgentIntegration:
             agent_config=lambda_agent_arn,
             s3_output_path=f'{test_config["s3_output_path"]}lambda-e2e/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             accept_eula=True,
         )
@@ -304,7 +299,6 @@ class TestMTRLEvaluator3PAgentIntegration:
             agent_config=agent,
             s3_output_path=f'{test_config["s3_output_path"]}lambda-object/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             accept_eula=True,
         )
@@ -322,8 +316,10 @@ class TestMTRLEvaluator3PAgentIntegration:
         """Test evaluating a fine-tuned model by attaching to an existing training job."""
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
+        # Fixture job whose output package is pinned via the `pysdk-ci-protected=true`
+        # tag. Keep in sync with test_mtrl_trainer_integration.py.
         attached_job = MultiTurnRLTrainer.attach(
-            "mock-oss-test-mtrl-20260616153024", session=boto3.Session(region_name=_REGION)
+            "mock-oss-test-mtrl-20260929124814", session=boto3.Session(region_name=_REGION)
         )
 
         evaluator = MultiTurnRLEvaluator(
@@ -332,7 +328,6 @@ class TestMTRLEvaluator3PAgentIntegration:
             agent_config=lambda_agent_arn,
             s3_output_path=f'{test_config["s3_output_path"]}attached-trainer/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             accept_eula=True,
         )

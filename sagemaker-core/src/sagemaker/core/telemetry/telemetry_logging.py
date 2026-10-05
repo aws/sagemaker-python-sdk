@@ -11,11 +11,13 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Telemetry module for SageMaker Python SDK to collect usage data and metrics."""
+
 from __future__ import absolute_import
 import logging
 import os
 import platform
 import sys
+import threading
 from time import perf_counter
 from typing import List
 import functools
@@ -31,7 +33,6 @@ from botocore.exceptions import (
     ReadTimeoutError,
     EndpointConnectionError,
     ConnectionClosedError,
-    ClientError,
     NoRegionError,
 )
 from sagemaker.core.apiutils._boto_functions import to_lower_camel_case
@@ -64,6 +65,24 @@ TELEMETRY_OPT_OUT_MESSAGING = (
     "For more information, refer to https://sagemaker.readthedocs.io/en/stable/overview.html"
     "#configuring-and-using-defaults-with-the-sagemaker-python-sdk."
 )
+_telemetry_msg_shown = False
+
+# Seconds to wait for the telemetry endpoint before giving up on an event.
+TELEMETRY_REQUEST_TIMEOUT = 2
+
+# Telemetry must never sit in the caller's critical path, so every event is sent
+# from a daemon thread. A slow or unreachable telemetry endpoint (for example from
+# inside a VPC with no route to it) can no longer stall the SDK call the customer
+# actually made, and because the threads are daemons a pending send cannot delay
+# interpreter shutdown either. No event is ever dropped: one thread is started per
+# event.
+#
+# Special case worth calling out: Feature Store ingestion is decorated at more than
+# one level (``ingest_dataframe`` and ``IngestionManagerPandas.run``), so a single
+# user call can emit several events. Sending them serially on the caller's thread is
+# what turned an ingest that the service finished in under a second into a
+# multi-minute wait, which is why the send is moved off that thread here rather than
+# only having its timeout tightened.
 
 FEATURE_TO_CODE = {
     str(Feature.SDK_DEFAULTS): 11,
@@ -76,6 +95,7 @@ FEATURE_TO_CODE = {
     str(Feature.PROCESSING): 18,
     str(Feature.MODEL_CUSTOMIZATION_NOVA): 19,
     str(Feature.MODEL_CUSTOMIZATION_OSS): 20,
+    str(Feature.INFERENCE_RECOMMENDER): 21,
 }
 
 STATUS_TO_CODE = {
@@ -172,6 +192,7 @@ class TelemetryParamType:
 
     # Calls self.<name>() and emits the return value.
     # Use for: computed/derived values like _is_model_customization(), _is_nova_model().
+    # Emits nothing if the method returns None.
     ATTR_CALL = "attr_call"
 
     # Reads kwargs[<name>] from the decorated method's keyword arguments and emits the value.
@@ -226,9 +247,11 @@ def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
             method = getattr(instance, name, None)
             if callable(method):
                 try:
-                    parts.append(f"&x-{key}={method()}")
+                    value = method()
                 except Exception:
-                    pass
+                    value = None
+                if value is not None:
+                    parts.append(f"&x-{key}={value}")
         elif kind == T.KWARG_VALUE:
             value = kwargs.get(name) if kwargs else None
             if value is not None:
@@ -283,8 +306,8 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                 )
 
             if sagemaker_session:
+                global _telemetry_msg_shown
                 logger.debug("sagemaker_session found, preparing to emit telemetry...")
-                logger.info(TELEMETRY_OPT_OUT_MESSAGING)
                 response = None
                 caught_ex = None
                 studio_app_type = process_studio_metadata_file()
@@ -297,6 +320,10 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                     sagemaker_session=sagemaker_session,
                 )
                 logger.debug("TelemetryOptOut flag is set to: %s", telemetry_opt_out_flag)
+
+                if not telemetry_opt_out_flag and not _telemetry_msg_shown:
+                    logger.info(TELEMETRY_OPT_OUT_MESSAGING)
+                    _telemetry_msg_shown = True
 
                 # Construct the feature list to track feature combinations
                 feature_list: List[int] = [FEATURE_TO_CODE[str(feature)]]
@@ -316,9 +343,7 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                                     FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_OSS)]
                                 )
                     except Exception:  # pylint: disable=W0703
-                        logger.debug(
-                            "Unable to determine NOVA/OSS model type for telemetry."
-                        )
+                        logger.debug("Unable to determine NOVA/OSS model type for telemetry.")
 
                 if (
                     hasattr(sagemaker_session, "sagemaker_config")
@@ -416,6 +441,100 @@ def _send_telemetry_request(
     failure_reason: str = None,
     failure_type: str = None,
     extra_info: str = None,
+) -> threading.Thread:
+    """Schedule a telemetry event to be sent on a background daemon thread.
+
+    Every event is still sent; this only moves the send off the caller's thread so
+    that telemetry never adds latency to the SDK call that triggered it.
+
+    Returns:
+        threading.Thread: The thread doing the send. Callers generally ignore this;
+            tests can join on it.
+    """
+
+    def _run():
+        try:
+            _send_telemetry_request_sync(
+                status, feature_list, session, failure_reason, failure_type, extra_info
+            )
+        except Exception:  # pylint: disable=W0703
+            # Nothing can be raised out of a fire-and-forget thread: there is no
+            # caller to catch it, and even the logging call inside
+            # _send_telemetry_request_sync can fail once the interpreter starts
+            # tearing down. Telemetry is best-effort, so drop the event silently.
+            pass
+
+    thread = threading.Thread(target=_run, name="sagemaker-telemetry", daemon=True)
+    thread.start()
+    return thread
+
+
+def _emit_failure_telemetry(
+    feature: str,
+    func_name: str,
+    exc: Exception,
+    sagemaker_session: Session = None,
+) -> None:
+    """Emit a single FAILURE telemetry event for a client-side failure.
+
+    Unlike the ``@_telemetry_emitter`` decorator -- which wraps a call and emits on
+    both success and failure for every invocation -- this helper emits only when a
+    caller has explicitly hit a failure it wants recorded. Use it to capture a class
+    of client-side failure (e.g. invalid user input) without adding any happy-path
+    telemetry or per-call overhead to the surrounding code.
+
+    Best-effort: it resolves a session (falling back to the default), honors the
+    telemetry opt-out configuration, and swallows any error while emitting, so it can
+    never mask or replace the caller's own exception.
+
+    Args:
+        feature: The Feature enum value to attribute this event to.
+        func_name: Human-readable name of the failing operation, for tracking.
+        exc: The exception representing the failure (used for reason/type/category).
+        sagemaker_session: Optional session; the default session is used if omitted.
+    """
+    try:
+        session = sagemaker_session or _get_default_sagemaker_session()
+        if not session:
+            return
+        # Honor the same telemetry opt-out contract as @_telemetry_emitter: a user
+        # who has opted out must not have these events emitted.
+        if resolve_value_from_config(
+            direct_input=None,
+            config_path=TELEMETRY_OPT_OUT_PATH,
+            default_value=False,
+            sagemaker_session=session,
+        ):
+            return
+        # Mirror the decorator's platform/env dimensions so these events can be
+        # sliced consistently alongside decorator-emitted ones.
+        extra = (
+            f"{func_name}"
+            f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-env={PYTHON_VERSION}"
+            f"&x-sys={OS_NAME_VERSION}"
+            f"&x-platform={process_studio_metadata_file()}"
+            f"&x-errorCategory={_classify_error(exc)}"
+        )
+        _send_telemetry_request(
+            STATUS_TO_CODE[str(Status.FAILURE)],
+            [FEATURE_TO_CODE[str(feature)]],
+            session,
+            str(exc),
+            exc.__class__.__name__,
+            extra,
+        )
+    except Exception:  # pragma: no cover - telemetry must never break the caller
+        pass
+
+
+def _send_telemetry_request_sync(
+    status: int,
+    feature_list: List[int],
+    session: Session,
+    failure_reason: str = None,
+    failure_type: str = None,
+    extra_info: str = None,
 ) -> None:
     """Make GET request to an empty object in S3 bucket"""
     try:
@@ -443,7 +562,7 @@ def _send_telemetry_request(
         )
         # Send the telemetry request
         logger.debug("Sending telemetry request to [%s]", url)
-        _requests_helper(url, 2)
+        _requests_helper(url, TELEMETRY_REQUEST_TIMEOUT)
         logger.debug("SageMaker Python SDK telemetry successfully emitted.")
     except Exception:  # pylint: disable=W0703
         logger.debug("SageMaker Python SDK telemetry not emitted!")
@@ -476,12 +595,17 @@ def _construct_url(
 
 
 def _requests_helper(url, timeout):
-    """Make a GET request to the given URL"""
+    """Make a GET request to the given URL
+
+    ``timeout`` must be passed by keyword. ``requests.get`` takes ``params`` as
+    its second positional argument, so passing it positionally would append the
+    value to the query string and leave the request with no timeout at all.
+    """
     response = None
     try:
-        response = requests.get(url, timeout)
+        response = requests.get(url, timeout=timeout)
     except requests.exceptions.RequestException as e:
-        logger.exception("Request exception: %s", str(e))
+        logger.debug("Request exception: %s", str(e))
     return response
 
 
@@ -505,9 +629,24 @@ def _get_region_or_default(session):
 
 
 def _get_default_sagemaker_session():
-    """Return the default sagemaker session"""
+    """Return the default sagemaker session
 
-    boto_session = boto3.Session(region_name=DEFAULT_AWS_REGION)
+    The region is resolved by boto3 from the caller's own environment
+    (``AWS_REGION``, ``AWS_DEFAULT_REGION``, or the active profile in
+    ``~/.aws/config``). ``DEFAULT_AWS_REGION`` is only used as a last resort,
+    because ``Session`` requires a region. Hardcoding the default meant that
+    callers with no session of their own (module-level functions such as
+    ``ingest_dataframe``) had their telemetry pointed at a region they may have
+    no network route to.
+    """
+
+    boto_session = boto3.Session()
+    if not boto_session.region_name:
+        logger.debug(
+            "No region resolved from the local AWS configuration. Falling back to %s.",
+            DEFAULT_AWS_REGION,
+        )
+        boto_session = boto3.Session(region_name=DEFAULT_AWS_REGION)
     sagemaker_session = Session(boto_session=boto_session)
 
     return sagemaker_session

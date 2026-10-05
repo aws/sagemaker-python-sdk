@@ -16,8 +16,6 @@ import glob
 import logging
 import os
 import subprocess
-import sys
-import tempfile
 import time
 from typing import Dict
 from datetime import datetime
@@ -33,6 +31,7 @@ from boto3 import client
 
 from tests.integ import DATA_DIR
 from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.common_utils import unique_name_from_base
 from sagemaker.core.s3 import S3Uploader
 from urllib.parse import urlparse
 from sagemaker.core.remote_function import remote
@@ -188,7 +187,7 @@ def test_feature_processor_transform_online_only_store_ingestion(
             return transformed_df
 
         # this calls spark 3.3 which requires java 11
-        transform() 
+        transform()
 
         featurestore_client = sagemaker_session.sagemaker_featurestore_runtime_client
         results = featurestore_client.batch_get_record(
@@ -229,7 +228,9 @@ def test_feature_processor_transform_online_only_store_ingestion(
 
         assert len(results["Records"]) == 26
 
-        car_sales_query = create_athena_query(feature_group_name=car_data_feature_group_name, session=sagemaker_session)
+        car_sales_query = create_athena_query(
+            feature_group_name=car_data_feature_group_name, session=sagemaker_session
+        )
         query = f'SELECT * FROM "sagemaker_featurestore".{car_sales_query.table_name} LIMIT 1000;'
         output_uri = "s3://{}/{}/input/data/{}".format(
             sagemaker_session.default_bucket(),
@@ -371,7 +372,9 @@ def test_feature_processor_transform_with_customized_data_source(
 
         assert len(results["Records"]) == 26
 
-        car_sales_query = create_athena_query(feature_group_name=car_data_feature_group_name, session=sagemaker_session)
+        car_sales_query = create_athena_query(
+            feature_group_name=car_data_feature_group_name, session=sagemaker_session
+        )
         query = f'SELECT * FROM "sagemaker_featurestore".{car_sales_query.table_name} LIMIT 1000;'
         output_uri = "s3://{}/{}/input/data/{}".format(
             sagemaker_session.default_bucket(),
@@ -493,7 +496,9 @@ def test_feature_processor_transform_offline_only_store_ingestion(
 
         assert len(results["Records"]) == 0
 
-        car_sales_query = create_athena_query(feature_group_name=car_data_feature_group_name, session=sagemaker_session)
+        car_sales_query = create_athena_query(
+            feature_group_name=car_data_feature_group_name, session=sagemaker_session
+        )
         query = f'SELECT * FROM "sagemaker_featurestore".{car_sales_query.table_name} LIMIT 1000;'
         output_uri = "s3://{}/{}/input/data/{}".format(
             sagemaker_session.default_bucket(),
@@ -595,7 +600,6 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
 
         transform()
 
-
         featurestore_client = sagemaker_session.sagemaker_featurestore_runtime_client
         results = featurestore_client.batch_get_record(
             Identifiers=[
@@ -635,7 +639,9 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
 
         assert len(results["Records"]) == 0
 
-        car_sales_query = create_athena_query(feature_group_name=car_data_feature_group_name, session=sagemaker_session)
+        car_sales_query = create_athena_query(
+            feature_group_name=car_data_feature_group_name, session=sagemaker_session
+        )
         query = f'SELECT * FROM "sagemaker_featurestore".{car_sales_query.table_name} LIMIT 1000;'
         output_uri = "s3://{}/{}/input/data/{}".format(
             sagemaker_session.default_bucket(),
@@ -681,7 +687,7 @@ def test_to_pipeline_and_execute(
     pre_execution_commands,
     dependencies_path,
 ):
-    pipeline_name = "pipeline-name-01"
+    pipeline_name = unique_name_from_base("pipeline-name-01")
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()
     try:
@@ -736,9 +742,7 @@ def test_to_pipeline_and_execute(
             transformed_df.show()
             return transformed_df
 
-        _wait_for_feature_group_lineage_contexts(
-            car_data_feature_group_name, sagemaker_session
-        )
+        _wait_for_feature_group_lineage_contexts(car_data_feature_group_name, sagemaker_session)
 
         pipeline_arn = to_pipeline(
             pipeline_name=pipeline_name,
@@ -791,18 +795,19 @@ def test_to_pipeline_and_execute(
         cleanup_feature_group(
             feature_groups["car_data_aggregated_feature_group"], sagemaker_session=sagemaker_session
         )
-        # cleanup_pipeline(pipeline_name="pipeline-name-01", sagemaker_session=sagemaker_session)
+        cleanup_pipeline(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
 
 
 # @pytest.mark.skipif(
 #     sys.version_info[:2] not in [(3, 9), (3, 12)],
 #     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
 # )
-# @pytest.mark.skip(
-#     reason="Lake Formation credential vending (GetTemporaryGlueTableCredentials) requires "
-#     "full LF environment setup (resource registration, trust policy, data location grants) "
-#     "that is not configured in CI. See quip-amazon.com/S3FEAMMMuKm0 for details."
-# )
+@pytest.mark.skip(
+    reason="Lake Formation credential vending (GetTemporaryGlueTableCredentials) requires "
+    "full LF environment setup (resource registration, trust policy, data location grants) "
+    "that is not configured in CI. Test role permissions were modified from console. "
+    "See quip-amazon.com/S3FEAMMMuKm0 for details."
+)
 @pytest.mark.spark_py312
 @pytest.mark.slow_test
 def test_to_pipeline_and_execute_with_lake_formation(
@@ -810,7 +815,7 @@ def test_to_pipeline_and_execute_with_lake_formation(
     pre_execution_commands,
     dependencies_path,
 ):
-    pipeline_name = "pipeline-name-lf-01"
+    pipeline_name = unique_name_from_base("pipeline-name-lf-01")
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_fg = None
     try:
@@ -830,7 +835,7 @@ def test_to_pipeline_and_execute_with_lake_formation(
             event_time_feature_name="ingest_time",
             feature_definitions=CAR_SALES_FG_FEATURE_DEFINITIONS,
             offline_store_config=OfflineStoreConfig(
-                s3_storage_config=S3StorageConfig(s3_uri=f"{offline_store_s3_uri}/car-data")                
+                s3_storage_config=S3StorageConfig(s3_uri=f"{offline_store_s3_uri}/car-data")
             ),
             online_store_config=OnlineStoreConfig(enable_online_store=True),
             role_arn=role_arn,
@@ -883,9 +888,7 @@ def test_to_pipeline_and_execute_with_lake_formation(
             transformed_df.show()
             return transformed_df
 
-        _wait_for_feature_group_lineage_contexts(
-            car_data_feature_group_name, sagemaker_session
-        )
+        _wait_for_feature_group_lineage_contexts(car_data_feature_group_name, sagemaker_session)
 
         pipeline_arn = to_pipeline(
             pipeline_name=pipeline_name,
@@ -946,6 +949,7 @@ def test_to_pipeline_and_execute_with_lake_formation(
             except Exception as e:
                 logging.warning(f"Failed to delete Glue table: {e}")
             cleanup_feature_group(car_data_fg, sagemaker_session=sagemaker_session)
+        cleanup_pipeline(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
 
 
 # @pytest.mark.skipif(
@@ -959,7 +963,7 @@ def test_schedule_and_event_trigger(
     pre_execution_commands,
     dependencies_path,
 ):
-    pipeline_name = "pipeline-name-01"
+    pipeline_name = unique_name_from_base("pipeline-name-01")
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()
     try:
@@ -1014,9 +1018,7 @@ def test_schedule_and_event_trigger(
             transformed_df.show()
             return transformed_df
 
-        _wait_for_feature_group_lineage_contexts(
-            car_data_feature_group_name, sagemaker_session
-        )
+        _wait_for_feature_group_lineage_contexts(car_data_feature_group_name, sagemaker_session)
 
         pipeline_arn = to_pipeline(
             pipeline_name=pipeline_name,
@@ -1095,7 +1097,9 @@ def test_schedule_and_event_trigger(
 
         assert len(results["Records"]) == 0
 
-        car_sales_query = create_athena_query(feature_group_name=car_data_feature_group_name, session=sagemaker_session)
+        car_sales_query = create_athena_query(
+            feature_group_name=car_data_feature_group_name, session=sagemaker_session
+        )
         query = f'SELECT * FROM "sagemaker_featurestore".{car_sales_query.table_name} LIMIT 1000;'
         output_uri = "s3://{}/{}/input/data/{}".format(
             sagemaker_session.default_bucket(),
@@ -1175,6 +1179,7 @@ def test_schedule_and_event_trigger(
         cleanup_feature_group(
             feature_groups["car_data_aggregated_feature_group"], sagemaker_session=sagemaker_session
         )
+        cleanup_pipeline(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
 
 
 def get_car_data_feature_group_name():
@@ -1236,14 +1241,14 @@ def get_pre_execution_commands(sagemaker_session):
     """Build SDK wheels, upload to S3, and return pre-execution install commands."""
     s3_prefix, wheel_names = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
     sagemaker_whl, core_whl, mlops_whl = wheel_names
-    print(f'{sagemaker_whl=}, {core_whl=}, {mlops_whl=}')
+    print(f"{sagemaker_whl=}, {core_whl=}, {mlops_whl=}")
     PIP = "python3 -m pip install --root-user-action=ignore"
     AWS = "python3 -m awscli"
-    cmds =  [
+    cmds = [
         f"{PIP} awscli",
         f"{AWS} s3 cp {s3_prefix}/ /tmp/packages/ --recursive",
         f"{PIP} 'setuptools<75'",
-        f"{PIP} --no-build-isolation '/tmp/packages/{mlops_whl}' 'numpy<2.0.0' 'ml_dtypes<=0.4.1' 'setuptools<75' || true",
+        f"{PIP} --no-build-isolation '/tmp/packages/{mlops_whl}' 'numpy<2.0.0' 'ml_dtypes<=0.4.1' 'setuptools<75' || true",  # noqa: E501
         f"{PIP} --no-deps --force-reinstall /tmp/packages/{sagemaker_whl}",
         f"{PIP} --no-deps --force-reinstall /tmp/packages/{core_whl} /tmp/packages/{mlops_whl}",
     ]
@@ -1509,9 +1514,7 @@ def _generate_and_move_sagemaker_sdk_tar():
     for pattern in wheel_patterns:
         matches = glob.glob(os.path.join(dist_dir, pattern))
         if not matches:
-            raise FileNotFoundError(
-                f"No wheel found matching {pattern} in {dist_dir}"
-            )
+            raise FileNotFoundError(f"No wheel found matching {pattern} in {dist_dir}")
         paths.append(matches[0])
     return paths
 

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Local mode utilities for SageMaker."""
+
 from __future__ import absolute_import
 
 from sagemaker.core.local.local_session import LocalSession  # noqa: F401

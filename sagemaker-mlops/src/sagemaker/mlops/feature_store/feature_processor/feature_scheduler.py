@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Feature Processor schedule APIs."""
+
 from __future__ import absolute_import
 import logging
 import json
@@ -790,7 +791,9 @@ def _validate_fg_lineage_resources(feature_group_name: str, sagemaker_session: S
         groups.
     """
 
-    feature_group = FeatureGroup.get(feature_group_name=feature_group_name, session=sagemaker_session.boto_session)
+    feature_group = FeatureGroup.get(
+        feature_group_name=feature_group_name, session=sagemaker_session.boto_session
+    )
     feature_group_creation_time = feature_group.creation_time.strftime("%s")
     feature_group_context = _get_feature_group_lineage_context_name(
         feature_group_name=feature_group_name,
@@ -899,8 +902,7 @@ def _prepare_model_trainer_from_remote_decorator_config(
         spark_dependency_paths=spark_dependency_paths,
     )
     joined_command = " ".join(
-        entry_point_and_args["container_entry_point"]
-        + entry_point_and_args["container_arguments"]
+        entry_point_and_args["container_entry_point"] + entry_point_and_args["container_arguments"]
     )
     source_code = SourceCode(command=joined_command)
     logger.info("SourceCode command: %s", joined_command)

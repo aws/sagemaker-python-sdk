@@ -132,4 +132,4 @@ Interactive Notebook
 ---------------------
 
 For a complete walkthrough, see the
-:doc:`Data Mixing notebook <../../v3-examples/model-customization-examples/nova_data_mixing>`.
+:doc:`Data Mixing notebook <../../v3-examples/model-customization-examples/serverless/nova_data_mixing>`.

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains factory classes for instantiating Spark objects."""
+
 from __future__ import absolute_import
 
 import logging
@@ -37,6 +38,7 @@ SPARK_TO_HADOOP_MAP = {
 }
 
 _DEFAULT_HADOOP_VERSION = "3.3.4"
+
 
 def _get_hadoop_version():
     """Resolve the Hadoop version for the installed PySpark version."""
@@ -172,9 +174,7 @@ class SparkSessionFactory:
             if self.spark_config and "spark.jars.packages" in self.spark_config:
                 fp_spark_packages.append(self.spark_config.get("spark.jars.packages"))
 
-            spark_configs.append(
-                ("spark.jars.packages", ",".join(fp_spark_packages))
-            )
+            spark_configs.append(("spark.jars.packages", ",".join(fp_spark_packages)))
 
         # Always add Feature Store JARs so they are on the classpath
         # regardless of whether we are in a training job or not.
@@ -183,7 +183,8 @@ class SparkSessionFactory:
 
         spark_version = ".".join(pyspark.__version__.split(".")[:2])
         fp_spark_jars = [
-            j for j in feature_store_pyspark.classpath_jars()
+            j
+            for j in feature_store_pyspark.classpath_jars()
             if spark_version in os.path.basename(j)
         ]
         if not fp_spark_jars:
@@ -254,7 +255,9 @@ class FeatureStoreManagerFactory:
 
     @property
     @lru_cache()
-    def feature_store_manager(self) -> "fsm.FeatureStoreManager":
+    def feature_store_manager(
+        self,
+    ) -> "fsm.FeatureStoreManager":  # noqa: F821  # fsm imported lazily below
         """Instansiate a new FeatureStoreManager."""
         import feature_store_pyspark.FeatureStoreManager as fsm
 

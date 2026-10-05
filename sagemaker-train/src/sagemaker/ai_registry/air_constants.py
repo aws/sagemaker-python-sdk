@@ -45,7 +45,7 @@ EVALUATOR_DEFAULT_S3_PREFIX = "evaluators"
 # Dataset file validation constants
 DATASET_MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024  # 1GB in bytes
 # new MTRL supports '.parquet', '.json', '.csv'
-DATASET_SUPPORTED_EXTENSIONS = ['.jsonl', '.parquet', '.json', '.csv']
+DATASET_SUPPORTED_EXTENSIONS = [".jsonl", ".parquet", ".json", ".csv"]
 
 # Evaluator types
 REWARD_FUNCTION = "RewardFunction"
@@ -79,6 +79,7 @@ DOC_KEY_JSON_CONTENT = "JsonContent"
 DOC_KEY_REFERENCE = "Reference"
 DOC_KEY_DATASET_S3_BUCKET = "DatasetS3Bucket"
 DOC_KEY_DATASET_S3_PREFIX = "DatasetS3Prefix"
+
 
 class HubContentStatus(Enum):
     """HubContent status enum."""

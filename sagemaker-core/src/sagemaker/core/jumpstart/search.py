@@ -1,3 +1,5 @@
+"""Expression parsing and search utilities for JumpStart content."""
+
 import re
 import logging
 from typing import List, Iterator, Optional
@@ -80,8 +82,7 @@ class _PatternNode(_ExpressionNode):
 
 
 class _Filter:
-    """
-    A filter that evaluates logical expressions against a list of keyword strings.
+    """A filter that evaluates logical expressions against a list of keyword strings.
 
     Supports logical operators (AND, OR, NOT), parentheses for grouping, and wildcard patterns
     (e.g., `text-*`, `*ai`, `@task:foo`).
@@ -92,8 +93,7 @@ class _Filter:
     """
 
     def __init__(self, expression: str) -> None:
-        """
-        Initialize the filter with a string expression.
+        """Initialize the filter with a string expression.
 
         Args:
             expression (str): A logical expression to evaluate against keywords.
@@ -103,8 +103,7 @@ class _Filter:
         self._ast: Optional[_ExpressionNode] = None
 
     def match(self, keywords: List[str]) -> bool:
-        """
-        Evaluate the filter expression against a list of keywords.
+        """Evaluate the filter expression against a list of keywords.
 
         Args:
             keywords (List[str]): A list of keyword strings to test.
@@ -120,8 +119,7 @@ class _Filter:
             return False
 
     def _parse_expression(self, expr: str) -> _ExpressionNode:
-        """
-        Parse the logical filter expression into an AST.
+        """Parse the logical filter expression into an AST.
 
         Args:
             expr (str): The raw expression to parse.
@@ -190,8 +188,7 @@ class _Filter:
 
 
 def _list_all_hub_models(hub_name: str, sm_client: Session) -> Iterator[HubContent]:
-    """
-    Retrieve all model entries from the specified hub and yield them one by one.
+    """Retrieve all model entries from the specified hub and yield them one by one.
 
     This function paginates through the SageMaker Hub API to retrieve all published models of type "Model"
     and yields them as `HubContent` objects.
@@ -239,8 +236,7 @@ def search_public_hub_models(
     hub_name: Optional[str] = "SageMakerPublicHub",
     sagemaker_session: Optional[Session] = None,
 ) -> List[HubContent]:
-    """
-    Search and filter models from hub using a keyword expression.
+    """Search and filter models from hub using a keyword expression.
 
     Args:
         query (str): A logical expression used to filter models by keywords.

@@ -26,8 +26,7 @@ def _is_trajectory_already_processed(error: str) -> bool:
 
 
 _DEFAULT_ENDPOINT = os.environ.get(
-    "RFT_RUNTIME_ENDPOINT",
-    "https://job-runtime.sagemaker.us-east-1.api.aws"
+    "RFT_RUNTIME_ENDPOINT", "https://job-runtime.sagemaker.us-east-1.api.aws"
 )
 
 
@@ -60,21 +59,13 @@ class RolloutFeedbackClient:
                 f"metadata must be a dict or RolloutMetadata, got {type(metadata).__name__}."
             )
 
-        self._region = (
-            metadata.get("region")
-            or os.environ.get("AWS_REGION")
-            or "us-west-2"
-        )
+        self._region = metadata.get("region") or os.environ.get("AWS_REGION") or "us-west-2"
         self._endpoint = (
             metadata.get("endpoint")
             or os.environ.get("RFT_RUNTIME_ENDPOINT")
             or _build_endpoint(self._region, os.environ.get("RFT_STAGE", ""))
         ).rstrip("/")
-        self._job_arn = (
-            metadata.get("job_arn")
-            or metadata.get("jobArn")
-            or ""
-        )
+        self._job_arn = metadata.get("job_arn") or metadata.get("jobArn") or ""
         self._trajectory_id = (
             metadata.get("trajectory_id")
             or metadata.get("trajectoryId")
@@ -95,14 +86,20 @@ class RolloutFeedbackClient:
 
         logger.info(
             "CompleteRollout: trajectory_id=%s status=%s",
-            self._trajectory_id, status,
+            self._trajectory_id,
+            status,
         )
         try:
-            self._bearer_post("/complete-rollout", json.dumps({
-                "JobArn": self._job_arn,
-                "TrajectoryId": self._trajectory_id,
-                "Status": status,
-            }))
+            self._bearer_post(
+                "/complete-rollout",
+                json.dumps(
+                    {
+                        "JobArn": self._job_arn,
+                        "TrajectoryId": self._trajectory_id,
+                        "Status": status,
+                    }
+                ),
+            )
         except Exception as e:
             err_str = str(e)
             if "404" in err_str:
@@ -132,14 +129,20 @@ class RolloutFeedbackClient:
 
         logger.info(
             "UpdateReward: trajectory_id=%s rewards=%s",
-            self._trajectory_id, rewards,
+            self._trajectory_id,
+            rewards,
         )
         try:
-            self._bearer_post("/update-reward", json.dumps({
-                "JobArn": self._job_arn,
-                "TrajectoryId": self._trajectory_id,
-                "Rewards": rewards,
-            }))
+            self._bearer_post(
+                "/update-reward",
+                json.dumps(
+                    {
+                        "JobArn": self._job_arn,
+                        "TrajectoryId": self._trajectory_id,
+                        "Rewards": rewards,
+                    }
+                ),
+            )
         except Exception as e:
             err_str = str(e)
             if "404" in err_str:
@@ -192,7 +195,9 @@ class RolloutFeedbackClient:
                 timeout=120,
             )
             if response.status_code != 200:
-                logger.warning("Failed %s: status=%s body=%s", path, response.status_code, response.text[:500])
+                logger.warning(
+                    "Failed %s: status=%s body=%s", path, response.status_code, response.text[:500]
+                )
             response.raise_for_status()
         except Exception as e:
             logger.warning("Failed %s: %s", path, e)
