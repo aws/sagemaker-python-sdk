@@ -1773,6 +1773,109 @@ def test_nova_recipe_with_distillation(modules_session):
         os.unlink(recipe.name)
 
 
+@pytest.mark.parametrize(
+    "suffix, dump",
+    [(".json", json.dumps), (".yaml", yaml.dump)],
+)
+def test_nova_recipe_with_hyperparameters_file(suffix, dump, modules_session):
+    """Hyperparameters passed as a file path are loaded and merged into the recipe's."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+    hyperparameters = {"param1": "value1", "param2": 2}
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        with NamedTemporaryFile(suffix=suffix, delete=False, mode="w") as hp_file:
+            hp_file.write(dump(hyperparameters))
+
+        try:
+            trainer = ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                training_image=DEFAULT_IMAGE,
+                hyperparameters=hp_file.name,
+            )
+
+            assert trainer._is_nova_recipe
+            assert trainer.hyperparameters == {
+                "base_model": "dummy-model",
+                "param1": "value1",
+                "param2": 2,
+            }
+        finally:
+            os.unlink(hp_file.name)
+            os.unlink(recipe.name)
+
+
+def test_nova_recipe_with_hyperparameters_dict(modules_session):
+    """Hyperparameters passed as a dict are merged into the recipe's."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        try:
+            trainer = ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                training_image=DEFAULT_IMAGE,
+                hyperparameters={"param1": "value1"},
+            )
+
+            assert trainer.hyperparameters == {
+                "base_model": "dummy-model",
+                "param1": "value1",
+            }
+        finally:
+            os.unlink(recipe.name)
+
+
+def test_nova_recipe_with_missing_hyperparameters_file(modules_session):
+    """A hyperparameters path that does not exist raises a ValueError."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        try:
+            with pytest.raises(ValueError, match="Hyperparameters file not found"):
+                ModelTrainer.from_recipe(
+                    training_recipe=recipe.name,
+                    role=DEFAULT_ROLE,
+                    sagemaker_session=modules_session,
+                    compute=DEFAULT_COMPUTE_CONFIG,
+                    training_image=DEFAULT_IMAGE,
+                    hyperparameters="nonexistent.json",
+                )
+        finally:
+            os.unlink(recipe.name)
+
+
 def test_nova_recipe_with_model_package_arn(modules_session):
     """Test that MP ARN in model_name_or_path routes to ModelPackageConfig."""
     mp_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-mpg/1"
