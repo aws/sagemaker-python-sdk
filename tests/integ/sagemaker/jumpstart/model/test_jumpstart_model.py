@@ -167,6 +167,7 @@ def test_jumpstart_gated_model_neuron(setup):
     assert response is not None
 
 
+@x_fail_if_ice
 def test_jumpstart_gated_model(setup):
 
     model_id = "meta-textgeneration-llama-2-7b"

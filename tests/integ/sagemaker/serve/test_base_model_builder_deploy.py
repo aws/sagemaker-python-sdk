@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import os
 import uuid
-from typing import Generator
 
 import numpy as np
 import pandas as pd
@@ -39,43 +38,43 @@ from sagemaker.s3_utils import s3_path_join
 from sagemaker.serve import InferenceSpec, SchemaBuilder
 from sagemaker.serve.builder.model_builder import ModelBuilder
 from sagemaker.serverless.serverless_inference_config import ServerlessInferenceConfig
-from tests.integ.utils import cleanup_model_resources
 
 
-@pytest.fixture(autouse=True)
-def cleanup_endpoints(mb_sagemaker_session) -> Generator[None, None, None]:
-    """Clean up any existing endpoints before and after tests."""
-    sagemaker_client = mb_sagemaker_session.sagemaker_client
+def _cleanup_deployment(model_builder, endpoint_name):
+    """Best-effort delete of the endpoint, endpoint config and model one test created.
 
-    # Pre-test cleanup
+    Only touch resources created under ``endpoint_name``. The integ suites run concurrently
+    in a shared account, so sweeping every endpoint there deletes endpoints that other running
+    tests and long-lived static fixtures (e.g. the lineage tests' static endpoint) depend on.
+    """
+    sagemaker_client = model_builder.sagemaker_session.sagemaker_client
+    endpoint_config_name = endpoint_name
     try:
-        endpoints = sagemaker_client.list_endpoints()
-        for endpoint in endpoints["Endpoints"]:
-            try:
-                sagemaker_client.delete_endpoint(EndpointName=endpoint["EndpointName"])
-                sagemaker_client.delete_endpoint_config(
-                    EndpointConfigName=endpoint["EndpointConfigName"]
-                )
-            except Exception as e:
-                print(f"Error cleaning up endpoint {endpoint['EndpointName']}: {e}")
-    except Exception as e:
-        print(f"Error listing endpoints: {e}")
+        endpoint_config_name = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)[
+            "EndpointConfigName"
+        ]
+    except Exception:  # noqa: BLE001 -- the endpoint may never have been created
+        pass
 
-    yield
-
-    # Post-test cleanup
-    try:
-        endpoints = sagemaker_client.list_endpoints()
-        for endpoint in endpoints["Endpoints"]:
-            try:
-                sagemaker_client.delete_endpoint(EndpointName=endpoint["EndpointName"])
-                sagemaker_client.delete_endpoint_config(
-                    EndpointConfigName=endpoint["EndpointConfigName"]
-                )
-            except Exception as e:
-                print(f"Error cleaning up endpoint {endpoint['EndpointName']}: {e}")
-    except Exception as e:
-        print(f"Error listing endpoints: {e}")
+    deletions = [
+        ("endpoint", lambda: sagemaker_client.delete_endpoint(EndpointName=endpoint_name)),
+        (
+            "endpoint config",
+            lambda: sagemaker_client.delete_endpoint_config(
+                EndpointConfigName=endpoint_config_name
+            ),
+        ),
+        (
+            "model",
+            lambda: sagemaker_client.delete_model(ModelName=model_builder.built_model.name),
+        ),
+    ]
+    # Each deletion runs independently, so one failure does not leave the rest behind.
+    for resource, delete in deletions:
+        try:
+            delete()
+        except Exception as e:  # noqa: BLE001 -- best-effort cleanup
+            print(f"Error cleaning up {resource} for endpoint {endpoint_name}: {e}")
 
 
 @pytest.fixture(scope="module")
@@ -184,44 +183,41 @@ def xgboost_model_builder(mb_sagemaker_session):
 
 
 def test_real_time_deployment(xgboost_model_builder):
-    real_time_predictor = xgboost_model_builder.deploy(
-        endpoint_name=f"test-{uuid.uuid1().hex}", initial_instance_count=1
-    )
+    endpoint_name = f"test-{uuid.uuid1().hex}"
+    try:
+        real_time_predictor = xgboost_model_builder.deploy(
+            endpoint_name=endpoint_name, initial_instance_count=1
+        )
 
-    assert real_time_predictor is not None
-    cleanup_model_resources(
-        sagemaker_session=xgboost_model_builder.sagemaker_session,
-        model_name=xgboost_model_builder.built_model.name,
-        endpoint_name=xgboost_model_builder.built_model.endpoint_name,
-    )
+        assert real_time_predictor is not None
+    finally:
+        _cleanup_deployment(xgboost_model_builder, endpoint_name)
 
 
 def test_serverless_deployment(xgboost_model_builder):
-    serverless_predictor = xgboost_model_builder.deploy(
-        endpoint_name=f"test1-{uuid.uuid1().hex}", inference_config=ServerlessInferenceConfig()
-    )
+    endpoint_name = f"test1-{uuid.uuid1().hex}"
+    try:
+        serverless_predictor = xgboost_model_builder.deploy(
+            endpoint_name=endpoint_name, inference_config=ServerlessInferenceConfig()
+        )
 
-    assert serverless_predictor is not None
-    cleanup_model_resources(
-        sagemaker_session=xgboost_model_builder.sagemaker_session,
-        model_name=xgboost_model_builder.built_model.name,
-        endpoint_name=xgboost_model_builder.built_model.endpoint_name,
-    )
+        assert serverless_predictor is not None
+    finally:
+        _cleanup_deployment(xgboost_model_builder, endpoint_name)
 
 
 def test_async_deployment(xgboost_model_builder, mb_sagemaker_session):
-    async_predictor = xgboost_model_builder.deploy(
-        endpoint_name=f"test2-{uuid.uuid1().hex}",
-        inference_config=AsyncInferenceConfig(
-            output_path=s3_path_join(
-                "s3://", mb_sagemaker_session.default_bucket(), "async_inference/output"
-            )
-        ),
-    )
+    endpoint_name = f"test2-{uuid.uuid1().hex}"
+    try:
+        async_predictor = xgboost_model_builder.deploy(
+            endpoint_name=endpoint_name,
+            inference_config=AsyncInferenceConfig(
+                output_path=s3_path_join(
+                    "s3://", mb_sagemaker_session.default_bucket(), "async_inference/output"
+                )
+            ),
+        )
 
-    assert async_predictor is not None
-    cleanup_model_resources(
-        sagemaker_session=xgboost_model_builder.sagemaker_session,
-        model_name=xgboost_model_builder.built_model.name,
-        endpoint_name=xgboost_model_builder.built_model.endpoint_name,
-    )
+        assert async_predictor is not None
+    finally:
+        _cleanup_deployment(xgboost_model_builder, endpoint_name)

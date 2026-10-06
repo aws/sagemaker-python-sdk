@@ -31,6 +31,7 @@ from tests.integ.sagemaker.jumpstart.constants import (
 from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     add_model_references_to_hub,
+    x_fail_if_ice,
 )
 
 MAX_INIT_TIME_SECONDS = 5
@@ -91,6 +92,7 @@ def test_jumpstart_hub_model_with_default_session(setup, add_model_references):
 
 
 @pytest.mark.slow_test
+@x_fail_if_ice
 def test_jumpstart_hub_gated_model(setup, add_model_references):
 
     model_id = "meta-textgeneration-llama-3-2-1b"

@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import random
 import time
 
 import pytest
@@ -42,16 +43,34 @@ IR_SKLEARN_FRAMEWORK = "SAGEMAKER-SCIKIT-LEARN"
 IR_SKLEARN_FRAMEWORK_VERSION = "1.0-1"
 
 
-def retry_and_back_off(right_size_fn):
-    tot_retries = 3
-    retries = 1
-    while retries <= tot_retries:
+def retry_and_back_off(right_size_fn, cleanup_fn=None, tot_retries=3):
+    """Call ``right_size_fn`` and retry it with back-off while the service throttles it.
+
+    The module-scoped fixtures below start Inference Recommender jobs at the same time from
+    parallel test workers, and CreateInferenceRecommendationsJob is rate limited.
+
+    Args:
+        right_size_fn: Zero-argument callable that runs ``right_size()``. It must be a
+            callable rather than the result of ``right_size()``: an already evaluated call
+            raises before this function can catch anything.
+        cleanup_fn: Optional zero-argument callable run before each retry. ``right_size()``
+            creates the SageMaker model of an unregistered model before it creates the job,
+            so that model has to be deleted before a retry can create it again.
+        tot_retries: Total number of attempts.
+    """
+    for attempt in range(1, tot_retries + 1):
         try:
-            return right_size_fn
+            return right_size_fn()
         except ClientError as e:
-            if e.response["Error"]["Code"] == "ThrottlingException":
-                retries += 1
-                time.sleep(5 * retries)
+            if e.response["Error"]["Code"] != "ThrottlingException" or attempt == tot_retries:
+                raise
+            logger.warning(
+                "right_size() throttled on attempt %d/%d, retrying", attempt, tot_retries
+            )
+            if cleanup_fn is not None:
+                cleanup_fn()
+            # Jitter so the parallel workers that were throttled together do not retry together.
+            time.sleep(5 * attempt + random.uniform(0, 5))
 
 
 @pytest.fixture(scope="module")
@@ -83,7 +102,7 @@ def default_right_sized_model(sagemaker_session, cpu_instance_type):
 
             return (
                 retry_and_back_off(
-                    sklearn_model_package.right_size(
+                    lambda: sklearn_model_package.right_size(
                         job_name=ir_job_name,
                         sample_payload_url=payload_data,
                         supported_content_types=IR_SKLEARN_CONTENT_TYPE,
@@ -102,6 +121,7 @@ def default_right_sized_model(sagemaker_session, cpu_instance_type):
             sagemaker_session.sagemaker_client.delete_model_package_group(
                 ModelPackageGroupName=model_package_group_name
             )
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -150,7 +170,7 @@ def advanced_right_sized_model(sagemaker_session, cpu_instance_type):
 
             return (
                 retry_and_back_off(
-                    sklearn_model_package.right_size(
+                    lambda: sklearn_model_package.right_size(
                         sample_payload_url=payload_data,
                         supported_content_types=IR_SKLEARN_CONTENT_TYPE,
                         framework=IR_SKLEARN_FRAMEWORK,
@@ -195,19 +215,23 @@ def default_right_sized_unregistered_model(sagemaker_session, cpu_instance_type)
 
             return (
                 retry_and_back_off(
-                    sklearn_model.right_size(
+                    lambda: sklearn_model.right_size(
                         job_name=ir_job_name,
                         sample_payload_url=payload_data,
                         supported_content_types=IR_SKLEARN_CONTENT_TYPE,
                         supported_instance_types=[cpu_instance_type],
                         framework=IR_SKLEARN_FRAMEWORK,
                         log_level="Quiet",
-                    )
+                    ),
+                    cleanup_fn=lambda: sagemaker_session.delete_model(
+                        model_name=sklearn_model.name
+                    ),
                 ),
                 ir_job_name,
             )
         except Exception:
             sagemaker_session.delete_model(model_name=sklearn_model.name)
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -246,7 +270,7 @@ def advanced_right_sized_unregistered_model(sagemaker_session, cpu_instance_type
             ]
 
             return retry_and_back_off(
-                sklearn_model.right_size(
+                lambda: sklearn_model.right_size(
                     sample_payload_url=payload_data,
                     supported_content_types=IR_SKLEARN_CONTENT_TYPE,
                     framework=IR_SKLEARN_FRAMEWORK,
@@ -258,11 +282,13 @@ def advanced_right_sized_unregistered_model(sagemaker_session, cpu_instance_type
                     max_tests=5,
                     max_parallel_tests=5,
                     log_level="Quiet",
-                )
+                ),
+                cleanup_fn=lambda: sagemaker_session.delete_model(model_name=sklearn_model.name),
             )
 
         except Exception:
             sagemaker_session.delete_model(model_name=sklearn_model.name)
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -289,19 +315,21 @@ def default_right_sized_unregistered_base_model(sagemaker_session, cpu_instance_
 
             return (
                 retry_and_back_off(
-                    model.right_size(
+                    lambda: model.right_size(
                         job_name=ir_job_name,
                         sample_payload_url=payload_data,
                         supported_content_types=IR_SKLEARN_CONTENT_TYPE,
                         supported_instance_types=[cpu_instance_type],
                         framework=IR_SKLEARN_FRAMEWORK,
                         log_level="Quiet",
-                    )
+                    ),
+                    cleanup_fn=lambda: sagemaker_session.delete_model(model_name=model.name),
                 ),
                 ir_job_name,
             )
         except Exception:
             sagemaker_session.delete_model(model_name=model.name)
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -336,6 +364,7 @@ def test_default_right_size_and_deploy_registered_model_sklearn(
     endpoint_name = unique_name_from_base("test-ir-right-size-default-sklearn")
 
     right_size_model_package, model_package_group_name, ir_job_name = default_right_sized_model
+    predictor = None
     with timeout(minutes=45):
         try:
             right_size_model_package.predictor_cls = SKLearnPredictor
@@ -347,8 +376,9 @@ def test_default_right_size_and_deploy_registered_model_sklearn(
             assert inference is not None
             assert 26 == len(inference)
         finally:
-            predictor.delete_model()
-            predictor.delete_endpoint()
+            if predictor is not None:
+                predictor.delete_model()
+                predictor.delete_endpoint()
 
 
 @pytest.mark.slow_test
@@ -359,6 +389,7 @@ def test_default_right_size_and_deploy_unregistered_model_sklearn(
     endpoint_name = unique_name_from_base("test-ir-right-size-default-unregistered-sklearn")
 
     right_size_model, ir_job_name = default_right_sized_unregistered_model
+    predictor = None
     with timeout(minutes=45):
         try:
             right_size_model.predictor_cls = SKLearnPredictor
@@ -370,8 +401,9 @@ def test_default_right_size_and_deploy_unregistered_model_sklearn(
             assert inference is not None
             assert 26 == len(inference)
         finally:
-            predictor.delete_model()
-            predictor.delete_endpoint()
+            if predictor is not None:
+                predictor.delete_model()
+                predictor.delete_endpoint()
 
 
 @pytest.mark.slow_test
@@ -382,6 +414,7 @@ def test_default_right_size_and_deploy_unregistered_base_model(
     endpoint_name = unique_name_from_base("test-ir-right-size-default-unregistered-base")
 
     right_size_model, ir_job_name = default_right_sized_unregistered_base_model
+    predictor = None
     with timeout(minutes=45):
         try:
             right_size_model.predictor_cls = SKLearnPredictor
@@ -393,8 +426,9 @@ def test_default_right_size_and_deploy_unregistered_base_model(
             assert inference is not None
             assert 26 == len(inference)
         finally:
-            predictor.delete_model()
-            predictor.delete_endpoint()
+            if predictor is not None:
+                predictor.delete_model()
+                predictor.delete_endpoint()
 
 
 @pytest.mark.slow_test
@@ -405,6 +439,7 @@ def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
     endpoint_name = unique_name_from_base("test-ir-right-size-advanced-sklearn")
 
     right_size_model = advanced_right_sized_unregistered_model
+    predictor = None
     with timeout(minutes=45):
         try:
             right_size_model.predictor_cls = SKLearnPredictor
@@ -416,8 +451,9 @@ def test_advanced_right_size_and_deploy_unregistered_model_sklearn(
             assert inference is not None
             assert 26 == len(inference)
         finally:
-            predictor.delete_model()
-            predictor.delete_endpoint()
+            if predictor is not None:
+                predictor.delete_model()
+                predictor.delete_endpoint()
 
 
 @pytest.mark.skip(reason="Skipping this test class for now")
@@ -429,6 +465,7 @@ def test_advanced_right_size_and_deploy_registered_model_sklearn(
     endpoint_name = unique_name_from_base("test-ir-right-size-advanced-sklearn")
 
     right_size_model_package, model_package_group_name = advanced_right_sized_model
+    predictor = None
     with timeout(minutes=45):
         try:
             right_size_model_package.predictor_cls = SKLearnPredictor
@@ -446,8 +483,9 @@ def test_advanced_right_size_and_deploy_registered_model_sklearn(
             sagemaker_session.sagemaker_client.delete_model_package_group(
                 ModelPackageGroupName=model_package_group_name
             )
-            predictor.delete_model()
-            predictor.delete_endpoint()
+            if predictor is not None:
+                predictor.delete_model()
+                predictor.delete_endpoint()
 
 
 # TODO when we've added support for inference_recommendation_id
@@ -465,6 +503,7 @@ def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
 
     rec_id = get_realtime_recommendation_id(recommendation_list=rec_res["InferenceRecommendations"])
 
+    predictor = None
     with timeout(minutes=45):
         try:
             right_size_model_package.predictor_cls = SKLearnPredictor
@@ -484,13 +523,15 @@ def test_deploy_inference_recommendation_id_with_registered_model_sklearn(
             sagemaker_session.sagemaker_client.delete_model_package_group(
                 ModelPackageGroupName=model_package_group_name
             )
-            predictor.delete_model()
-            predictor.delete_endpoint()
+            if predictor is not None:
+                predictor.delete_model()
+                predictor.delete_endpoint()
 
 
 @pytest.mark.slow_test
 @pytest.mark.flaky(reruns=3, reruns_delay=2)
 def test_deploy_deployment_recommendation_id_with_model(created_base_model, sagemaker_session):
+    predictor = None
     with timeout(minutes=20):
         try:
             deployment_recommendation = poll_for_deployment_recommendation(
@@ -518,8 +559,9 @@ def test_deploy_deployment_recommendation_id_with_model(created_base_model, sage
             assert inference is not None
             assert 26 == len(inference)
         finally:
-            predictor.delete_model()
-            predictor.delete_endpoint()
+            if predictor is not None:
+                predictor.delete_model()
+                predictor.delete_endpoint()
 
 
 def poll_for_deployment_recommendation(created_base_model, sagemaker_session):
