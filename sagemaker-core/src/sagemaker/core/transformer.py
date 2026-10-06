@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 from typing import Union, Optional, Dict
@@ -409,6 +410,8 @@ class Transformer(object):
         from sagemaker.core.utils.code_injection.codec import transform as transform_util
 
         transformed = transform_util(serialized_request, "CreateTransformJobRequest")
+        # Remove tags from transformed dict as TransformJob resource doesn't accept it
+        transformed.pop("tags", None)
         self.latest_transform_job = TransformJob(**transformed)
 
         if wait:

@@ -16,6 +16,7 @@ which is used for Amazon SageMaker Processing Jobs. These jobs let users perform
 data pre-processing, post-processing, feature engineering, data validation, and model evaluation,
 and interpretation on Amazon SageMaker.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -87,6 +88,56 @@ from sagemaker.core.utils.utils import serialize
 logger = logging.getLogger(__name__)
 
 
+def _validate_processing_instance_preferences(
+    instance_type=None,
+    instance_count=None,
+    instance_preferences=None,
+):
+    """Client-side validation for Processor.instance_preferences (the service remains the source of truth).
+
+    - instance_preferences is mutually exclusive with instance_type (a single
+      fixed cluster). The top-level instance_count is NOT exclusive: it is the
+      shared count for whichever preference wins.
+    - Instance types must not repeat across preferences.
+    - Count mode: exactly one of the top-level instance_count with no
+      per-preference InstanceCount, or an InstanceCount on EVERY element with
+      the top-level unset. Both-set, partial, and neither are rejected.
+
+    No-op when instance_preferences is not set.
+    """
+    if not instance_preferences:
+        return
+
+    if instance_type is not None:
+        raise ValueError(
+            "instance_preferences is mutually exclusive with instance_type; "
+            "specify either a single instance_type (+instance_count) or "
+            "instance_preferences, not both."
+        )
+    types = [preference.get("InstanceType") for preference in instance_preferences]
+    duplicates = sorted({t for t in types if t is not None and types.count(t) > 1})
+    if duplicates:
+        raise ValueError(
+            f"instance_preferences must not contain duplicate instance types: {duplicates}."
+        )
+    per_pref_counts = [
+        preference.get("InstanceCount") is not None for preference in instance_preferences
+    ]
+    if instance_count is not None:
+        if any(per_pref_counts):
+            raise ValueError(
+                "The top-level instance_count and per-preference InstanceCount "
+                "are mutually exclusive; set the top-level instance_count "
+                "(applies to whichever preference wins) or an InstanceCount on "
+                "every element of instance_preferences, not both."
+            )
+    elif not all(per_pref_counts):
+        raise ValueError(
+            "When the top-level instance_count is not set, every element of "
+            "instance_preferences must set its own InstanceCount."
+        )
+
+
 class Processor(object):
     """Handles Amazon SageMaker Processing tasks."""
 
@@ -108,6 +159,7 @@ class Processor(object):
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
+        instance_preferences: Optional[List[Dict[str, Union[str, int]]]] = None,
     ):
         """Initializes a ``Processor`` instance.
 
@@ -151,10 +203,25 @@ class Processor(object):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            instance_preferences (list[dict]): An ordered list of candidate instance types
+                (maximum 5). Each element is a dict of the form
+                ``{"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2}``. When set, the
+                platform tries each candidate in list order and launches the job on the first
+                type with available capacity. Mutually exclusive with ``instance_type``.
+                The top-level ``instance_count`` is the shared count for whichever preference
+                wins; alternatively set ``InstanceCount`` on EVERY element (per-preference
+                mode) and leave ``instance_count`` unset — never both, never partial
+                (default: None).
         """
         self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type
+        self.instance_preferences = instance_preferences
+        _validate_processing_instance_preferences(
+            instance_type=instance_type,
+            instance_count=instance_count,
+            instance_preferences=instance_preferences,
+        )
         self.entrypoint = entrypoint
         self.volume_size_in_gb = volume_size_in_gb
         self.max_runtime_in_seconds = max_runtime_in_seconds
@@ -273,10 +340,8 @@ class Processor(object):
             ValueError: if ``logs`` is True but ``wait`` is False.
         """
         if logs and not wait:
-            raise ValueError(
-                """Logs can only be shown if wait is set to True.
-                Please either set wait to True or set logs to False."""
-            )
+            raise ValueError("""Logs can only be shown if wait is set to True.
+                Please either set wait to True or set logs to False.""")
 
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -296,7 +361,17 @@ class Processor(object):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
         """Extend inputs and outputs based on extra parameters"""
@@ -489,7 +564,10 @@ class Processor(object):
                 # If the output's s3_uri is not an s3_uri, create one.
                 parse_result = urlparse(output.s3_output.s3_uri)
                 if parse_result.scheme != "s3":
-                    if getattr(self.sagemaker_session, "local_mode", False) and parse_result.scheme == "file":
+                    if (
+                        getattr(self.sagemaker_session, "local_mode", False)
+                        and parse_result.scheme == "file"
+                    ):
                         normalized_outputs.append(output)
                         continue
                     if _pipeline_config:
@@ -645,13 +723,23 @@ class Processor(object):
             process_request_args["output_config"]["KmsKeyId"] = self.output_kms_key
         process_request_args["experiment_config"] = experiment_config
         process_request_args["job_name"] = self._current_job_name
-        process_request_args["resources"] = {
-            "ClusterConfig": {
+        if self.instance_preferences:
+            cluster_config = {
+                "InstancePreferences": self.instance_preferences,
+                "VolumeSizeInGB": self.volume_size_in_gb,
+            }
+            # Uniform-count mode: the shared top-level count applies to
+            # whichever preference wins. In per-preference mode the counts
+            # live on each element and the top-level key is omitted.
+            if self.instance_count is not None:
+                cluster_config["InstanceCount"] = self.instance_count
+        else:
+            cluster_config = {
                 "InstanceType": self.instance_type,
                 "InstanceCount": self.instance_count,
                 "VolumeSizeInGB": self.volume_size_in_gb,
             }
-        }
+        process_request_args["resources"] = {"ClusterConfig": cluster_config}
         if self.volume_kms_key is not None:
             process_request_args["resources"]["ClusterConfig"][
                 "VolumeKmsKeyId"
@@ -700,6 +788,7 @@ class ScriptProcessor(Processor):
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
+        instance_preferences: Optional[List[Dict[str, Union[str, int]]]] = None,
     ):
         """Initializes a ``ScriptProcessor`` instance.
 
@@ -744,6 +833,9 @@ class ScriptProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            instance_preferences (list[dict]): Ordered instance-type candidates for the
+                processing job (mutually exclusive with ``instance_type``); each element
+                is ``{"InstanceType": str, "InstanceCount": Optional[int]}``.
         """
         self._CODE_CONTAINER_BASE_PATH = "/opt/ml/processing/input/"
         self._CODE_CONTAINER_INPUT_NAME = "code"
@@ -771,6 +863,7 @@ class ScriptProcessor(Processor):
             env=env,
             tags=format_tags(tags),
             network_config=network_config,
+            instance_preferences=instance_preferences,
         )
 
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="ScriptProcessor.run")
@@ -846,7 +939,17 @@ class ScriptProcessor(Processor):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.
@@ -914,18 +1017,12 @@ class ScriptProcessor(Processor):
             # Validate that the file exists locally and is not a directory.
             code_path = url2pathname(code_url.path)
             if not os.path.exists(code_path):
-                raise ValueError(
-                    """code {} wasn't found. Please make sure that the file exists.
-                    """.format(
-                        code
-                    )
-                )
+                raise ValueError("""code {} wasn't found. Please make sure that the file exists.
+                    """.format(code))
             if not os.path.isfile(code_path):
                 raise ValueError(
                     """code {} must be a file, not a directory. Please pass a path to a file.
-                    """.format(
-                        code
-                    )
+                    """.format(code)
                 )
             user_code_s3_uri = self._upload_code(code_path, kms_key)
         else:
@@ -1025,6 +1122,14 @@ class FrameworkProcessor(ScriptProcessor):
 
     framework_entrypoint_command = ["/bin/bash"]
 
+    # Container path where the source bundle is extracted. For a local ``source_dir`` the
+    # managed code prefix (which also holds ``install_requirements.py``) is mounted here.
+    _SOURCE_CODE_CONTAINER_DIR = "/opt/ml/processing/input/code"
+    # Container path where helper scripts are mounted when ``source_dir`` is an S3 URI. In
+    # that case ``/input/code`` maps to the user's (possibly read-only) S3 location, so the
+    # managed ``install_requirements.py`` must be mounted from a separate input instead.
+    _AUX_CONTAINER_DIR = "/opt/ml/processing/input/aux"
+
     def __init__(
         self,
         image_uri: Union[str, PipelineVariable],
@@ -1119,6 +1224,39 @@ class FrameworkProcessor(ScriptProcessor):
             code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
         )
 
+    def _s3_code_prefix(self):
+        """Return the S3 prefix for code uploads, respecting code_location if set."""
+        if self.code_location:
+            return self.code_location
+        return s3.s3_path_join(
+            "s3://",
+            self.sagemaker_session.default_bucket(),
+            self.sagemaker_session.default_bucket_prefix or "",
+        )
+
+    @staticmethod
+    def _is_s3_uri(path: Optional[str]) -> bool:
+        """Check whether the given path is an S3 URI."""
+        return bool(path) and path.lower().startswith("s3://")
+
+    def _resolve_s3_source_dir(self, source_dir: str) -> str:
+        """Resolve an S3 source_dir to a sourcedir.tar.gz URI.
+
+        If the URI already points to a .tar.gz file, return it unchanged.
+        Otherwise treat it as an S3 prefix and append sourcedir.tar.gz.
+        """
+        if source_dir.lower().endswith(".tar.gz"):
+            return source_dir
+        return source_dir.rstrip("/") + "/sourcedir.tar.gz"
+
+    def _resolve_helper_scripts_prefix(self, job_name: str) -> str:
+        """Return an S3 prefix for uploading helper scripts (runproc.sh, install_requirements.py)."""
+        return s3.s3_path_join(
+            self._s3_code_prefix(),
+            job_name,
+            "source",
+        )
+
     def _package_code(
         self,
         entry_point,
@@ -1126,10 +1264,35 @@ class FrameworkProcessor(ScriptProcessor):
         requirements,
         job_name,
         kms_key,
+        dependencies=None,
     ):
-        """Package and upload code to S3."""
+        """Package and upload code to S3.
+
+        If source_dir is an S3 URI, it is used directly as the code payload
+        (no local packaging or upload is performed). The S3 URI should point to
+        either a tar.gz archive or an S3 prefix containing the source code.
+
+        Args:
+            entry_point (str): Path to the entry point script.
+            source_dir (str): Local directory, S3 URI, or None.
+            dependencies (list[str]): Additional local directories to include
+                in the tar.gz bundle (default: None). Not supported with S3 source_dir.
+            requirements (str): Path to requirements.txt relative to source_dir.
+            job_name (str): Processing job name (used in S3 key).
+            kms_key (str): KMS key for S3 upload encryption.
+        """
         import tarfile
         import tempfile
+
+        # S3 source_dir: use it directly without local packaging.
+        # This restores v2 behavior where S3 paths with tar.gz archives were supported.
+        if self._is_s3_uri(source_dir):
+            if dependencies:
+                raise ValueError(
+                    "dependencies is not supported when source_dir is an S3 URI. "
+                    "Bundle dependencies into the S3 tar.gz archive instead."
+                )
+            return self._resolve_s3_source_dir(source_dir)
 
         # If source_dir is not provided, use the directory containing entry_point
         if source_dir is None:
@@ -1145,34 +1308,44 @@ class FrameworkProcessor(ScriptProcessor):
         if not os.path.exists(source_dir):
             raise ValueError(f"source_dir does not exist: {source_dir}")
 
-        # Create tar.gz with source_dir contents
-        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+        # Create tar.gz with source_dir contents + dependencies
+        tmp = tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False)
+        tmp.close()
+        try:
             with tarfile.open(tmp.name, "w:gz") as tar:
-                # Add all files from source_dir to the root of the tar
+                # Add all files from source_dir
                 for item in os.listdir(source_dir):
                     item_path = os.path.join(source_dir, item)
                     tar.add(item_path, arcname=item)
 
-            # Upload to S3
+                # Add dependency directories at the root of the archive
+                for dep_path in dependencies or []:
+                    if not os.path.isabs(dep_path):
+                        dep_path = os.path.abspath(dep_path)
+                    if not os.path.exists(dep_path):
+                        raise ValueError(f"Dependency path does not exist: {dep_path}")
+                    tar.add(dep_path, arcname=os.path.basename(dep_path))
+
             s3_uri = s3.s3_path_join(
-                "s3://",
-                self.sagemaker_session.default_bucket(),
-                self.sagemaker_session.default_bucket_prefix or "",
+                self._s3_code_prefix(),
                 job_name,
                 "source",
                 "sourcedir.tar.gz",
             )
 
-            # Upload the tar file directly to S3
+            with open(tmp.name, "rb") as tar_file:
+                tar_bytes = tar_file.read()
+
             s3.S3Uploader.upload_string_as_file_body(
-                body=open(tmp.name, "rb").read(),
+                body=tar_bytes,
                 desired_s3_uri=s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
 
-            os.unlink(tmp.name)
             return s3_uri
+        finally:
+            os.unlink(tmp.name)
 
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
     @runnable_by_pipeline
@@ -1180,6 +1353,7 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         code: str,
         source_dir: Optional[str] = None,
+        dependencies: Optional[List[str]] = None,
         requirements: Optional[str] = None,
         inputs: Optional[List[ProcessingInput]] = None,
         outputs: Optional[List["ProcessingOutput"]] = None,
@@ -1189,6 +1363,7 @@ class FrameworkProcessor(ScriptProcessor):
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
         kms_key: Optional[str] = None,
+        entry_point: Optional[str] = None,
     ):
         """Runs a processing job.
 
@@ -1197,7 +1372,13 @@ class FrameworkProcessor(ScriptProcessor):
                 framework script to run.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other processing source code dependencies aside from the entry
-                point file (default: None).
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file named ``sourcedir.tar.gz``.
+            dependencies (list[str]): A list of paths to directories (absolute or
+                relative) with any additional libraries that will be exported to the
+                container (default: None). The library folders are copied into the
+                same tar.gz bundle as source_dir. Not supported when source_dir is
+                an S3 URI.
             requirements (str): Path to a requirements.txt file relative to source_dir
                 (default: None).
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
@@ -1216,6 +1397,9 @@ class FrameworkProcessor(ScriptProcessor):
             experiment_config (dict[str, str]): Experiment management configuration.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            entry_point (str): Path (absolute or relative) to a custom entrypoint script file
+                (e.g., runproc.sh). The python script call is appended automatically.
+
         Returns:
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
@@ -1227,6 +1411,8 @@ class FrameworkProcessor(ScriptProcessor):
             job_name,
             inputs,
             kms_key,
+            entry_point,
+            dependencies=dependencies,
         )
 
         # Submit a processing job.
@@ -1250,6 +1436,8 @@ class FrameworkProcessor(ScriptProcessor):
         job_name,
         inputs,
         kms_key=None,
+        entry_point=None,
+        dependencies=None,
     ):
         """Pack local code bundle and upload to Amazon S3."""
         if code.startswith("s3://"):
@@ -1262,6 +1450,7 @@ class FrameworkProcessor(ScriptProcessor):
         s3_payload = self._package_code(
             entry_point=code,
             source_dir=source_dir,
+            dependencies=dependencies,
             requirements=requirements,
             job_name=job_name,
             kms_key=kms_key,
@@ -1269,12 +1458,55 @@ class FrameworkProcessor(ScriptProcessor):
 
         inputs = self._patch_inputs_with_payload(inputs, s3_payload)
 
-        entrypoint_s3_uri = s3_payload.replace("sourcedir.tar.gz", "runproc.sh")
+        # Determine where to upload helper scripts and where install_requirements.py will be
+        # available inside the container. When source_dir is S3, s3_payload points to the
+        # user's existing (possibly read-only) location, so helpers go to a separate managed
+        # prefix which is mounted at a dedicated aux path rather than /input/code.
+        if self._is_s3_uri(source_dir):
+            helper_prefix = self._resolve_helper_scripts_prefix(job_name)
+            entrypoint_s3_uri = s3.s3_path_join(helper_prefix, "runproc.sh")
+            install_req_s3_uri = s3.s3_path_join(helper_prefix, "install_requirements.py")
+            install_requirements_dir = self._AUX_CONTAINER_DIR
+            # Mount the managed helper so install_requirements.py is present in the container.
+            inputs = (inputs or []) + [
+                ProcessingInput(
+                    input_name="aux",
+                    s3_input=ProcessingS3Input(
+                        s3_uri=install_req_s3_uri,
+                        local_path=self._AUX_CONTAINER_DIR,
+                        s3_data_type="S3Prefix",
+                        s3_input_mode="File",
+                    ),
+                )
+            ]
+        else:
+            entrypoint_s3_uri = s3_payload.replace("sourcedir.tar.gz", "runproc.sh")
+            install_req_s3_uri = s3_payload.replace("sourcedir.tar.gz", "install_requirements.py")
+            # For a local source_dir the managed code prefix (with install_requirements.py) is
+            # mounted at /input/code alongside the extracted bundle.
+            install_requirements_dir = self._SOURCE_CODE_CONTAINER_DIR
+
+        # Upload install_requirements helper
+        import sagemaker.core.utils.install_requirements as _ir_mod
+
+        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
+        with open(_ir_mod.__file__, "r") as _ir_file:
+            _ir_body = _ir_file.read()
+        s3.S3Uploader.upload_string_as_file_body(
+            body=_ir_body,
+            desired_s3_uri=install_req_s3_uri,
+            kms_key=evaluated_kms_key,
+            sagemaker_session=self.sagemaker_session,
+        )
 
         script = os.path.basename(code)
-        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         s3_runproc_sh = self._create_and_upload_runproc(
-            script, evaluated_kms_key, entrypoint_s3_uri
+            script,
+            evaluated_kms_key,
+            entrypoint_s3_uri,
+            entry_point,
+            source_dir,
+            install_requirements_dir,
         )
 
         return s3_runproc_sh, inputs, job_name
@@ -1312,17 +1544,25 @@ class FrameworkProcessor(ScriptProcessor):
         )
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
 
-    def _create_and_upload_runproc(self, user_script, kms_key, entrypoint_s3_uri):
+    def _create_and_upload_runproc(
+        self,
+        user_script,
+        kms_key,
+        entrypoint_s3_uri,
+        entry_point=None,
+        source_dir=None,
+        install_requirements_dir=None,
+    ):
         """Create runproc shell script and upload to S3 bucket."""
         from sagemaker.core.workflow.utilities import _pipeline_config, hash_object
 
         if _pipeline_config and _pipeline_config.pipeline_name:
-            runproc_file_str = self._generate_framework_script(user_script)
+            runproc_file_str = self._generate_framework_script(
+                user_script, entry_point, source_dir, install_requirements_dir
+            )
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
-                "s3://",
-                self.sagemaker_session.default_bucket(),
-                self.sagemaker_session.default_bucket_prefix,
+                self._s3_code_prefix(),
                 _pipeline_config.pipeline_name,
                 "code",
                 runproc_file_hash,
@@ -1336,7 +1576,9 @@ class FrameworkProcessor(ScriptProcessor):
             )
         else:
             s3_runproc_sh = s3.S3Uploader.upload_string_as_file_body(
-                self._generate_framework_script(user_script),
+                self._generate_framework_script(
+                    user_script, entry_point, source_dir, install_requirements_dir
+                ),
                 desired_s3_uri=entrypoint_s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
@@ -1344,21 +1586,33 @@ class FrameworkProcessor(ScriptProcessor):
 
         return s3_runproc_sh
 
-    def _generate_framework_script(self, user_script: str) -> str:
+    def _generate_framework_script(
+        self,
+        user_script: str,
+        entry_point: str = None,
+        source_dir: str = None,
+        install_requirements_dir: str = None,
+    ) -> str:
         """Generate the framework entrypoint file (as text) for a processing job."""
-        return dedent(
-            """\
+        if entry_point:
+            return self._generate_custom_framework_script(
+                user_script, entry_point, source_dir, install_requirements_dir
+            )
+
+        install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
+
+        return dedent("""\
             #!/bin/bash
-            
+
             # Exit on any error. SageMaker uses error code to mark failed job.
             set -e
 
             cd /opt/ml/processing/input/code/
-            
+
             # Debug: List files before extraction
             echo "Files in /opt/ml/processing/input/code/ before extraction:"
             ls -la
-            
+
             # Extract source code
             if [ -f sourcedir.tar.gz ]; then
                 tar -xzf sourcedir.tar.gz
@@ -1373,12 +1627,94 @@ class FrameworkProcessor(ScriptProcessor):
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
-                pip install -r requirements.txt
+                python3 {install_requirements_dir}/install_requirements.py requirements.txt
             fi
 
             {entry_point_command} {entry_point} "$@"
+        """).format(
+            install_requirements_dir=install_requirements_dir,
+            entry_point_command=" ".join(self.command),
+            entry_point=user_script,
+        )
+
+    def _generate_custom_framework_script(
+        self,
+        user_script: str,
+        entry_point: str,
+        source_dir: str = None,
+        install_requirements_dir: str = None,
+    ) -> str:
+        """Generate a custom framework script with a user-provided entrypoint embedded.
+
+        Reads the entry_point file and embeds its content in the script,
+        then appends the command to execute the user script.
+
+        Args:
+            user_script (str): Relative path to the user script in the source bundle
+            entry_point (str): Path to the custom entrypoint script file
+            source_dir (str): Path to the source directory. If provided and entry_point
+                is relative, it will be combined with source_dir.
+            install_requirements_dir (str): Container directory that holds
+                ``install_requirements.py`` (default: the extracted source code dir).
+
+        Returns:
+            str: The generated script content
         """
-        ).format(
+        # When source_dir is an S3 URI, we cannot read the entry_point file locally.
+        # Instead, generate a script that executes the entry_point from the extracted
+        # source bundle on the container.
+        if self._is_s3_uri(source_dir):
+            install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
+            return dedent("""\
+                #!/bin/bash
+
+                # Exit on any error. SageMaker uses error code to mark failed job.
+                set -e
+
+                cd /opt/ml/processing/input/code/
+
+                # Extract source code
+                if [ -f sourcedir.tar.gz ]; then
+                    tar -xzf sourcedir.tar.gz
+                else
+                    echo "ERROR: sourcedir.tar.gz not found!"
+                    exit 1
+                fi
+
+                if [[ -f 'requirements.txt' ]]; then
+                    pip uninstall --yes typing
+                    python3 {install_requirements_dir}/install_requirements.py requirements.txt
+                fi
+
+                # Execute custom entrypoint
+                chmod +x {entry_point}
+                ./{entry_point}
+
+                {entry_point_command} {user_script} "$@"
+            """).format(
+                install_requirements_dir=install_requirements_dir,
+                entry_point=entry_point,
+                entry_point_command=" ".join(self.command),
+                user_script=user_script,
+            )
+
+        # Resolve the full path to the entry_point file
+        if source_dir and not os.path.isabs(entry_point):
+            full_entry_point_path = os.path.join(source_dir, entry_point)
+        else:
+            full_entry_point_path = entry_point
+
+        # Read the entry_point file content
+        with open(full_entry_point_path, "r", encoding="utf-8") as f:
+            entry_point_content = f.read()
+
+        # Generate the script with embedded entry_point content
+        return dedent("""\
+            {entry_point_content}
+
+            {entry_point_command} {entry_point} "$@"
+            """).format(
+            entry_point_content=entry_point_content,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )
@@ -1516,6 +1852,36 @@ def _get_process_request(
     return process_request
 
 
+def _wait_for_processing_job(sagemaker_session, job_name, poll=10):
+    """Wait for a processing job to reach a terminal state, respecting the session region.
+
+    Unlike ``ProcessingJob.wait()`` (which resolves a default, global SageMaker client),
+    this describes the job through ``sagemaker_session.sagemaker_client`` so the job is
+    polled in the same region it was created in (issue #5796).
+
+    Args:
+        sagemaker_session: The session used to create the job; its region-aware
+            ``sagemaker_client`` is used to describe the job.
+        job_name (str): Name of the processing job to wait for.
+        poll (int): The interval in seconds between polling for job completion.
+
+    Raises:
+        ValueError: If the processing job fails.
+    """
+    terminal_states = ("Completed", "Failed", "Stopped")
+
+    def _describe_if_terminal():
+        description = sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        )
+        if description["ProcessingJobStatus"] in terminal_states:
+            return description
+        return None
+
+    description = _wait_until(_describe_if_terminal, poll)
+    _check_job_status(job_name, description, "ProcessingJobStatus")
+
+
 def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """Display logs for a given processing job, optionally tailing them until the is complete.
 
@@ -1531,11 +1897,9 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """
 
     description = _wait_until(
-        lambda: ProcessingJob.get(
-            processing_job_name=job_name, session=sagemaker_session.boto_session
-        )
-        .refresh()
-        .__dict__,
+        lambda: sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        ),
         poll,
     )
 
@@ -1585,12 +1949,8 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
         if state == LogState.JOB_COMPLETE:
             state = LogState.COMPLETE
         elif time.time() - last_describe_job_call >= 30:
-            description = (
-                ProcessingJob.get(
-                    processing_job_name=job_name, session=sagemaker_session.boto_session
-                )
-                .refresh()
-                .__dict__
+            description = sagemaker_session.sagemaker_client.describe_processing_job(
+                ProcessingJobName=job_name
             )
             last_describe_job_call = time.time()
 

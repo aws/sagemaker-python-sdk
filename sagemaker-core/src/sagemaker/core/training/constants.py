@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Constants module."""
+
 from __future__ import absolute_import
 import os
 
@@ -35,3 +36,11 @@ DEFAULT_CONTAINER_ARGUMENTS = [
     f"chmod +x {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT} "
     + f"&& {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT}",
 ]
+
+
+class TrainingPlatform:
+    """Standardized training platform identifiers."""
+
+    SAGEMAKER_HYPERPOD = "SAGEMAKER_HYPERPOD"
+    SAGEMAKER_TRAINING_JOB_SERVERFUL = "SAGEMAKER_TRAINING_JOB_SERVERFUL"
+    SAGEMAKER_TRAINING_JOB_SERVERLESS = "SAGEMAKER_TRAINING_JOB_SERVERLESS"

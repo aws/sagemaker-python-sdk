@@ -4,14 +4,37 @@ Targets specific uncovered lines from coverage report.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-from dataclasses import dataclass
-import tempfile
+from unittest.mock import Mock, patch, MagicMock, PropertyMock
+
+import pytest
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.types import ModelServer
-from sagemaker.core.training.configs import Compute, Networking
+from sagemaker.core.training.configs import Compute
+from sagemaker.core.jumpstart.configs import JumpStartConfig
+from sagemaker.core.inference_config import AsyncInferenceConfig
+from botocore.exceptions import ClientError
+
+TEST_ROLE_ARN = "arn:aws:iam::123456789012:role/SageMakerRole"
+
+
+@pytest.fixture(autouse=True)
+def stub_role_resolution():
+    """Keep ModelBuilder construction offline.
+
+    ``ModelBuilder.__post_init__`` auto-resolves a serving role when no
+    ``role_arn`` is given, which calls sts:GetCallerIdentity and the paginated
+    iam:SimulatePrincipalPolicy. Tests here construct ``ModelBuilder`` without a
+    role, so unpatched they issue live IAM calls and fail on throttling
+    (SimulatePrincipalPolicy "Rate exceeded") rather than on the behavior under
+    test. Tests that patch the resolver themselves still override this.
+    """
+    with patch(
+        "sagemaker.serve.model_builder.resolve_and_validate_role",
+        side_effect=lambda provided_role=None, **kwargs: provided_role or TEST_ROLE_ARN,
+    ):
+        yield
 
 
 class TestModelBuilderInit(unittest.TestCase):
@@ -20,25 +43,25 @@ class TestModelBuilderInit(unittest.TestCase):
     def test_init_with_compute(self):
         """Test initialization with Compute config."""
         compute = Compute(instance_type="ml.m5.large", instance_count=2)
-        
+
         mb = ModelBuilder(model=Mock(), compute=compute)
-        
+
         self.assertEqual(mb.instance_type, "ml.m5.large")
         self.assertEqual(mb.instance_count, 2)
 
     def test_init_with_deprecated_params(self):
         """Test initialization with deprecated parameters."""
         import warnings
-        
+
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            mb = ModelBuilder(
+            ModelBuilder(
                 model=Mock(),
                 shared_libs=["lib1.so"],
                 dependencies={"custom": ["dep1"]},
-                image_config={"key": "value"}
+                image_config={"key": "value"},
             )
-            
+
             # Should have deprecation warnings
             self.assertTrue(any("deprecated" in str(warning.message).lower() for warning in w))
 
@@ -51,11 +74,11 @@ class TestGetClientTranslators(unittest.TestCase):
         schema_builder = Mock()
         schema_builder.input_serializer = Mock()
         schema_builder.output_deserializer = Mock()
-        
+
         mb = ModelBuilder(model=Mock(), schema_builder=schema_builder)
-        
+
         serializer, deserializer = mb._get_client_translators()
-        
+
         self.assertIsNotNone(serializer)
         self.assertIsNotNone(deserializer)
 
@@ -65,9 +88,9 @@ class TestGetClientTranslators(unittest.TestCase):
         mb.framework = "pytorch"
         mb.content_type = None
         mb.accept_type = None
-        
+
         serializer, deserializer = mb._get_client_translators()
-        
+
         self.assertIsNotNone(serializer)
         self.assertIsNotNone(deserializer)
 
@@ -82,9 +105,9 @@ class TestIsRepack(unittest.TestCase):
         mb.entry_point = "inference.py"
         mb.key_prefix = None
         mb.git_config = None
-        
+
         result = mb.is_repack()
-        
+
         self.assertTrue(result)
 
     def test_is_repack_false_no_source(self):
@@ -92,9 +115,9 @@ class TestIsRepack(unittest.TestCase):
         mb = ModelBuilder(model=Mock())
         mb.source_dir = None
         mb.entry_point = None
-        
+
         result = mb.is_repack()
-        
+
         self.assertFalse(result)
 
 
@@ -105,18 +128,18 @@ class TestEnableNetworkIsolation(unittest.TestCase):
         """Test network isolation enabled."""
         mb = ModelBuilder(model=Mock())
         mb._enable_network_isolation = True
-        
+
         result = mb.enable_network_isolation()
-        
+
         self.assertTrue(result)
 
     def test_enable_network_isolation_false(self):
         """Test network isolation disabled."""
         mb = ModelBuilder(model=Mock())
         mb._enable_network_isolation = False
-        
+
         result = mb.enable_network_isolation()
-        
+
         self.assertFalse(result)
 
 
@@ -126,17 +149,17 @@ class TestToString(unittest.TestCase):
     def test_to_string_regular_object(self):
         """Test to_string with regular object."""
         mb = ModelBuilder(model=Mock())
-        
+
         result = mb.to_string("test_string")
-        
+
         self.assertEqual(result, "test_string")
 
     def test_to_string_with_number(self):
         """Test to_string with number."""
         mb = ModelBuilder(model=Mock())
-        
+
         result = mb.to_string(123)
-        
+
         self.assertEqual(result, "123")
 
 
@@ -145,41 +168,40 @@ class TestBuildValidations(unittest.TestCase):
 
     def test_build_validations_passthrough_1p_image(self):
         """Test validations for 1P image passthrough."""
-        mb = ModelBuilder(image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.13")
+        mb = ModelBuilder(
+            image_uri="763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.13"
+        )
         mb.model = None
         mb.inference_spec = None
-        
+
         mb._build_validations()
-        
+
         self.assertTrue(mb._passthrough)
 
     def test_build_validations_non_1p_image_no_model_server(self):
         """Test validations fail for non-1P image without model_server."""
-        mb = ModelBuilder(
-            image_uri="custom-registry.com/my-image:latest",
-            model=Mock()
-        )
+        mb = ModelBuilder(image_uri="custom-registry.com/my-image:latest", model=Mock())
         mb.model_server = None
-        
+
         with self.assertRaises(ValueError) as context:
             mb._build_validations()
-        
+
         self.assertIn("Model_server must be set", str(context.exception))
 
 
 class TestBuildForPassthrough(unittest.TestCase):
     """Test _build_for_passthrough method."""
 
-    @patch.object(ModelBuilder, '_create_model')
+    @patch.object(ModelBuilder, "_create_model")
     def test_build_for_passthrough(self, mock_create):
         """Test building for passthrough."""
         mock_model = Mock()
         mock_create.return_value = mock_model
-        
+
         mb = ModelBuilder(image_uri="test-image:latest")
-        
+
         result = mb._build_for_passthrough()
-        
+
         self.assertEqual(result, mock_model)
         self.assertIsNone(mb.s3_upload_path)
 
@@ -189,18 +211,17 @@ class TestBuildDefaultAsyncInferenceConfig(unittest.TestCase):
 
     def test_build_default_async_config(self):
         """Test building default async inference config."""
-        from sagemaker.core.inference_config import AsyncInferenceConfig
-        
+
         mb = ModelBuilder(model=Mock())
         mb.model_name = "test-model"
         mb.sagemaker_session = Mock()
         mb.sagemaker_session.default_bucket = Mock(return_value="test-bucket")
         mb.sagemaker_session.default_bucket_prefix = "prefix"
-        
+
         async_config = AsyncInferenceConfig()
-        
+
         result = mb._build_default_async_inference_config(async_config)
-        
+
         self.assertIsNotNone(result.output_path)
         self.assertIsNotNone(result.failure_path)
 
@@ -215,13 +236,13 @@ class TestResetBuildState(unittest.TestCase):
         mb.secret_key = "test-key"
         mb.prepared_for_djl = True
         mb.modes = {}
-        
+
         mb._reset_build_state()
-        
+
         self.assertIsNone(mb.built_model)
         self.assertEqual(mb.secret_key, "")
-        self.assertFalse(hasattr(mb, 'prepared_for_djl'))
-        self.assertFalse(hasattr(mb, 'modes'))
+        self.assertFalse(hasattr(mb, "prepared_for_djl"))
+        self.assertFalse(hasattr(mb, "modes"))
 
 
 class TestConfigureForTorchServe(unittest.TestCase):
@@ -230,13 +251,11 @@ class TestConfigureForTorchServe(unittest.TestCase):
     def test_configure_for_torchserve(self):
         """Test configuring for TorchServe."""
         mb = ModelBuilder(model=Mock())
-        
+
         result = mb.configure_for_torchserve(
-            shared_libs=["lib1.so"],
-            dependencies={"auto": True},
-            image_config={"key": "value"}
+            shared_libs=["lib1.so"], dependencies={"auto": True}, image_config={"key": "value"}
         )
-        
+
         self.assertEqual(result.model_server, ModelServer.TORCHSERVE)
         self.assertEqual(result.shared_libs, ["lib1.so"])
 
@@ -249,24 +268,23 @@ class TestDoesICExist(unittest.TestCase):
         mb = ModelBuilder(model=Mock())
         mb.sagemaker_session = Mock()
         mb.sagemaker_session.describe_inference_component = Mock(return_value={})
-        
+
         result = mb._does_ic_exist("test-ic")
-        
+
         self.assertTrue(result)
 
     def test_does_ic_exist_false(self):
         """Test IC doesn't exist."""
-        from botocore.exceptions import ClientError
-        
+
         mb = ModelBuilder(model=Mock())
         mb.sagemaker_session = Mock()
         error_response = {"Error": {"Message": "Could not find inference component"}}
         mb.sagemaker_session.describe_inference_component = Mock(
             side_effect=ClientError(error_response, "DescribeInferenceComponent")
         )
-        
+
         result = mb._does_ic_exist("test-ic")
-        
+
         self.assertFalse(result)
 
 
@@ -276,10 +294,10 @@ class TestDisplayBenchmarkMetrics(unittest.TestCase):
     def test_display_benchmark_metrics_non_string_model(self):
         """Test display benchmark metrics with non-string model."""
         mb = ModelBuilder(model=Mock())
-        
+
         with self.assertRaises(ValueError) as context:
             mb.display_benchmark_metrics()
-        
+
         self.assertIn("only supported for JumpStart", str(context.exception))
 
 
@@ -289,10 +307,10 @@ class TestSetDeploymentConfig(unittest.TestCase):
     def test_set_deployment_config_non_string_model(self):
         """Test set deployment config with non-string model."""
         mb = ModelBuilder(model=Mock())
-        
+
         with self.assertRaises(ValueError) as context:
             mb.set_deployment_config("config-1", "ml.g5.xlarge")
-        
+
         self.assertIn("only supported for JumpStart", str(context.exception))
 
 
@@ -302,20 +320,20 @@ class TestGetDeploymentConfig(unittest.TestCase):
     def test_get_deployment_config_non_string_model(self):
         """Test get deployment config with non-string model."""
         mb = ModelBuilder(model=Mock())
-        
+
         with self.assertRaises(ValueError) as context:
             mb.get_deployment_config()
-        
+
         self.assertIn("only supported for JumpStart", str(context.exception))
 
     def test_get_deployment_config_no_config_name(self):
         """Test get deployment config without config_name."""
         mb = ModelBuilder(model="test-model")
         mb.config_name = None
-        
-        with patch.object(mb, '_is_jumpstart_model_id', return_value=True):
+
+        with patch.object(mb, "_is_jumpstart_model_id", return_value=True):
             result = mb.get_deployment_config()
-        
+
         self.assertIsNone(result)
 
 
@@ -325,11 +343,88 @@ class TestListDeploymentConfigs(unittest.TestCase):
     def test_list_deployment_configs_non_string_model(self):
         """Test list deployment configs with non-string model."""
         mb = ModelBuilder(model=Mock())
-        
+
         with self.assertRaises(ValueError) as context:
             mb.list_deployment_configs()
-        
+
         self.assertIn("only supported for JumpStart", str(context.exception))
+
+
+class TestPreDeployBenchmarkData(unittest.TestCase):
+    """Pre-deploy JumpStart benchmark data: list_deployment_configs() and the
+    benchmark_metrics property must work before build()/deploy() is called.
+    """
+
+    def _jumpstart_mb(self):
+        """A JumpStart-config ModelBuilder, constructed the same way as
+        TestFromJumpStartConfig (explicit role_arn, no live role/instance
+        resolution)."""
+        js_config = JumpStartConfig(model_id="test-model", model_version="1.0.0")
+        return ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+        )
+
+    def test_get_deployment_configs_ensures_metadata(self):
+        """_get_deployment_configs lazily loads metadata configs itself, so every
+        caller benefits. Pre-fix it read _metadata_configs (None pre-deploy) and
+        returned [] without ever loading them."""
+        mb = self._jumpstart_mb()
+        mb._metadata_configs = None
+
+        with patch.object(mb, "_ensure_metadata_configs") as ensure:
+            result = mb._get_deployment_configs(None, None)
+
+        ensure.assert_called_once()
+        self.assertEqual(result, [])
+
+    def test_list_deployment_configs_loads_metadata_when_pre_deploy(self):
+        """list_deployment_configs() with no instance_type returns configs for a
+        pre-deploy JumpStart model instead of []."""
+        mb = self._jumpstart_mb()
+        mb.config_name = None
+        mb.instance_type = None
+
+        with patch.object(mb, "_is_jumpstart_model_id", return_value=True), patch.object(
+            mb, "_is_model_customization", return_value=False
+        ), patch.object(mb, "_use_jumpstart_equivalent", return_value=False), patch.object(
+            mb, "_get_deployment_configs", return_value=[Mock()]
+        ), patch.object(
+            mb, "deployment_config_response_data", return_value=[{"DeploymentConfigName": "c1"}]
+        ):
+            result = mb.list_deployment_configs()
+
+        self.assertEqual(result, [{"DeploymentConfigName": "c1"}])
+
+    def test_benchmark_metrics_property_returns_dataframe(self):
+        """The benchmark_metrics property builds a DataFrame from the config
+        benchmark data (it did not exist before, causing AttributeError)."""
+        mb = self._jumpstart_mb()
+        sample = {
+            "Instance Type": ["ml.g5.2xlarge", "ml.g5.12xlarge"],
+            "Latency (ms)": [100.0, 80.0],
+        }
+
+        with patch.object(mb, "_get_deployment_configs_benchmarks_data", return_value=sample):
+            df = mb.benchmark_metrics
+
+        self.assertEqual(list(df["Instance Type"]), ["ml.g5.2xlarge", "ml.g5.12xlarge"])
+
+    def test_display_benchmark_metrics_no_attribute_error(self):
+        """display_benchmark_metrics() reads the benchmark_metrics property and
+        no longer raises AttributeError for a JumpStart model. The property is
+        patched to a stand-in frame so the assertion is on the wiring, not on
+        pandas' optional markdown renderer."""
+        mb = self._jumpstart_mb()
+        df = MagicMock()
+        df.to_markdown.return_value = "table"
+
+        with patch.object(mb, "_is_jumpstart_model_id", return_value=True), patch.object(
+            mb, "_use_jumpstart_equivalent", return_value=False
+        ), patch.object(type(mb), "benchmark_metrics", new_callable=PropertyMock, return_value=df):
+            mb.display_benchmark_metrics()
+
+        df.to_markdown.assert_called_once()
 
 
 class TestTransformer(unittest.TestCase):
@@ -338,13 +433,10 @@ class TestTransformer(unittest.TestCase):
     def test_transformer_without_built_model(self):
         """Test transformer without built model."""
         mb = ModelBuilder(model=Mock())
-        
+
         with self.assertRaises(ValueError) as context:
-            mb.transformer(
-                instance_count=1,
-                instance_type="ml.m5.large"
-            )
-        
+            mb.transformer(instance_count=1, instance_type="ml.m5.large")
+
         self.assertIn("Must call build()", str(context.exception))
 
 
@@ -354,10 +446,10 @@ class TestDeployLocal(unittest.TestCase):
     def test_deploy_local_wrong_mode(self):
         """Test deploy_local with wrong mode."""
         mb = ModelBuilder(model=Mock(), mode=Mode.SAGEMAKER_ENDPOINT)
-        
+
         with self.assertRaises(ValueError) as context:
             mb.deploy_local()
-        
+
         self.assertIn("only supports LOCAL_CONTAINER and IN_PROCESS", str(context.exception))
 
 
@@ -366,20 +458,165 @@ class TestFromJumpStartConfig(unittest.TestCase):
 
     def test_from_jumpstart_config_basic(self):
         """Test creating ModelBuilder from JumpStart config."""
-        from sagemaker.core.jumpstart.configs import JumpStartConfig
-        
-        js_config = JumpStartConfig(
-            model_id="test-model",
-            model_version="1.0.0"
-        )
-        
+
+        js_config = JumpStartConfig(model_id="test-model", model_version="1.0.0")
+
         mb = ModelBuilder.from_jumpstart_config(
-            jumpstart_config=js_config,
-            role_arn="arn:aws:iam::123456789012:role/SageMakerRole"
+            jumpstart_config=js_config, role_arn="arn:aws:iam::123456789012:role/SageMakerRole"
         )
-        
+
         self.assertEqual(mb.model, "test-model")
         self.assertEqual(mb.model_version, "1.0.0")
+
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_from_jumpstart_config_applies_network_isolation(self, mock_deploy_kwargs):
+        """Test that enable_network_isolation from deploy kwargs is applied."""
+
+        mock_deploy_kwargs.return_value = {
+            "model_data_download_timeout": 600,
+            "enable_network_isolation": True,
+        }
+
+        js_config = JumpStartConfig(model_id="test-model", model_version="1.0.0")
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.sagemaker_config = None
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.g5.xlarge"),
+            sagemaker_session=mock_session,
+        )
+
+        self.assertTrue(mb._enable_network_isolation)
+
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_from_jumpstart_config_applies_volume_size(self, mock_deploy_kwargs):
+        """Test that volume_size from deploy kwargs is applied."""
+
+        mock_deploy_kwargs.return_value = {
+            "model_data_download_timeout": 600,
+            "volume_size": 256,
+        }
+
+        js_config = JumpStartConfig(
+            model_id="meta-textgenerationneuron-llama-2-7b", model_version="1.0.0"
+        )
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.sagemaker_config = None
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.inf2.xlarge"),
+            sagemaker_session=mock_session,
+        )
+
+        self.assertEqual(mb.volume_size, 256)
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.session_helper.production_variant")
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_deploy_passes_volume_size_to_production_variant(
+        self, mock_deploy_kwargs, mock_prod_variant, mock_endpoint_get
+    ):
+        """Test that volume_size kwarg passed to deploy() reaches production_variant."""
+
+        mock_deploy_kwargs.return_value = {"volume_size": 256}
+        mock_prod_variant.return_value = {"VariantName": "AllTraffic"}
+        mock_endpoint_get.return_value = Mock()
+
+        js_config = JumpStartConfig(
+            model_id="meta-textgenerationneuron-llama-2-7b",
+            model_version="1.0.0",
+        )
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.endpoint_in_service_or_not = Mock(return_value=False)
+        mock_session.endpoint_from_production_variants = Mock()
+        mock_session.sagemaker_config = {}
+        mock_session.settings = Mock()
+        mock_session.settings.include_jumpstart_tags = False
+        mock_session._append_sagemaker_config_tags = Mock(return_value=[])
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.inf2.xlarge"),
+            sagemaker_session=mock_session,
+        )
+        mb.built_model = Mock()
+        mb.built_model.model_name = "test-model"
+        mb.model_server = None
+        mb.mode = Mode.SAGEMAKER_ENDPOINT
+
+        # Deploy with explicit volume_size=512 overriding spec's 256
+        mb.deploy(
+            endpoint_name="test-ep",
+            instance_type="ml.inf2.xlarge",
+            initial_instance_count=1,
+            volume_size=512,
+            wait=False,
+        )
+
+        # Verify production_variant was called with user's 512, not spec's 256
+        mock_prod_variant.assert_called_once()
+        call_kwargs = mock_prod_variant.call_args[1]
+        self.assertEqual(call_kwargs["volume_size"], 512)
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.session_helper.production_variant")
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_deploy_uses_spec_volume_size_when_not_passed(
+        self, mock_deploy_kwargs, mock_prod_variant, mock_endpoint_get
+    ):
+        """Test that volume_size from spec is used when customer doesn't pass it."""
+
+        mock_deploy_kwargs.return_value = {"volume_size": 256}
+        mock_prod_variant.return_value = {"VariantName": "AllTraffic"}
+        mock_endpoint_get.return_value = Mock()
+
+        js_config = JumpStartConfig(
+            model_id="meta-textgenerationneuron-llama-2-7b",
+            model_version="1.0.0",
+        )
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.endpoint_in_service_or_not = Mock(return_value=False)
+        mock_session.endpoint_from_production_variants = Mock()
+        mock_session.sagemaker_config = {}
+        mock_session.settings = Mock()
+        mock_session.settings.include_jumpstart_tags = False
+        mock_session._append_sagemaker_config_tags = Mock(return_value=[])
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.inf2.xlarge"),
+            sagemaker_session=mock_session,
+        )
+        mb.built_model = Mock()
+        mb.built_model.model_name = "test-model"
+        mb.model_server = None
+        mb.mode = Mode.SAGEMAKER_ENDPOINT
+
+        # Deploy WITHOUT passing volume_size — should use spec's 256
+        mb.deploy(
+            endpoint_name="test-ep",
+            instance_type="ml.inf2.xlarge",
+            initial_instance_count=1,
+            wait=False,
+        )
+
+        mock_prod_variant.assert_called_once()
+        call_kwargs = mock_prod_variant.call_args[1]
+        self.assertEqual(call_kwargs["volume_size"], 256)
 
 
 if __name__ == "__main__":

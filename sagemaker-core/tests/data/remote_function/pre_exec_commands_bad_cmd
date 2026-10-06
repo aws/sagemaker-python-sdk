@@ -1,0 +1,3 @@
+echo "test-content-1" > test_file_1
+bws sagemaker describe-training-job
+echo "test-content-3" > test_file_3

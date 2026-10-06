@@ -154,7 +154,10 @@ def test_pipeline_update_with_mlflow_config(mock_session):
     with patch(
         "sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="dummy-role"
     ):
-        pipeline.update("dummy-role")
+        with patch(
+            "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", return_value="dummy-role"
+        ):
+            pipeline.update("dummy-role")
 
     mock_session.sagemaker_client.update_pipeline.assert_called_once()
     call_args = mock_session.sagemaker_client.update_pipeline.call_args
@@ -209,7 +212,6 @@ def test_convert_mlflow_config_to_request_with_minimal_config():
 
 def test_convert_mlflow_config_to_request_with_unassigned_values():
     """Test _convert_mlflow_config_to_request handles Unassigned values properly."""
-    from sagemaker.core.utils.utils import Unassigned
 
     mlflow_config = MlflowConfig(
         mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test",

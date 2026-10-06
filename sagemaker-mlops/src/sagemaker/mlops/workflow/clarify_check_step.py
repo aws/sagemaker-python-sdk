@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The step definitions for workflow."""
+
 from __future__ import absolute_import
 
 import copy
@@ -276,49 +277,66 @@ class ClarifyCheckStep(Step):
                 input_dict["S3Input"] = {
                     "S3Uri": inp.s3_input.s3_uri,
                     "LocalPath": inp.s3_input.local_path,
-                    "S3DataType": getattr(inp.s3_input, 's3_data_type', 'S3Prefix'),
-                    "S3InputMode": getattr(inp.s3_input, 's3_input_mode', 'File'),
+                    "S3DataType": getattr(inp.s3_input, "s3_data_type", "S3Prefix"),
+                    "S3InputMode": getattr(inp.s3_input, "s3_input_mode", "File"),
                 }
             processing_inputs.append(input_dict)
-        
-        processing_outputs = [{
-            "OutputName": self._processing_params["result_output"].output_name,
-            "S3Output": {
-                "S3Uri": self._processing_params["result_output"].s3_output.s3_uri,
-                "LocalPath": self._processing_params["result_output"].s3_output.local_path,
-                "S3UploadMode": self._processing_params["result_output"].s3_output.s3_upload_mode,
+
+        s3_output_dict = {
+            "S3Uri": self._processing_params["result_output"].s3_output.s3_uri,
+            "LocalPath": self._processing_params["result_output"].s3_output.local_path,
+            "S3UploadMode": self._processing_params["result_output"].s3_output.s3_upload_mode,
+        }
+        if self.check_job_config.output_kms_key:
+            s3_output_dict["KmsKeyId"] = self.check_job_config.output_kms_key
+
+        processing_outputs = [
+            {
+                "OutputName": self._processing_params["result_output"].output_name,
+                "S3Output": s3_output_dict,
             }
-        }]
-        
+        ]
+
+        cluster_config = {
+            "InstanceCount": self._baselining_processor.instance_count,
+            "InstanceType": self._baselining_processor.instance_type,
+            "VolumeSizeInGB": getattr(self._baselining_processor, "volume_size_in_gb", 30),
+        }
+        if self.check_job_config.volume_kms_key:
+            cluster_config["VolumeKmsKeyId"] = self.check_job_config.volume_kms_key
+
         request_dict = {
             "ProcessingInputs": processing_inputs,
             "ProcessingOutputConfig": {"Outputs": processing_outputs},
             "ProcessingJobName": self._baselining_processor._current_job_name or "clarify-job",
             "ProcessingResources": {
-                "ClusterConfig": {
-                    "InstanceCount": self._baselining_processor.instance_count,
-                    "InstanceType": self._baselining_processor.instance_type,
-                    "VolumeSizeInGB": getattr(self._baselining_processor, 'volume_size_in_gb', 30),
-                }
+                "ClusterConfig": cluster_config,
             },
             "AppSpecification": {
                 "ImageUri": self._baselining_processor.image_uri,
             },
             "RoleArn": self._baselining_processor.role,
             "StoppingCondition": {
-                "MaxRuntimeInSeconds": getattr(self._baselining_processor, 'max_runtime_in_seconds', None) or 86400
+                "MaxRuntimeInSeconds": getattr(
+                    self._baselining_processor, "max_runtime_in_seconds", None
+                )
+                or 86400
             },
         }
-        
+
         # Add optional fields if they exist
         if self._baselining_processor.env:
             request_dict["Environment"] = self._baselining_processor.env
         if self._baselining_processor.network_config:
             request_dict["NetworkConfig"] = self._baselining_processor.network_config
         if self._baselining_processor.entrypoint:
-            request_dict["AppSpecification"]["ContainerEntrypoint"] = self._baselining_processor.entrypoint
+            request_dict["AppSpecification"][
+                "ContainerEntrypoint"
+            ] = self._baselining_processor.entrypoint
         if self._baselining_processor.arguments:
-            request_dict["AppSpecification"]["ContainerArguments"] = self._baselining_processor.arguments
+            request_dict["AppSpecification"][
+                "ContainerArguments"
+            ] = self._baselining_processor.arguments
         # Continue to pop job name if not explicitly opted-in via config
         request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
@@ -432,7 +450,7 @@ class ClarifyCheckStep(Step):
                     "s3_data_type": "S3Prefix",
                     "s3_input_mode": "File",
                     "s3_compression_type": "None",
-                }
+                },
             )
             data_input = ProcessingInput(
                 input_name="dataset",
@@ -443,7 +461,7 @@ class ClarifyCheckStep(Step):
                     "s3_input_mode": "File",
                     "s3_data_distribution_type": data_config.s3_data_distribution_type,
                     "s3_compression_type": data_config.s3_compression_type,
-                }
+                },
             )
             result_output = ProcessingOutput(
                 output_name="analysis_result",
@@ -451,7 +469,7 @@ class ClarifyCheckStep(Step):
                     "s3_uri": data_config.s3_output_path,
                     "local_path": SageMakerClarifyProcessor._CLARIFY_OUTPUT,
                     "s3_upload_mode": ProcessingOutputHandler.get_s3_upload_mode(analysis_config),
-                }
+                },
             )
         return dict(config_input=config_input, data_input=data_input, result_output=result_output)
 

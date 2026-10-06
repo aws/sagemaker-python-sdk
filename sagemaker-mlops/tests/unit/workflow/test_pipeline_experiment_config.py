@@ -11,22 +11,21 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow pipeline_experiment_config."""
+
 from __future__ import absolute_import
 
 from unittest.mock import Mock
 
 from sagemaker.mlops.workflow.pipeline_experiment_config import (
-    PipelineExperimentConfig, PipelineExperimentConfigProperties
+    PipelineExperimentConfig,
+    PipelineExperimentConfigProperties,
 )
 from sagemaker.mlops.workflow.pipeline import Pipeline, _DEFAULT_EXPERIMENT_CFG
 from sagemaker.core.workflow.execution_variables import ExecutionVariables
 
 
 def test_pipeline_experiment_config_init():
-    config = PipelineExperimentConfig(
-        experiment_name="test-experiment",
-        trial_name="test-trial"
-    )
+    config = PipelineExperimentConfig(experiment_name="test-experiment", trial_name="test-trial")
     assert config.experiment_name == "test-experiment"
     assert config.trial_name == "test-trial"
 
@@ -34,7 +33,7 @@ def test_pipeline_experiment_config_init():
 def test_pipeline_experiment_config_with_execution_variables():
     config = PipelineExperimentConfig(
         experiment_name=ExecutionVariables.PIPELINE_NAME,
-        trial_name=ExecutionVariables.PIPELINE_EXECUTION_ID
+        trial_name=ExecutionVariables.PIPELINE_EXECUTION_ID,
     )
     request = config.to_request()
     assert "ExperimentName" in request
@@ -73,7 +72,9 @@ def test_no_default_config_in_non_ga_region():
 def test_explicit_none_respected_in_ga_region():
     """None gets default config in GA region."""
     mock_session = _create_mock_session("us-east-1")
-    pipeline = Pipeline(name="test-pipeline", sagemaker_session=mock_session, pipeline_experiment_config=None)
+    pipeline = Pipeline(
+        name="test-pipeline", sagemaker_session=mock_session, pipeline_experiment_config=None
+    )
     assert pipeline.pipeline_experiment_config is None
 
 
@@ -81,5 +82,9 @@ def test_custom_config_respected():
     """Custom config respected regardless of region."""
     mock_session = _create_mock_session("us-east-1")
     custom_config = PipelineExperimentConfig("my-experiment", "my-trial")
-    pipeline = Pipeline(name="test-pipeline", sagemaker_session=mock_session, pipeline_experiment_config=custom_config)
+    pipeline = Pipeline(
+        name="test-pipeline",
+        sagemaker_session=mock_session,
+        pipeline_experiment_config=custom_config,
+    )
     assert pipeline.pipeline_experiment_config == custom_config

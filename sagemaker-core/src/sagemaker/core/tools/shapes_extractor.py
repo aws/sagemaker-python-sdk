@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Extracts the shapes to DAG structure."""
+
 import textwrap
 import pprint
 from functools import lru_cache
@@ -19,6 +20,7 @@ from typing import Optional, Any
 from sagemaker.core.tools.constants import (
     BASIC_JSON_TYPES_TO_PYTHON_TYPES,
     REQUIRED_TO_OPTIONAL_OVERRIDES,
+    PIPE_VAR_OVERRIDES,
     SHAPE_DAG_FILE_PATH,
 )
 from sagemaker.core.utils.utils import (
@@ -33,8 +35,7 @@ class ShapesExtractor:
     """Extracts the shapes to DAG structure."""
 
     def __init__(self, combined_shapes: Optional[dict] = None):
-        """
-        Initializes a new instance of the ShapesExtractor class.
+        """Initializes a new instance of the ShapesExtractor class.
 
         :param combined_shapes: All the shapes put together from all Sagemaker Service JSONs
         """
@@ -48,8 +49,7 @@ class ShapesExtractor:
 
     # @property
     def get_shapes_dag(self):
-        """
-        Parses the Service Json and generates the Shape DAG.
+        """Parses the Service Json and generates the Shape DAG.
 
         DAG is stored in a Dictionary data structure, and each key denotes a DAG Node.
         Nodes can be of composite types: structure, list, map. Basic types (Ex. str, int, etc)
@@ -68,7 +68,6 @@ class ShapesExtractor:
         7. StructA → map → list → basic_type_member
 
         Example:
-
            "ContainerDefinition": { # type: structure
                "type":"structure",
                "members":[
@@ -139,7 +138,7 @@ class ShapesExtractor:
             member_type = f"List[{BASIC_JSON_TYPES_TO_PYTHON_TYPES[list_shape_type]}]"
         else:
             raise Exception(
-                f"Unhandled list shape key type {list_shape_type} for Shape: {list_shape_name} encountered, needs extra logic to handle this"
+                f"Unhandled list shape key type {list_shape_type} for Shape: {list_shape_name} encountered, needs extra logic to handle this"  # noqa: E501
             )
         return member_type
 
@@ -180,6 +179,7 @@ class ShapesExtractor:
     def generate_data_shape_members_and_string_body(
         self, shape, resource_plan: Optional[Any] = None, required_override=()
     ):
+        """Generate the members and string body for a data shape."""
         shape_members = self.generate_shape_members(shape, required_override)
         resource_names = None
         if resource_plan is not None:
@@ -206,24 +206,26 @@ class ShapesExtractor:
         return shape_members, init_data_body
 
     def generate_data_shape_string_body(self, shape, resource_plan, required_override=()):
+        """Generate the string body for a data shape."""
         return self.generate_data_shape_members_and_string_body(
             shape, resource_plan, required_override
         )[1]
 
     def generate_data_shape_members(self, shape, resource_plan, required_override=()):
+        """Generate the members for a data shape."""
         return self.generate_data_shape_members_and_string_body(
             shape, resource_plan, required_override
         )[0]
 
     @lru_cache
     def generate_shape_members(self, shape, required_override=()):
+        """Generate the members for a shape."""
         shape_dict = self.combined_shapes[shape]
         members = shape_dict["members"]
         required_args = list(required_override) or shape_dict.get("required", [])
         # Remove members that are known to be optional despite the service model
         required_args = [
-            r for r in required_args
-            if r not in REQUIRED_TO_OPTIONAL_OVERRIDES.get(shape, [])
+            r for r in required_args if r not in REQUIRED_TO_OPTIONAL_OVERRIDES.get(shape, [])
         ]
         init_data_body = {}
         # bring the required members in front
@@ -242,7 +244,9 @@ class ShapesExtractor:
                     member_type = self._evaluate_map_type(member_shape)
                 else:
                     # Shape is a simple type like string
-                    member_type = BASIC_JSON_TYPES_TO_PYTHON_TYPES[member_shape_type]
+                    member_type = PIPE_VAR_OVERRIDES.get(shape, {}).get(
+                        member_name, BASIC_JSON_TYPES_TO_PYTHON_TYPES[member_shape_type]
+                    )
             else:
                 raise Exception("The Shape definition mush exist. The Json Data might be corrupt")
             member_name_snake_case = convert_to_snake_case(member_name)
@@ -256,6 +260,7 @@ class ShapesExtractor:
 
     @lru_cache
     def fetch_shape_members_and_doc_strings(self, shape, required_override=()):
+        """Fetch the members and docstrings for a shape."""
         shape_dict = self.combined_shapes[shape]
         members = shape_dict["members"]
         required_args = list(required_override) or shape_dict.get("required", [])
@@ -269,6 +274,7 @@ class ShapesExtractor:
         return shape_members_and_docstrings
 
     def get_required_members(self, shape):
+        """Return the required members of a shape."""
         shape_dict = self.combined_shapes[shape]
         required_args = shape_dict.get("required", [])
 

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Local Pipeline Session - extends LocalSession with pipeline execution capabilities."""
+
 from __future__ import absolute_import
 
 import logging
@@ -27,29 +28,29 @@ logger = logging.getLogger(__name__)
 
 class LocalPipelineSession(LocalSession):
     """Extends LocalSession with pipeline execution capabilities.
-    
+
     This class provides local pipeline execution functionality that was previously
     in LocalSession. It's now in the MLOps package since pipeline orchestration
     is an MLOps concern.
-    
+
     Usage:
         from sagemaker.mlops.local import LocalPipelineSession
         from sagemaker.mlops.workflow import Pipeline
-        
+
         session = LocalPipelineSession()
         session.create_pipeline(pipeline, "My pipeline")
     """
-    
+
     def __init__(self, *args, **kwargs):
         """Initialize LocalPipelineSession.
-        
+
         Accepts the same arguments as LocalSession.
         """
         super().__init__(*args, **kwargs)
         # Add pipeline storage to the sagemaker_client
-        if not hasattr(self.sagemaker_client, '_pipelines'):
+        if not hasattr(self.sagemaker_client, "_pipelines"):
             self.sagemaker_client._pipelines = {}
-    
+
     @_telemetry_emitter(Feature.LOCAL_MODE, "local_pipeline_session.create_pipeline")
     def create_pipeline(
         self, pipeline, pipeline_description, **kwargs  # pylint: disable=unused-argument
@@ -136,7 +137,7 @@ class LocalPipelineSession(LocalSession):
         Args:
           PipelineName (str): Name of the pipeline
 
-        Returns: 
+        Returns:
             _LocalPipelineExecution object
         """
         if "ParallelismConfiguration" in kwargs:
