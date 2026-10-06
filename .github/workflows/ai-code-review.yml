@@ -1,8 +1,9 @@
 name: AI Code Review (Claude on Bedrock)
 
 # The review runs in the SageMaker team's AWS account; this workflow only
-# starts it and reports the build status. Review comments are posted by the
-# runner with its own credentials.
+# starts it and reports the build status. Reviews and commit statuses are
+# posted as github-actions[bot]: the run's GITHUB_TOKEN is handed to the build,
+# so nothing long-lived has to be stored or rotated for posting.
 #
 # Fork safety: this uses pull_request_target (needed to assume the trigger
 # role), so it reuses the same collaborator gate as pr-checks-master.yml.
@@ -68,6 +69,14 @@ jobs:
   review:
     runs-on: ubuntu-latest
     needs: [wait-for-approval]
+    # The run token is handed to the review build, so this job's permissions
+    # are exactly what the runner may do with it: post one review (public mode)
+    # and set one commit status (internal mode). Nothing else gets write.
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+      statuses: write
     strategy:
       fail-fast: false
       matrix:
@@ -87,6 +96,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # Run-scoped; expires when this job ends. The "Wait" step below keeps
+          # the job alive for the build's duration. GitHub masks it in logs.
+          GITHUB_POST_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           BUILD_ID=$(aws codebuild start-build \
@@ -96,6 +108,7 @@ jobs:
               "name=PR_NUMBER,value=$PR_NUMBER,type=PLAINTEXT" \
               "name=HEAD_SHA,value=$HEAD_SHA,type=PLAINTEXT" \
               "name=BASE_SHA,value=$BASE_SHA,type=PLAINTEXT" \
+              "name=GITHUB_POST_TOKEN,value=$GITHUB_POST_TOKEN,type=PLAINTEXT" \
             --query 'build.id' --output text)
           echo "build-id=$BUILD_ID" >> "$GITHUB_OUTPUT"
           echo "Started build $BUILD_ID"
