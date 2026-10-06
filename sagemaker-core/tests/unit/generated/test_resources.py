@@ -935,3 +935,40 @@ class TestTrainingJobGetModelArtifactsSynthesis(unittest.TestCase):
         )
 
         assert isinstance(job.model_artifacts, Unassigned)
+
+
+class TestModelPackageRefreshIdentifierFallback(unittest.TestCase):
+    """ModelPackage.refresh() must work for versioned packages (issue #5606).
+
+    ``ListModelPackages`` does not return ``ModelPackageName`` for versioned packages
+    inside a model package group, only ``ModelPackageArn``. Since ``DescribeModelPackage``
+    accepts either for the ``ModelPackageName`` parameter, refresh() falls back to the ARN
+    when the name is ``Unassigned``.
+    """
+
+    _ARN = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-group/1"
+
+    def _refresh_with(self, **attrs):
+        from sagemaker.core.resources import ModelPackage
+
+        pkg = ModelPackage.model_construct(**attrs)
+        with (
+            patch("sagemaker.core.resources.transform", return_value={}),
+            patch.object(Base, "get_sagemaker_client") as mock_get_client,
+        ):
+            client = mock_get_client.return_value
+            client.describe_model_package.return_value = {}
+            pkg.refresh()
+            return client
+
+    def test_refresh_falls_back_to_arn_when_name_unassigned(self):
+        from sagemaker.core.utils.utils import Unassigned
+
+        client = self._refresh_with(model_package_name=Unassigned(), model_package_arn=self._ARN)
+        client.describe_model_package.assert_called_once_with(ModelPackageName=self._ARN)
+
+    def test_refresh_uses_name_when_present(self):
+        client = self._refresh_with(
+            model_package_name="my-model-package", model_package_arn=self._ARN
+        )
+        client.describe_model_package.assert_called_once_with(ModelPackageName="my-model-package")
