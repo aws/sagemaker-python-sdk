@@ -27,6 +27,7 @@ from __future__ import absolute_import
 import os
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -39,6 +40,10 @@ from tests.integ import DATA_DIR
 INSTANCE_TYPE = "ml.m5.xlarge"
 EXECUTION_TIMEOUT_SECONDS = 45 * 60
 POLL_SECONDS = 30
+# Largest page size the List* APIs accept.
+LIST_PAGE_SIZE = 100
+# Margin on the CreationTimeAfter filter to absorb clock skew with the service.
+CREATION_TIME_MARGIN = timedelta(minutes=10)
 
 
 # sagemaker_session and pipeline_session come from tests/conftest.py, and role from
@@ -50,6 +55,7 @@ POLL_SECONDS = 30
 def test_deployment_steps_execute_end_to_end(sagemaker_session, pipeline_session, role):
     """Chained EndpointConfig -> Endpoint -> InferenceComponent pipeline run."""
     stamp = uuid.uuid4().hex[:8]
+    created_after = datetime.now(timezone.utc) - CREATION_TIME_MARGIN
     config_name = f"integ-deploy-cfg-{stamp}"
     endpoint_name = f"integ-deploy-ep-{stamp}"
     component_name = f"integ-deploy-ic-{stamp}"
@@ -155,14 +161,21 @@ def test_deployment_steps_execute_end_to_end(sagemaker_session, pipeline_session
 
         # Resolve the actual server-side names (the steps suffix them).
         actual_config = _resolve(
-            sm_client.list_endpoint_configs(NameContains=stamp)["EndpointConfigs"],
+            _list_all(sm_client, "list_endpoint_configs", "EndpointConfigs", stamp, created_after),
             "EndpointConfigName",
         )
         actual_endpoint = _resolve(
-            sm_client.list_endpoints(NameContains=stamp)["Endpoints"], "EndpointName"
+            _list_all(sm_client, "list_endpoints", "Endpoints", stamp, created_after),
+            "EndpointName",
         )
         actual_component = _resolve(
-            sm_client.list_inference_components(NameContains=stamp)["InferenceComponents"],
+            _list_all(
+                sm_client,
+                "list_inference_components",
+                "InferenceComponents",
+                stamp,
+                created_after,
+            ),
             "InferenceComponentName",
         )
 
@@ -180,7 +193,26 @@ def test_deployment_steps_execute_end_to_end(sagemaker_session, pipeline_session
         )
         assert component_desc["EndpointName"] == actual_endpoint
     finally:
-        _cleanup(sagemaker_session, sm_client, stamp, pipeline, model_name)
+        _cleanup(sagemaker_session, sm_client, stamp, created_after, pipeline, model_name)
+
+
+def _list_all(sm_client, operation, result_key, stamp, created_after):
+    """Return every resource whose name contains ``stamp``, across all result pages.
+
+    SageMaker applies ``NameContains`` to each page of results rather than before paging,
+    so a single call can return an empty page (plus a NextToken) even though a matching
+    resource exists. That happens whenever more than a page of other resources were created
+    after this run's, which is routine while the rest of the integ suite runs in parallel in
+    the same account, so always walk every page. ``CreationTimeAfter`` and the larger page
+    size keep the number of pages small.
+    """
+    paginator = sm_client.get_paginator(operation)
+    pages = paginator.paginate(
+        NameContains=stamp,
+        CreationTimeAfter=created_after,
+        PaginationConfig={"PageSize": LIST_PAGE_SIZE},
+    )
+    return [item for page in pages for item in page[result_key]]
 
 
 def _resolve(items, key):
@@ -189,21 +221,25 @@ def _resolve(items, key):
     return items[0][key]
 
 
-def _cleanup(sagemaker_session, sm_client, stamp, pipeline, model_name):
+def _cleanup(sagemaker_session, sm_client, stamp, created_after, pipeline, model_name):
     """Delete every resource this run created, in dependency order."""
-    for component in sm_client.list_inference_components(NameContains=stamp)["InferenceComponents"]:
+    for component in _list_all(
+        sm_client, "list_inference_components", "InferenceComponents", stamp, created_after
+    ):
         name = component["InferenceComponentName"]
         try:
             sm_client.delete_inference_component(InferenceComponentName=name)
             _wait_component_deleted(sm_client, name)
         except Exception:  # noqa: BLE001 -- best-effort cleanup
             pass
-    for endpoint in sm_client.list_endpoints(NameContains=stamp)["Endpoints"]:
+    for endpoint in _list_all(sm_client, "list_endpoints", "Endpoints", stamp, created_after):
         try:
             sm_client.delete_endpoint(EndpointName=endpoint["EndpointName"])
         except Exception:  # noqa: BLE001
             pass
-    for config in sm_client.list_endpoint_configs(NameContains=stamp)["EndpointConfigs"]:
+    for config in _list_all(
+        sm_client, "list_endpoint_configs", "EndpointConfigs", stamp, created_after
+    ):
         try:
             sm_client.delete_endpoint_config(EndpointConfigName=config["EndpointConfigName"])
         except Exception:  # noqa: BLE001

@@ -16,9 +16,11 @@ import os
 import pytest
 from sagemaker.huggingface import HuggingFace
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, timeout
+from tests.integ.sagemaker.jumpstart.utils import fit_estimator_with_capacity_xfail, x_fail_if_ice
 
 
 @pytest.mark.slow_test
+@x_fail_if_ice
 def test_huggingface_torch_distributed_g5_glue(
     sagemaker_session,
     huggingface_training_latest_version,
@@ -49,4 +51,7 @@ def test_huggingface_torch_distributed_g5_glue(
             sagemaker_session=sagemaker_session,
             disable_profiler=True,
         )
-        estimator.fit()
+        # ml.g5.4xlarge capacity is often unavailable, and a job waiting for capacity never
+        # fails on its own: it just sits in "Pending" until the timeout above kills the test.
+        # Fail fast with a CapacityError instead, which x_fail_if_ice turns into an xfail.
+        fit_estimator_with_capacity_xfail(estimator, inputs=None)

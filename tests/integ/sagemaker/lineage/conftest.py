@@ -662,6 +662,12 @@ def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
         )
         endpoint_arn = get_endpoint_arn_from_static_pipeline(sagemaker_session)
 
+    if endpoint_arn is None:
+        raise Exception(
+            f"Static endpoint {STATIC_ENDPOINT_NAME} does not exist and could not be deployed "
+            f"from static pipeline execution {static_pipeline_execution_arn}."
+        )
+
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)[
         "ContextSummaries"
     ]
@@ -888,11 +894,36 @@ def _deploy_static_endpoint(execution_arn, sagemaker_session):
         model_package.deploy(1, "ml.m5.xlarge", endpoint_name=STATIC_ENDPOINT_NAME)
         time.sleep(120)
     except ClientError as e:
-        if e.response["Error"]["Code"] == "ValidationException":
-            print(f"Endpoint {STATIC_ENDPOINT_NAME} already exists. Continuing.")
-            pass
-        else:
+        if e.response["Error"]["Code"] != "ValidationException":
             raise (e)
+        if get_endpoint_arn_from_static_pipeline(sagemaker_session) is not None:
+            print(f"Endpoint {STATIC_ENDPOINT_NAME} already exists. Continuing.")
+            return
+        # The endpoint is gone but an endpoint config with the same name outlived it (e.g. the
+        # endpoint was deleted out of band), so deploy() failed on CreateEndpointConfig without
+        # creating an endpoint. Recreate the endpoint from the existing endpoint config.
+        print(
+            f"Endpoint {STATIC_ENDPOINT_NAME} is missing but its endpoint config exists. "
+            "Recreating the endpoint from the existing endpoint config."
+        )
+        _create_static_endpoint_from_existing_config(sagemaker_session)
+
+
+def _create_static_endpoint_from_existing_config(sagemaker_session):
+    try:
+        sagemaker_session.sagemaker_client.create_endpoint(
+            EndpointName=STATIC_ENDPOINT_NAME, EndpointConfigName=STATIC_ENDPOINT_NAME
+        )
+    except ClientError as e:
+        # Another test worker may have recreated the endpoint concurrently; anything else
+        # (e.g. the endpoint config is missing too) is a real failure.
+        if (
+            e.response["Error"]["Code"] != "ValidationException"
+            or get_endpoint_arn_from_static_pipeline(sagemaker_session) is None
+        ):
+            raise
+    sagemaker_session.wait_for_endpoint(STATIC_ENDPOINT_NAME)
+    time.sleep(120)
 
 
 @pytest.fixture
