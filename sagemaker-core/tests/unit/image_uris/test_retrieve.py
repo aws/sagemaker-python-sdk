@@ -84,6 +84,51 @@ def test_retrieve_unsupported_image_scope(config_for_framework):
 
 
 @patch("sagemaker.core.image_uris.config_for_framework", return_value=BASE_CONFIG)
+def test_retrieve_rejects_container_version_for_unsupported_framework(config_for_framework):
+    """container_version on a framework with no container_version tag component raises (#3702).
+
+    Previously the value was concatenated into the tag, producing a URI for an image
+    that does not exist (e.g. ``dummy:1.0.0-cpu-py3-1.1``).
+    """
+    with pytest.raises(ValueError) as e:
+        image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            instance_type="ml.c4.xlarge",
+            region="us-west-2",
+            image_scope="training",
+            container_version="1.1",
+        )
+    assert "container_version '1.1' is not supported" in str(e.value)
+    # Omitting container_version still returns the valid tag (no regression).
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert uri == "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3"
+
+
+def test_retrieve_allows_container_version_for_spark():
+    """Spark passes a container_version suffix (e.g. "v1") with no config map (#3702).
+
+    Spark is in FRAMEWORKS_WITH_CONTAINER_VERSION_SUFFIX, so the guard must not reject it.
+    """
+    uri = image_uris.retrieve(
+        framework="spark",
+        version="3.1",
+        instance_type="ml.c5.xlarge",
+        region="us-west-2",
+        container_version="v1",
+    )
+    assert uri.endswith("-v1")
+
+
+@patch("sagemaker.core.image_uris.config_for_framework", return_value=BASE_CONFIG)
 def test_retrieve_default_image_scope(config_for_framework, caplog):
     uri = image_uris.retrieve(
         framework="useless-string",

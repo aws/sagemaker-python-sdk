@@ -10,6 +10,9 @@ V3 Changes:
 import unittest
 from unittest.mock import Mock, patch
 
+from botocore.exceptions import ClientError
+
+from sagemaker.core.exceptions import CapacityError, UnexpectedStatusException
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -733,6 +736,80 @@ class TestModelBuilderV3WaitForEndpoint(unittest.TestCase):
             builder._wait_for_endpoint("test-endpoint", wait=False, show_progress=False)
             # Should log deployment started message
             mock_logger.assert_called()
+
+    def _builder(self):
+        return ModelBuilder(
+            model=Mock(),
+            role_arn=self.mock_role_arn,
+            sagemaker_session=self.mock_session,
+            model_server=ModelServer.TORCHSERVE,
+        )
+
+    @patch("sagemaker.serve.model_builder._wait_until")
+    def test_wait_for_endpoint_raises_when_endpoint_fails(self, mock_wait_until):
+        """A failed endpoint raises with its failure reason instead of returning quietly."""
+        mock_wait_until.return_value = {
+            "EndpointStatus": "Failed",
+            "FailureReason": "Unable to provision requested ML compute capacity due to "
+            "InsufficientInstanceCapacity error.",
+        }
+
+        with self.assertRaises(UnexpectedStatusException) as context:
+            self._builder()._wait_for_endpoint("test-endpoint", wait=True, show_progress=False)
+
+        self.assertNotIsInstance(context.exception, CapacityError)
+        self.assertEqual(context.exception.actual_status, "Failed")
+        self.assertIn("InsufficientInstanceCapacity", str(context.exception))
+
+    @patch("sagemaker.serve.model_builder._wait_until")
+    def test_wait_for_endpoint_raises_capacity_error(self, mock_wait_until):
+        """A CapacityError failure reason raises CapacityError."""
+        mock_wait_until.return_value = {
+            "EndpointStatus": "Failed",
+            "FailureReason": "CapacityError: not enough capacity",
+        }
+
+        with self.assertRaises(CapacityError):
+            self._builder()._wait_for_endpoint("test-endpoint", wait=True, show_progress=False)
+
+    @patch("sagemaker.serve.deployment_progress.Live")
+    @patch("sagemaker.core.helper.session_helper._has_permission_for_live_logging")
+    @patch("sagemaker.serve.model_builder._wait_until")
+    def test_wait_for_endpoint_status_only_skips_log_streaming(
+        self, mock_wait_until, mock_permission, mock_live
+    ):
+        """stream_endpoint_logs=False never looks for the endpoint log group."""
+        mock_wait_until.return_value = {"EndpointStatus": "InService"}
+
+        self._builder()._wait_for_endpoint("test-endpoint", wait=True, stream_endpoint_logs=False)
+
+        mock_permission.assert_not_called()
+        mock_wait_until.assert_called_once()
+
+    @patch("time.sleep")
+    @patch("sagemaker.serve.deployment_progress.Live")
+    @patch("sagemaker.core.helper.session_helper._has_permission_for_live_logging")
+    def test_wait_for_endpoint_live_logging_ends_when_endpoint_fails_without_log_group(
+        self, mock_permission, mock_live, mock_sleep
+    ):
+        """The live-logging wait ends (and raises) for a Failed endpoint with no log group."""
+        mock_permission.return_value = True
+        failed = {
+            "EndpointStatus": "Failed",
+            "FailureReason": "Unable to provision requested ML compute capacity due to "
+            "InsufficientInstanceCapacity error.",
+        }
+        # A finite side_effect so a regression surfaces as a failure, not a hang.
+        self.mock_client.describe_endpoint.side_effect = [failed, failed]
+        paginator = self.mock_session.boto_session.client.return_value.get_paginator.return_value
+        paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "FilterLogEvents"
+        )
+
+        with self.assertRaises(UnexpectedStatusException):
+            self._builder()._wait_for_endpoint("test-endpoint", wait=True)
+
+        self.assertEqual(self.mock_client.describe_endpoint.call_count, 1)
 
 
 class TestModelBuilderV3EndToEnd(unittest.TestCase):

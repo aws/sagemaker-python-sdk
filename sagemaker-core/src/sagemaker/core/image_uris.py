@@ -38,6 +38,15 @@ logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
+# Frameworks whose image tag legitimately carries a caller-supplied container_version
+# component even though their config has no container_version map. For these the SDK's
+# own higher-level classes pass container_version (e.g. SparkProcessor -> "v1",
+# the HuggingFace GPU/trcomp path -> "cu110-ubuntu18.04", pytorch-smp -> "cu124").
+# See issue #3702: for any framework NOT in this set, a caller-supplied container_version
+# can only produce a tag that does not correspond to a published image.
+FRAMEWORKS_WITH_CONTAINER_VERSION_SUFFIX = frozenset(
+    {HUGGING_FACE_FRAMEWORK, "pytorch-smp", "spark"}
+)
 HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
 HUGGING_FACE_TEI_GPU_FRAMEWORK = "huggingface-tei"
 HUGGING_FACE_TEI_CPU_FRAMEWORK = "huggingface-tei-cpu"
@@ -227,6 +236,10 @@ def retrieve(
         serverless_inference_config,
     )
 
+    # Preserve the caller-supplied container_version so we can detect the case where it
+    # is a framework that does not use a container_version tag component (see guard below).
+    requested_container_version = container_version
+
     # if container version is available in .json file, utilize that
     if version_config.get("container_version"):
         container_version = version_config["container_version"][processor]
@@ -278,7 +291,7 @@ def retrieve(
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
-    if repo == f"{framework}-inference-graviton":
+    if repo in (f"{framework}-inference-graviton", f"{framework}-inference-arm64"):
         container_version = f"{container_version}-sagemaker"
 
     # Some images encode the accelerator directly in the tag (e.g. the amzn2023
@@ -290,6 +303,31 @@ def retrieve(
         processor = None
 
     _validate_instance_deprecation(framework, instance_type, version)
+
+    # A caller-supplied container_version is only meaningful for frameworks whose image
+    # tag actually carries a trailing version component -- either declared in the config
+    # (``container_version`` map, which overrode the value above), or appended by the
+    # graviton/neuron/HuggingFace/SMP code paths. For any other framework the value would
+    # be concatenated into a tag that does not correspond to a published image (e.g.
+    # ``pytorch-inference:1.12-gpu-py38-1.1``), so fail fast instead of returning a URI
+    # that cannot be pulled (see #3702). ``container_version`` is a tag build component
+    # (such as a CUDA/OS suffix), not a Deep Learning Containers release version.
+    if (
+        requested_container_version is not None
+        and not version_config.get("container_version")
+        and framework not in FRAMEWORKS_WITH_CONTAINER_VERSION_SUFFIX
+        and repo != f"{framework}-inference-graviton"
+        and "neuron" not in repo
+    ):
+        raise ValueError(
+            "container_version '{}' is not supported for framework '{}' version '{}'. "
+            "The resulting image tag would not correspond to a published image. "
+            "container_version is an image tag build component (for example a CUDA/OS "
+            "suffix), not a Deep Learning Containers release version; omit it and pass "
+            "the full framework version instead.".format(
+                requested_container_version, framework, version
+            )
+        )
 
     tag = _get_image_tag(
         container_version,

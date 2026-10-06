@@ -313,6 +313,38 @@ class TestModelBuilderDeployCore(unittest.TestCase):
 
         self.assertIn("ServerlessInferenceConfig object", str(context.exception))
 
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.session_helper.production_variant")
+    def test_deploy_core_endpoint_ic_based_waits_on_status_only(
+        self, mock_production_variant, mock_endpoint_get
+    ):
+        """IC-based endpoints never get an endpoint log group, so both waits skip log streaming."""
+        mock_production_variant.return_value = {"VariantName": "AllTraffic"}
+        mock_endpoint_get.return_value = Mock(spec=Endpoint)
+        builder = ModelBuilder(
+            model=Mock(),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
+        builder.model_name = "test-model"
+
+        with patch.object(builder, "_wait_for_endpoint") as mock_wait:
+            builder._deploy_core_endpoint(
+                instance_type="ml.g5.xlarge",
+                initial_instance_count=1,
+                endpoint_name="test-endpoint",
+                endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+                resources=ResourceRequirements(requests={"memory": 1024, "copies": 1}),
+                inference_component_name="test-ic",
+            )
+
+        self.mock_session.create_inference_component.assert_called_once()
+        self.assertEqual(mock_wait.call_count, 2)
+        for wait_call in mock_wait.call_args_list:
+            self.assertIs(wait_call.kwargs["stream_endpoint_logs"], False)
+
     @unittest.skip("Missing inference_component_name attribute - complex deployment flow")
     def test_deploy_core_endpoint_sharded_model_forces_ic_based(self):
         """Test _deploy_core_endpoint forces INFERENCE_COMPONENT_BASED for sharded models."""

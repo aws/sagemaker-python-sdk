@@ -26,7 +26,6 @@ import tempfile
 import uuid
 
 import boto3
-import pytest
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode

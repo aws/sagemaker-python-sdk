@@ -10015,7 +10015,9 @@ class OidcMemberDefinition(Base):
 
     Attributes
     ----------------------
-    groups: A list of comma seperated strings that identifies user groups in your OIDC IdP. Each user group is made up of a group of private workers.
+    groups: A list of comma-separated strings that identifies user groups in your OIDC IdP. Each user group is made up of a group of private workers.
+    group
+    member_definition_id
     """
 
     groups: Optional[List[StrPipeVar]] = Unassigned()
