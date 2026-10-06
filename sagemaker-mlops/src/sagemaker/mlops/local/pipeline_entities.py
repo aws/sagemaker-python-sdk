@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Local pipeline execution entities."""
+
 from __future__ import absolute_import
 
 import enum
@@ -227,7 +228,7 @@ class _LocalPipelineExecution(object):
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
                 parameter_type = default_parameters[param_name].parameter_type
-                if type(param_value) != parameter_type.python_type:  # pylint: disable=C0123
+                if type(param_value) is not parameter_type.python_type:
                     error_msg = self._construct_validation_exception_message(
                         "Unexpected type for parameter '{}'. Expected {} but found "
                         "{}.".format(param_name, parameter_type.python_type, type(param_value))

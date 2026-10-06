@@ -17,6 +17,7 @@ producing valid pipeline definitions that can be created and executed.
 
 Ref: https://github.com/aws/sagemaker-python-sdk/issues/6163
 """
+
 import json
 import os
 import pytest
@@ -112,9 +113,7 @@ def sft_training_data_uri(sagemaker_session):
     data_key = "integ-test-v3-trainer/sft/train.jsonl"
 
     s3_client = boto3.client("s3", region_name=region)
-    s3_client.put_object(
-        Bucket=bucket, Key=data_key, Body=SFT_TRAINING_DATA.encode()
-    )
+    s3_client.put_object(Bucket=bucket, Key=data_key, Body=SFT_TRAINING_DATA.encode())
 
     return f"s3://{bucket}/{data_key}"
 
@@ -127,9 +126,7 @@ def preference_training_data_uri(sagemaker_session):
     data_key = "integ-test-v3-trainer/preference/train.jsonl"
 
     s3_client = boto3.client("s3", region_name=region)
-    s3_client.put_object(
-        Bucket=bucket, Key=data_key, Body=PREFERENCE_TRAINING_DATA.encode()
-    )
+    s3_client.put_object(Bucket=bucket, Key=data_key, Body=PREFERENCE_TRAINING_DATA.encode())
 
     return f"s3://{bucket}/{data_key}"
 
@@ -157,9 +154,9 @@ def _assert_valid_pipeline_definition(trainer, step_name, pipeline_session):
 
     # Keys should be PascalCase
     non_none_keys = [k for k in arguments.keys() if arguments[k] is not None]
-    assert any(k[0].isupper() for k in non_none_keys), (
-        f"Expected PascalCase keys, got: {non_none_keys}"
-    )
+    assert any(
+        k[0].isupper() for k in non_none_keys
+    ), f"Expected PascalCase keys, got: {non_none_keys}"
 
     # Tags should have PascalCase Key/Value
     tags = arguments.get("Tags", [])
@@ -242,17 +239,13 @@ def _assert_pipeline_create_and_execute(
             if status == "Succeeded":
                 break
             elif status in ("Failed", "Stopped"):
-                steps = (
-                    sagemaker_session.sagemaker_client
-                    .list_pipeline_execution_steps(
-                        PipelineExecutionArn=execution_desc[
-                            "PipelineExecutionArn"
-                        ]
-                    )["PipelineExecutionSteps"]
-                )
+                steps = sagemaker_session.sagemaker_client.list_pipeline_execution_steps(
+                    PipelineExecutionArn=execution_desc["PipelineExecutionArn"]
+                )["PipelineExecutionSteps"]
                 failures = [
                     f"{s['StepName']}: {s.get('FailureReason', 'Unknown')}"
-                    for s in steps if s.get("FailureReason")
+                    for s in steps
+                    if s.get("FailureReason")
                 ]
                 pytest.fail(
                     f"Pipeline execution {status}.\n"
@@ -261,16 +254,12 @@ def _assert_pipeline_create_and_execute(
 
             time.sleep(60)
         else:
-            pytest.fail(
-                f"Pipeline timed out after {timeout}s. Status: {status}"
-            )
+            pytest.fail(f"Pipeline timed out after {timeout}s. Status: {status}")
 
     finally:
         # Cleanup pipeline only -- S3 data cleaned by training_data_uri fixture
         try:
-            sagemaker_session.sagemaker_client.delete_pipeline(
-                PipelineName=pipeline_name
-            )
+            sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=pipeline_name)
         except Exception:
             pass
 
@@ -293,7 +282,11 @@ class TestSFTTrainerPipelineIntegration:
         _assert_valid_pipeline_definition(trainer, "SFTFineTune", pipeline_session)
 
     def test_sft_trainer_pipeline_create_and_execute(
-        self, sagemaker_session, pipeline_session, role, model_package_group,
+        self,
+        sagemaker_session,
+        pipeline_session,
+        role,
+        model_package_group,
         sft_training_data_uri,
     ):
         """SFTTrainer pipeline can be created and executed on SageMaker."""
@@ -326,7 +319,11 @@ class TestDPOTrainerPipelineIntegration:
         _assert_valid_pipeline_definition(trainer, "DPOFineTune", pipeline_session)
 
     def test_dpo_trainer_pipeline_create_and_execute(
-        self, sagemaker_session, pipeline_session, role, model_package_group,
+        self,
+        sagemaker_session,
+        pipeline_session,
+        role,
+        model_package_group,
         preference_training_data_uri,
     ):
         """DPOTrainer pipeline can be created and executed on SageMaker."""
@@ -356,9 +353,7 @@ class TestRLAIFTrainerPipelineIntegration:
             sagemaker_session=pipeline_session,
             accept_eula=True,
         )
-        _assert_valid_pipeline_definition(
-            trainer, "RLAIFFineTune", pipeline_session
-        )
+        _assert_valid_pipeline_definition(trainer, "RLAIFFineTune", pipeline_session)
 
 
 class TestRLVRTrainerPipelineIntegration:
@@ -378,6 +373,4 @@ class TestRLVRTrainerPipelineIntegration:
         )
         # RLVR requires a reward signal
         trainer.hyperparameters.preset_reward_function = "prime_code"
-        _assert_valid_pipeline_definition(
-            trainer, "RLVRFineTune", pipeline_session
-        )
+        _assert_valid_pipeline_definition(trainer, "RLVRFineTune", pipeline_session)

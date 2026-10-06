@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import sys
@@ -442,9 +443,7 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
     if not prefix.endswith("/"):
         try:
             file_destination = os.path.join(target, os.path.basename(prefix))
-            s3.Object(bucket_name, prefix).download_file(
-                file_destination, ExtraArgs=extra_args
-            )
+            s3.Object(bucket_name, prefix).download_file(file_destination, ExtraArgs=extra_args)
             return
         except botocore.exceptions.ClientError as e:
             err_info = e.response["Error"]
@@ -469,7 +468,6 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3, extra_args=Non
         extra_args (dict): Optional extra arguments passed to each download_file call.
             Used to carry ExpectedBucketOwner when the bucket is the session's default.
     """
-    target_real = os.path.realpath(target)
     bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
@@ -711,7 +709,7 @@ def _create_or_update_code_dir(
     """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
     resolved_code_dir = _get_resolved_path(code_dir)
-    
+
     # Validate that code_dir does not resolve to a sensitive system path
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
         if resolved_code_dir != "/" and resolved_code_dir.startswith(sensitive_path):

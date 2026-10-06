@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.23.0 (2026-09-24)
+
+### New Features
+
+- feat(train): finetuningoptions validation telemetry (#6286)
+- feat(train): apply constructor hyperparameters in fine-tuning trainers (#6293)
+
+### Bug Fixes
+
+- fix(train): raise on invalid constructor hyperparameters (#6306)
+
+### Tests
+
+- fix PR check tests (#6272)
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
 ## v1.22.1 (2026-09-17)
 
 ### Bug Fixes

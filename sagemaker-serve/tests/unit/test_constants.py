@@ -21,8 +21,18 @@ class TestFramework(unittest.TestCase):
 
     def test_all_frameworks_exist(self):
         expected_frameworks = [
-            "XGBOOST", "LDA", "PYTORCH", "TENSORFLOW", "MXNET",
-            "CHAINER", "SKLEARN", "HUGGINGFACE", "DJL", "SPARKML", "NTM", "SMD"
+            "XGBOOST",
+            "LDA",
+            "PYTORCH",
+            "TENSORFLOW",
+            "MXNET",
+            "CHAINER",
+            "SKLEARN",
+            "HUGGINGFACE",
+            "DJL",
+            "SPARKML",
+            "NTM",
+            "SMD",
         ]
         for fw in expected_frameworks:
             self.assertTrue(hasattr(Framework, fw))

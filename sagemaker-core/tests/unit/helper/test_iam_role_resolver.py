@@ -1,4 +1,5 @@
 """Unit tests for the read-only IAM role resolver (validate, never create)."""
+
 import json
 import logging
 from unittest.mock import MagicMock, patch
@@ -86,9 +87,7 @@ class TestResolveAndValidateRole:
             mock_session, mock_iam, _ = _make_session(
                 "arn:aws-us-gov:sts::123456789012:assumed-role/Other/sess"
             )
-            mock_iam.get_role.return_value = {
-                "Role": {"AssumeRolePolicyDocument": _trusted_doc()}
-            }
+            mock_iam.get_role.return_value = {"Role": {"AssumeRolePolicyDocument": _trusted_doc()}}
             mock_iam.get_paginator.return_value = _paginator_allowing(["s3:GetObject"])
             assert (
                 resolve_and_validate_role(
@@ -135,9 +134,7 @@ class TestResolveAndValidateRole:
             }
         ]
         mock_iam.get_paginator.return_value = paginator
-        mock_iam.get_role.return_value = {
-            "Role": {"AssumeRolePolicyDocument": _trusted_doc()}
-        }
+        mock_iam.get_role.return_value = {"Role": {"AssumeRolePolicyDocument": _trusted_doc()}}
 
         with pytest.raises(RoleValidationError) as exc:
             resolve_and_validate_role(
@@ -289,9 +286,7 @@ class TestResolveAndValidateRole:
         )
         mock_iam.get_paginator.return_value = paginator
 
-        with caplog.at_level(
-            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
-        ):
+        with caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"):
             result = resolve_and_validate_role(
                 provided_role=None,
                 role_type="training",
@@ -339,9 +334,7 @@ class TestResolveAndValidateRole:
 
     def test_no_resolvable_caller_role_raises(self):
         """An IAM user / root (no backing role) raises RoleValidationError."""
-        mock_session, mock_iam, _ = _make_session(
-            "arn:aws:iam::123456789012:user/dev-user"
-        )
+        mock_session, mock_iam, _ = _make_session("arn:aws:iam::123456789012:user/dev-user")
         with pytest.raises(RoleValidationError) as exc:
             resolve_and_validate_role(
                 provided_role=None,
@@ -354,9 +347,7 @@ class TestResolveAndValidateRole:
     def test_config_default_role_used_when_caller_is_iam_user(self):
         """An IAM user with a configured default training role uses it, not failing."""
         role_arn = "arn:aws:iam::123456789012:role/ConfiguredRole"
-        mock_session, mock_iam, _ = _make_session(
-            "arn:aws:iam::123456789012:user/dev-user"
-        )
+        mock_session, mock_iam, _ = _make_session("arn:aws:iam::123456789012:user/dev-user")
         mock_iam.get_role.return_value = {
             "Role": {"Arn": role_arn, "AssumeRolePolicyDocument": _trusted_doc()}
         }
@@ -402,9 +393,7 @@ class TestResolveAndValidateRole:
 
     def test_iam_user_without_config_default_still_raises(self):
         """No configured default + IAM-user caller still raises (behavior preserved)."""
-        mock_session, mock_iam, _ = _make_session(
-            "arn:aws:iam::123456789012:user/dev-user"
-        )
+        mock_session, mock_iam, _ = _make_session("arn:aws:iam::123456789012:user/dev-user")
         with patch(
             "sagemaker.core.common_utils.resolve_value_from_config",
             return_value=None,
@@ -701,8 +690,7 @@ class TestPolicyConfig:
             statement = config[role_type]["trust_policy"]["Statement"][0]
             condition = statement.get("Condition", {})
             assert (
-                condition.get("StringEquals", {}).get("aws:SourceAccount")
-                == "ACCOUNT_PLACEHOLDER"
+                condition.get("StringEquals", {}).get("aws:SourceAccount") == "ACCOUNT_PLACEHOLDER"
             ), f"{role_type} trust policy missing aws:SourceAccount placeholder"
 
 
@@ -756,9 +744,9 @@ class TestEcrPolicyScopedCorrectly:
                 break
         assert repo_stmt is not None, "No statement with ecr:BatchGetImage found"
         resource = repo_stmt["Resource"]
-        assert resource == "arn:aws:ecr:*:*:repository/*", (
-            f"Expected repository/* scope, got: {resource}"
-        )
+        assert (
+            resource == "arn:aws:ecr:*:*:repository/*"
+        ), f"Expected repository/* scope, got: {resource}"
 
     @pytest.mark.parametrize("role_type", ["training", "serving", "hyperpod"])
     def test_ecr_get_authorization_token_resource_is_wildcard(self, role_type):
@@ -781,9 +769,9 @@ class TestEcrPolicyScopedCorrectly:
         """All four ECR actions must remain in the full required actions list."""
         all_actions = set(_get_required_actions(role_type))
         expected = self.ECR_REPO_ACTIONS | {"ecr:GetAuthorizationToken"}
-        assert expected.issubset(all_actions), (
-            f"Missing ECR actions from required set: {expected - all_actions}"
-        )
+        assert expected.issubset(
+            all_actions
+        ), f"Missing ECR actions from required set: {expected - all_actions}"
 
     def test_least_privilege_ecr_role_passes_validation(self):
         """A role with ECR permissions scoped to specific repos must not be blocked.
@@ -844,7 +832,9 @@ class TestReplacePlaceholders:
         policies = {
             "s3_policy": {
                 "Version": "2012-10-17",
-                "Statement": [{"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "S3_PLACEHOLDER"}],
+                "Statement": [
+                    {"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "S3_PLACEHOLDER"}
+                ],
             }
         }
         result = _replace_placeholders(policies, s3_resource="my-bucket", kms_resource="*")
@@ -857,7 +847,9 @@ class TestReplacePlaceholders:
         policies = {
             "s3_policy": {
                 "Version": "2012-10-17",
-                "Statement": [{"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "S3_PLACEHOLDER"}],
+                "Statement": [
+                    {"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "S3_PLACEHOLDER"}
+                ],
             }
         }
         result = _replace_placeholders(policies, s3_resource="*", kms_resource="*")
@@ -867,7 +859,9 @@ class TestReplacePlaceholders:
         policies = {
             "kms_policy": {
                 "Version": "2012-10-17",
-                "Statement": [{"Effect": "Allow", "Action": ["kms:Encrypt"], "Resource": "KMS_PLACEHOLDER"}],
+                "Statement": [
+                    {"Effect": "Allow", "Action": ["kms:Encrypt"], "Resource": "KMS_PLACEHOLDER"}
+                ],
             }
         }
         result = _replace_placeholders(
@@ -881,7 +875,9 @@ class TestReplacePlaceholders:
         policies = {
             "s3_policy": {
                 "Version": "2012-10-17",
-                "Statement": [{"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "S3_PLACEHOLDER"}],
+                "Statement": [
+                    {"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "S3_PLACEHOLDER"}
+                ],
             }
         }
         result = _replace_placeholders(
@@ -899,7 +895,11 @@ class TestReplacePlaceholders:
             "iam_passrole_policy": {
                 "Version": "2012-10-17",
                 "Statement": [
-                    {"Effect": "Allow", "Action": ["iam:PassRole"], "Resource": "IAM_PASSROLE_PLACEHOLDER"}
+                    {
+                        "Effect": "Allow",
+                        "Action": ["iam:PassRole"],
+                        "Resource": "IAM_PASSROLE_PLACEHOLDER",
+                    }
                 ],
             }
         }
@@ -935,12 +935,12 @@ class TestReplacePlaceholders:
         policies = {
             "s3_policy": {
                 "Version": "2012-10-17",
-                "Statement": [{"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "S3_PLACEHOLDER"}],
+                "Statement": [
+                    {"Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "S3_PLACEHOLDER"}
+                ],
             }
         }
-        result = _replace_placeholders(
-            policies, s3_resource=["my-bucket", "*"], kms_resource="*"
-        )
+        result = _replace_placeholders(policies, s3_resource=["my-bucket", "*"], kms_resource="*")
         assert result["s3_policy"]["Statement"][0]["Resource"] == "*"
 
 
@@ -951,19 +951,13 @@ class TestSimulateDeniedActions:
         mock_iam = MagicMock()
         paginator = MagicMock()
         paginator.paginate.return_value = [
-            {
-                "EvaluationResults": [
-                    {"EvalActionName": a, "EvalDecision": d} for a, d in decisions
-                ]
-            }
+            {"EvaluationResults": [{"EvalActionName": a, "EvalDecision": d} for a, d in decisions]}
         ]
         mock_iam.get_paginator.return_value = paginator
         return mock_iam
 
     def test_returns_empty_when_all_allowed(self):
-        mock_iam = self._paginated_iam(
-            [("s3:GetObject", "allowed"), ("s3:PutObject", "allowed")]
-        )
+        mock_iam = self._paginated_iam([("s3:GetObject", "allowed"), ("s3:PutObject", "allowed")])
         denied = _simulate_denied_actions(
             mock_iam, "arn:aws:iam::123456789012:role/R", ["s3:GetObject", "s3:PutObject"]
         )
@@ -974,7 +968,8 @@ class TestSimulateDeniedActions:
             [("s3:GetObject", "allowed"), ("eks:DescribeCluster", "implicitDeny")]
         )
         denied = _simulate_denied_actions(
-            mock_iam, "arn:aws:iam::123456789012:role/R",
+            mock_iam,
+            "arn:aws:iam::123456789012:role/R",
             ["s3:GetObject", "eks:DescribeCluster"],
         )
         assert denied == ["eks:DescribeCluster"]
@@ -1001,9 +996,7 @@ class TestVerifyHyperPodConnectPermissions:
         mock_iam.get_role.return_value = {
             "Role": {"Arn": "arn:aws:iam::123456789012:role/CallerRole"}
         }
-        mock_iam.get_paginator.return_value = _paginator_allowing(
-            HYPERPOD_CLI_CONNECT_ACTIONS
-        )
+        mock_iam.get_paginator.return_value = _paginator_allowing(HYPERPOD_CLI_CONNECT_ACTIONS)
         assert verify_hyperpod_connect_permissions(sagemaker_session=session) is True
 
     def test_denied_connect_action_returns_false_and_warns(self, caplog):
@@ -1094,9 +1087,10 @@ class TestRoleTrustsService:
     def test_role_trusts_service_true(self):
         mock_iam = MagicMock()
         mock_iam.get_role.return_value = {"Role": {"AssumeRolePolicyDocument": _trusted_doc()}}
-        assert _role_trusts_service(
-            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training"
-        ) is True
+        assert (
+            _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training")
+            is True
+        )
 
     def test_role_trusts_service_false_for_admin_role(self):
         mock_iam = MagicMock()
@@ -1113,34 +1107,38 @@ class TestRoleTrustsService:
                 }
             }
         }
-        assert _role_trusts_service(
-            mock_iam, "arn:aws:iam::123456789012:role/Admin", "training"
-        ) is False
+        assert (
+            _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/Admin", "training")
+            is False
+        )
 
     def test_role_trusts_service_url_encoded_document(self):
         mock_iam = MagicMock()
         mock_iam.get_role.return_value = {
             "Role": {"AssumeRolePolicyDocument": json.dumps(_trusted_doc())}
         }
-        assert _role_trusts_service(
-            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training"
-        ) is True
+        assert (
+            _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training")
+            is True
+        )
 
     def test_role_trusts_service_none_when_document_missing(self):
         mock_iam = MagicMock()
         mock_iam.get_role.return_value = {"Role": {}}
-        assert _role_trusts_service(
-            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training"
-        ) is None
+        assert (
+            _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training")
+            is None
+        )
 
     def test_role_trusts_service_none_on_access_denied(self):
         mock_iam = MagicMock()
         mock_iam.get_role.side_effect = ClientError(
             {"Error": {"Code": "AccessDenied", "Message": ""}}, "GetRole"
         )
-        assert _role_trusts_service(
-            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training"
-        ) is None
+        assert (
+            _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training")
+            is None
+        )
 
 
 class TestBackwardCompatibleExceptions:

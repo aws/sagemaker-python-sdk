@@ -17,6 +17,7 @@ to '... names must be unique within an AWS account ...'. These tests pin the
 already-exists branch against BOTH wordings so a future wording change cannot
 silently turn load-or-create back into a hard failure.
 """
+
 from __future__ import absolute_import
 
 import pytest
@@ -27,15 +28,12 @@ from sagemaker.core.experiments.experiment import Experiment
 from sagemaker.core.experiments.trial import _Trial
 from sagemaker.core.experiments.trial_component import _TrialComponent
 
-
 LEGACY_MESSAGE = "Experiment exp-1 already exists"
 NEW_MESSAGE = "Experiment names must be unique within an AWS account and region"
 
 
 def _validation_error(message):
-    return ClientError(
-        {"Error": {"Code": "ValidationException", "Message": message}}, "create"
-    )
+    return ClientError({"Error": {"Code": "ValidationException", "Message": message}}, "create")
 
 
 @pytest.mark.parametrize("message", [LEGACY_MESSAGE, NEW_MESSAGE])
@@ -74,9 +72,7 @@ def test_trial_load_or_create_loads_on_duplicate_name(message):
 def test_trial_component_load_or_create_loads_on_duplicate_name(message):
     with patch.object(_TrialComponent, "create", side_effect=_validation_error(message)):
         with patch.object(_TrialComponent, "load") as mock_load:
-            result, is_existed = _TrialComponent._load_or_create(
-                trial_component_name="tc-1"
-            )
+            result, is_existed = _TrialComponent._load_or_create(trial_component_name="tc-1")
 
     mock_load.assert_called_once_with("tc-1", None)
     assert result is mock_load.return_value

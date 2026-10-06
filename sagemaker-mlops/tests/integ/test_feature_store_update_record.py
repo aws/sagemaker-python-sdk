@@ -3,6 +3,7 @@
 These tests require an updated boto3/botocore that ships the UpdateRecord operation and a
 region where Feature Store Standard_V2 storage is available.
 """
+
 import time
 import pytest
 import pandas as pd
@@ -75,9 +76,7 @@ def _create_standard_v2_group(feature_group_name, sample_dataframe, role):
     return fg
 
 
-def test_update_record_preserves_unlisted_features(
-    feature_group_name, sample_dataframe, role
-):
+def test_update_record_preserves_unlisted_features(feature_group_name, sample_dataframe, role):
     """UpdateRecord writes only the supplied features; others are preserved."""
     try:
         fg = _create_standard_v2_group(feature_group_name, sample_dataframe, role)
@@ -103,9 +102,7 @@ def test_update_record_preserves_unlisted_features(
         cleanup_feature_group(feature_group_name)
 
 
-def test_update_record_stale_event_time_conflict(
-    feature_group_name, sample_dataframe, role
-):
+def test_update_record_stale_event_time_conflict(feature_group_name, sample_dataframe, role):
     """An EventTime not greater than the current one is rejected with a conflict."""
     from botocore.exceptions import ClientError
 

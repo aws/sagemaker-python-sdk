@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 # pylint: skip-file
 """This module provides the JumpStart Hub class."""
+
 from __future__ import absolute_import
 from datetime import datetime
 import logging

@@ -7438,7 +7438,7 @@ class HyperParameterTuningJobConfig(Base):
     parameter_ranges: Optional[ParameterRanges] = Unassigned()
     training_job_early_stopping_type: Optional[StrPipeVar] = Unassigned()
     tuning_job_completion_criteria: Optional[TuningJobCompletionCriteria] = Unassigned()
-    random_seed: Optional[int] = Unassigned()
+    random_seed: Optional[IntPipeVar] = Unassigned()
 
 
 class HyperParameterAlgorithmSpecification(Base):
@@ -10015,7 +10015,9 @@ class OidcMemberDefinition(Base):
 
     Attributes
     ----------------------
-    groups: A list of comma seperated strings that identifies user groups in your OIDC IdP. Each user group is made up of a group of private workers.
+    groups: A list of comma-separated strings that identifies user groups in your OIDC IdP. Each user group is made up of a group of private workers.
+    group
+    member_definition_id
     """
 
     groups: Optional[List[StrPipeVar]] = Unassigned()
@@ -10125,7 +10127,7 @@ class DataCaptureConfigSummary(Base):
     capture_status: StrPipeVar
     current_sampling_percentage: int
     destination_s3_uri: StrPipeVar
-    kms_key_id: StrPipeVar
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
 class DebugRuleEvaluationStatus(Base):

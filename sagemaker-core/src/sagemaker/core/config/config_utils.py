@@ -14,11 +14,11 @@
 
 These utils may be used inside or outside the config module.
 """
+
 from __future__ import absolute_import
 from collections import deque
 
 import logging
-import sys
 from typing import Callable, List, TYPE_CHECKING
 import re
 from copy import deepcopy
@@ -30,30 +30,20 @@ from sagemaker.core.config.config_schema import KEY
 
 
 def get_sagemaker_config_logger():
-    """Return a logger with the name 'sagemaker.config'
+    """Return the ``sagemaker.config`` logger.
 
-    If the logger to be returned has no level or handlers set, this will get level and handler
-    attributes. (So if the SDK user has setup loggers in a certain way, that setup will not be
-    changed by this function.) It is safe to make repeat calls to this function.
+    Ensures the logger has a sensible default level (INFO) when the user has not
+    configured one, but does **not** attach handlers or disable propagation. The
+    SDK is a library, so it must not hijack ``sys.stdout`` or override the
+    application's logging configuration; log records propagate to whatever the
+    application has configured. A ``NullHandler`` on the top-level ``sagemaker``
+    logger (installed at import) safely discards records until then. It is safe to
+    call this function repeatedly.
     """
     sagemaker_config_logger = logging.getLogger("sagemaker.config")
-    sagemaker_logger = logging.getLogger("sagemaker")
 
     if sagemaker_config_logger.level == logging.NOTSET:
         sagemaker_config_logger.setLevel(logging.INFO)
-
-    # check sagemaker_logger here as well, so that if handlers were set for the parent logger
-    # already, we dont change behavior for the child logger
-    if len(sagemaker_config_logger.handlers) == 0 and len(sagemaker_logger.handlers) == 0:
-        # use sys.stdout so logs dont show up with a red background in a notebook
-        handler = logging.StreamHandler(sys.stdout)
-
-        formatter = logging.Formatter("%(name)s %(levelname)-4s - %(message)s")
-        handler.setFormatter(formatter)
-        sagemaker_config_logger.addHandler(handler)
-
-        # if a handler is being added, we dont want the root handler to also process the same events
-        sagemaker_config_logger.propagate = False
 
     return sagemaker_config_logger
 

@@ -33,6 +33,7 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_inspect_ai_evaluator.py -v -s
 """
+
 from __future__ import absolute_import
 
 import logging
@@ -78,8 +79,7 @@ def _evaluate_or_skip_on_pipeline_conflict(evaluator):
     failure_reason = getattr(execution.status, "failure_reason", None) or ""
     if execution.arn is None and _PIPELINE_CONFLICT_MESSAGE in failure_reason:
         pytest.skip(
-            f"A concurrent evaluation modified the shared evaluation pipeline: "
-            f"{failure_reason}"
+            f"A concurrent evaluation modified the shared evaluation pipeline: " f"{failure_reason}"
         )
 
     return execution
@@ -138,9 +138,7 @@ def inspect_ai_resources(sagemaker_session_us_east_1):
 class TestInspectAIEvaluatorIntegration:
     """Integration tests for InspectAI evaluation with Bedrock inference."""
 
-    def test_inspect_ai_bedrock_evaluation(
-        self, sagemaker_session_us_east_1, inspect_ai_resources
-    ):
+    def test_inspect_ai_bedrock_evaluation(self, sagemaker_session_us_east_1, inspect_ai_resources):
         """Test InspectAI evaluation with Bedrock inference mode.
 
         Runs a BoolQ benchmark with Nova Lite via Bedrock inference.
@@ -186,9 +184,7 @@ class TestInspectAIEvaluatorIntegration:
         execution.show_results()
         logger.info("InspectAI Bedrock evaluation completed successfully.")
 
-    def test_inspect_ai_upload_benchmarks(
-        self, sagemaker_session_us_east_1, inspect_ai_resources
-    ):
+    def test_inspect_ai_upload_benchmarks(self, sagemaker_session_us_east_1, inspect_ai_resources):
         """Test uploading benchmarks to S3 via upload_benchmarks().
 
         Validates that local benchmark files are successfully uploaded and

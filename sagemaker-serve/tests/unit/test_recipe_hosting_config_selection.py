@@ -335,7 +335,9 @@ class TestDeploymentConfigForFineTunedModels(unittest.TestCase):
             ModelBuilder, "_is_model_customization", return_value=False
         ), patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=True), patch.object(
             ModelBuilder, "_ensure_metadata_configs"
-        ), patch.object(ModelBuilder, "get_deployment_config", return_value=None):
+        ), patch.object(
+            ModelBuilder, "get_deployment_config", return_value=None
+        ):
             b._metadata_configs = meta
             b.set_deployment_config(config_name="lmi", instance_type="ml.g5.2xlarge")
         self.assertEqual(b.config_name, "lmi")
@@ -431,9 +433,7 @@ class TestDeploymentConfigForFineTunedModels(unittest.TestCase):
         ]
         b = self._builder()
         p1 = patch.object(ModelBuilder, "_is_model_customization", return_value=True)
-        p2 = patch.object(
-            ModelBuilder, "_resolve_recipe_hosting_configs", return_value=configs
-        )
+        p2 = patch.object(ModelBuilder, "_resolve_recipe_hosting_configs", return_value=configs)
         p1.start()
         p2.start()
         self.addCleanup(p1.stop)
@@ -1056,9 +1056,7 @@ class TestRecipeHostingConfigHelpers(unittest.TestCase):
                     "DeploymentConfigName": name,
                     "DeploymentArgs": {
                         "InstanceType": (
-                            selected_instance_type
-                            if name == selected_config_name
-                            else "DEFAULT"
+                            selected_instance_type if name == selected_config_name else "DEFAULT"
                         )
                     },
                 }
@@ -1324,9 +1322,7 @@ class TestDeploymentConfigInvariants(unittest.TestCase):
                     b.set_deployment_config(instance_type=x)
                     got = b.get_deployment_config()
                     self.assertEqual(got["DeploymentArgs"]["InstanceType"], x)
-                    self.assertEqual(
-                        got["DeploymentConfigName"], listed[0]["DeploymentConfigName"]
-                    )
+                    self.assertEqual(got["DeploymentConfigName"], listed[0]["DeploymentConfigName"])
 
     def test_ambiguous_instance_rejected_by_set(self):
         # INVARIANT: an instance offered by MORE THAN ONE config must be rejected by set() rather

@@ -34,7 +34,6 @@ def get_hub_content_and_document(
 ) -> Tuple[HubContent, HubContentDocument]:
     """Get model metadata for JumpStart.
 
-
     Args:
         jumpstart_config (JumpStartConfig): JumpStart configuration.
         sagemaker_session (Session, optional): SageMaker session.

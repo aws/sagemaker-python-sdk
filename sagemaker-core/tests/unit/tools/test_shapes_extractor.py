@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 
 from sagemaker.core.tools.shapes_extractor import ShapesExtractor
 
@@ -435,3 +435,60 @@ class TestInstancePreferencesPipeVarOverrides:
         members = extractor.generate_shape_members("UnrelatedConfig")
         assert "IntPipeVar" not in members["instance_count"]
         assert "int" in members["instance_count"]
+
+
+class TestDataCaptureConfigSummaryRequiredToOptionalOverride:
+    """The service model marks DataCaptureConfigSummary.KmsKeyId as required, but
+    DescribeEndpoint omits it when data capture has no customer-managed KMS key
+    (issue #5738). REQUIRED_TO_OPTIONAL_OVERRIDES must keep codegen emitting it as
+    Optional, otherwise Endpoint.get() fails validation on such endpoints."""
+
+    _STRING = {"type": "string"}
+    _MODEL = {
+        "EnableCapture": {"type": "boolean"},
+        "CaptureStatus": _STRING,
+        "SamplingPercentage": {"type": "integer"},
+        "DestinationS3Uri": _STRING,
+        "KmsKeyId": _STRING,
+        "DataCaptureConfigSummary": {
+            "type": "structure",
+            "required": [
+                "EnableCapture",
+                "CaptureStatus",
+                "CurrentSamplingPercentage",
+                "DestinationS3Uri",
+                "KmsKeyId",
+            ],
+            "members": {
+                "EnableCapture": {"shape": "EnableCapture"},
+                "CaptureStatus": {"shape": "CaptureStatus"},
+                "CurrentSamplingPercentage": {"shape": "SamplingPercentage"},
+                "DestinationS3Uri": {"shape": "DestinationS3Uri"},
+                "KmsKeyId": {"shape": "KmsKeyId"},
+            },
+        },
+    }
+
+    @pytest.fixture
+    def extractor(self, tmp_path):
+        # Constructing the extractor regenerates shape_dag.py; point that write
+        # at a temp file so the unit test leaves the checked-in file alone.
+        with (
+            patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black"),
+            patch(
+                "sagemaker.core.tools.shapes_extractor.SHAPE_DAG_FILE_PATH",
+                str(tmp_path / "shape_dag.py"),
+            ),
+        ):
+            return ShapesExtractor(combined_shapes=self._MODEL)
+
+    def test_kms_key_id_generated_as_optional(self, extractor):
+        members = extractor.generate_shape_members("DataCaptureConfigSummary")
+        assert members["kms_key_id"] == "Optional[StrPipeVar] = Unassigned()"
+
+    def test_other_members_stay_required(self, extractor):
+        members = extractor.generate_shape_members("DataCaptureConfigSummary")
+        assert members["enable_capture"] == "bool"
+        assert members["capture_status"] == "StrPipeVar"
+        assert members["current_sampling_percentage"] == "int"
+        assert members["destination_s3_uri"] == "StrPipeVar"

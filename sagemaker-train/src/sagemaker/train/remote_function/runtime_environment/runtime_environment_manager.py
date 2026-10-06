@@ -96,43 +96,44 @@ class RuntimeEnvironmentManager:
 
     def _validate_path(self, path: str) -> str:
         """Validate and sanitize file path to prevent path traversal attacks.
-        
+
         Args:
             path (str): The file path to validate
-            
+
         Returns:
             str: The validated absolute path
-            
+
         Raises:
             ValueError: If the path is invalid or contains suspicious patterns
         """
         if not path:
             raise ValueError("Path cannot be empty")
-        
+
         # Get absolute path to prevent path traversal
         abs_path = os.path.abspath(path)
-        
+
         # Check for null bytes (common in path traversal attacks)
-        if '\x00' in path:
+        if "\x00" in path:
             raise ValueError(f"Invalid path contains null byte: {path}")
-        
+
         return abs_path
 
     def _validate_env_name(self, env_name: str) -> None:
         """Validate conda environment name to prevent command injection.
-        
+
         Args:
             env_name (str): The environment name to validate
-            
+
         Raises:
             ValueError: If the environment name contains invalid characters
         """
         if not env_name:
             raise ValueError("Environment name cannot be empty")
-        
+
         # Allow only alphanumeric, underscore, and hyphen
         import re
-        if not re.match(r'^[a-zA-Z0-9_-]+$', env_name):
+
+        if not re.match(r"^[a-zA-Z0-9_-]+$", env_name):
             raise ValueError(
                 f"Invalid environment name '{env_name}'. "
                 "Only alphanumeric characters, underscores, and hyphens are allowed."
@@ -320,7 +321,17 @@ class RuntimeEnvironmentManager:
         self._validate_env_name(env_name)
         validated_path = self._validate_path(local_path)
 
-        cmd = [self._get_conda_exe(), "run", "-n", env_name, "pip", "install", "-r", validated_path, "-U"]
+        cmd = [
+            self._get_conda_exe(),
+            "run",
+            "-n",
+            env_name,
+            "pip",
+            "install",
+            "-r",
+            validated_path,
+            "-U",
+        ]
         logger.info("Activating conda env and installing requirements: %s", " ".join(cmd))
         _run_shell_cmd(cmd)
         logger.info("Requirements installed successfully in conda env %s", env_name)
@@ -385,6 +396,7 @@ class RuntimeEnvironmentManager:
         """Returns the current sagemaker python sdk version where program is running"""
         try:
             from importlib import metadata
+
             return metadata.version("sagemaker")
         except Exception:
             return "3.0.0.dev0"  # Development version fallback
@@ -476,7 +488,9 @@ def _run_shell_cmd(cmd: list):
     error_logs = _log_error(process)
     return_code = process.wait()
     if return_code:
-        error_message = f"Encountered error while running command '{' '.join(cmd)}'. Reason: {error_logs}"
+        error_message = (
+            f"Encountered error while running command '{' '.join(cmd)}'. Reason: {error_logs}"
+        )
         raise RuntimeEnvironmentError(error_message)
 
 

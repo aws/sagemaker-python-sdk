@@ -38,7 +38,6 @@ import pytest
 from sagemaker.core.training.configs import HyperPodCompute
 from sagemaker.train.cpt_trainer import CPTTrainer
 
-from .harness import assert_submitted, submitted
 from .recipe_cases import RecipeTrainerCases
 
 

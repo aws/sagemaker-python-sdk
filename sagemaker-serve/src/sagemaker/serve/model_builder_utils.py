@@ -24,16 +24,17 @@ This module provides utility functions for:
 
 Example:
     Basic usage as a mixin class::
-    
+
         class MyModelBuilder(ModelBuilderUtils):
             def __init__(self):
                 self.model = "huggingface-model-id"
                 self.instance_type = "ml.g5.xlarge"
-                
+
             def build(self):
                 self._auto_detect_image_uri()
                 return self.image_uri
 """
+
 from __future__ import absolute_import, annotations
 
 # Standard library imports
@@ -56,7 +57,7 @@ from packaging.version import Version
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.utils.utils import logger
 
-from sagemaker.train import ModelTrainer
+from sagemaker.train import ModelTrainer  # pylint: disable=no-name-in-module  # lazy PEP 562 export
 
 # SageMaker serve imports
 from sagemaker.serve.compute_resource_requirements import ResourceRequirements
@@ -129,7 +130,6 @@ from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core import model_uris
 from sagemaker.serve.utils.local_hardware import _get_available_gpus
 from sagemaker.core.base_serializers import JSONSerializer
-from sagemaker.core.deserializers import JSONDeserializer
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.builder.requirements_manager import RequirementsManager
 from sagemaker.serve.validations.check_integrity import (
@@ -259,6 +259,10 @@ class _ModelBuilderUtils:
                 self._auto_detect_image_uri()
                 return self.image_uri
     """
+
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets attributes on the composed ModelBuilder instance during
+    # build/detection, not in __init__, by design.
 
     # ========================================
     # Session Management
@@ -412,7 +416,7 @@ class _ModelBuilderUtils:
         py_tuple = platform.python_version_tuple()
         env_vars = getattr(self, "env_vars", {}) or {}
 
-        torch_v, tf_v, base_hf_v, _ = self._get_hf_framework_versions(
+        torch_v, tf_v, _, _ = self._get_hf_framework_versions(
             self.model, env_vars.get("HUGGING_FACE_HUB_TOKEN")
         )
 
@@ -469,7 +473,6 @@ class _ModelBuilderUtils:
         Raises:
             ValueError: If Python version < 3.12 or invalid processing unit.
         """
-        import sys
         from sagemaker.core import image_uris
 
         if not self.sagemaker_session:
@@ -603,7 +606,7 @@ class _ModelBuilderUtils:
             )[-1]
             return pytorch_version, None, base_hf_version, py_version
 
-        elif "keras" in model_tags or "tensorflow" in model_tags:
+        if "keras" in model_tags or "tensorflow" in model_tags:
             tensorflow_version = self._get_supported_version(
                 hf_config, base_hf_version, "tensorflow"
             )
@@ -612,13 +615,10 @@ class _ModelBuilderUtils:
             )[-1]
             return None, tensorflow_version, base_hf_version, py_version
 
-        else:
-            # Default to PyTorch if no framework detected (matches V2 behavior)
-            pytorch_version = self._get_supported_version(hf_config, base_hf_version, "pytorch")
-            py_version = config[base_hf_version][f"pytorch{pytorch_version}"].get(
-                "py_versions", []
-            )[-1]
-            return pytorch_version, None, base_hf_version, py_version
+        # Default to PyTorch if no framework detected (matches V2 behavior)
+        pytorch_version = self._get_supported_version(hf_config, base_hf_version, "pytorch")
+        py_version = config[base_hf_version][f"pytorch{pytorch_version}"].get("py_versions", [])[-1]
+        return pytorch_version, None, base_hf_version, py_version
 
     def _detect_jumpstart_image(self) -> None:
         """Detect and set image URI for JumpStart models.
@@ -927,7 +927,9 @@ class _ModelBuilderUtils:
                 spec_model = inference_spec.get_model()
                 if spec_model is None:
                     logger.warning(
-                        "InferenceSpec.get_model() returned None. If you are using a JumpStar or HuggingFace model, you may need to implement get_model() in your InferenceSpec class"
+                        "InferenceSpec.get_model() returned None. If you are using a "
+                        "JumpStar or HuggingFace model, you may need to implement "
+                        "get_model() in your InferenceSpec class"
                     )
 
                 if isinstance(spec_model, str):
@@ -948,7 +950,7 @@ class _ModelBuilderUtils:
                     # Restore original model
                     self.model = original_model
                     return
-            except Exception as e:
+            except Exception:
                 pass
 
             # Fall back to existing object detection
@@ -999,7 +1001,9 @@ class _ModelBuilderUtils:
                         logger.warning(
                             "Could not initialize HF schema builder for task %r "
                             "(%s: %s); falling back to the JumpStart-supplied schema.",
-                            model_task, type(e).__name__, e,
+                            model_task,
+                            type(e).__name__,
+                            e,
                         )
 
             huggingface_model_id = self.model
@@ -1256,22 +1260,22 @@ class _ModelBuilderUtils:
             version_match = re.search(r"pytorch.*:(\d+\.\d+\.\d+)", image_uri)
             return Framework.PYTORCH, version_match.group(1) if version_match else None
 
-        elif "tensorflow-inference" in image_uri or "tensorflow-training" in image_uri:
+        if "tensorflow-inference" in image_uri or "tensorflow-training" in image_uri:
             version_match = re.search(r"tensorflow.*:(\d+\.\d+\.\d+)", image_uri)
             return Framework.TENSORFLOW, version_match.group(1) if version_match else None
 
-        elif "sagemaker-xgboost" in image_uri:
+        if "sagemaker-xgboost" in image_uri:
             version_match = re.search(r"sagemaker-xgboost:(\d+\.\d+)", image_uri)
             return Framework.XGBOOST, version_match.group(1) if version_match else None
 
-        elif "sagemaker-scikit-learn" in image_uri:
+        if "sagemaker-scikit-learn" in image_uri:
             version_match = re.search(r"scikit-learn:(\d+\.\d+)", image_uri)
             return Framework.SKLEARN, version_match.group(1) if version_match else None
 
-        elif "huggingface" in image_uri:
+        if "huggingface" in image_uri:
             return Framework.HUGGINGFACE, None
 
-        elif "mxnet" in image_uri:
+        if "mxnet" in image_uri:
             version_match = re.search(r"mxnet.*:(\d+\.\d+\.\d+)", image_uri)
             return Framework.MXNET, version_match.group(1) if version_match else None
 
@@ -2013,7 +2017,7 @@ class _ModelBuilderUtils:
 
             model_spec_json = model_specs.to_json()
 
-            js_bucket = accessors.JumpStartModelsAccessor.get_jumpstart_content_bucket(self.region)
+            js_bucket = get_jumpstart_content_bucket(self.region)
 
             if model_spec_json.get("gated_bucket", False):
                 if not accept_eula:
@@ -2818,7 +2822,7 @@ class _ModelBuilderUtils:
 
         if isinstance(s3_model_data_url, (str, PipelineVariable)):
             return s3_model_data_url
-        elif isinstance(s3_model_data_url, dict):
+        if isinstance(s3_model_data_url, dict):
             return s3_model_data_url.get("S3DataSource", {}).get("S3Uri", None)
         return None
 
@@ -3268,11 +3272,11 @@ class _ModelBuilderUtils:
 
         if "pytorch" in training_image.lower():
             return Framework.PYTORCH
-        elif "tensorflow" in training_image.lower():
+        if "tensorflow" in training_image.lower():
             return Framework.TENSORFLOW
-        elif "huggingface" in training_image.lower():
+        if "huggingface" in training_image.lower():
             return Framework.HUGGINGFACE
-        elif "xgboost" in training_image.lower():
+        if "xgboost" in training_image.lower():
             return Framework.XGBOOST
 
         return None
@@ -3289,9 +3293,8 @@ class _ModelBuilderUtils:
             if any(key in hyperparams for key in ["max_new_tokens", "do_sample", "temperature"]):
                 logger.info("Auto-detected model server: TGI (HuggingFace text generation)")
                 return ModelServer.TGI
-            else:
-                logger.info("Auto-detected model server: MMS (HuggingFace)")
-                return ModelServer.MMS
+            logger.info("Auto-detected model server: MMS (HuggingFace)")
+            return ModelServer.MMS
 
         if framework == Framework.PYTORCH:
             logger.info("Auto-detected model server: TORCHSERVE (PyTorch framework)")
@@ -3356,8 +3359,6 @@ class _ModelBuilderUtils:
 
     def _extract_version_from_training_image(self, training_image: str) -> Optional[str]:
         """Extract framework version from training image URI."""
-        import re
-
         version_match = re.search(r":(\d+\.\d+(?:\.\d+)?)", training_image)
         if version_match:
             return version_match.group(1)
@@ -3408,34 +3409,6 @@ class _ModelBuilderUtils:
                     f"Could not detect inference image for training image: {training_image}"
                 )
 
-    def _extract_speculative_draft_model_provider(
-        self,
-        speculative_decoding_config: Optional[Dict] = None,
-    ) -> Optional[str]:
-        """Extracts speculative draft model provider from speculative decoding config.
-
-        Args:
-            speculative_decoding_config (Optional[Dict]): A speculative decoding config.
-
-        Returns:
-            Optional[str]: The speculative draft model provider.
-        """
-        if speculative_decoding_config is None:
-            return None
-
-        model_provider = speculative_decoding_config.get("ModelProvider", "").lower()
-
-        if model_provider == "jumpstart":
-            return "jumpstart"
-
-        if model_provider == "custom" or speculative_decoding_config.get("ModelSource"):
-            return "custom"
-
-        if model_provider == "sagemaker":
-            return "sagemaker"
-
-        return "auto"
-
     def get_huggingface_model_metadata(
         self, model_id: str, hf_hub_token: Optional[str] = None
     ) -> dict:
@@ -3450,7 +3423,6 @@ class _ModelBuilderUtils:
         """
         import urllib.request
         from urllib.error import HTTPError, URLError
-        import json
         from json import JSONDecodeError
 
         if not model_id:

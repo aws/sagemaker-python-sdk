@@ -39,13 +39,11 @@ import logging
 import os
 from contextlib import contextmanager
 
-import pytest
 from sagemaker.core import shapes
 from sagemaker.core.parameter import ContinuousParameter
 from sagemaker.core.training.configs import Compute, SourceCode
 from sagemaker.train.distributed import Torchrun
 from sagemaker.train.model_trainer import ModelTrainer
-from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.tuner import HyperparameterTuner
 
 from .harness import (
@@ -56,7 +54,6 @@ from .harness import (
     assert_submitted,
     cpu_image,
     job_slots,
-    submitted,
     unique_name,
     wait_until_terminal,
 )

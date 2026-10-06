@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for granular telemetry: TelemetryParamType, _extract_telemetry_params, _classify_error."""
+
 from __future__ import absolute_import
 import unittest
 from unittest.mock import Mock, patch
@@ -53,85 +54,129 @@ class TestExtractTelemetryParams(unittest.TestCase):
 
     def test_attr_value_emits_value(self):
         instance = self._make_instance(_model_name="llama-3-8b", training_type="LORA")
-        result = _extract_telemetry_params(instance, {}, [
-            ("_model_name", TelemetryParamType.ATTR_VALUE),
-            ("training_type", TelemetryParamType.ATTR_VALUE),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("_model_name", TelemetryParamType.ATTR_VALUE),
+                ("training_type", TelemetryParamType.ATTR_VALUE),
+            ],
+        )
         assert "&x-modelName=llama-3-8b" in result
         assert "&x-trainingType=LORA" in result
 
     def test_attr_value_skips_none(self):
         instance = self._make_instance(_model_name=None)
-        result = _extract_telemetry_params(instance, {}, [
-            ("_model_name", TelemetryParamType.ATTR_VALUE),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("_model_name", TelemetryParamType.ATTR_VALUE),
+            ],
+        )
         assert "modelName" not in result
 
     def test_attr_exists_true(self):
         instance = self._make_instance(networking={"subnets": ["subnet-1"]})
-        result = _extract_telemetry_params(instance, {}, [
-            ("networking", TelemetryParamType.ATTR_EXISTS),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("networking", TelemetryParamType.ATTR_EXISTS),
+            ],
+        )
         assert "&x-hasNetworking=true" in result
 
     def test_attr_exists_false(self):
         instance = self._make_instance(networking=None)
-        result = _extract_telemetry_params(instance, {}, [
-            ("networking", TelemetryParamType.ATTR_EXISTS),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("networking", TelemetryParamType.ATTR_EXISTS),
+            ],
+        )
         assert "&x-hasNetworking=false" in result
 
     def test_attr_call_emits_return_value(self):
         instance = self._make_instance()
         instance._is_model_customization = Mock(return_value=True)
-        result = _extract_telemetry_params(instance, {}, [
-            ("_is_model_customization", TelemetryParamType.ATTR_CALL),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("_is_model_customization", TelemetryParamType.ATTR_CALL),
+            ],
+        )
         assert "&x-isModelCustomization=True" in result
         instance._is_model_customization.assert_called_once()
 
     def test_attr_call_skips_on_exception(self):
         instance = self._make_instance()
         instance._is_model_customization = Mock(side_effect=RuntimeError("boom"))
-        result = _extract_telemetry_params(instance, {}, [
-            ("_is_model_customization", TelemetryParamType.ATTR_CALL),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("_is_model_customization", TelemetryParamType.ATTR_CALL),
+            ],
+        )
         assert "isModelCustomization" not in result
 
     def test_attr_call_skips_none(self):
         instance = self._make_instance()
         instance._jumpstart_model_id = Mock(return_value=None)
-        result = _extract_telemetry_params(instance, {}, [
-            ("_jumpstart_model_id", TelemetryParamType.ATTR_CALL),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("_jumpstart_model_id", TelemetryParamType.ATTR_CALL),
+            ],
+        )
         assert "jumpstartModelId" not in result
 
     def test_kwarg_value_emits_value(self):
         instance = self._make_instance()
-        result = _extract_telemetry_params(instance, {"instance_type": "ml.g5.2xlarge"}, [
-            ("instance_type", TelemetryParamType.KWARG_VALUE),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {"instance_type": "ml.g5.2xlarge"},
+            [
+                ("instance_type", TelemetryParamType.KWARG_VALUE),
+            ],
+        )
         assert "&x-instanceType=ml.g5.2xlarge" in result
 
     def test_kwarg_value_skips_none(self):
         instance = self._make_instance()
-        result = _extract_telemetry_params(instance, {"instance_type": None}, [
-            ("instance_type", TelemetryParamType.KWARG_VALUE),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {"instance_type": None},
+            [
+                ("instance_type", TelemetryParamType.KWARG_VALUE),
+            ],
+        )
         assert "instanceType" not in result
 
     def test_kwarg_exists_true(self):
         instance = self._make_instance()
-        result = _extract_telemetry_params(instance, {"update_endpoint": True}, [
-            ("update_endpoint", TelemetryParamType.KWARG_EXISTS),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {"update_endpoint": True},
+            [
+                ("update_endpoint", TelemetryParamType.KWARG_EXISTS),
+            ],
+        )
         assert "&x-hasUpdateEndpoint=true" in result
 
     def test_kwarg_exists_false(self):
         instance = self._make_instance()
-        result = _extract_telemetry_params(instance, {}, [
-            ("update_endpoint", TelemetryParamType.KWARG_EXISTS),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("update_endpoint", TelemetryParamType.KWARG_EXISTS),
+            ],
+        )
         assert "&x-hasUpdateEndpoint=false" in result
 
     def test_mixed_params(self):
@@ -140,12 +185,16 @@ class TestExtractTelemetryParams(unittest.TestCase):
             networking={"vpc": True},
             kms_key_id=None,
         )
-        result = _extract_telemetry_params(instance, {"wait": True}, [
-            ("_model_name", TelemetryParamType.ATTR_VALUE),
-            ("networking", TelemetryParamType.ATTR_EXISTS),
-            ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
-            ("wait", TelemetryParamType.KWARG_EXISTS),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {"wait": True},
+            [
+                ("_model_name", TelemetryParamType.ATTR_VALUE),
+                ("networking", TelemetryParamType.ATTR_EXISTS),
+                ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
+                ("wait", TelemetryParamType.KWARG_EXISTS),
+            ],
+        )
         assert "&x-modelName=llama-3" in result
         assert "&x-hasNetworking=true" in result
         assert "&x-hasKmsKeyId=false" in result
@@ -154,17 +203,26 @@ class TestExtractTelemetryParams(unittest.TestCase):
     def test_attr_type_emits_class_name(self):
         class HyperPodCompute:
             pass
+
         instance = self._make_instance(compute=HyperPodCompute())
-        result = _extract_telemetry_params(instance, {}, [
-            ("compute", TelemetryParamType.ATTR_TYPE),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("compute", TelemetryParamType.ATTR_TYPE),
+            ],
+        )
         assert "&x-computeType=HyperPodCompute" in result
 
     def test_attr_type_skips_none(self):
         instance = self._make_instance(compute=None)
-        result = _extract_telemetry_params(instance, {}, [
-            ("compute", TelemetryParamType.ATTR_TYPE),
-        ])
+        result = _extract_telemetry_params(
+            instance,
+            {},
+            [
+                ("compute", TelemetryParamType.ATTR_TYPE),
+            ],
+        )
         assert "compute" not in result
 
 
@@ -281,9 +339,7 @@ class TestTelemetryEmitterWithParams(unittest.TestCase):
 
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
-    def test_emitter_includes_kwarg_params(
-        self, mock_resolve_config, mock_send_telemetry
-    ):
+    def test_emitter_includes_kwarg_params(self, mock_resolve_config, mock_send_telemetry):
         mock_resolve_config.return_value = False
 
         class FakeBuilder:

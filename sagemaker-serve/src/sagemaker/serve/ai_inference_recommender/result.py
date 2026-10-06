@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Parsing of benchmark output artifacts from S3."""
+
 from __future__ import absolute_import
 
 import io
@@ -53,6 +54,7 @@ class BenchmarkMetric:
 
     @classmethod
     def from_dict(cls, name: str, data: Dict[str, Any]) -> "BenchmarkMetric":
+        """Build a ``BenchmarkMetric`` from a raw metric dict."""
         return cls(
             name=name,
             unit=data.get("unit"),
@@ -85,12 +87,16 @@ class BenchmarkMetrics:
     all_metrics: Dict[str, BenchmarkMetric] = field(default_factory=dict)
 
     def get(self, name: str) -> Optional[BenchmarkMetric]:
+        """Return the metric with the given name, or ``None``."""
         return self.all_metrics.get(name)
 
     def _ordered_metric_pairs(self):
-        """(name, metric) pairs in display order: non-HTTP metrics alphabetically,
-        then ``http_*`` transport metrics last. Shared by ``__str__`` and
-        ``to_dataframe()`` so the printed table and the frame stay in sync."""
+        """Yield ``(name, metric)`` pairs in display order.
+
+        Non-HTTP metrics come first alphabetically, then ``http_*`` transport
+        metrics last. Shared by ``__str__`` and ``to_dataframe()`` so the
+        printed table and the frame stay in sync.
+        """
         rest, http = [], []
         for name in sorted(self.all_metrics):
             bucket = http if name.startswith("http_") else rest
@@ -98,9 +104,11 @@ class BenchmarkMetrics:
         return rest + http
 
     def __str__(self) -> str:
+        """Return a formatted table of all metrics."""
         return _format_metrics_table(self._ordered_metric_pairs())
 
     def __repr__(self) -> str:
+        """Return a concise summary of the metric collection."""
         return f"BenchmarkMetrics({len(self.all_metrics)} metrics; print() for the table)"
 
     def _repr_pretty_(self, p, cycle):
@@ -123,6 +131,7 @@ class BenchmarkMetrics:
 
     @classmethod
     def from_profile_json(cls, profile: Dict[str, Any]) -> "BenchmarkMetrics":
+        """Build ``BenchmarkMetrics`` from a profile JSON payload."""
         all_metrics: Dict[str, BenchmarkMetric] = {}
         for key, value in profile.items():
             if isinstance(value, dict) and any(
@@ -183,6 +192,7 @@ class BenchmarkSearchResult:
 
     @classmethod
     def from_history_json(cls, history: Dict[str, Any]) -> "BenchmarkSearchResult":
+        """Build ``BenchmarkSearchResult`` from a search-history JSON payload."""
         # boundary_summary is present for a single-dimension search with a
         # resolved boundary; it is null/absent for a multi-dim search or one
         # that never ran, in which case we still return a result carrying the
@@ -207,6 +217,7 @@ class BenchmarkSearchResult:
         )
 
     def __str__(self) -> str:
+        """Return a human-readable summary of the search result."""
         breach = ""
         if self.infeasible_min is not None:
             metric = (self.first_breach or {}).get("metric_tag", "?")
@@ -221,6 +232,7 @@ class BenchmarkSearchResult:
         )
 
     def __repr__(self) -> str:
+        """Return a concise repr of the search result."""
         return f"BenchmarkSearchResult(swept_dim={self.swept_dim!r}, winner={self.winner!r})"
 
     def _repr_pretty_(self, p, cycle):
@@ -253,6 +265,7 @@ class BenchmarkResult:
         return self.search is not None
 
     def __str__(self) -> str:
+        """Return a human-readable summary of the benchmark result."""
         # A search/sweep run has no single headline profile; render the sweep
         # outcome (winning level) instead of an (empty) metrics table.
         if self.search is not None:
@@ -276,10 +289,13 @@ class BenchmarkResult:
         )
 
     def _ordered_metric_pairs(self):
-        """(name, metric) pairs in display order: well-known headline metrics
-        first (canonical order), then the rest alphabetized, then ``http_*``
-        transport metrics last. Shared by ``__str__`` and ``to_dataframe()`` so
-        the printed table and the frame stay in the same order."""
+        """Yield ``(name, metric)`` pairs in display order.
+
+        Well-known headline metrics come first (canonical order), then the rest
+        alphabetized, then ``http_*`` transport metrics last. Shared by
+        ``__str__`` and ``to_dataframe()`` so the printed table and the frame
+        stay in the same order.
+        """
         seen = set()
         headline = []
         for name in _KEY_METRIC_FIELDS:
@@ -318,6 +334,7 @@ class BenchmarkResult:
         return _metrics_dataframe(pd, self._ordered_metric_pairs())
 
     def __repr__(self) -> str:
+        """Return a concise repr of the benchmark result."""
         return (
             f"BenchmarkResult(endpoint={self.endpoint!r}, "
             f"metrics={len(self.metrics.all_metrics)}; print() for the table)"
@@ -518,8 +535,10 @@ def _as_float(value: Any) -> Optional[float]:
 
 
 def _require_pandas():
-    """Import pandas lazily, only when ``to_dataframe()`` is called, so this
-    module's printed tables stay stdlib-only."""
+    """Import pandas lazily, only when ``to_dataframe()`` is called.
+
+    Keeps this module's printed tables stdlib-only.
+    """
     try:
         import pandas as pd
     except ImportError as exc:  # pragma: no cover - trivial re-raise
@@ -544,8 +563,11 @@ def _indent(text: str, prefix: str) -> str:
 
 
 def _coerce_numeric(pd, frame, numeric_cols):
-    """Cast the named columns to float64 so an all-missing column is ``NaN``,
-    not ``object`` holding ``None`` (on which sort/nlargest/mean would raise)."""
+    """Cast the named columns to float64.
+
+    Ensures an all-missing column is ``NaN``, not ``object`` holding ``None``
+    (on which sort/nlargest/mean would raise).
+    """
     for col in numeric_cols:
         if col in frame.columns:
             frame[col] = pd.to_numeric(frame[col], errors="coerce")
@@ -657,8 +679,11 @@ class BenchmarkComparison:
     stat: str = "avg"
 
     def _metric_names(self) -> List[str]:
-        """Key metrics first (in canonical order), then any other metric present
-        in at least one run — so the table covers everything, headline first."""
+        """Return metric names covering every run, headline metrics first.
+
+        Key metrics come first (in canonical order), then any other metric
+        present in at least one run.
+        """
         ordered = [
             name
             for name in _KEY_METRIC_FIELDS
@@ -699,8 +724,11 @@ class BenchmarkComparison:
         return pct
 
     def _delta_cell(self, metric_name: str, baseline, value) -> str:
-        """Signed percentage change vs. baseline as a display string; ``-`` when
-        no oriented delta applies (directionless or undefined)."""
+        """Return the signed percentage change vs. baseline as a display string.
+
+        Returns ``-`` when no oriented delta applies (directionless or
+        undefined).
+        """
         pct = self._delta_value(metric_name, baseline, value)
         return "-" if pct is None else f"{pct:+.1f}%"
 
@@ -712,6 +740,7 @@ class BenchmarkComparison:
         return None
 
     def __str__(self) -> str:
+        """Return a formatted comparison table across runs."""
         metric_names = self._metric_names()
         if not metric_names:
             return "BenchmarkComparison (no metrics to compare)"
@@ -763,6 +792,7 @@ class BenchmarkComparison:
         return _coerce_numeric(pd, frame, [c for c in columns if c != "unit"])
 
     def __repr__(self) -> str:
+        """Return a concise repr of the comparison."""
         return (
             f"BenchmarkComparison({len(self.results)} runs: "
             f"{', '.join(self.names)}; print() for the table)"

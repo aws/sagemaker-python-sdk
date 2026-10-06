@@ -11,12 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains code to test image builder"""
+
 from __future__ import absolute_import
 
 import pytest
 
 import io
 import json
+import logging
 import os
 import time
 import zipfile
@@ -201,9 +203,6 @@ def sagemaker_session_us_east_1():
     return Session(boto_session=boto_session)
 
 
-import time
-import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -257,6 +256,7 @@ def mlflow_resource_arn():
 
     # Get execution role
     from sagemaker.train.defaults import TrainDefaults
+
     boto_session = boto3.Session(region_name=region)
     sagemaker_session = Session(boto_session=boto_session)
     role_arn = TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)

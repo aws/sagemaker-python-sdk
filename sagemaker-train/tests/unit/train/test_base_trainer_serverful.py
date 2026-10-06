@@ -9,6 +9,7 @@ the recipe override spec (so the rendered recipe's ``train_files`` /
 ``val_files`` are non-empty) and forwards the trainer ``environment`` to
 ``ModelTrainer.from_recipe``.
 """
+
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -61,43 +62,53 @@ def _run_serverful(trainer, base_hyperparameters=None):
     # s3 download_file is a no-op; the temp recipe file stays empty.
     mock_session.boto_session.client.return_value.download_file.return_value = None
 
-    with patch(
-        "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
-        return_value=mock_session,
-    ), patch(
-        "sagemaker.train.defaults.TrainDefaults.get_role", return_value="arn:aws:iam::1:role/x"
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
-        return_value="s3://bucket/recipe.yaml",
-    ), patch(
-        "sagemaker.train.base_trainer.get_recipe_s3_uri",
-        return_value="s3://bucket/recipe.yaml",
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils.get_training_image",
-        return_value="image:latest",
-    ), patch(
-        "sagemaker.train.base_trainer.get_training_image",
-        return_value="image:latest",
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
-    ), patch(
-        "sagemaker.train.base_trainer._validate_hyperparameter_values"
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
-        return_value={},
-    ), patch(
-        "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
-        return_value=None,
-    ), patch(
-        "sagemaker.train.base_trainer._get_smhp_replicas_enum",
-        return_value=None,
-    ), patch(
-        "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
-        side_effect=_capture_render,
-    ), patch(
-        "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
-        return_value=mock_model_trainer,
-    ) as mock_from_recipe:
+    with (
+        patch(
+            "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+            return_value=mock_session,
+        ),
+        patch(
+            "sagemaker.train.defaults.TrainDefaults.get_role", return_value="arn:aws:iam::1:role/x"
+        ),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
+            return_value="s3://bucket/recipe.yaml",
+        ),
+        patch(
+            "sagemaker.train.base_trainer.get_recipe_s3_uri",
+            return_value="s3://bucket/recipe.yaml",
+        ),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils.get_training_image",
+            return_value="image:latest",
+        ),
+        patch(
+            "sagemaker.train.base_trainer.get_training_image",
+            return_value="image:latest",
+        ),
+        patch("sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"),
+        patch("sagemaker.train.base_trainer._validate_hyperparameter_values"),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
+            return_value={},
+        ),
+        patch(
+            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
+            return_value=None,
+        ),
+        patch(
+            "sagemaker.train.base_trainer._get_smhp_replicas_enum",
+            return_value=None,
+        ),
+        patch(
+            "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
+            side_effect=_capture_render,
+        ),
+        patch(
+            "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
+            return_value=mock_model_trainer,
+        ) as mock_from_recipe,
+    ):
         trainer.hyperparameters = MagicMock()
         trainer.hyperparameters._specs = {}
         trainer.hyperparameters._user_set = None
@@ -118,10 +129,7 @@ class TestChannelMountInjection:
         override_spec, _ = _run_serverful(trainer)
 
         assert override_spec["data_path"]["default"] == "/opt/ml/input/data/train"
-        assert (
-            override_spec["validation_data_path"]["default"]
-            == "/opt/ml/input/data/validation"
-        )
+        assert override_spec["validation_data_path"]["default"] == "/opt/ml/input/data/validation"
 
     def test_s3_object_key_maps_to_mounted_file(self):
         trainer = _ConcreteTrainer()
@@ -130,10 +138,7 @@ class TestChannelMountInjection:
 
         override_spec, _ = _run_serverful(trainer)
 
-        assert (
-            override_spec["data_path"]["default"]
-            == "/opt/ml/input/data/train/train.jsonl"
-        )
+        assert override_spec["data_path"]["default"] == "/opt/ml/input/data/train/train.jsonl"
         assert (
             override_spec["validation_data_path"]["default"]
             == "/opt/ml/input/data/validation/val.jsonl"
@@ -158,42 +163,50 @@ class TestChannelMountInjection:
 
         # Pre-seed the override spec with an existing data_path entry so we can
         # assert the fix mutates it (preserving type) rather than replacing it.
-        with patch(
-            "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
-            return_value={"data_path": {"default": "", "type": "string"}},
-        ), patch(
-            "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
-            return_value=MagicMock(),
-        ), patch(
-            "sagemaker.train.defaults.TrainDefaults.get_role", return_value="role"
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
-            return_value="s3://bucket/recipe.yaml",
-        ), patch(
-            "sagemaker.train.base_trainer.get_recipe_s3_uri",
-            return_value="s3://bucket/recipe.yaml",
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils.get_training_image",
-            return_value="image:latest",
-        ), patch(
-            "sagemaker.train.base_trainer.get_training_image",
-            return_value="image:latest",
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
-        ), patch(
-            "sagemaker.train.base_trainer._validate_hyperparameter_values"
-        ), patch(
-            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.base_trainer._get_smhp_replicas_enum",
-            return_value=None,
-        ), patch(
-            "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
-            side_effect=_capture_render,
-        ), patch(
-            "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
-            return_value=MagicMock(),
+        with (
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
+                return_value={"data_path": {"default": "", "type": "string"}},
+            ),
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+                return_value=MagicMock(),
+            ),
+            patch("sagemaker.train.defaults.TrainDefaults.get_role", return_value="role"),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
+                return_value="s3://bucket/recipe.yaml",
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_recipe_s3_uri",
+                return_value="s3://bucket/recipe.yaml",
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                return_value="image:latest",
+            ),
+            patch(
+                "sagemaker.train.base_trainer.get_training_image",
+                return_value="image:latest",
+            ),
+            patch("sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"),
+            patch("sagemaker.train.base_trainer._validate_hyperparameter_values"),
+            patch(
+                "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.base_trainer._get_smhp_replicas_enum",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
+                side_effect=_capture_render,
+            ),
+            patch(
+                "sagemaker.train.model_trainer.ModelTrainer.from_recipe",
+                return_value=MagicMock(),
+            ),
         ):
             trainer.hyperparameters = MagicMock()
             trainer.hyperparameters._specs = {}
@@ -234,14 +247,20 @@ class TestOverridesAppliedToHyperparameters:
         trainer._overrides = {"max_epochs": 1, "name": "my-run"}
         trainer._recipe_path = "s3://bucket/recipe.yaml"
 
-        with patch.object(
-            trainer, "get_resolved_recipe",
-            return_value={"max_epochs": 1, "name": "my-run", "lr": 0.001},
-        ), patch(
-            "sagemaker.train.base_trainer.flatten_resolved_recipe",
-            return_value={"max_epochs": "1", "name": "my-run", "lr": "0.001"},
+        with (
+            patch.object(
+                trainer,
+                "get_resolved_recipe",
+                return_value={"max_epochs": 1, "name": "my-run", "lr": 0.001},
+            ),
+            patch(
+                "sagemaker.train.base_trainer.flatten_resolved_recipe",
+                return_value={"max_epochs": "1", "name": "my-run", "lr": "0.001"},
+            ),
         ):
-            _, from_recipe_kwargs = _run_serverful(trainer, base_hyperparameters={"max_epochs": "10"})
+            _, from_recipe_kwargs = _run_serverful(
+                trainer, base_hyperparameters={"max_epochs": "10"}
+            )
 
         hp = from_recipe_kwargs["hyperparameters"]
         assert hp["max_epochs"] == "1"  # overridden from 10 -> 1
@@ -271,11 +290,12 @@ class TestOverridesAppliedToHyperparameters:
 
         fake_resolved = {"max_epochs": 5}
 
-        with patch.object(
-            trainer, "get_resolved_recipe", return_value=fake_resolved
-        ), patch(
-            "sagemaker.train.base_trainer.flatten_resolved_recipe",
-            return_value={"max_epochs": "5"},
+        with (
+            patch.object(trainer, "get_resolved_recipe", return_value=fake_resolved),
+            patch(
+                "sagemaker.train.base_trainer.flatten_resolved_recipe",
+                return_value={"max_epochs": "5"},
+            ),
         ):
             _, from_recipe_kwargs = _run_serverful(trainer)
 

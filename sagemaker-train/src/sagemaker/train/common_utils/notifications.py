@@ -1,4 +1,4 @@
-"""Job notification utilities for SageMaker training jobs.
+r"""Job notification utilities for SageMaker training jobs.
 
 Manages EventBridge rules that route SageMaker Training Job status change
 events to user-provided SNS topics. Supports SMTJ (serverless and serverful)
@@ -61,7 +61,9 @@ _DEFAULT_EVENTS = ["Completed", "Failed", "Stopped"]
 _VALID_EVENTS = {"Completed", "Failed", "Stopped", "InProgress"}
 
 
-def _get_rule_name(sns_topic_arn: str, events: List[str], job_name_prefix: Optional[str] = None) -> str:
+def _get_rule_name(
+    sns_topic_arn: str, events: List[str], job_name_prefix: Optional[str] = None
+) -> str:
     """Generate a deterministic rule name from the full notification config.
 
     Hashes the topic ARN + events + prefix so that:
@@ -104,8 +106,7 @@ def _normalize_events(events: Optional[List[str]]) -> List[str]:
             capitalized = "InProgress"
         if capitalized not in _VALID_EVENTS:
             raise ValueError(
-                f"Invalid notification event: '{event}'. "
-                f"Valid events: {sorted(_VALID_EVENTS)}"
+                f"Invalid notification event: '{event}'. " f"Valid events: {sorted(_VALID_EVENTS)}"
             )
         normalized.append(capitalized)
 
@@ -214,7 +215,9 @@ def enable_notifications(
         ValueError: If sns_topic_arn is invalid or topic doesn't exist.
         PermissionError: If caller lacks required permissions.
     """
-    if not sns_topic_arn or not re.match(r"^arn:aws[a-z\-]*:sns:[a-z0-9\-]+:\d{12}:.+$", sns_topic_arn):
+    if not sns_topic_arn or not re.match(
+        r"^arn:aws[a-z\-]*:sns:[a-z0-9\-]+:\d{12}:.+$", sns_topic_arn
+    ):
         raise ValueError(
             f"Invalid SNS topic ARN: '{sns_topic_arn}'. "
             "Must be a valid ARN like 'arn:aws:sns:us-east-1:012345678910:my-topic'."
@@ -258,21 +261,23 @@ def enable_notifications(
     )
     put_targets_kwargs = {
         "Rule": rule_name,
-        "Targets": [{
-            "Id": target_id,
-            "Arn": sns_topic_arn,
-            "InputTransformer": {
-                "InputPathsMap": {
-                    "job_name": "$.detail.TrainingJobName",
-                    "status": "$.detail.TrainingJobStatus",
-                    "time": "$.time",
-                    "region": "$.region",
-                    "failure_reason": "$.detail.FailureReason",
-                    "account": "$.account",
+        "Targets": [
+            {
+                "Id": target_id,
+                "Arn": sns_topic_arn,
+                "InputTransformer": {
+                    "InputPathsMap": {
+                        "job_name": "$.detail.TrainingJobName",
+                        "status": "$.detail.TrainingJobStatus",
+                        "time": "$.time",
+                        "region": "$.region",
+                        "failure_reason": "$.detail.FailureReason",
+                        "account": "$.account",
+                    },
+                    "InputTemplate": input_template,
                 },
-                "InputTemplate": input_template,
-            },
-        }],
+            }
+        ],
     }
     if event_bus_arn:
         put_targets_kwargs["EventBusName"] = event_bus_arn
@@ -330,7 +335,10 @@ def delete_notification_rule(
     try:
         events_client.delete_rule(Name=rule_name, EventBusName=event_bus_name)
     except Exception as e:
-        if "ResourceNotFoundException" in str(type(e).__name__) or "does not exist" in str(e).lower():
+        if (
+            "ResourceNotFoundException" in str(type(e).__name__)
+            or "does not exist" in str(e).lower()
+        ):
             raise ValueError(
                 f"Rule '{rule_name}' not found on event bus '{event_bus_name}'. "
                 "If the rule was created on a custom event bus, pass the same "
@@ -364,13 +372,12 @@ def list_notification_rules(
     paginator = events_client.get_paginator("list_rules")
     for page in paginator.paginate(NamePrefix=_RULE_NAME_PREFIX, EventBusName=event_bus_name):
         for rule in page.get("Rules", []):
-            rules.append({
-                "name": rule["Name"],
-                "arn": rule["Arn"],
-                "state": rule.get("State", "UNKNOWN"),
-            })
+            rules.append(
+                {
+                    "name": rule["Name"],
+                    "arn": rule["Arn"],
+                    "state": rule.get("State", "UNKNOWN"),
+                }
+            )
 
     return rules
-
-
-

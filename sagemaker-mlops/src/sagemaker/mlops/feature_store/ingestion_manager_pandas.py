@@ -1,13 +1,14 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Multi-threaded data ingestion for FeatureStore using SageMaker Core."""
+
 import logging
 import math
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from multiprocessing import Pool
-from typing import Any, Dict, Iterable, List, Sequence, Union
+from typing import Any, Dict, Iterable, List, Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -96,7 +97,7 @@ class IngestionManagerPandas:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
-        
+
         Raises:
             ValueError: If wait=False with max_workers=1 and max_processes=1.
         """
@@ -106,11 +107,15 @@ class IngestionManagerPandas:
                 "Async ingestion (wait=False) requires max_processes > 1 or max_workers > 1. "
                 "Single-threaded ingestion only supports synchronous mode (wait=True)."
             )
-        
+
         if self.max_workers == 1 and self.max_processes == 1:
-            self._run_single_process_single_thread(data_frame=data_frame, target_stores=target_stores)
+            self._run_single_process_single_thread(
+                data_frame=data_frame, target_stores=target_stores
+            )
         else:
-            self._run_multi_process(data_frame=data_frame, target_stores=target_stores, wait=wait, timeout=timeout)
+            self._run_multi_process(
+                data_frame=data_frame, target_stores=target_stores, wait=wait, timeout=timeout
+            )
 
     def wait(self, timeout: Union[int, float] = None):
         """Wait for the ingestion process to finish.
@@ -195,17 +200,19 @@ class IngestionManagerPandas:
         for i in range(self.max_processes):
             start_index = min(i * batch_size, data_frame.shape[0])
             end_index = min(i * batch_size + batch_size, data_frame.shape[0])
-            args.append((
-                self.max_workers,
-                self.feature_group_name,
-                self.feature_definitions,
-                data_frame[start_index:end_index],
-                target_stores,
-                start_index,
-                timeout,
-                self.use_batch_write_record,
-                self.region,
-            ))
+            args.append(
+                (
+                    self.max_workers,
+                    self.feature_group_name,
+                    self.feature_definitions,
+                    data_frame[start_index:end_index],
+                    target_stores,
+                    start_index,
+                    timeout,
+                    self.use_batch_write_record,
+                    self.region,
+                )
+            )
 
         def init_worker():
             signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -324,16 +331,24 @@ class IngestionManagerPandas:
                 if not IngestionManagerPandas._feature_value_is_not_none(feature_value):
                     continue
 
-                if IngestionManagerPandas._is_feature_collection_type(feature_name, feature_definitions):
-                    record.append(FeatureValue(
-                        feature_name=feature_name,
-                        value_as_string_list=IngestionManagerPandas._convert_to_string_list(feature_value),
-                    ))
+                if IngestionManagerPandas._is_feature_collection_type(
+                    feature_name, feature_definitions
+                ):
+                    record.append(
+                        FeatureValue(
+                            feature_name=feature_name,
+                            value_as_string_list=IngestionManagerPandas._convert_to_string_list(
+                                feature_value
+                            ),
+                        )
+                    )
                 else:
-                    record.append(FeatureValue(
-                        feature_name=feature_name,
-                        value_as_string=str(feature_value),
-                    ))
+                    record.append(
+                        FeatureValue(
+                            feature_name=feature_name,
+                            value_as_string=str(feature_value),
+                        )
+                    )
 
             # Use SageMaker Core's put_record directly
             feature_group.put_record(
@@ -355,7 +370,11 @@ class IngestionManagerPandas:
         feature_def = feature_definitions.get(feature_name)
         if feature_def:
             collection_type = feature_def.get("CollectionType")
-            if isinstance(collection_type, Unassigned) or collection_type is None or collection_type == "":
+            if (
+                isinstance(collection_type, Unassigned)
+                or collection_type is None
+                or collection_type == ""
+            ):
                 return False
             return True
         return False
@@ -405,16 +424,24 @@ class IngestionManagerPandas:
             if not IngestionManagerPandas._feature_value_is_not_none(feature_value):
                 continue
 
-            if IngestionManagerPandas._is_feature_collection_type(feature_name, feature_definitions):
-                record.append(FeatureValue(
-                    feature_name=feature_name,
-                    value_as_string_list=IngestionManagerPandas._convert_to_string_list(feature_value),
-                ))
+            if IngestionManagerPandas._is_feature_collection_type(
+                feature_name, feature_definitions
+            ):
+                record.append(
+                    FeatureValue(
+                        feature_name=feature_name,
+                        value_as_string_list=IngestionManagerPandas._convert_to_string_list(
+                            feature_value
+                        ),
+                    )
+                )
             else:
-                record.append(FeatureValue(
-                    feature_name=feature_name,
-                    value_as_string=str(feature_value),
-                ))
+                record.append(
+                    FeatureValue(
+                        feature_name=feature_name,
+                        value_as_string=str(feature_value),
+                    )
+                )
         return record
 
     @staticmethod
@@ -444,13 +471,15 @@ class IngestionManagerPandas:
         """
         logger.info(
             "Started batch write ingestion index %d to %d (batch_size=%d)",
-            start_index, end_index, BATCH_WRITE_MAX_ENTRIES,
+            start_index,
+            end_index,
+            BATCH_WRITE_MAX_ENTRIES,
         )
         failed_rows = []
         rows = list(data_frame[start_index:end_index].itertuples())
 
         for batch_start in range(0, len(rows), BATCH_WRITE_MAX_ENTRIES):
-            batch = rows[batch_start:batch_start + BATCH_WRITE_MAX_ENTRIES]
+            batch = rows[batch_start : batch_start + BATCH_WRITE_MAX_ENTRIES]
             entries = []
             row_indices = []
 
@@ -525,7 +554,8 @@ class IngestionManagerPandas:
             except Exception as e:
                 logger.error(
                     "BatchWriteRecord call failed for batch starting at row %d: %s",
-                    row_indices[0] if row_indices else start_index, e,
+                    row_indices[0] if row_indices else start_index,
+                    e,
                 )
                 failed_rows.extend(row_indices)
 

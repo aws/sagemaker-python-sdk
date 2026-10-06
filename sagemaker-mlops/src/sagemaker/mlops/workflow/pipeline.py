@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The Pipeline entity for workflow."""
+
 from __future__ import absolute_import
 
 import json
@@ -280,7 +281,10 @@ class Pipeline:
             }
 
         update_args(
-            kwargs, PipelineDescription=description, ParallelismConfiguration=parallelism_config
+            kwargs,
+            PipelineDescription=description,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
         )
         return kwargs
 
@@ -465,7 +469,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
-            ParallelismConfiguration=parallelism_config,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
             SelectiveExecutionConfig=selective_execution_config,
             MlflowExperimentName=mlflow_experiment_name,
             PipelineVersionId=pipeline_version_id,
@@ -966,6 +971,20 @@ def _map_lambda_outputs(steps: List[Step]):
     return lambda_output_map
 
 
+def _resolve_parallelism_config(parallelism_config):
+    """Normalize a parallelism_config into the request dict boto expects.
+
+    boto's create/update/start pipeline APIs expect ``ParallelismConfiguration`` as a dict
+    (``{"MaxParallelExecutionSteps": int}``), not a ``ParallelismConfiguration`` object
+    (issue #5354). This converts the object via ``to_request()``. A dict is passed through
+    unchanged so callers who adopted the pre-fix ``.to_request()`` workaround keep working,
+    and ``None`` is returned as-is so ``update_args`` can drop the key.
+    """
+    if isinstance(parallelism_config, ParallelismConfiguration):
+        return parallelism_config.to_request()
+    return parallelism_config
+
+
 def update_args(args: Dict[str, Any], **kwargs):
     """Updates the request arguments dict with a value, if populated.
 
@@ -1208,7 +1227,10 @@ def get_function_step_result(
     #
     # Cases 1 and 2 both end with RESULTS_FOLDER; case 3 does not.
     s3_output_path_stripped = s3_output_path.rstrip("/")
-    if s3_output_path_stripped.endswith("/" + RESULTS_FOLDER) or s3_output_path_stripped == RESULTS_FOLDER:
+    if (
+        s3_output_path_stripped.endswith("/" + RESULTS_FOLDER)
+        or s3_output_path_stripped == RESULTS_FOLDER
+    ):
         # S3OutputPath already points to the results folder (new or old format)
         s3_uri = s3_output_path_stripped
     else:

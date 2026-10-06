@@ -47,6 +47,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.optional-dependencies]
@@ -82,7 +83,9 @@ namespaces = true
 
 [tool.black]
 line-length = 100
-exclude = '\.ipynb$'
+# ``exclude`` would replace black's default exclusions (.tox, .git, build, ...),
+# which made the CI black-check env scan its own .tox tree.
+extend-exclude = '\.ipynb$'
 
 [tool.setuptools.dynamic]
 version = { attr = "sagemaker.core._version.__version__"}

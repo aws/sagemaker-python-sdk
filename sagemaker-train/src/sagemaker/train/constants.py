@@ -10,12 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
-DEPRECATED: This module has been moved to sagemaker.core.training.constants
+"""DEPRECATED: This module has been moved to sagemaker.core.training.constants
 
 This is a backward compatibility shim. Please update your imports to:
     from sagemaker.core.training.constants import ...
 """
+
 from __future__ import absolute_import
 
 import os
@@ -40,6 +40,7 @@ DEFAULT_CONTAINER_ARGUMENTS = [
     + f"&& {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT}",
 ]
 
+
 def get_sagemaker_hub_name() -> str:
     """Return the SageMaker Hub name, honoring SAGEMAKER_HUB_NAME env var override.
 
@@ -48,6 +49,7 @@ def get_sagemaker_hub_name() -> str:
     """
     return os.environ.get("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
 
+
 # Allowed reward model IDs for RLAIF trainer with region restrictions
 _ALLOWED_REWARD_MODEL_IDS = {
     "openai.gpt-oss-120b-1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
@@ -55,7 +57,7 @@ _ALLOWED_REWARD_MODEL_IDS = {
     "qwen.qwen3-32b-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
     "qwen.qwen3-coder-30b-a3b-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
     "qwen.qwen3-coder-480b-a35b-v1:0": ["us-west-2", "ap-northeast-1"],
-    "qwen.qwen3-235b-a22b-2507-v1:0": ["us-west-2", "ap-northeast-1"]
+    "qwen.qwen3-235b-a22b-2507-v1:0": ["us-west-2", "ap-northeast-1"],
 }
 
 # NOTE: The former hardcoded ``_ALLOWED_EVALUATOR_MODELS`` allowlist for the

@@ -1,5 +1,34 @@
 # Changelog
 
+## v3.23.0 (2026-09-24)
+
+### New Features
+
+- feat(pipeline): add inference and lineage step types (#6224)
+- feat(train): finetuningoptions validation telemetry (#6286)
+- feat(train): apply constructor hyperparameters in fine-tuning trainers (#6293)
+- feat(serve): update SDK to use latest LMI v29 image for sdk v3.x (#6301)
+
+### Bug Fixes
+
+- fix(core): recognize new duplicate-name wording; actionable train() errors (#6256)
+- fix(train): raise on invalid constructor hyperparameters (#6306)
+- fix(core): keep environment variable names intact when parsing private hub model documents (#6204)
+- fix: migrate llama-cpp-arm64 to cpu processor schema and align image_uri unit tests (#6290)
+- fix(serve): use the correct AMI when on cu130 to avoid crashes at launch (#6281)
+
+### Other
+
+- change: update image_uri_configs 09-23-2026 (#6308)
+- change: update image_uri_configs 09-22-2026 (#6304)
+- add: metadata for huggingface vllm v0.29 (#6300)
+
+### Tests
+
+- fix PR check tests (#6272)
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
 ## v3.22.1 (2026-09-17)
 
 ### Bug Fixes

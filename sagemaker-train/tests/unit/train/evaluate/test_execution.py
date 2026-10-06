@@ -11,12 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for SageMaker Evaluation Execution Module."""
+
 from __future__ import absolute_import
 
 import json
-import time
 from datetime import datetime
-from unittest.mock import ANY, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
@@ -26,7 +26,6 @@ from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_e
 from sagemaker.train.evaluate.constants import (
     EvalType,
     _get_pipeline_name,
-    _get_pipeline_name_prefix,
 )
 from sagemaker.train.evaluate.execution import (
     BenchmarkEvaluationExecution,
@@ -1485,7 +1484,7 @@ class TestGetMlflowExperimentUrl:
 
         assert (
             result
-            == f"https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
+            == "https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
         )
 
     @patch("sagemaker.core.utils.utils.SageMakerClient")

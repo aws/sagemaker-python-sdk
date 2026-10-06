@@ -175,6 +175,7 @@ class InspectAIEvaluator(BaseEvaluator):
     max_tokens: int = 8192
 
     @validator("environment")
+    @classmethod
     def _validate_environment(cls, v):
         if v is None:
             return v
@@ -184,6 +185,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @validator("benchmarks_path")
+    @classmethod
     def _validate_benchmarks_path(cls, v):
         if not v or not v.strip():
             raise ValueError("benchmarks_path is required and cannot be empty")
@@ -192,6 +194,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @validator("tasks")
+    @classmethod
     def _validate_tasks(cls, v):
         if v is None:
             return v
@@ -215,6 +218,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @validator("output_format")
+    @classmethod
     def _validate_output_format(cls, v):
         if v is None:
             return v
@@ -224,24 +228,28 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @validator("model_s3_uri")
+    @classmethod
     def _validate_model_s3_uri(cls, v):
         if v is not None and not v.startswith("s3://"):
             raise ValueError(f"model_s3_uri must start with 's3://'. Got: '{v}'")
         return v
 
     @validator("inference_image_uri")
+    @classmethod
     def _validate_inference_image_uri(cls, v):
         if v is not None and not _ECR_URI_PATTERN.match(v):
             raise ValueError(f"inference_image_uri must be a valid ECR URI. Got: '{v}'")
         return v
 
     @validator("endpoint_instance_type")
+    @classmethod
     def _validate_endpoint_instance_type(cls, v):
         if v is not None and not v.startswith("ml."):
             raise ValueError(f"endpoint_instance_type must start with 'ml.'. Got: '{v}'")
         return v
 
     @validator("endpoint_execution_role_arn")
+    @classmethod
     def _validate_endpoint_execution_role_arn(cls, v):
         if v is not None and not _IAM_ROLE_ARN_PATTERN.match(v):
             raise ValueError(
@@ -250,6 +258,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return v
 
     @root_validator(skip_on_failure=True)
+    @classmethod
     def _validate_inference_mode_consistency(cls, values):
         from sagemaker.train.base_trainer import BaseTrainer
 
@@ -282,6 +291,7 @@ class InspectAIEvaluator(BaseEvaluator):
         return values
 
     @root_validator(skip_on_failure=True)
+    @classmethod
     def _resolve_trainer_model(cls, values):
         """Auto-resolve model artifacts from a BaseTrainer for endpoint creation.
 
@@ -312,7 +322,11 @@ class InspectAIEvaluator(BaseEvaluator):
         if hasattr(model, "_latest_job") and model._latest_job is not None:
             source_mp_arn = getattr(model._latest_job, "output_model_package_arn", None)
         # Standard trainers (SFT, DPO, RLVR, RLAIF) use _latest_training_job
-        if not source_mp_arn and hasattr(model, "_latest_training_job") and model._latest_training_job is not None:
+        if (
+            not source_mp_arn
+            and hasattr(model, "_latest_training_job")
+            and model._latest_training_job is not None
+        ):
             arn = getattr(model._latest_training_job, "output_model_package_arn", None)
             # Filter out Unassigned sentinels from sagemaker-core
             if arn is not None and not isinstance(arn, Unassigned):
@@ -321,11 +335,11 @@ class InspectAIEvaluator(BaseEvaluator):
         if not source_mp_arn:
             # Check if trainer has a resolved checkpoint path from model_artifacts
             checkpoint_uri = None
-            training_job = getattr(model, '_latest_training_job', None)
+            training_job = getattr(model, "_latest_training_job", None)
             if training_job:
-                artifacts = getattr(training_job, 'model_artifacts', None)
+                artifacts = getattr(training_job, "model_artifacts", None)
                 if artifacts and not isinstance(artifacts, Unassigned):
-                    s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                    s3_path = getattr(artifacts, "s3_model_artifacts", None)
                     if s3_path and isinstance(s3_path, str):
                         checkpoint_uri = s3_path
             if checkpoint_uri:
@@ -336,7 +350,7 @@ class InspectAIEvaluator(BaseEvaluator):
 
                 # Auto-derive inference image if not explicitly provided
                 if not values.get("inference_image_uri"):
-                    model_name = getattr(model, '_model_name', None) or ""
+                    model_name = getattr(model, "_model_name", None) or ""
                     region = None
                     session = values.get("sagemaker_session")
                     if session and hasattr(session, "boto_session"):
@@ -376,9 +390,7 @@ class InspectAIEvaluator(BaseEvaluator):
             session = values.get("sagemaker_session")
             from sagemaker.core.resources import ModelPackage as _MP
 
-            boto_session = (
-                session.boto_session if hasattr(session, "boto_session") else session
-            )
+            boto_session = session.boto_session if hasattr(session, "boto_session") else session
             region = boto_session.region_name if boto_session else None
 
             mp = _MP.get(
@@ -388,10 +400,7 @@ class InspectAIEvaluator(BaseEvaluator):
             )
 
             # Extract model data URL and image URI from inference specification
-            if (
-                mp.inference_specification
-                and mp.inference_specification.containers
-            ):
+            if mp.inference_specification and mp.inference_specification.containers:
                 container = mp.inference_specification.containers[0]
 
                 # Resolve model S3 URI: try model_data_url first, then model_data_source
@@ -438,62 +447,70 @@ class InspectAIEvaluator(BaseEvaluator):
                 )
         except Exception as e:
             _logger.warning(
-                "Failed to resolve trainer model artifacts: %s. "
-                "Falling back to bedrock mode.",
+                "Failed to resolve trainer model artifacts: %s. " "Falling back to bedrock mode.",
                 e,
             )
 
         return values
 
     @validator("image_uri")
+    @classmethod
     def _validate_image_uri(cls, v):
         if v is not None and not _ECR_URI_PATTERN.match(v):
             raise ValueError(f"image_uri must be a valid ECR URI. Got: '{v}'")
         return v
 
     @validator("instance_type")
+    @classmethod
     def _validate_instance_type(cls, v):
         if not v.startswith("ml."):
             raise ValueError(f"instance_type must start with 'ml.'. Got: '{v}'")
         return v
 
     @validator("max_connections")
+    @classmethod
     def _validate_max_connections(cls, v):
         if v < 1:
             raise ValueError(f"max_connections must be >= 1. Got: {v}")
         return v
 
     @validator("max_retries")
+    @classmethod
     def _validate_max_retries(cls, v):
         if v < 1:
             raise ValueError(f"max_retries must be >= 1. Got: {v}")
         return v
 
     @validator("max_tokens")
+    @classmethod
     def _validate_max_tokens(cls, v):
         if v < 1:
             raise ValueError(f"max_tokens must be >= 1. Got: {v}")
         return v
 
     @validator("timeout")
+    @classmethod
     def _validate_timeout(cls, v):
         if v < 1:
             raise ValueError(f"timeout must be >= 1 (seconds). Got: {v}")
         return v
 
     @validator("temperature")
+    @classmethod
     def _validate_temperature(cls, v):
         if v < 0.0 or v > 2.0:
             raise ValueError(f"temperature must be in [0.0, 2.0]. Got: {v}")
         return v
 
     @validator("top_p")
+    @classmethod
     def _validate_top_p(cls, v):
         if v < 0.0 or v > 1.0:
             raise ValueError(f"top_p must be in [0.0, 1.0]. Got: {v}")
         return v
 
     @validator("top_k")
+    @classmethod
     def _validate_top_k(cls, v):
         # -1 disables top-k sampling; otherwise must be a positive int
         if v != -1 and v < 1:
@@ -548,7 +565,7 @@ class InspectAIEvaluator(BaseEvaluator):
                     "region": region,
                 }
             }
-        elif scenario == "existing_endpoint":
+        if scenario == "existing_endpoint":
             config = {
                 "sagemaker_endpoint": {
                     "endpoint_name": self.endpoint_name,
@@ -604,7 +621,9 @@ class InspectAIEvaluator(BaseEvaluator):
             benchmarks["s3_path"] = self.benchmarks_path
         if self.tasks:
             benchmarks["tasks"] = []
-            for task in self.tasks:
+            for (
+                task
+            ) in self.tasks:  # pylint: disable=not-an-iterable  # Optional[List], guarded above
                 task_entry = {"name": task["name"]}
                 if "path" in task:
                     task_entry["path"] = task["path"]
@@ -751,7 +770,9 @@ class InspectAIEvaluator(BaseEvaluator):
 
         # Upload config to S3 (skip in dry_run)
         if dry_run:
-            config_s3_prefix = f"s3://{self.s3_output_path.rstrip('/')}/inspectai-config/dry-run-placeholder"
+            config_s3_prefix = (
+                f"s3://{self.s3_output_path.rstrip('/')}/inspectai-config/dry-run-placeholder"
+            )
             _logger.info("Dry-run: skipping config upload to S3.")
         else:
             config_s3_prefix = self._upload_yaml_config(yaml_config, region)

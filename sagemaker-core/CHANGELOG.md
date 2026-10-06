@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.23.0 (2026-09-24)
+
+### Bug Fixes
+
+- fix(core): recognize new duplicate-name wording; actionable train() errors (#6256)
+- fix(core): keep environment variable names intact when parsing private hub model documents (#6204)
+- fix: migrate llama-cpp-arm64 to cpu processor schema and align image_uri unit tests (#6290)
+
+### Other
+
+- change: update image_uri_configs 09-23-2026 (#6308)
+- change: update image_uri_configs 09-22-2026 (#6304)
+- add: metadata for huggingface vllm v0.29 (#6300)
+
+### Tests
+
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
 ## v2.22.1 (2026-09-17)
 
 ### Bug Fixes

@@ -16,6 +16,7 @@ which is used for Amazon SageMaker Processing Jobs. These jobs let users perform
 data pre-processing, post-processing, feature engineering, data validation, and model evaluation,
 and interpretation on Amazon SageMaker.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -92,8 +93,7 @@ def _validate_processing_instance_preferences(
     instance_count=None,
     instance_preferences=None,
 ):
-    """Client-side validation for Processor.instance_preferences (the service
-    remains the source of truth).
+    """Client-side validation for Processor.instance_preferences (the service remains the source of truth).
 
     - instance_preferences is mutually exclusive with instance_type (a single
       fixed cluster). The top-level instance_count is NOT exclusive: it is the
@@ -340,10 +340,8 @@ class Processor(object):
             ValueError: if ``logs`` is True but ``wait`` is False.
         """
         if logs and not wait:
-            raise ValueError(
-                """Logs can only be shown if wait is set to True.
-                Please either set wait to True or set logs to False."""
-            )
+            raise ValueError("""Logs can only be shown if wait is set to True.
+                Please either set wait to True or set logs to False.""")
 
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -363,7 +361,17 @@ class Processor(object):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
         """Extend inputs and outputs based on extra parameters"""
@@ -931,7 +939,17 @@ class ScriptProcessor(Processor):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.
@@ -999,18 +1017,12 @@ class ScriptProcessor(Processor):
             # Validate that the file exists locally and is not a directory.
             code_path = url2pathname(code_url.path)
             if not os.path.exists(code_path):
-                raise ValueError(
-                    """code {} wasn't found. Please make sure that the file exists.
-                    """.format(
-                        code
-                    )
-                )
+                raise ValueError("""code {} wasn't found. Please make sure that the file exists.
+                    """.format(code))
             if not os.path.isfile(code_path):
                 raise ValueError(
                     """code {} must be a file, not a directory. Please pass a path to a file.
-                    """.format(
-                        code
-                    )
+                    """.format(code)
                 )
             user_code_s3_uri = self._upload_code(code_path, kms_key)
         else:
@@ -1297,7 +1309,9 @@ class FrameworkProcessor(ScriptProcessor):
             raise ValueError(f"source_dir does not exist: {source_dir}")
 
         # Create tar.gz with source_dir contents + dependencies
-        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+        tmp = tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False)
+        tmp.close()
+        try:
             with tarfile.open(tmp.name, "w:gz") as tar:
                 # Add all files from source_dir
                 for item in os.listdir(source_dir):
@@ -1319,15 +1333,19 @@ class FrameworkProcessor(ScriptProcessor):
                 "sourcedir.tar.gz",
             )
 
+            with open(tmp.name, "rb") as tar_file:
+                tar_bytes = tar_file.read()
+
             s3.S3Uploader.upload_string_as_file_body(
-                body=open(tmp.name, "rb").read(),
+                body=tar_bytes,
                 desired_s3_uri=s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
 
-            os.unlink(tmp.name)
             return s3_uri
+        finally:
+            os.unlink(tmp.name)
 
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
     @runnable_by_pipeline
@@ -1583,8 +1601,7 @@ class FrameworkProcessor(ScriptProcessor):
 
         install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
 
-        return dedent(
-            """\
+        return dedent("""\
             #!/bin/bash
 
             # Exit on any error. SageMaker uses error code to mark failed job.
@@ -1614,8 +1631,7 @@ class FrameworkProcessor(ScriptProcessor):
             fi
 
             {entry_point_command} {entry_point} "$@"
-        """
-        ).format(
+        """).format(
             install_requirements_dir=install_requirements_dir,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
@@ -1628,8 +1644,7 @@ class FrameworkProcessor(ScriptProcessor):
         source_dir: str = None,
         install_requirements_dir: str = None,
     ) -> str:
-        """
-        Generate a custom framework script with a user-provided entrypoint embedded.
+        """Generate a custom framework script with a user-provided entrypoint embedded.
 
         Reads the entry_point file and embeds its content in the script,
         then appends the command to execute the user script.
@@ -1650,8 +1665,7 @@ class FrameworkProcessor(ScriptProcessor):
         # source bundle on the container.
         if self._is_s3_uri(source_dir):
             install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
-            return dedent(
-                """\
+            return dedent("""\
                 #!/bin/bash
 
                 # Exit on any error. SageMaker uses error code to mark failed job.
@@ -1677,8 +1691,7 @@ class FrameworkProcessor(ScriptProcessor):
                 ./{entry_point}
 
                 {entry_point_command} {user_script} "$@"
-            """
-            ).format(
+            """).format(
                 install_requirements_dir=install_requirements_dir,
                 entry_point=entry_point,
                 entry_point_command=" ".join(self.command),
@@ -1696,13 +1709,11 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point_content = f.read()
 
         # Generate the script with embedded entry_point content
-        return dedent(
-            """\
+        return dedent("""\
             {entry_point_content}
 
             {entry_point_command} {entry_point} "$@"
-            """
-        ).format(
+            """).format(
             entry_point_content=entry_point_content,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
@@ -1841,6 +1852,36 @@ def _get_process_request(
     return process_request
 
 
+def _wait_for_processing_job(sagemaker_session, job_name, poll=10):
+    """Wait for a processing job to reach a terminal state, respecting the session region.
+
+    Unlike ``ProcessingJob.wait()`` (which resolves a default, global SageMaker client),
+    this describes the job through ``sagemaker_session.sagemaker_client`` so the job is
+    polled in the same region it was created in (issue #5796).
+
+    Args:
+        sagemaker_session: The session used to create the job; its region-aware
+            ``sagemaker_client`` is used to describe the job.
+        job_name (str): Name of the processing job to wait for.
+        poll (int): The interval in seconds between polling for job completion.
+
+    Raises:
+        ValueError: If the processing job fails.
+    """
+    terminal_states = ("Completed", "Failed", "Stopped")
+
+    def _describe_if_terminal():
+        description = sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        )
+        if description["ProcessingJobStatus"] in terminal_states:
+            return description
+        return None
+
+    description = _wait_until(_describe_if_terminal, poll)
+    _check_job_status(job_name, description, "ProcessingJobStatus")
+
+
 def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """Display logs for a given processing job, optionally tailing them until the is complete.
 
@@ -1856,11 +1897,9 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """
 
     description = _wait_until(
-        lambda: ProcessingJob.get(
-            processing_job_name=job_name, session=sagemaker_session.boto_session
-        )
-        .refresh()
-        .__dict__,
+        lambda: sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        ),
         poll,
     )
 
@@ -1910,12 +1949,8 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
         if state == LogState.JOB_COMPLETE:
             state = LogState.COMPLETE
         elif time.time() - last_describe_job_call >= 30:
-            description = (
-                ProcessingJob.get(
-                    processing_job_name=job_name, session=sagemaker_session.boto_session
-                )
-                .refresh()
-                .__dict__
+            description = sagemaker_session.sagemaker_client.describe_processing_job(
+                ProcessingJobName=job_name
             )
             last_describe_job_call = time.time()
 

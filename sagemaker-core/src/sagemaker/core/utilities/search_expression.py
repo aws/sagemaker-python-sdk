@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Simplify Search Expression by provide a simplified DSL"""
+
 from __future__ import absolute_import
 
 from enum import Enum, unique

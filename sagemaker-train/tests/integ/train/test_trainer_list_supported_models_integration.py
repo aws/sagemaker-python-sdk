@@ -26,6 +26,7 @@ regression that (for example) required a ``_{strategy}`` suffix -- and so droppe
 suffix-less techniques like CPT (``@recipe:finetuning_cpt``) -- would surface
 here as a mismatch against the oracle.
 """
+
 from __future__ import annotations
 
 import collections
@@ -84,7 +85,7 @@ def hub_finetuning_models(sagemaker_session):
             for keyword in summary.get("HubContentSearchKeywords", []):
                 kwl = keyword.lower()
                 if kwl.startswith(_FINETUNING_PREFIX):
-                    token = kwl[len(_FINETUNING_PREFIX):].split("_")[0]
+                    token = kwl[len(_FINETUNING_PREFIX) :].split("_")[0]
                     mapping[token].add(name)
         next_token = response.get("NextToken")
         if not next_token:
@@ -104,9 +105,7 @@ class TestTrainerListSupportedModels:
         # Sanity: the class attribute the inherited method keys off is set.
         assert trainer_cls._customization_technique == expected_technique
 
-        result = trainer_cls.list_supported_models(
-            session=sagemaker_session.boto_session
-        )
+        result = trainer_cls.list_supported_models(session=sagemaker_session.boto_session)
 
         # Structural contract: a sorted, de-duplicated list of non-empty strings.
         assert isinstance(result, list)
@@ -126,6 +125,6 @@ class TestTrainerListSupportedModels:
         if os.environ.get("SAGEMAKER_HUB_NAME", "SageMakerPublicHub") != "SageMakerPublicHub":
             pytest.skip("private hub pinned; model population is environment-specific")
         for technique in ("sft", "dpo", "rlvr", "rlaif", "cpt"):
-            assert hub_finetuning_models.get(technique), (
-                f"public hub returned no models for technique '{technique}'"
-            )
+            assert hub_finetuning_models.get(
+                technique
+            ), f"public hub returned no models for technique '{technique}'"
