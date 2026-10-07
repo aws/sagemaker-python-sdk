@@ -95,8 +95,8 @@ def test_list_benchmarks_and_recommendations_plumbing():
     logger.info("Non-matching filters correctly returned empty lists.")
 
 
-@pytest.mark.slow_test
 @pytest.mark.gpu_intensive
+@pytest.mark.xfail_on_insufficient_capacity
 def test_recommendation_deploy_best_and_compare_e2e():
     """Full flow across all three enhancements, sharing one rec job + endpoint:
 

@@ -12,7 +12,6 @@
 from __future__ import absolute_import
 
 import uuid
-import pytest
 import logging
 
 from sagemaker.serve.model_builder import ModelBuilder
@@ -26,7 +25,6 @@ INSTANCE_TYPE = "ml.g5.2xlarge"
 MODEL_NAME_PREFIX = "js-netiso-test"
 
 
-@pytest.mark.slow_test
 def test_jumpstart_build_enables_network_isolation():
     """Integration test verifying JumpStart models are built with EnableNetworkIsolation.
 
@@ -71,7 +69,6 @@ VOLUME_SIZE_MODEL_ID = "meta-textgenerationneuron-llama-2-7b"
 VOLUME_SIZE_INSTANCE_TYPE = "ml.inf2.xlarge"
 
 
-@pytest.mark.slow_test
 def test_jumpstart_build_sets_volume_size():
     """Integration test verifying volume_size from model specs is propagated.
 

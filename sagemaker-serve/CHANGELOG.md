@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.24.0 (2026-10-07)
+
+### Bug Fixes
+
+- fix(serve): stop deploy waits hanging; follow empty list pages (#6367)
+- fix(serve): pass instance_type to _deploy once when creating an inference component (#6203)
+- fix(serve): support pipeline variable image_uri in ModelBuilder.build (#6347)
+- fix(serve): default AsyncPredictor upload prefix to endpoint name (#6336)
+- fix(serve): keep AsyncPredictor serializers in sync with wrapped predictor (#6335)
+
+### Tests
+
+- test(serve): skip hang-prone endpoint integ tests in PR check (#6332)
+- style(serve): drop unused pytest imports in integ tests (#6361)
+
+
 ## v1.23.0 (2026-09-24)
 
 ### New Features

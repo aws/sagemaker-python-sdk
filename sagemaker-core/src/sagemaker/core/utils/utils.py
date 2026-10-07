@@ -17,6 +17,8 @@ import logging
 import os
 import re
 import subprocess
+import threading
+from collections import OrderedDict
 
 from boto3.session import Session
 from botocore.config import Config
@@ -26,7 +28,7 @@ from rich.logging import RichHandler
 from rich.style import Style
 from rich.theme import Theme
 from rich.traceback import install
-from typing import Any, Dict, List, TypeVar, Generic, Type
+from typing import Any, Dict, List, Optional, TypeVar, Generic, Type
 from sagemaker.core.utils.code_injection.codec import transform
 from sagemaker.core.utils.code_injection.constants import Color
 from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix
@@ -137,12 +139,47 @@ def get_textual_rich_theme() -> Theme:
     )
 
 
+RICH_LOGGING_OPT_IN_ENV_VAR = "SAGEMAKER_ENABLE_RICH_LOGGING"
+
+_TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
+def is_rich_logging_enabled() -> bool:
+    """Whether the user opted in to sagemaker-core's rich console and tracebacks.
+
+    Reconfiguring the global rich console and calling ``rich.traceback.install()``
+    override ``sys.excepthook`` and restyle the process-global console, so they are
+    opt-in: merely importing the SDK must not change tracebacks or console styling.
+    Enable by setting the ``SAGEMAKER_ENABLE_RICH_LOGGING`` environment variable to
+    one of ``1``/``true``/``yes``/``on`` (case-insensitive).
+
+    Returns:
+        bool: True if rich console/traceback output has been opted into.
+    """
+    return os.environ.get(RICH_LOGGING_OPT_IN_ENV_VAR, "").strip().lower() in _TRUTHY_ENV_VALUES
+
+
 textual_rich_console_and_traceback_enabled = False
 
 
-def enable_textual_rich_console_and_traceback():
-    """Reconfigure the global textual rich console with the customized theme and enable textual rich error traceback"""
+def enable_textual_rich_console_and_traceback(force: bool = False):
+    """Reconfigure the global rich console and install rich error tracebacks.
+
+    This overrides ``sys.excepthook`` (via ``rich.traceback.install``) and restyles
+    the process-global rich console. Because those are process-wide side effects, it
+    is opt-in and a no-op unless the user opts in via the
+    ``SAGEMAKER_ENABLE_RICH_LOGGING`` environment variable
+    (see :func:`is_rich_logging_enabled`) or the caller passes ``force=True``. This
+    keeps ``import sagemaker`` free of global traceback/console side effects by
+    default.
+
+    Args:
+        force (bool): Enable regardless of the environment variable, for callers
+            that explicitly want rich output. Defaults to False.
+    """
     global textual_rich_console_and_traceback_enabled
+    if not (force or is_rich_logging_enabled()):
+        return
     if not textual_rich_console_and_traceback_enabled:
         theme = get_textual_rich_theme()
         reconfigure(theme=theme)
@@ -159,23 +196,28 @@ def get_rich_handler():
 
 
 def get_textual_rich_logger(name: str, log_level: str = "INFO") -> logging.Logger:
-    """Get a logger with textual rich handler.
+    """Get a logger, attaching a rich handler only when rich logging is opted in.
+
+    Rich logging (a ``RichHandler`` on the root logger via ``logging.basicConfig``,
+    plus the themed console/traceback) is opt-in, so that importing the SDK does not
+    reconfigure the root logger or change process-wide log formatting/level. When the
+    user has not opted in (see :func:`is_rich_logging_enabled`), this returns the named
+    logger without configuring handlers or levels, leaving logging to the application.
 
     Args:
         name (str): The name of the logger
-        log_level (str): The log level to set.
+        log_level (str): The log level to set when rich logging is enabled.
             Accepted values are: "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL".
             Defaults to the value of "INFO".
 
     Return:
-        logging.Logger: A textial rich logger.
+        logging.Logger: The requested logger.
     """
     enable_textual_rich_console_and_traceback()
-    handler = get_rich_handler()
-    logging.basicConfig(level=getattr(logging, log_level), handlers=[handler])
-    logger = logging.getLogger(name)
-
-    return logger
+    if is_rich_logging_enabled():
+        handler = get_rich_handler()
+        logging.basicConfig(level=getattr(logging, log_level), handlers=[handler])
+    return logging.getLogger(name)
 
 
 logger = get_textual_rich_logger(__name__)
@@ -324,13 +366,90 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class SageMakerClient(metaclass=SingletonMeta):
-    """A singleton class for creating a SageMaker client."""
+class _ClientCacheMeta(type):
+    """Metaclass that caches instances per constructor arguments.
+
+    A call with no arguments returns the process-wide default instance, creating it
+    from the default credential chain if none exists yet. A call with an explicit
+    ``session``, ``region_name`` or ``config`` returns an instance built from exactly
+    those arguments, cached so repeated calls with the same objects are cheap. The
+    first instance ever created also becomes the default, so code that configures
+    ``SageMakerClient(session=...)`` once up front and then relies on bare
+    ``SageMakerClient()`` calls keeps working.
+
+    The keyed entries form a small LRU: once ``_MAX_KEYED_ENTRIES`` distinct
+    argument sets have been seen, the least recently used one is dropped, so a
+    long-lived process that mints a fresh session per unit of work does not retain
+    every session and its four boto3 clients forever. The default entry is never
+    evicted. Construction is serialized by a lock so concurrent first callers for
+    the same key share one instance.
+
+    This replaces a plain singleton, which returned whichever instance was created
+    first and silently ignored the session passed on every later call.
+    """
+
+    _DEFAULT_KEY = "default"
+    _MAX_KEYED_ENTRIES = 32
+    _instances: Dict[type, "OrderedDict[Any, Any]"] = {}
+    _lock = threading.RLock()
+
+    def __call__(cls, *args, **kwargs):
+        """Return a cached instance for these arguments, creating it if needed."""
+        key = cls._cache_key(*args, **kwargs)
+        with cls._lock:
+            cache = cls._instances.setdefault(cls, OrderedDict())
+            instance = cache.get(key)
+            if instance is not None:
+                if key != cls._DEFAULT_KEY:
+                    cache.move_to_end(key)
+                return instance
+            instance = super().__call__(*args, **kwargs)
+            cache[key] = instance
+            # The first client created in the process becomes the default used by
+            # argument-less calls, matching the previous singleton behaviour.
+            cache.setdefault(cls._DEFAULT_KEY, instance)
+            _ClientCacheMeta._evict(cache, cls._DEFAULT_KEY, cls._MAX_KEYED_ENTRIES)
+            return instance
+
+    @staticmethod
+    def _evict(cache, default_key, max_keyed_entries):
+        """Drop least recently used keyed entries beyond the cap; keep the default."""
+        keyed = [k for k in cache if k != default_key]
+        for key in keyed[: max(0, len(keyed) - max_keyed_entries)]:
+            del cache[key]
+
+
+class SageMakerClient(metaclass=_ClientCacheMeta):
+    """Cached factory for SageMaker boto3 clients.
+
+    Clients are cached per (session, region_name, config). Passing an explicit boto3
+    ``session`` always yields clients signed with that session's credentials, even if
+    a client for a different session was created earlier in the process. Calling
+    ``SageMakerClient()`` with no arguments returns the process default.
+    """
+
+    @classmethod
+    def _cache_key(cls, session: Session = None, region_name: str = None, config: Config = None):
+        """Build the cache key for a constructor call.
+
+        Sessions and configs are keyed by identity: two distinct boto3 sessions must
+        never share a client even if they look alike, because credentials live on the
+        session object. The cached instance keeps references to both, so the ids
+        cannot be recycled while the entry is alive.
+        """
+        if session is None and region_name is None and config is None:
+            return cls._DEFAULT_KEY
+        return (
+            id(session) if session is not None else None,
+            region_name,
+            id(config) if config is not None else None,
+        )
 
     @classmethod
     def reset(cls):
-        """Reset the singleton instance."""
-        SingletonMeta._instances.pop(cls, None)
+        """Drop every cached instance, including the default."""
+        with _ClientCacheMeta._lock:
+            _ClientCacheMeta._instances.pop(cls, None)
 
     def __init__(
         self,
@@ -351,10 +470,21 @@ class SageMakerClient(metaclass=SingletonMeta):
             region_name = session.region_name
 
         if config is None:
-            logger.debug("No config provided. Using default config.")
-            config = Config(retries={"max_attempts": 10, "mode": "standard"})
+            if _retries_configured_outside_code(session):
+                # An explicit Config outranks env vars and the shared config file,
+                # so only supply the SDK's retry default when the user set neither.
+                logger.debug("No config provided. Using retry settings from env/config.")
+                config = Config()
+            else:
+                logger.debug("No config provided. Using default config.")
+                config = Config(retries={"max_attempts": 10, "mode": "standard"})
 
-        self.config = Config(user_agent_extra=get_user_agent_extra_suffix())
+        # Keep the caller's config object alive: the cache key uses its identity.
+        self._base_config = config
+        user_agent_extra = get_user_agent_extra_suffix()
+        if config.user_agent_extra:
+            user_agent_extra = f"{config.user_agent_extra} {user_agent_extra}"
+        self.config = config.merge(Config(user_agent_extra=user_agent_extra))
         self.session = session
         self.region_name = region_name
 
@@ -382,6 +512,26 @@ class SageMakerClient(metaclass=SingletonMeta):
         return getattr(self, service_name + "_client")
 
 
+_RETRY_ENV_VARS = ("AWS_RETRY_MODE", "AWS_MAX_ATTEMPTS")
+_RETRY_CONFIG_KEYS = ("retry_mode", "max_attempts")
+
+
+def _retries_configured_outside_code(session: Session) -> bool:
+    """Return True if the user set retry behaviour via env vars or the shared config file.
+
+    These are the two sources botocore consults for retries when no explicit
+    ``Config(retries=...)`` is passed; a synthesized one would silently override them.
+    """
+    if any(os.environ.get(name) for name in _RETRY_ENV_VARS):
+        return True
+    try:
+        scoped = session._session.get_scoped_config()
+    except Exception:  # pylint: disable=broad-except
+        # e.g. ProfileNotFound; botocore will surface that on first call anyway.
+        return False
+    return any(key in scoped for key in _RETRY_CONFIG_KEYS)
+
+
 class ResourceIterator(Generic[T]):
     """ResourceIterator class to iterate over a list of resources."""
 
@@ -394,6 +544,8 @@ class ResourceIterator(Generic[T]):
         list_method: str,
         list_method_kwargs: dict = {},
         custom_key_mapping: dict = None,
+        session=None,
+        region: Optional[str] = None,
     ):
         """Initialize a ResourceIterator object
 
@@ -407,6 +559,10 @@ class ResourceIterator(Generic[T]):
             custom_key_mapping (dict, optional): The custom key mapping used to map keys from
                 summary object to those expected from resource object during initialization.
                 Defaults to None.
+            session (boto3.session.Session, optional): The session the list call was made with.
+                Each returned resource is bound to it, so its refresh and other object methods
+                use the same account. Defaults to None (the process default client).
+            region (str, optional): The region the list call was made in. Defaults to None.
         """
         self.summaries_key = summaries_key
         self.summary_name = summary_name
@@ -414,6 +570,8 @@ class ResourceIterator(Generic[T]):
         self.list_method = list_method
         self.list_method_kwargs = list_method_kwargs
         self.custom_key_mapping = custom_key_mapping
+        self.session = session
+        self.region = region
 
         self.resource_cls = resource_cls
         self.index = 0
@@ -450,6 +608,12 @@ class ResourceIterator(Generic[T]):
 
                 resource_object = self.resource_cls(**init_data)
 
+                # Bind the resource to the session/region it was listed with
+                if hasattr(resource_object, "_set_client_context"):
+                    resource_object._set_client_context(  # pylint: disable=protected-access
+                        session=self.session, region=self.region
+                    )
+
             # If the resource object has refresh method, refresh and return it
             if hasattr(resource_object, "refresh"):
                 resource_object.refresh()
@@ -465,22 +629,29 @@ class ResourceIterator(Generic[T]):
 
         # Otherwise, get the next page of summaries by calling the list method with the next token if available
         else:
-            if self.next_token:
-                response = getattr(self.client, self.list_method)(
-                    NextToken=self.next_token, **self.list_method_kwargs
-                )
-            else:
-                response = getattr(self.client, self.list_method)(**self.list_method_kwargs)
+            while True:
+                previous_token = self.next_token
+                if self.next_token:
+                    response = getattr(self.client, self.list_method)(
+                        NextToken=self.next_token, **self.list_method_kwargs
+                    )
+                else:
+                    response = getattr(self.client, self.list_method)(**self.list_method_kwargs)
 
-            self.summary_list = response.get(self.summaries_key, [])
-            self.next_token = response.get("NextToken", None)
-            self.index = 0
+                self.summary_list = response.get(self.summaries_key, [])
+                self.next_token = response.get("NextToken", None)
+                self.index = 0
 
-            # If list_method returned an empty list, raise StopIteration
-            if len(self.summary_list) == 0:
-                raise StopIteration
+                if len(self.summary_list) > 0:
+                    return self.__next__()
 
-            return self.__next__()
+                # A page can be empty and still carry a NextToken (the service
+                # filters results after paginating), so an empty page only ends
+                # the iteration when there is no further page. A NextToken that
+                # comes back unchanged would page forever, so it also ends the
+                # iteration (the same consecutive-repeat check botocore paginators do).
+                if not self.next_token or self.next_token == previous_token:
+                    raise StopIteration
 
 
 def serialize(value: Any) -> Any:

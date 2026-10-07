@@ -16,7 +16,6 @@ import json
 import uuid
 import tempfile
 import os
-import pytest
 import logging
 
 from sagemaker.serve.model_builder import ModelBuilder
@@ -34,7 +33,6 @@ ENDPOINT_NAME_PREFIX = "train-inf-v3-test-endpoint"
 TRAINING_JOB_PREFIX = "e2e-v3-pytorch"
 
 
-@pytest.mark.slow_test
 def test_train_inference_e2e_build_deploy_invoke_cleanup():
     """Integration test for Train-Inference E2E workflow"""
     logger.info("Starting Train-Inference E2E integration test...")

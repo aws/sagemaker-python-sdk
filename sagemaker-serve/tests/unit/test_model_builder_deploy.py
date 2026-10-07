@@ -313,6 +313,38 @@ class TestModelBuilderDeployCore(unittest.TestCase):
 
         self.assertIn("ServerlessInferenceConfig object", str(context.exception))
 
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.session_helper.production_variant")
+    def test_deploy_core_endpoint_ic_based_waits_on_status_only(
+        self, mock_production_variant, mock_endpoint_get
+    ):
+        """IC-based endpoints never get an endpoint log group, so both waits skip log streaming."""
+        mock_production_variant.return_value = {"VariantName": "AllTraffic"}
+        mock_endpoint_get.return_value = Mock(spec=Endpoint)
+        builder = ModelBuilder(
+            model=Mock(),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
+        builder.model_name = "test-model"
+
+        with patch.object(builder, "_wait_for_endpoint") as mock_wait:
+            builder._deploy_core_endpoint(
+                instance_type="ml.g5.xlarge",
+                initial_instance_count=1,
+                endpoint_name="test-endpoint",
+                endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+                resources=ResourceRequirements(requests={"memory": 1024, "copies": 1}),
+                inference_component_name="test-ic",
+            )
+
+        self.mock_session.create_inference_component.assert_called_once()
+        self.assertEqual(mock_wait.call_count, 2)
+        for wait_call in mock_wait.call_args_list:
+            self.assertIs(wait_call.kwargs["stream_endpoint_logs"], False)
+
     @unittest.skip("Missing inference_component_name attribute - complex deployment flow")
     def test_deploy_core_endpoint_sharded_model_forces_ic_based(self):
         """Test _deploy_core_endpoint forces INFERENCE_COMPONENT_BASED for sharded models."""
@@ -513,6 +545,74 @@ class TestModelBuilderDeployHelpers(unittest.TestCase):
         result = builder._does_ic_exist("non-existent-ic")
 
         self.assertFalse(result)
+
+    def test_deploy_for_ic_creates_new_ic_with_explicit_instance_kwargs(self):
+        """Test _deploy_for_ic forwards instance_type and initial_instance_count to _deploy once."""
+        builder = ModelBuilder(
+            model=Mock(),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        builder._does_ic_exist = Mock(return_value=False)
+        builder._deploy = Mock(return_value="endpoint")
+        built_model = Mock()
+        resource_requirements = ResourceRequirements(requests={"memory": 1024, "copies": 1})
+        ic_data = {
+            "Name": "test-ic",
+            "ResourceRequirements": resource_requirements,
+            "Model": built_model,
+        }
+
+        result = builder._deploy_for_ic(
+            ic_data=ic_data,
+            endpoint_name="test-endpoint",
+            container_timeout_in_seconds=600,
+            instance_type="ml.g5.xlarge",
+            initial_instance_count=2,
+        )
+
+        self.assertEqual(result, "endpoint")
+        builder._deploy.assert_called_once_with(
+            built_model=built_model,
+            endpoint_name="test-endpoint",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+            resources=resource_requirements,
+            inference_component_name="test-ic",
+            instance_type="ml.g5.xlarge",
+            initial_instance_count=2,
+            container_timeout_in_seconds=600,
+        )
+
+    def test_deploy_for_ic_creates_new_ic_with_default_instance_kwargs(self):
+        """Test _deploy_for_ic falls back to builder instance_type and one instance."""
+        builder = ModelBuilder(
+            model=Mock(),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        builder.instance_type = "ml.c5.xlarge"
+        builder._does_ic_exist = Mock(return_value=False)
+        builder._deploy = Mock(return_value="endpoint")
+        built_model = Mock()
+        resource_requirements = ResourceRequirements(requests={"memory": 1024, "copies": 1})
+        ic_data = {
+            "Name": "test-ic",
+            "ResourceRequirements": resource_requirements,
+            "Model": built_model,
+        }
+
+        result = builder._deploy_for_ic(ic_data=ic_data, endpoint_name="test-endpoint")
+
+        self.assertEqual(result, "endpoint")
+        builder._deploy.assert_called_once_with(
+            built_model=built_model,
+            endpoint_name="test-endpoint",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+            resources=resource_requirements,
+            inference_component_name="test-ic",
+            instance_type="ml.c5.xlarge",
+            initial_instance_count=1,
+        )
 
 
 class TestModelBuilderResetState(unittest.TestCase):

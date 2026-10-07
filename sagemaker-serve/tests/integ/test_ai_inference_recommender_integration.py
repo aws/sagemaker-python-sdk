@@ -71,7 +71,7 @@ def _build_jumpstart_model_builder(role_arn):
 
 
 @pytest.mark.slow_test
-@pytest.mark.skip_in_pr_check
+@pytest.mark.xfail_on_insufficient_capacity
 def test_benchmark_workflow_end_to_end():
     """Deploy a JumpStart endpoint, run a benchmark against it, parse the result."""
     logger.info("Starting AI inference recommender benchmark integration test...")
@@ -127,8 +127,8 @@ def test_benchmark_workflow_end_to_end():
         )
 
 
-@pytest.mark.slow_test
 @pytest.mark.gpu_intensive
+@pytest.mark.xfail_on_insufficient_capacity
 def test_recommendation_workflow_end_to_end():
     """Run an AI recommendation via generate_deployment_recommendations and deploy the top recommendation."""
     logger.info("Starting AI inference recommender recommendation integration test...")

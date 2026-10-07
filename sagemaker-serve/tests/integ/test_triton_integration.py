@@ -16,7 +16,6 @@ import os
 import json
 import uuid
 import tempfile
-import pytest
 import logging
 
 from sagemaker.serve.model_builder import ModelBuilder
@@ -44,7 +43,6 @@ class SimpleModel(nn.Module):
         return torch.softmax(self.linear(x), dim=1)
 
 
-@pytest.mark.slow_test
 def test_triton_build_deploy_invoke_cleanup():
     """Integration test for Triton model build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting Triton integration test...")
