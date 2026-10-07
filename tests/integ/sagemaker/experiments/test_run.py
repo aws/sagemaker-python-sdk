@@ -502,7 +502,7 @@ def test_run_from_transform_job(
     exp_name = unique_name_from_base(_EXP_NAME_BASE_IN_SCRIPT)
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_TRANSFORM_MATERIALS, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     env = _update_env_with_client_config(
         env={

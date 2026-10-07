@@ -16,9 +16,11 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Dict
 from datetime import datetime
+from filelock import FileLock
 from pyspark.sql import DataFrame
 import pytz
 
@@ -109,10 +111,28 @@ _FEATURE_PROCESSOR_DIR = os.path.join(DATA_DIR, "feature_store/feature_processor
 
 SCHEDULE_EXPRESSION_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S"  # 2023-01-01T07:00:00
 
+# Local (non-@remote) feature_processor runs start a Spark JVM whose spark-submit resolves the
+# hadoop-aws/hadoop-common Maven packages into the shared ~/.ivy2 cache. Ivy is not safe for
+# concurrent processes: when two pytest-xdist workers on the same host start Spark at the same
+# time against a cold cache, their downloads collide (0-byte jars) and the JVM exits with
+# "Java gateway process exited before sending its port number". Run those tests one at a time.
+_LOCAL_SPARK_LOCK_PATH = os.path.join(
+    tempfile.gettempdir(), "sagemaker-integ-feature-processor-local-spark.lock"
+)
+_LOCAL_SPARK_LOCK_TIMEOUT_SECONDS = 30 * 60
+
+
+@pytest.fixture
+def local_spark_lock():
+    """Hold a host-wide lock so only one test runs a local Spark session at a time."""
+    with FileLock(_LOCAL_SPARK_LOCK_PATH, timeout=_LOCAL_SPARK_LOCK_TIMEOUT_SECONDS):
+        yield
+
 
 @pytest.mark.slow_test
 def test_feature_processor_transform_online_only_store_ingestion(
     sagemaker_session,
+    local_spark_lock,
 ):
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()
@@ -234,6 +254,7 @@ def test_feature_processor_transform_online_only_store_ingestion(
 @pytest.mark.slow_test
 def test_feature_processor_transform_with_customized_data_source(
     sagemaker_session,
+    local_spark_lock,
 ):
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()
@@ -377,6 +398,7 @@ def test_feature_processor_transform_with_customized_data_source(
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 def test_feature_processor_transform_offline_only_store_ingestion(
     sagemaker_session,
+    local_spark_lock,
 ):
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()

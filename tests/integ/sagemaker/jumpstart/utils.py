@@ -104,6 +104,7 @@ def fit_estimator_with_capacity_xfail(
     estimator,
     inputs,
     capacity_wait_timeout_seconds: int = DEFAULT_CAPACITY_WAIT_TIMEOUT_SECONDS,
+    **fit_kwargs,
 ):
     """Submit a training job and wait for it, but fail fast on capacity queueing.
 
@@ -122,8 +123,10 @@ def fit_estimator_with_capacity_xfail(
         inputs: The training inputs passed through to ``estimator.fit()``.
         capacity_wait_timeout_seconds: Max time to allow the job to remain in
             "waiting for capacity" before declaring a capacity shortage.
+        **fit_kwargs: Extra keyword arguments passed through to ``estimator.fit()``
+            (e.g. ``accept_eula=True``).
     """
-    estimator.fit(inputs, wait=False)
+    estimator.fit(inputs, wait=False, **fit_kwargs)
 
     training_job_name = estimator.latest_training_job.name
     sagemaker_client = estimator.sagemaker_session.sagemaker_client
