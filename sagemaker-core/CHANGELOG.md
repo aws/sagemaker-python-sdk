@@ -1,5 +1,39 @@
 # Changelog
 
+## v2.24.0 (2026-10-07)
+
+### New Features
+
+- feat(core): add image_uris list_frameworks/list_versions/list_py_versions helpers (#6357)
+- feat(core): advertise Python 3.13 support (#6348)
+- feat(core): add shared pipeline capture for CreateJob producers (#6292)
+
+### Bug Fixes
+
+- fix(core): fall back to ARN in ModelPackage.refresh for versioned packages (#6378)
+- fix(core): allow Constraints.set_monitoring to disable monitoring for non-string features (#6312)
+- fix(core): respect session region when waiting for processing jobs (#6369)
+- fix(core): reject unsupported container_version instead of returning a bad URI (#6376)
+- fix(core): SageMakerClient honors the passed boto3 session and config (#6273)
+- fix(core): close temp tarball before reading it (#6319)
+- fix(core): make all pipeline Parameters hashable (#6351)
+- fix(core): stop LineIterator hanging when the stream ends without a trailing newline (#6279)
+- fix(core): stop mutating global logging state on import (#6341)
+- fix(core): freeze credentials before signing bearer token (#6360)
+- fix(core): make DataCaptureConfigSummary.kms_key_id optional (#6346)
+- fix(core): lazily initialize DEFAULT_JUMPSTART_SAGEMAKER_SESSION (#6330)
+- fix(core): add PyTorch 2.6 graviton (arm64) inference image (#6342)
+
+### Tests
+
+- test(image_uris): derive pytorch-amzn2023 versions from config (#6385)
+
+### Other
+
+- change: update image_uri_configs (#6374)
+- docs: fix typo in shapes.py docstring (#5545)
+
+
 ## v2.23.0 (2026-09-24)
 
 ### Bug Fixes
