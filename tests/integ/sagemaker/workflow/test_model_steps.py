@@ -704,7 +704,7 @@ def test_xgboost_model_register_and_deploy_with_runtime_repack(
     model_package_group_name = f"{pipeline_name}TestModelPackageGroup"
     xgb_model_data_s3 = pipeline_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     xgb_model_data_param = ParameterString(name="ModelData", default_value=xgb_model_data_s3)
     xgb_model = XGBoostModel(

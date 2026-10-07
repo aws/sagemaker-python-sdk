@@ -44,7 +44,7 @@ def test_update_approval_model_package(sagemaker_session):
 
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     model = XGBoostModel(
         model_data=xgb_model_data_s3, framework_version="1.3-1", sagemaker_session=sagemaker_session
@@ -86,7 +86,7 @@ def test_update_model_life_cycle_model_package(sagemaker_session):
 
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     model = XGBoostModel(
         model_data=xgb_model_data_s3, framework_version="1.3-1", sagemaker_session=sagemaker_session
@@ -142,7 +142,7 @@ def test_inference_specification_addition(sagemaker_session):
 
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     model = XGBoostModel(
         model_data=xgb_model_data_s3, framework_version="1.3-1", sagemaker_session=sagemaker_session
@@ -223,7 +223,7 @@ def test_update_source_uri(sagemaker_session):
 
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     model = XGBoostModel(
         model_data=xgb_model_data_s3, framework_version="1.3-1", sagemaker_session=sagemaker_session
@@ -287,7 +287,7 @@ def test_update_model_card_with_model_card_object(sagemaker_session):
 
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     model = XGBoostModel(
         model_data=xgb_model_data_s3, framework_version="1.3-1", sagemaker_session=sagemaker_session
@@ -384,7 +384,7 @@ def test_update_model_card_with_model_card_json(sagemaker_session):
 
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     model = XGBoostModel(
         model_data=xgb_model_data_s3, framework_version="1.3-1", sagemaker_session=sagemaker_session
@@ -468,7 +468,7 @@ def test_clone_model_package_using_source_uri(sagemaker_session):
 
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     model = XGBoostModel(
         model_data=xgb_model_data_s3, framework_version="1.3-1", sagemaker_session=sagemaker_session
@@ -545,7 +545,7 @@ def test_register_model_using_source_uri(sagemaker_session):
 
     xgb_model_data_s3 = sagemaker_session.upload_data(
         path=os.path.join(_XGBOOST_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
 
     model = XGBoostModel(

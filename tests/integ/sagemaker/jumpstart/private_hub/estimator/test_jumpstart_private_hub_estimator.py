@@ -30,6 +30,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     get_training_dataset_for_model_and_version,
     add_model_references_to_hub,
+    fit_estimator_with_capacity_xfail,
     x_fail_if_ice,
 )
 
@@ -151,12 +152,15 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
         hyperparameters={"max_steps": "1"},
     )
 
-    estimator.fit(
-        accept_eula=True,
-        inputs={
+    # Fail fast as a CapacityError if ml.g5.2xlarge capacity is not granted, instead of
+    # letting the training job sit in Pending until the build times out.
+    fit_estimator_with_capacity_xfail(
+        estimator,
+        {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
         },
+        accept_eula=True,
     )
 
     predictor = estimator.deploy(

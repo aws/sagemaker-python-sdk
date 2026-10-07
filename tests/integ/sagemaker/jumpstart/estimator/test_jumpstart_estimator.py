@@ -121,12 +121,14 @@ def test_gated_model_training_v1(setup):
         hyperparameters={"max_steps": "1"},
     )
 
-    # uses ml.g5.12xlarge instance
-    estimator.fit(
+    # uses ml.g5.12xlarge instance, which can sit in Pending for hours waiting for
+    # capacity; fail fast as a CapacityError instead of blocking the whole build.
+    fit_estimator_with_capacity_xfail(
+        estimator,
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
-        }
+        },
     )
 
     # uses ml.g5.2xlarge instance
@@ -167,12 +169,14 @@ def test_gated_model_training_v2(setup):
         hyperparameters={"max_steps": "1"},
     )
 
-    # uses ml.g5.12xlarge instance
-    estimator.fit(
+    # uses ml.g5.12xlarge instance, which can sit in Pending for hours waiting for
+    # capacity; fail fast as a CapacityError instead of blocking the whole build.
+    fit_estimator_with_capacity_xfail(
+        estimator,
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, model_version)}",
-        }
+        },
     )
 
     # test that we can create a JumpStartEstimator from existing job with `attach`

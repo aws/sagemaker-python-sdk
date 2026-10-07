@@ -666,7 +666,7 @@ def test_transformer_and_monitoring_job(
 ):
     xgb_model_data_s3 = pipeline_session.upload_data(
         path=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     data_bias_supplied_baseline_constraints = Constraints.from_file_path(
         constraints_file_path=os.path.join(
@@ -729,7 +729,7 @@ def test_transformer_and_monitoring_job_to_pass_with_no_failure_in_violation(
 ):
     xgb_model_data_s3 = pipeline_session.upload_data(
         path=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
     data_bias_supplied_baseline_constraints = Constraints.from_file_path(
         constraints_file_path=os.path.join(
