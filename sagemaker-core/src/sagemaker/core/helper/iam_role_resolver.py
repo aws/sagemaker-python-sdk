@@ -384,7 +384,9 @@ def _is_unverifiable_denial(result: dict) -> bool:
     org_detail = result.get("OrganizationsDecisionDetail", {})
     org_allowed = org_detail.get("AllowedByOrganizations") if isinstance(org_detail, dict) else None
     pb_detail = result.get("PermissionsBoundaryDecisionDetail", {})
-    pb_allowed = pb_detail.get("AllowedByPermissionsBoundary") if isinstance(pb_detail, dict) else None
+    pb_allowed = (
+        pb_detail.get("AllowedByPermissionsBoundary") if isinstance(pb_detail, dict) else None
+    )
 
     # Handle boolean False, string "false", "False", etc.
     if org_allowed in (False, "false", "False") or pb_allowed in (False, "false", "False"):
@@ -697,7 +699,11 @@ def resolve_and_validate_role(
             if not role_arn:
                 raise RoleValidationError(_build_validation_error_message(None, role_type))
 
-    if not validate_role or os.getenv("SAGEMAKER_VALIDATE_ROLE", "true").lower() in ("false", "0", "no"):
+    if not validate_role or os.getenv("SAGEMAKER_VALIDATE_ROLE", "true").lower() in (
+        "false",
+        "0",
+        "no",
+    ):
         logger.info("Skipping IAM role validation for '%s' (%s).", role_arn, role_type)
         return role_arn
 
@@ -796,7 +802,7 @@ def verify_hyperpod_connect_permissions(
         cluster_hint = f" for cluster '{cluster_name}'" if cluster_name else ""
         logger.warning(
             "Your identity '%s' is missing IAM permissions the HyperPod CLI needs"
-            "%s: %s. The job execution role was resolved successfully, but "w
+            "%s: %s. The job execution role was resolved successfully, but "
             "connecting to and submitting jobs on the cluster runs as your own "
             "credentials. Grant these actions to your identity (scoped to the "
             "cluster and its EKS orchestrator) to avoid CLI failures.",
@@ -836,7 +842,9 @@ def verify_evaluation_caller_permissions(
 
     Returns:
         True  — all evaluation caller actions are allowed.
-        None  — could not be determined (caller is not a role, or cannot simulate).
+        None  — could not be determined (caller is not a role, cannot simulate, or
+            the decision is unverifiable because of condition-based SCPs or
+            permissions boundaries).
 
     Raises:
         RoleValidationError: If permissions are definitively denied.
@@ -859,7 +867,7 @@ def verify_evaluation_caller_permissions(
         return None
 
     try:
-        denied = _simulate_denied_actions(
+        denied, unverifiable = _simulate_denied_actions(
             iam_client, caller_role_arn, list(EVALUATION_CALLER_ACTIONS)
         )
     except ClientError as e:
@@ -886,6 +894,15 @@ def verify_evaluation_caller_permissions(
             f"AmazonSageMakerFullAccess managed policy."
         )
         raise RoleValidationError(message)
+
+    if unverifiable:
+        logger.info(
+            "Cannot definitively verify evaluation pipeline permissions for '%s' due to "
+            "Organizations SCPs or permissions boundaries; errors will surface at "
+            "pipeline creation time.",
+            caller_role_arn,
+        )
+        return None
 
     logger.info(
         "Caller '%s' has the evaluation pipeline orchestration permissions.",

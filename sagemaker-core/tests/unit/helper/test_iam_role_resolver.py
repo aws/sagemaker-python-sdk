@@ -12,7 +12,9 @@ from sagemaker.core.helper.iam_role_resolver import (
     RoleValidationError,
     resolve_and_validate_role,
     verify_hyperpod_connect_permissions,
+    verify_evaluation_caller_permissions,
     HYPERPOD_CLI_CONNECT_ACTIONS,
+    EVALUATION_CALLER_ACTIONS,
     _load_policy_config,
     _get_required_actions,
     _get_smoke_test_actions,
@@ -488,9 +490,7 @@ class TestResolveAndValidateRole:
         ]
         mock_iam.get_paginator.return_value = paginator
 
-        with caplog.at_level(
-            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
-        ):
+        with caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"):
             result = resolve_and_validate_role(
                 provided_role=None,
                 role_type="training",
@@ -1053,7 +1053,7 @@ class TestSimulateDeniedActions:
 
     def test_returns_empty_when_all_allowed(self):
         mock_iam = self._paginated_iam([("s3:GetObject", "allowed"), ("s3:PutObject", "allowed")])
-        denied = _simulate_denied_actions(
+        denied, unverifiable = _simulate_denied_actions(
             mock_iam, "arn:aws:iam::123456789012:role/R", ["s3:GetObject", "s3:PutObject"]
         )
         assert denied == []
@@ -1063,7 +1063,7 @@ class TestSimulateDeniedActions:
         mock_iam = self._paginated_iam(
             [("s3:GetObject", "allowed"), ("eks:DescribeCluster", "implicitDeny")]
         )
-        denied = _simulate_denied_actions(
+        denied, unverifiable = _simulate_denied_actions(
             mock_iam,
             "arn:aws:iam::123456789012:role/R",
             ["s3:GetObject", "eks:DescribeCluster"],
@@ -1079,7 +1079,9 @@ class TestSimulateDeniedActions:
             {"EvaluationResults": [{"EvalActionName": "b", "EvalDecision": "implicitDeny"}]},
         ]
         mock_iam.get_paginator.return_value = paginator
-        denied, unverifiable = _simulate_denied_actions(mock_iam, "arn:aws:iam::1:role/R", ["a", "b"])
+        denied, unverifiable = _simulate_denied_actions(
+            mock_iam, "arn:aws:iam::1:role/R", ["a", "b"]
+        )
         assert denied == ["b"]
         assert unverifiable == []
 
@@ -1098,7 +1100,9 @@ class TestSimulateDeniedActions:
                     {
                         "EvalActionName": "s3:PutObject",
                         "EvalDecision": "implicitDeny",
-                        "PermissionsBoundaryDecisionDetail": {"AllowedByPermissionsBoundary": "false"},
+                        "PermissionsBoundaryDecisionDetail": {
+                            "AllowedByPermissionsBoundary": "false"
+                        },
                     },
                     {
                         "EvalActionName": "cloudwatch:PutMetricData",
@@ -1110,7 +1114,9 @@ class TestSimulateDeniedActions:
         ]
         mock_iam.get_paginator.return_value = paginator
         denied, unverifiable = _simulate_denied_actions(
-            mock_iam, "arn:aws:iam::1:role/R", ["s3:GetObject", "s3:PutObject", "cloudwatch:PutMetricData"]
+            mock_iam,
+            "arn:aws:iam::1:role/R",
+            ["s3:GetObject", "s3:PutObject", "cloudwatch:PutMetricData"],
         )
         # explicitDeny is always definitively denied, even if AllowedByOrganizations=False
         assert denied == ["cloudwatch:PutMetricData"]
@@ -1206,7 +1212,88 @@ class TestVerifyHyperPodConnectPermissions:
             result = verify_hyperpod_connect_permissions(sagemaker_session=session)
 
         assert result is None
-        assert any("Cannot definitively verify HyperPod connect permissions" in r.getMessage() for r in caplog.records)
+        assert any(
+            "Cannot definitively verify HyperPod connect permissions" in r.getMessage()
+            for r in caplog.records
+        )
+
+
+class TestVerifyEvaluationCallerPermissions:
+    """Tests for verify_evaluation_caller_permissions() (caller-side pipeline perms)."""
+
+    def _assumed_role_session(self):
+        session, mock_iam, _ = _make_session(
+            "arn:aws:sts::123456789012:assumed-role/CallerRole/session"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/CallerRole"}
+        }
+        return session, mock_iam
+
+    def test_all_caller_actions_allowed_returns_true(self):
+        session, mock_iam = self._assumed_role_session()
+        mock_iam.get_paginator.return_value = _paginator_allowing(EVALUATION_CALLER_ACTIONS)
+        assert verify_evaluation_caller_permissions(sagemaker_session=session) is True
+
+    def test_denied_caller_action_raises(self):
+        session, mock_iam = self._assumed_role_session()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "EvaluationResults": [
+                    {"EvalActionName": "sagemaker:CreatePipeline", "EvalDecision": "explicitDeny"},
+                    {
+                        "EvalActionName": "sagemaker:StartPipelineExecution",
+                        "EvalDecision": "allowed",
+                    },
+                ]
+            }
+        ]
+        mock_iam.get_paginator.return_value = paginator
+
+        with pytest.raises(RoleValidationError, match="sagemaker:CreatePipeline"):
+            verify_evaluation_caller_permissions(sagemaker_session=session)
+
+    def test_unverifiable_caller_permissions_returns_none(self, caplog):
+        """A conditional SCP implicitDeny must not raise — the verdict is unknown."""
+        session, mock_iam = self._assumed_role_session()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "EvaluationResults": [
+                    {
+                        "EvalActionName": "sagemaker:CreatePipeline",
+                        "EvalDecision": "implicitDeny",
+                        "OrganizationsDecisionDetail": {"AllowedByOrganizations": False},
+                    }
+                ]
+            }
+        ]
+        mock_iam.get_paginator.return_value = paginator
+
+        with caplog.at_level(logging.INFO, logger="sagemaker.core.helper.iam_role_resolver"):
+            result = verify_evaluation_caller_permissions(sagemaker_session=session)
+
+        assert result is None
+        assert any(
+            "Cannot definitively verify evaluation pipeline permissions" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_iam_user_caller_returns_none(self):
+        session, mock_iam = _make_session("arn:aws:iam::123456789012:user/dev-user")[:2]
+        assert verify_evaluation_caller_permissions(sagemaker_session=session) is None
+        mock_iam.get_paginator.assert_not_called()
+
+    def test_simulate_access_denied_returns_none(self):
+        session, mock_iam = self._assumed_role_session()
+        paginator = MagicMock()
+        paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "no simulate"}},
+            "SimulatePrincipalPolicy",
+        )
+        mock_iam.get_paginator.return_value = paginator
+        assert verify_evaluation_caller_permissions(sagemaker_session=session) is None
 
 
 class TestRoleTrustsService:
