@@ -1,24 +1,39 @@
+"""Base trainer providing shared fine-tuning workflow logic for SageMaker trainers."""
+
 import copy
-import os
-import yaml
-from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, List, Union
 import json
 import logging
 import re
 import subprocess
 import tarfile
 import tempfile
+import time
+from abc import ABC, abstractmethod
+from datetime import datetime as _datetime
+from typing import Optional, Dict, Any, List, Union
 from urllib.parse import urlparse
 
-import yaml
 import boto3
+import yaml
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig
+from sagemaker.core.training.configs import (
+    Tag,
+    Networking,
+    InputData,
+    Channel,
+    OutputDataConfig,
+    HyperPodCompute,
+    TrainingJobCompute,
+)
 from sagemaker.core.shapes import shapes
+from sagemaker.core.shapes import S3DataSource
 from sagemaker.core.resources import TrainingJob
-from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe, get_resolved_recipe_from_context, NoRecipeError
+from sagemaker.train.common_utils.recipe_utils import (
+    _is_nova_model,
+    get_resolved_recipe_from_context,
+    NoRecipeError,
+)
 from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 from sagemaker.train.common_utils.finetune_utils import (
@@ -28,11 +43,31 @@ from sagemaker.train.common_utils.finetune_utils import (
     get_recipe_s3_uri,
     _validate_hyperparameter_values,
     _get_smhp_replicas_enum,
+    _get_smhp_instance_type_enum,
 )
+from sagemaker.train.common_utils.data_utils import validate_data_path_exists
+from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
 from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
+from sagemaker.train.common_utils.notifications import (
+    enable_notifications,
+    delete_notification_rule,
+    list_notification_rules,
+)
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
+from sagemaker.train.common_utils.cloudwatch_metrics import (
+    fetch_and_plot_metrics,
+    _get_smhp_log_group,
+)
+from sagemaker.train.common_utils.log_streamer import LogStreamer, stream_log_loop
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.defaults import TrainDefaults
+from sagemaker.train.model_trainer import ModelTrainer
+from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.utils import _get_unique_name
+
+logger = logging.getLogger(__name__)
+
 
 class BaseTrainer(ABC):
     """Abstract base class for all SageMaker training workflows.
@@ -67,8 +102,14 @@ class BaseTrainer(ABC):
         training_image (Optional[str]):
             Custom training container image URI. If not provided, the image is
             auto-resolved from the model's recipe metadata in SageMaker Hub.
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
+        notification_rule_arn (str):
+            String of the EventBridge rule that is set up when enabling job notifications.
     """
-    
+
     # Class-level attributes with default values
     sagemaker_session: Optional[Session] = None
     role: Optional[str] = None
@@ -80,6 +121,37 @@ class BaseTrainer(ABC):
     environment: Optional[Dict[str, str]] = None
     training_image: Optional[str] = None
     latest_training_job: Optional[TrainingJob] = None
+
+    @classmethod
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BaseTrainer.list_supported_models",
+    )
+    def list_supported_models(cls, session=None) -> List[str]:
+        """Return the models that support this trainer's fine-tuning technique.
+
+        Queries SageMakerPublicHub for all models whose ``RecipeCollection``
+        contains a FineTuning recipe for this trainer's customization technique
+        (``cls._customization_technique``, e.g. ``"SFT"``, ``"DPO"``,
+        ``"RLVR"``, ``"RLAIF"``, ``"CPT"``).
+
+        Args:
+            session: Optional boto3 session.
+
+        Returns:
+            Sorted list of hub content model names supporting the technique.
+        """
+        from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
+        technique = getattr(cls, "_customization_technique", None)
+        if not technique:
+            raise NotImplementedError(
+                f"{cls.__name__} does not define a customization technique and "
+                "cannot list supported models."
+            )
+        return _list_hub_models_by_recipe(
+            recipe_type="FineTuning", technique=technique, session=session
+        )
 
     def __init__(
         self,
@@ -94,19 +166,65 @@ class BaseTrainer(ABC):
         training_image: Optional[str] = None,
         base_model_name: Optional[str] = None,
         disable_output_compression: Optional[bool] = False,
+        notifications: Optional[Dict[str, Any]] = None,
     ):
-        self.sagemaker_session = sagemaker_session
+        self.sagemaker_session = sagemaker_session or TrainDefaults.get_sagemaker_session()
         self.role = role
         self.base_job_name = base_job_name
         self.tags = tags
         self.hyperparameters = hyperparameters or {}
+        # Preserve the constructor-supplied hyperparameters. The fine-tuning trainers
+        # replace ``self.hyperparameters`` with a spec-backed FineTuningOptions after
+        # this runs; they re-apply these captured values via _apply_user_hyperparameters
+        # so a dict passed at construction is not silently dropped.
+        self._constructor_hyperparameters = hyperparameters or {}
         self.output_data_config = output_data_config
         self.input_data_config = input_data_config
         self.environment = environment or {}
         self.training_image = training_image
         self.base_model_name = base_model_name
         self.disable_output_compression = disable_output_compression
+        self.notification_rule_arn = None
+        self.source_code = None
+
+        # Set up notifications if configured
+        if notifications:
+            self.notification_rule_arn = self._setup_notifications(notifications)
         self._checkpoint_s3_uri = None
+
+    def _apply_user_hyperparameters(self, user_hyperparameters: Optional[Dict[str, Any]]) -> None:
+        """Apply constructor-supplied hyperparameters onto the resolved FineTuningOptions.
+
+        The fine-tuning trainers replace ``self.hyperparameters`` with a
+        ``FineTuningOptions`` built from the model's recipe override-params spec, which
+        would otherwise discard any ``hyperparameters`` dict passed at construction. This
+        re-applies those user-provided values by routing each one through
+        ``FineTuningOptions.__setattr__``, so a dict passed at construction behaves
+        exactly like the ``trainer.hyperparameters.<name> = value`` path and is validated
+        against the recipe spec:
+
+        * an unknown option name raises ``AttributeError``;
+        * an out-of-spec or off-enum value for a known name raises ``ValueError``.
+
+        Values are never silently dropped in favor of the recipe default, which would
+        otherwise launch a billable job on a configuration the caller did not set.
+
+        No-op when nothing was supplied or when ``self.hyperparameters`` is not a
+        spec-backed ``FineTuningOptions`` (e.g. ``ModelTrainer``'s plain dict).
+
+        Args:
+            user_hyperparameters: The hyperparameters dict captured from construction.
+
+        Raises:
+            AttributeError: If a supplied name is not a valid option for the recipe.
+            ValueError: If a supplied value fails the recipe spec (type/range/enum).
+        """
+        if not user_hyperparameters:
+            return
+        if not isinstance(getattr(getattr(self, "hyperparameters", None), "_specs", None), dict):
+            return
+        for name, value in user_hyperparameters.items():
+            setattr(self.hyperparameters, name, value)
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
@@ -135,14 +253,14 @@ class BaseTrainer(ABC):
         full_recipe_template = self._fetch_full_recipe_template()
 
         resolved = get_resolved_recipe_from_context(
-            recipe_path=getattr(self, '_recipe_path', None),
-            overrides=getattr(self, '_overrides', None),
-            hyperparameters=self.hyperparameters if hasattr(self, 'hyperparameters') else None,
-            resolved_cache=getattr(self, '_resolved_recipe_cache', None),
+            recipe_path=getattr(self, "_recipe_path", None),
+            overrides=getattr(self, "_overrides", None),
+            hyperparameters=self.hyperparameters if hasattr(self, "hyperparameters") else None,
+            resolved_cache=getattr(self, "_resolved_recipe_cache", None),
             template_section="training_config",
             protected_keys={"model_type", "model_name_or_path", "dataset_catalog"},
             full_recipe_template=full_recipe_template,
-            compute=getattr(self, 'compute', None),
+            compute=getattr(self, "compute", None),
         )
 
         # Post-resolution patches for display accuracy
@@ -156,23 +274,27 @@ class BaseTrainer(ABC):
 
         Returns None if the template can't be fetched (fallback to synthetic template).
         """
-        logger = logging.getLogger(__name__)
-        frt = getattr(self.hyperparameters, '_full_recipe_template', None) if hasattr(self, 'hyperparameters') else None
+        frt = (
+            getattr(self.hyperparameters, "_full_recipe_template", None)
+            if hasattr(self, "hyperparameters")
+            else None
+        )
         if isinstance(frt, dict):
             return frt
 
-        if not hasattr(self, '_model_name') or not hasattr(self, '_customization_technique'):
+        if not hasattr(self, "_model_name") or not hasattr(self, "_customization_technique"):
             return None
 
         try:
-            from sagemaker.core.training.configs import HyperPodCompute
             from sagemaker.train.common_utils.finetune_utils import (
                 _get_recipe_entry_and_override_spec,
                 _extract_recipe_from_helm_template,
             )
 
-            is_hyperpod = isinstance(getattr(self, 'compute', None), HyperPodCompute)
-            sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session)
+            is_hyperpod = isinstance(getattr(self, "compute", None), HyperPodCompute)
+            sagemaker_session = TrainDefaults.get_sagemaker_session(
+                sagemaker_session=self.sagemaker_session
+            )
             platform = "hyperpod" if is_hyperpod else "smtj"
 
             recipe_entry, _ = _get_recipe_entry_and_override_spec(
@@ -189,13 +311,26 @@ class BaseTrainer(ABC):
                 hp_uri = recipe_entry["HpEksPayloadTemplateS3Uri"]
                 bucket, key = hp_uri.replace("s3://", "").split("/", 1)
                 raw = s3_client.get_object(Bucket=bucket, Key=key)["Body"].read().decode("utf-8")
-                return yaml.safe_load(_extract_recipe_from_helm_template(raw))
+                return yaml.safe_load(
+                    _extract_recipe_from_helm_template(
+                        raw,
+                        customization_technique=(
+                            self._customization_technique
+                            if _is_nova_model(self._model_name)
+                            else None
+                        ),
+                    )
+                )
             else:
-                smtj_uri = resolve_s3_uri_placeholders(recipe_entry["SmtjRecipeTemplateS3Uri"], sagemaker_session)
+                smtj_uri = resolve_s3_uri_placeholders(
+                    recipe_entry["SmtjRecipeTemplateS3Uri"], sagemaker_session
+                )
                 uri_path = smtj_uri.replace("s3://", "")
                 if uri_path.startswith("arn:"):
-                    match = re.match(r'(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)', uri_path)
-                    bucket, key = (match.group(1), match.group(2)) if match else uri_path.split("/", 1)
+                    match = re.match(r"(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)", uri_path)
+                    bucket, key = (
+                        (match.group(1), match.group(2)) if match else uri_path.split("/", 1)
+                    )
                 else:
                     bucket, key = uri_path.split("/", 1)
                 tmp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
@@ -218,9 +353,9 @@ class BaseTrainer(ABC):
             patch_values["name"] = _get_unique_name(self.base_job_name)
 
         # output_s3_path and data_s3_path from trainer config
-        if getattr(self, 's3_output_path', None):
+        if getattr(self, "s3_output_path", None):
             patch_values["output_s3_path"] = self.s3_output_path
-        if getattr(self, 'training_dataset', None):
+        if getattr(self, "training_dataset", None):
             patch_values["data_s3_path"] = self.training_dataset
 
         # Subclass-specific hyperparameters (e.g. reward_lambda_arn for RLVR)
@@ -257,17 +392,17 @@ class BaseTrainer(ABC):
         keys: set = set()
 
         # Direct hyperparameter assignments (always members of the Hub spec).
-        user_set = getattr(getattr(self, 'hyperparameters', None), '_user_set', None)
+        user_set = getattr(getattr(self, "hyperparameters", None), "_user_set", None)
         if isinstance(user_set, set):
             keys.update(user_set)
 
         # Programmatic overrides dict (may contain non-spec recipe keys).
-        overrides = getattr(self, '_overrides', None)
+        overrides = getattr(self, "_overrides", None)
         if isinstance(overrides, dict) and overrides:
             keys.update(flatten_resolved_recipe(overrides).keys())
 
         # User recipe YAML file (may contain non-spec recipe keys).
-        recipe_path = getattr(self, '_recipe_path', None)
+        recipe_path = getattr(self, "_recipe_path", None)
         if recipe_path:
             try:
                 from sagemaker.train.recipe_resolver import _load_user_recipe
@@ -278,7 +413,6 @@ class BaseTrainer(ABC):
                 logger.debug("Could not load user recipe to collect keys: %s", e)
 
         return keys
-
 
     def _apply_recipe_to_hyperparameters(
         self,
@@ -295,7 +429,8 @@ class BaseTrainer(ABC):
         expectation for hyperparameter values).
 
         For serverless training (``self.compute`` is None), only user-provided
-        keys (from .hyperparameters.*, recipe or overrides dict) are included because CreateTrainingJob limits HyperParameters to
+        keys (from .hyperparameters.*, recipe or overrides dict) are included because
+        CreateTrainingJob limits HyperParameters to
         100 members and the full resolved recipe can exceed that.
 
         Args:
@@ -304,7 +439,9 @@ class BaseTrainer(ABC):
         Returns:
             The updated hyperparameters dict with recipe values applied.
         """
-        if not hasattr(self, 'hyperparameters') or not isinstance(getattr(self.hyperparameters, '_specs', None), dict):
+        if not hasattr(self, "hyperparameters") or not isinstance(
+            getattr(self.hyperparameters, "_specs", None), dict
+        ):
             return final_hyperparameters
 
         try:
@@ -317,7 +454,7 @@ class BaseTrainer(ABC):
 
         # Serverless (compute is None) → only user-provided keys + defaults;
         allowed_keys = None
-        if getattr(self, 'compute', None) is None:
+        if getattr(self, "compute", None) is None:
             try:
                 allowed_keys = self._get_user_provided_recipe_keys()
             except Exception as e:
@@ -337,8 +474,452 @@ class BaseTrainer(ABC):
 
         return final_hyperparameters
 
-    def _validate_instance_count(self, instance_count, sagemaker_session):
-        """Validate instance/node count against allowed values from SMHP recipe."""
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BaseTrainer.show_metrics",
+        telemetry_params=[
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
+    )
+    def show_metrics(
+        self,
+        metrics: Optional[List[str]] = None,
+        starting_step: Optional[int] = None,
+        ending_step: Optional[int] = None,
+        start_time: Optional[Any] = None,
+        end_time: Optional[Any] = None,
+    ) -> Any:
+        """Plot training metrics from CloudWatch logs (Nova) or MLflow (OSS).
+
+        For Nova models, parses CloudWatch logs for training_loss, lr, and reward_score.
+        For non-Nova (OSS) models, pulls metrics from MLflow (requires mlflow_resource_arn
+        to be configured on the trainer or auto-resolved).
+
+        Args:
+            metrics: Optional list of metric names to plot. If None, plots all
+                available metrics for the training technique.
+            starting_step: Only plot metrics from this global step onwards.
+            ending_step: Only plot metrics up to this global step.
+            start_time: Optional start time for log retrieval. Accepts a
+                datetime object or epoch milliseconds (int). When not provided,
+                auto-resolved from the training job's start time.
+            end_time: Optional end time for log retrieval. Accepts a
+                datetime object or epoch milliseconds (int). When not provided,
+                defaults to now.
+
+        Returns:
+            pandas.DataFrame containing the extracted metrics.
+
+        Raises:
+            NotImplementedError: If the training technique does not support metric
+                extraction (e.g., DPO).
+            PermissionError: If CloudWatch logs cannot be read because the caller's
+                credentials are expired/invalid or lack CloudWatch Logs permissions.
+            ValueError: If no training job has been run yet, no logs/metrics
+                are found, or MLflow is not configured for OSS models.
+        """
+        # Resolve the job reference. Prefer _latest_training_job (CreateTrainingJob),
+        # fall back to _latest_job (generic CreateJob API used by MTRL).
+        resolved_job = getattr(self, "_latest_training_job", None)
+        if resolved_job is None:
+            latest_job = getattr(self, "_latest_job", None)
+            if latest_job is None:
+                raise ValueError(
+                    "No training job found. Call .train() first, then call .show_metrics() "
+                    "to view training metrics. If training has already completed, set the "
+                    "job name directly via trainer._latest_training_job = '<job-name>' or "
+                    "trainer._latest_job = '<job-name>'."
+                )
+            # For AgentRFTJob (MTRL), delegate to its own get_training_metrics()
+            # which fetches metrics from MLflow via the Job API (not TrainingJob).
+            if isinstance(latest_job, AgentRFTJob):
+                return latest_job.get_training_metrics()
+            resolved_job = (
+                latest_job.job_name if hasattr(latest_job, "job_name") else str(latest_job)
+            )
+
+        # Route based on model type
+        model_name = getattr(self, "_model_name", None)
+        is_nova = _is_nova_model(model_name) if model_name else False
+
+        if is_nova:
+            return self._show_metrics_cloudwatch(
+                resolved_job, metrics, starting_step, ending_step, start_time, end_time
+            )
+        else:
+            return self._show_metrics_mlflow(resolved_job, metrics, starting_step, ending_step)
+
+    def _show_metrics_mlflow(
+        self,
+        resolved_job,
+        metrics: Optional[List[str]] = None,
+        starting_step: Optional[int] = None,
+        ending_step: Optional[int] = None,
+    ) -> None:
+        """Pull and plot training metrics from MLflow for non-Nova models."""
+        training_job = resolved_job
+
+        # Resolve the TrainingJob object if it's a string
+        if isinstance(training_job, str):
+            logger.info(f"Resolving training job: {training_job}")
+            training_job = TrainingJob.get(training_job_name=training_job)
+
+        # Validate MLflow is configured
+        mlflow_config = getattr(training_job, "mlflow_config", None)
+        if not mlflow_config or not getattr(mlflow_config, "mlflow_resource_arn", None):
+            raise ValueError(
+                "show_metrics() for non-Nova models requires MLflow to be configured. "
+                "Either pass mlflow_resource_arn when creating the trainer, or ensure "
+                "your account has an MLflow app set up."
+            )
+
+        mlflow_details = getattr(training_job, "mlflow_details", None)
+        if not mlflow_details or not getattr(mlflow_details, "mlflow_run_id", None):
+            raise ValueError(
+                "No MLflow run ID found on the training job. "
+                "MLflow metrics are only available after the job completes. "
+                "If the job is still running, wait for it to finish and try again. "
+                f"MLflow app ARN: {mlflow_config.mlflow_resource_arn}"
+            )
+
+        logger.info(
+            f"Fetching metrics from MLflow app: {mlflow_config.mlflow_resource_arn}, "
+            f"run: {mlflow_details.mlflow_run_id}"
+        )
+
+        plot_training_metrics(training_job, metrics=metrics)
+
+    def _show_metrics_cloudwatch(
+        self,
+        resolved_job,
+        metrics: Optional[List[str]] = None,
+        starting_step: Optional[int] = None,
+        ending_step: Optional[int] = None,
+        start_time: Optional[Any] = None,
+        end_time: Optional[Any] = None,
+    ) -> Any:
+        """Parse and plot training metrics from CloudWatch logs (Nova models)."""
+
+        training_job = resolved_job
+        if hasattr(training_job, "training_job_name"):
+            job_id = training_job.training_job_name
+        elif isinstance(training_job, str):
+            job_id = training_job
+        else:
+            job_id = str(training_job)
+
+        # Determine platform from compute config
+        compute = getattr(self, "compute", None)
+
+        # Get customization technique
+        customization_technique = getattr(self, "_customization_technique", None)
+        if not customization_technique:
+            raise ValueError(
+                "Could not determine training technique. "
+                "show_metrics() requires a trainer with a known customization technique."
+            )
+
+        # Resolve session
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+
+        # Resolve start_time: user-provided > training job metadata > None
+        start_time_ms = None
+        if start_time is not None:
+            if isinstance(start_time, _datetime):
+                start_time_ms = int(start_time.timestamp() * 1000)
+            else:
+                start_time_ms = int(start_time)
+        elif hasattr(training_job, "training_start_time") and training_job.training_start_time:
+            try:
+                start_time_ms = int(training_job.training_start_time.timestamp() * 1000)
+            except Exception:
+                pass
+
+        # Resolve end_time: user-provided > None (defaults to now in fetch layer)
+        end_time_ms = None
+        if end_time is not None:
+            if isinstance(end_time, _datetime):
+                end_time_ms = int(end_time.timestamp() * 1000)
+            else:
+                end_time_ms = int(end_time)
+
+        return fetch_and_plot_metrics(
+            job_id=job_id,
+            compute=compute,
+            customization_technique=customization_technique,
+            sagemaker_session=sagemaker_session,
+            metrics=metrics,
+            starting_step=starting_step,
+            ending_step=ending_step,
+            start_time=start_time_ms,
+            end_time=end_time_ms,
+        )
+
+    def _setup_notifications(self, notifications: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Set up EventBridge notifications for the training job.
+
+        Called internally by trainer.train() after job submission when a
+        notifications config is provided.
+
+        Args:
+            notifications: Notification configuration dict with keys:
+                - sns_topic_arn (str, required): ARN of the SNS topic.
+                - events (list[str], optional): Job statuses to notify on.
+                    Defaults to ["Completed", "Failed", "Stopped"].
+                - event_bus_arn (str, optional): EventBridge bus ARN.
+                    Defaults to the account's default bus.
+                - job_name_prefix (str, optional): Only notify for jobs
+                    with names matching this prefix.
+
+        Returns:
+            The EventBridge rule ARN if notifications were set up, None otherwise.
+
+        Raises:
+            NotImplementedError: If compute is HyperPodCompute.
+            ValueError: If the config is invalid.
+            PermissionError: If the caller lacks required permissions.
+        """
+        if not notifications:
+            return None
+
+        # Validate compute type
+        if isinstance(getattr(self, "compute", None), HyperPodCompute):
+            raise NotImplementedError("Job notifications are not supported for HyperPod compute.")
+
+        # Validate config
+        if not isinstance(notifications, dict):
+            raise ValueError(
+                "notifications must be a dict with at least 'sns_topic_arn'. "
+                "Example: {'sns_topic_arn': 'arn:aws:sns:us-east-1:123456789012:my-topic'}"
+            )
+
+        sns_topic_arn = notifications.get("sns_topic_arn")
+        if not sns_topic_arn:
+            raise ValueError(
+                "notifications config requires 'sns_topic_arn'. "
+                "Example: {'sns_topic_arn': 'arn:aws:sns:us-east-1:123456789012:my-topic'}"
+            )
+
+        rule_arn = enable_notifications(
+            sns_topic_arn=sns_topic_arn,
+            sagemaker_session=TrainDefaults.get_sagemaker_session(
+                sagemaker_session=self.sagemaker_session
+            ),
+            events=notifications.get("events"),
+            event_bus_arn=notifications.get("event_bus_arn"),
+            job_name_prefix=notifications.get("job_name_prefix"),
+        )
+
+        logger.debug("Notification rule ARN: %s", rule_arn)
+        return rule_arn
+
+    def delete_notification_rule(
+        self,
+        rule_arn: str,
+        event_bus_arn: Optional[str] = None,
+    ) -> str:
+        """Delete an SDK-created EventBridge notification rule.
+
+        Args:
+            rule_arn: The ARN of the rule to delete.
+            event_bus_arn: Optional EventBridge bus ARN. Defaults to "default".
+
+        Returns:
+            The name of the deleted rule.
+        """
+        return delete_notification_rule(
+            sagemaker_session=TrainDefaults.get_sagemaker_session(
+                sagemaker_session=self.sagemaker_session
+            ),
+            rule_arn=rule_arn,
+            event_bus_arn=event_bus_arn,
+        )
+
+    def list_notification_rules(
+        self,
+        event_bus_arn: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
+        """List all SDK-created EventBridge notification rules.
+
+        Returns:
+            List of dicts with 'name', 'arn', and 'state' for each rule.
+        """
+        return list_notification_rules(
+            sagemaker_session=TrainDefaults.get_sagemaker_session(
+                sagemaker_session=self.sagemaker_session
+            ),
+            event_bus_arn=event_bus_arn,
+        )
+
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BaseTrainer.stream_logs",
+        telemetry_params=[
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
+    )
+    def stream_logs(
+        self, poll: int = 5, start_time: Optional[Any] = None, tail_lines: Optional[int] = None
+    ) -> None:
+        """Stream CloudWatch logs in real-time (like ``kubectl logs -f``).
+
+        Continuously polls for new log events and prints them as they arrive.
+        Blocks until the training job reaches a terminal state (SMTJ) or
+        the user interrupts with Ctrl+C (HyperPod).
+
+        Args:
+            poll: Polling interval in seconds between log fetches. Defaults to 5.
+            start_time: Optional start time to stream logs from. Accepts a
+                datetime object or epoch milliseconds (int). Useful when
+                attaching to a job that's already running. If not provided,
+                auto-resolved from the training job's start time (SMTJ) or
+                defaults to now (HyperPod).
+            tail_lines: Optional maximum number of most recent log lines to
+                print. Logs are returned in chronological order; when specified,
+                only the last ``tail_lines`` entries are shown (similar to
+                ``kubectl logs --tail``). Useful for quickly checking the latest
+                output of long-running jobs without scrolling through the full
+                history. If not provided, streams all logs until the job
+                completes.
+
+        Raises:
+            ValueError: If no training job has been run yet.
+        """
+        # Resolve the job reference. Prefer _latest_training_job (CreateTrainingJob),
+        # fall back to _latest_job (generic CreateJob API used by MTRL).
+        resolved_job = getattr(self, "_latest_training_job", None)
+        if resolved_job is None:
+            latest_job = getattr(self, "_latest_job", None)
+            if latest_job is None:
+                raise ValueError(
+                    "No training job found. Call .train(wait=False) first, "
+                    "then call .stream_logs() to stream logs in real-time. "
+                    "If training has already completed, set the job name directly via "
+                    "trainer._latest_training_job = '<job-name>' or "
+                    "trainer._latest_job = '<job-name>'."
+                )
+            # For AgentRFTJob (MTRL), delegate to its own stream_logs which
+            # uses the correct log group (/aws/sagemaker/Job/AgentRFT).
+            if isinstance(latest_job, AgentRFTJob):
+                latest_job.sagemaker_session = self.sagemaker_session
+                latest_job.stream_logs(poll=poll, start_time=start_time)
+                return
+            resolved_job = (
+                latest_job.job_name if hasattr(latest_job, "job_name") else str(latest_job)
+            )
+
+        # Resolve start_time for SMHP jobs
+        start_time_ms = None
+        if start_time is not None:
+            if isinstance(start_time, _datetime):
+                start_time_ms = int(start_time.timestamp() * 1000)
+            else:
+                start_time_ms = int(start_time)
+
+        training_job = resolved_job
+        compute = getattr(self, "compute", None)
+
+        if isinstance(compute, HyperPodCompute):
+            self._stream_logs_smhp(
+                training_job, compute, poll, start_time_ms, tail_lines=tail_lines
+            )
+        else:
+            self._stream_logs_smtj(training_job, poll, start_time_ms, tail_lines=tail_lines)
+
+    def _stream_logs_smtj(
+        self, training_job, poll: int, start_time_ms=None, tail_lines: Optional[int] = None
+    ) -> None:
+        """Stream logs for an SMTJ training job."""
+
+        if hasattr(training_job, "training_job_name"):
+            job_name = training_job.training_job_name
+        else:
+            job_name = str(training_job)
+
+        log_group = "/aws/sagemaker/TrainingJobs"
+
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+
+        streamer = LogStreamer(
+            log_group=log_group,
+            job_name=job_name,
+            sagemaker_session=sagemaker_session,
+            start_time_ms=start_time_ms,
+        )
+
+        logger.info("Streaming logs for job: %s", job_name)
+        logger.info("Log group: %s", log_group)
+
+        def _get_status() -> str:
+            job = TrainingJob.get(training_job_name=job_name)
+            return job.training_job_status
+
+        stream_log_loop(streamer, poll, _get_status, tail_lines=tail_lines)
+
+    def _stream_logs_smhp(
+        self, training_job, compute, poll: int, start_time_ms=None, tail_lines: Optional[int] = None
+    ) -> None:
+        """Stream logs for a HyperPod job using LogStreamer with filter mode.
+
+        Delegates to stream_log_loop for consistent behavior with SMTJ/MTRL paths.
+        HyperPod jobs have no simple status API, so the status function always
+        returns "InProgress" — the loop exits via KeyboardInterrupt or tail_lines.
+        """
+
+        if isinstance(training_job, str):
+            job_id = training_job
+        elif hasattr(training_job, "training_job_name"):
+            job_id = training_job.training_job_name
+        else:
+            job_id = str(training_job)
+
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+        log_group = _get_smhp_log_group(compute.cluster_name, sagemaker_session.sagemaker_client)
+
+        logger.info(f"Streaming logs for HyperPod job: {job_id}")
+        logger.info(f"Cluster: {compute.cluster_name}")
+        logger.info(f"Log group: {log_group}")
+        logger.info("Press Ctrl+C to stop streaming.")
+
+        # Pick start time (user-provided > training job start time > now)
+        if start_time_ms is None:
+            if hasattr(training_job, "training_start_time") and training_job.training_start_time:
+                try:
+                    start_time_ms = int(training_job.training_start_time.timestamp() * 1000)
+                except Exception:
+                    start_time_ms = int(time.time() * 1000)
+            else:
+                start_time_ms = int(time.time() * 1000)
+
+        streamer = LogStreamer(
+            log_group=log_group,
+            job_name=job_id,
+            sagemaker_session=sagemaker_session,
+            filter_pattern=f'"{job_id}"',
+            start_time_ms=start_time_ms,
+        )
+
+        # HyperPod jobs have no simple status API — always report "InProgress"
+        # so the loop runs until KeyboardInterrupt or tail_lines completes.
+        def _get_status() -> str:
+            return "InProgress"
+
+        stream_log_loop(streamer, poll, _get_status, tail_lines=tail_lines)
+
+    def _validate_instance_count(self, instance_count, sagemaker_session, compute):
+        """Validate instance/node count against allowed values from SMHP recipe.
+
+        For HyperPod compute, raises ValueError on mismatch since the recipe's
+        node count constraints are hard requirements for distributed training.
+        For SMTJ compute, logs a warning instead since SMTJ may support counts
+        not listed in the SMHP recipe depending on the model.
+        """
         smhp_replicas_enum = _get_smhp_replicas_enum(
             model_name=self._model_name,
             customization_technique=self._customization_technique,
@@ -346,16 +927,45 @@ class BaseTrainer(ABC):
             sagemaker_session=sagemaker_session,
         )
         if smhp_replicas_enum and instance_count not in smhp_replicas_enum:
-            raise ValueError(
-                f"Node/Instance count '{instance_count}' is not supported. "
-                f"Allowed values: {sorted(smhp_replicas_enum)}."
+            if isinstance(compute, HyperPodCompute):
+                raise ValueError(
+                    f"Node/Instance count '{instance_count}' is not supported. "
+                    f"Allowed values: {sorted(smhp_replicas_enum)}."
+                )
+            logger.warning(
+                f"Instance count '{instance_count}' is not in the recommended values "
+                f"{sorted(smhp_replicas_enum)} from the model recipe. "
+                f"This may or may not work depending on the model. "
+                f"Proceeding anyway for SMTJ compute."
             )
         return smhp_replicas_enum
 
+    def _validate_instance_type(self, instance_type, sagemaker_session):
+        """Validate instance type against allowed values from SMHP recipe."""
+        smhp_instance_type_enum = _get_smhp_instance_type_enum(
+            model_name=self._model_name,
+            customization_technique=self._customization_technique,
+            training_type=self.training_type,
+            sagemaker_session=sagemaker_session,
+        )
+
+        if smhp_instance_type_enum and instance_type not in smhp_instance_type_enum:
+            raise ValueError(
+                f"Instance type '{instance_type}' is not supported. "
+                f"Allowed values: {sorted(smhp_instance_type_enum)}."
+            )
+        return smhp_instance_type_enum
+
     @abstractmethod
-    def train(self, input_data_config: List[InputData], wait: bool = True, logs: bool = True, wait_timeout: Optional[int] = None):
+    def train(
+        self,
+        input_data_config: List[InputData],
+        wait: bool = True,
+        logs: bool = True,
+        wait_timeout: Optional[int] = None,
+        dry_run: bool = False,
+    ):
         """Common training method that calls the specific implementation."""
-        pass
 
     def _get_extra_smtj_hyperparameters(self) -> Dict[str, Any]:
         """Return extra hyperparameters to inject for SMTJ training.
@@ -368,8 +978,15 @@ class BaseTrainer(ABC):
         """
         return {}
 
-    def _train_serverful_smtj(self, training_dataset=None, validation_dataset=None,
-                    wait=True, wait_timeout=None, poll=5):
+    def _train_serverful_smtj(
+        self,
+        training_dataset=None,
+        validation_dataset=None,
+        wait=True,
+        wait_timeout=None,
+        poll=5,
+        dry_run=False,
+    ):
         """Execute training on serverful SageMaker Training Job (SMTJ) compute.
 
         Uses ModelTrainer.from_recipe() with the model's recipe template from
@@ -380,24 +997,10 @@ class BaseTrainer(ABC):
         from ``self._customization_technique``) and any extra hyperparameters
         from ``_get_extra_smtj_hyperparameters()``.
         """
-        import logging
-        import tempfile
-        from sagemaker.train.model_trainer import ModelTrainer
-        from sagemaker.core.training.configs import TrainingJobCompute, InputData, Networking
-        from sagemaker.core.shapes import S3DataSource
-        from sagemaker.train.common_utils.finetune_utils import (
-            get_recipe_s3_uri,
-            get_training_image,
-            _validate_hyperparameter_values,
-        )
-        from sagemaker.train.defaults import TrainDefaults
-
-        logger = logging.getLogger(__name__)
-
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
         )
-        role = TrainDefaults.get_role(role=self.role, sagemaker_session=sagemaker_session)
+        role = self.role
 
         compute = self.compute
         customization_technique = self._customization_technique
@@ -410,7 +1013,7 @@ class BaseTrainer(ABC):
             sagemaker_session=sagemaker_session,
         )
 
-        logger.info(f"SMTJ recipe S3 URI: {recipe_s3_uri}")
+        logger.debug(f"SMTJ recipe S3 URI: {recipe_s3_uri}")
 
         # Download recipe from S3 to a local temp file
         recipe_s3_uri = resolve_s3_uri_placeholders(recipe_s3_uri, sagemaker_session)
@@ -420,7 +1023,7 @@ class BaseTrainer(ABC):
 
         # Handle S3 access point ARN URIs
         if uri_path.startswith("arn:"):
-            match = re.match(r'(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)', uri_path)
+            match = re.match(r"(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)", uri_path)
             if match:
                 bucket = match.group(1)
                 key = match.group(2)
@@ -457,9 +1060,9 @@ class BaseTrainer(ABC):
         from sagemaker.train.common_utils.finetune_utils import (
             _render_recipe_placeholders,
             _get_smtj_override_spec,
-            _get_smhp_replicas_enum,
             _resolve_base_model_weights_s3_uri,
         )
+
         override_spec = _get_smtj_override_spec(
             model_name=self._model_name,
             customization_technique=customization_technique,
@@ -467,14 +1070,34 @@ class BaseTrainer(ABC):
             sagemaker_session=sagemaker_session,
         )
 
+        # Validates instance type using SMHP override spec as SMTJ override spec doesn't contain instance type
+        smhp_instance_type_enum = self._validate_instance_type(
+            compute.instance_type, sagemaker_session
+        )
+        if not smhp_instance_type_enum:
+            logger.warning(
+                f"SMHP recipe for {self._model_name}/{self._customization_technique} did not provide a "
+                f"valid instance_type enum. "
+                "Instance type validation will be skipped."
+            )
+
         # Validate instance count against allowed values from SMHP recipe.
-        smhp_replicas_enum = self._validate_instance_count(compute.instance_count, sagemaker_session)
+        smhp_replicas_enum = self._validate_instance_count(
+            compute.instance_count, sagemaker_session, compute
+        )
+
         if smhp_replicas_enum:
             override_spec.setdefault("replicas", {})["enum"] = smhp_replicas_enum
-            if hasattr(self, 'hyperparameters') and hasattr(self.hyperparameters, '_specs'):
+            if hasattr(self, "hyperparameters") and hasattr(self.hyperparameters, "_specs"):
                 self.hyperparameters._specs.setdefault("replicas", {})["enum"] = smhp_replicas_enum
-                if not hasattr(self.hyperparameters, 'replicas'):
-                    object.__setattr__(self.hyperparameters, 'replicas', compute.instance_count)
+                if not hasattr(self.hyperparameters, "replicas"):
+                    object.__setattr__(self.hyperparameters, "replicas", compute.instance_count)
+        else:
+            logger.warning(
+                f"SMHP recipe for {self._model_name}/{self._customization_technique} did not provide a "
+                f"valid replicas enum. "
+                "Instance count validation will be skipped."
+            )
 
         # Inject the resolved dataset channel paths so the rendered recipe's
         # train_files / val_files are non-empty (the container aborts otherwise).
@@ -493,11 +1116,17 @@ class BaseTrainer(ABC):
         # Scoped to non-Nova: Nova recipes resolve model_name_or_path through
         # _get_args_from_nova_recipe (into the base_model hyperparameter), so this
         # OSS-specific workaround must never touch the Nova flow.
-        base_model_weights_uri = getattr(self, 'model_source', None) if not _is_nova_model(self._model_name) else None
+        base_model_weights_uri = (
+            getattr(self, "model_source", None) if not _is_nova_model(self._model_name) else None
+        )
         if not _is_nova_model(self._model_name):
             model_name_or_path_spec = override_spec.get("model_name_or_path")
             if model_name_or_path_spec is not None:
-                current_default = model_name_or_path_spec.get("default", "") if isinstance(model_name_or_path_spec, dict) else model_name_or_path_spec
+                current_default = (
+                    model_name_or_path_spec.get("default", "")
+                    if isinstance(model_name_or_path_spec, dict)
+                    else model_name_or_path_spec
+                )
                 if not current_default and not base_model_weights_uri:
                     base_model_weights_uri = _resolve_base_model_weights_s3_uri(
                         model_name=self._model_name,
@@ -505,18 +1134,21 @@ class BaseTrainer(ABC):
                     )
                 if base_model_weights_uri:
                     _set_spec_default(
-                        override_spec, "model_name_or_path",
+                        override_spec,
+                        "model_name_or_path",
                         "/opt/ml/input/data/model",
                     )
 
         if resolved_training_dataset:
             _set_spec_default(
-                override_spec, "data_path",
+                override_spec,
+                "data_path",
                 _channel_mount_path(resolved_training_dataset, "train"),
             )
         if resolved_validation_dataset:
             _set_spec_default(
-                override_spec, "validation_data_path",
+                override_spec,
+                "validation_data_path",
                 _channel_mount_path(resolved_validation_dataset, "validation"),
             )
 
@@ -537,9 +1169,9 @@ class BaseTrainer(ABC):
         job_base_name = self.base_job_name or f"{self._model_name}-{customization_technique}"
         mlflow_tracking_uri, mlflow_experiment_name, mlflow_run_name = (
             resolve_mlflow_tracking_fields(
-                mlflow_tracking_uri=getattr(self, 'mlflow_resource_arn', None),
-                mlflow_experiment_name=getattr(self, 'mlflow_experiment_name', None),
-                mlflow_run_name=getattr(self, 'mlflow_run_name', None),
+                mlflow_tracking_uri=getattr(self, "mlflow_resource_arn", None),
+                mlflow_experiment_name=getattr(self, "mlflow_experiment_name", None),
+                mlflow_run_name=getattr(self, "mlflow_run_name", None),
                 base_job_name=job_base_name,
             )
         )
@@ -562,11 +1194,15 @@ class BaseTrainer(ABC):
                 return s + "0" if s.endswith(".") else s
             return value
 
-        for hp_key in (getattr(self.hyperparameters, "_user_set", None) or []):
+        for hp_key in getattr(self.hyperparameters, "_user_set", None) or []:
             if hp_key in override_spec:
                 hp_value = getattr(self.hyperparameters, hp_key, None)
                 if hp_value is not None:
                     _set_spec_default(override_spec, hp_key, _yaml_safe_default(hp_value))
+
+        # Enforce selected lengths fit the recipe's supported sequence length.
+        if hasattr(self.hyperparameters, "validate_length_constraints"):
+            self.hyperparameters.validate_length_constraints()
 
         # Build hyperparameters early to inject into recipe template before runtime.
         final_hyperparameters = self.hyperparameters.to_dict()
@@ -592,9 +1228,8 @@ class BaseTrainer(ABC):
         # Inject model_source into the recipe as model_name_or_path for iterative
         # training (resuming from a previously trained checkpoint).
         # Only applies to Nova models — OSS models handle this via the input channel.
-        if getattr(self, 'model_source', None) and _is_nova_model(self._model_name):
-            import yaml as _yaml
-            recipe_dict = _yaml.safe_load(recipe_content)
+        if getattr(self, "model_source", None) and _is_nova_model(self._model_name):
+            recipe_dict = yaml.safe_load(recipe_content)
 
             applied = False
             if "run" in recipe_dict and isinstance(recipe_dict["run"], dict):
@@ -607,13 +1242,13 @@ class BaseTrainer(ABC):
                     "'model_name_or_path' was not found. The checkpoint path will not be applied."
                 )
             else:
-                recipe_content = _yaml.dump(recipe_dict, default_flow_style=False, sort_keys=False)
+                recipe_content = yaml.dump(recipe_dict, default_flow_style=False, sort_keys=False)
                 logger.info(f"Overriding model_name_or_path with checkpoint: {self.model_source}")
 
         with open(recipe_local_path, "w") as f:
             f.write(recipe_content)
 
-        logger.info(f"Recipe downloaded and rendered to: {recipe_local_path}")
+        logger.debug(f"Recipe downloaded and rendered to: {recipe_local_path}")
 
         # Resolve training image
         training_image = self.training_image
@@ -637,6 +1272,7 @@ class BaseTrainer(ABC):
             instance_count=compute.instance_count,
             volume_size_in_gb=compute.volume_size_in_gb,
             keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
+            training_plan_arn=compute.training_plan_arn,
         )
 
         # Build input data config (datasets resolved earlier for recipe injection)
@@ -692,8 +1328,8 @@ class BaseTrainer(ABC):
         networking = None
         if self.networking:
             networking = Networking(
-                security_group_ids=getattr(self.networking, 'security_group_ids', None),
-                subnets=getattr(self.networking, 'subnets', None),
+                security_group_ids=getattr(self.networking, "security_group_ids", None),
+                subnets=getattr(self.networking, "subnets", None),
             )
 
         # Create ModelTrainer from recipe
@@ -720,7 +1356,22 @@ class BaseTrainer(ABC):
             sagemaker_session=sagemaker_session,
             role=role,
             base_job_name=base_job_name,
+            tags=self.tags,
         )
+
+        # Validate data paths exist before submission
+        if resolved_training_dataset:
+            validate_data_path_exists(
+                resolved_training_dataset, sagemaker_session, label="training dataset"
+            )
+        if resolved_validation_dataset:
+            validate_data_path_exists(
+                resolved_validation_dataset, sagemaker_session, label="validation dataset"
+            )
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         # Execute training
         model_trainer.train(
@@ -733,9 +1384,9 @@ class BaseTrainer(ABC):
 
         if wait:
             job_name = None
-            if hasattr(self._latest_training_job, 'training_job_name'):
+            if hasattr(self._latest_training_job, "training_job_name"):
                 job_name = self._latest_training_job.training_job_name
-            elif hasattr(self._latest_training_job, 'name'):
+            elif hasattr(self._latest_training_job, "name"):
                 job_name = self._latest_training_job.name
             if job_name:
                 try:
@@ -748,9 +1399,7 @@ class BaseTrainer(ABC):
                         self._latest_training_job.model_artifacts = shapes.ModelArtifacts(
                             s3_model_artifacts=checkpoint_path
                         )
-                        logger.info(
-                            "Resolved checkpoint for %s: %s", job_name, checkpoint_path
-                        )
+                        logger.info("Resolved checkpoint for %s: %s", job_name, checkpoint_path)
                 except Exception as e:
                     logger.warning(
                         "Could not resolve checkpoint from manifest for %s: %s",
@@ -794,7 +1443,7 @@ class BaseTrainer(ABC):
         base_key = parsed.path.lstrip("/").rstrip("/")
 
         region = None
-        if sagemaker_session and hasattr(sagemaker_session, 'boto_session'):
+        if sagemaker_session and hasattr(sagemaker_session, "boto_session"):
             region = sagemaker_session.boto_session.region_name
 
         s3_client = boto3.client("s3", region_name=region) if region else boto3.client("s3")
@@ -839,16 +1488,21 @@ class BaseTrainer(ABC):
 
         return checkpoint_path
 
-    def _train_hyperpod(self, training_dataset=None, validation_dataset=None,
-                        wait=True, wait_timeout=None, poll=5):
+    def _train_hyperpod(
+        self,
+        training_dataset=None,
+        validation_dataset=None,
+        wait=True,
+        wait_timeout=None,
+        poll=5,
+        dry_run=False,
+    ):
         """Execute training on a SageMaker HyperPod cluster.
 
         Uses the HyperPod CLI to connect to the cluster and submit a training job
         using a recipe-based approach. Shared across trainers that support HyperPod
         (SFT, DPO, RLVR).
         """
-
-        logger = logging.getLogger(__name__)
 
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
@@ -857,9 +1511,7 @@ class BaseTrainer(ABC):
         compute = self.compute
 
         if not compute.cluster_name:
-            raise ValueError(
-                "cluster_name is required in HyperPodCompute for HyperPod training."
-            )
+            raise ValueError("cluster_name is required in HyperPodCompute for HyperPod training.")
 
         # HyperPod submits via the HyperPod CLI running as the *caller's* identity,
         # so there is no execution role to resolve here; this verifies the caller's
@@ -883,11 +1535,16 @@ class BaseTrainer(ABC):
         try:
             subprocess.run(
                 [
-                    "hyperpod", "connect-cluster",
-                    "--cluster-name", compute.cluster_name,
-                    "--namespace", namespace,
+                    "hyperpod",
+                    "connect-cluster",
+                    "--cluster-name",
+                    compute.cluster_name,
+                    "--namespace",
+                    namespace,
                 ],
-                capture_output=True, text=True, check=True,
+                capture_output=True,
+                text=True,
+                check=True,
             )
         except FileNotFoundError:
             raise RuntimeError(
@@ -896,23 +1553,29 @@ class BaseTrainer(ABC):
             )
 
         # Resolve training image
+        # Try SMHP image first (since we're in _train_hyperpod), then fall back
+        # to SMTJ image with tag replacement as a fallback.
         training_image = self.training_image
         if not training_image:
-            smtj_image = get_training_image(
+            training_image = get_hyperpod_training_image(
                 model_name=self._model_name,
                 customization_technique=self._customization_technique,
                 training_type=self.training_type,
                 sagemaker_session=sagemaker_session,
             )
-            if smtj_image:
-                training_image = smtj_image.replace("SM-TJ-", "SM-HP-")
-            else:
-                training_image = get_hyperpod_training_image(
+            if not training_image:
+                smtj_image = get_training_image(
                     model_name=self._model_name,
                     customization_technique=self._customization_technique,
                     training_type=self.training_type,
                     sagemaker_session=sagemaker_session,
                 )
+                if smtj_image:
+                    training_image = smtj_image.replace("SM-TJ-", "SM-HP-")
+
+        # RFT/RLVR on HyperPod requires the TRAIN-specific image tag.
+        if training_image and "SM-HP-RFT-" in training_image and "TRAIN" not in training_image:
+            training_image = training_image.replace("SM-HP-RFT-", "SM-HP-RFT-TRAIN-")
 
         if not training_image:
             raise ValueError(
@@ -925,7 +1588,7 @@ class BaseTrainer(ABC):
         job_base_name = self.base_job_name or f"{self._model_name}-{self._customization_technique}"
 
         # Validate node_count against allowed values from SMHP recipe
-        self._validate_instance_count(compute.node_count, sagemaker_session)
+        self._validate_instance_count(compute.node_count, sagemaker_session, compute)
 
         # Resolve and validate the recipe (3-level merge: base → user recipe → overrides)
         try:
@@ -953,9 +1616,9 @@ class BaseTrainer(ABC):
 
         # MLflow configuration
         mlflow_uri, mlflow_exp, mlflow_run = resolve_mlflow_tracking_fields(
-            mlflow_tracking_uri=getattr(self, 'mlflow_resource_arn', None),
-            mlflow_experiment_name=getattr(self, 'mlflow_experiment_name', None),
-            mlflow_run_name=getattr(self, 'mlflow_run_name', None),
+            mlflow_tracking_uri=getattr(self, "mlflow_resource_arn", None),
+            mlflow_experiment_name=getattr(self, "mlflow_experiment_name", None),
+            mlflow_run_name=getattr(self, "mlflow_run_name", None),
             base_job_name=job_base_name,
         )
         if mlflow_uri:
@@ -980,14 +1643,31 @@ class BaseTrainer(ABC):
             override_parameters["instance_type"] = compute.instance_type
         if training_image:
             override_parameters["container"] = training_image
-        if getattr(self, 'model_source', None):
+        if getattr(self, "model_source", None):
             override_parameters["recipes.run.model_name_or_path"] = self.model_source
+
+        # Validate data paths exist before submission
+        if resolved_training_dataset:
+            validate_data_path_exists(
+                resolved_training_dataset, sagemaker_session, label="training dataset"
+            )
+        if resolved_validation_dataset:
+            validate_data_path_exists(
+                resolved_validation_dataset, sagemaker_session, label="validation dataset"
+            )
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         # Submit job
         start_job_cmd = [
-            "hyperpod", "start-job",
-            "--namespace", namespace,
-            "--recipe", recipe_cli_path,
+            "hyperpod",
+            "start-job",
+            "--namespace",
+            namespace,
+            "--recipe",
+            recipe_cli_path,
         ]
         if override_parameters:
             start_job_cmd.extend(["--override-parameters", json.dumps(override_parameters)])
@@ -996,7 +1676,10 @@ class BaseTrainer(ABC):
 
         try:
             start_result = subprocess.run(
-                start_job_cmd, capture_output=True, text=True, check=True,
+                start_job_cmd,
+                capture_output=True,
+                text=True,
+                check=True,
             )
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to start HyperPod job: {e.stderr}")
@@ -1025,9 +1708,7 @@ class BaseTrainer(ABC):
                         s3_model_artifacts=checkpoint_path
                     )
             except Exception as e:
-                logger.warning(
-                    "Could not resolve checkpoint from manifest for %s: %s", job_name, e
-                )
+                logger.warning("Could not resolve checkpoint from manifest for %s: %s", job_name, e)
         self._latest_training_job = training_job
 
         return job_name

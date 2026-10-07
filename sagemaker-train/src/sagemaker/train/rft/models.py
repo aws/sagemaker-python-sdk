@@ -45,9 +45,7 @@ class RolloutRequest(BaseModel):
     This is the enforced contract. Your server must accept this exact format.
     """
 
-    instance: Dict[str, Any] = Field(
-        description="Problem instance from customer's data file"
-    )
+    instance: Dict[str, Any] = Field(description="Problem instance from customer's data file")
     metadata: RolloutMetadata = Field(description="Platform-provided rollout context")
     inference_params: Optional[InferenceParams] = Field(
         default=None,

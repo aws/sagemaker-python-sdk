@@ -18,72 +18,112 @@ API. With many workers hitting it at once IAM throttles the request, surfacing a
 ``ClientError: (Throttling) ... Rate exceeded`` and failing the build.
 
 This is purely a test-harness concurrency problem, so the mitigation lives here in
-the test layer rather than in SDK source:
+the test layer rather than in SDK source. It is intentionally identical to the
+block in ``sagemaker-train`` / ``sagemaker-mlops`` integ conftests:
 
-* ``_configure_default_boto_retries`` (autouse) — approach "A": set an adaptive
-  retry policy on boto3's *default* session. The role resolver, when no explicit
-  session is passed, falls back to ``sagemaker.core...Session()`` whose boto
-  session is ``boto3.DEFAULT_SESSION`` (see session_helper._initialize). Clients
-  created from it therefore inherit these retries, letting the internal IAM calls
-  ride out transient throttling without any source change.
+* ``_configure_boto_adaptive_retries`` (autouse) — set adaptive retries via the
+  ``AWS_RETRY_MODE`` / ``AWS_MAX_ATTEMPTS`` environment variables. Env vars apply
+  to *every* boto3 client created in the worker, so the internal IAM calls ride
+  out transient throttling whether the resolver falls back to the default session
+  or builds its client from an explicitly-passed ``Session`` (several serve tests
+  pass their own session, whose IAM client would otherwise carry botocore's
+  default 4-attempt retry policy). ``adaptive`` mode also adds client-side rate
+  limiting to smooth bursts.
 
-* ``pytest_runtest_makereport`` — approach "C": a belt-and-suspenders fallback. If
-  a residual ``SimulatePrincipalPolicy`` throttling error still escapes after the
-  adaptive retries, convert the failure into an xfail so a transient rate limit
-  never reds the build. Genuine failures are untouched.
+Throttling that still exhausts the adaptive retry budget is deliberately left to
+fail the test loudly (rather than being converted to a skip), so a persistent
+rate-limit regression stays visible instead of silently disappearing from the
+results.
+
+GPU capacity is a separate environmental failure: in us-west-2 SageMaker
+regularly cannot provision the requested GPU instances and fails the endpoint /
+job with an InsufficientInstanceCapacity reason after tens of minutes. Tests
+marked ``xfail_on_insufficient_capacity`` report XFAIL instead of FAIL when they
+fail for exactly that reason. The failure reason set by SageMaker is the signal:
+the test still ends when SageMaker gives up (no client-side timeout that could
+misclassify a slow but healthy deployment), and any other failure still fails
+the test.
 """
+
 from __future__ import absolute_import
 
-import boto3
+import os
+import re
+
 import pytest
-from botocore.config import Config
 
-# Adaptive retry budget for throttling-prone IAM validation calls.
-_ADAPTIVE_RETRY_CONFIG = Config(retries={"max_attempts": 10, "mode": "adaptive"})
-
-# Only tolerate throttling on the IAM permission simulation used during role
-# validation, so unrelated throttling still fails loudly.
-_THROTTLE_ERROR_CODES = ("Throttling", "ThrottlingException", "RequestLimitExceeded")
-_SIMULATE_OP = "SimulatePrincipalPolicy"
+# botocore adaptive retry settings for throttling-prone IAM validation calls.
+# Applied via env vars so every client in the worker inherits them, regardless of
+# which boto session the SDK ends up using to build its IAM client.
+_RETRY_MODE = "adaptive"
+_MAX_ATTEMPTS = "10"
 
 
 @pytest.fixture(autouse=True, scope="session")
-def _configure_default_boto_retries():
-    """Give boto3's default session adaptive retries so IAM clients built by the
-    role resolver absorb transient SimulatePrincipalPolicy throttling."""
-    boto3.setup_default_session()
-    boto3.DEFAULT_SESSION._session.set_default_client_config(_ADAPTIVE_RETRY_CONFIG)
+def _configure_boto_adaptive_retries():
+    """Give every boto3 client in this xdist worker adaptive retries so the IAM
+    clients built by the role resolver absorb transient SimulatePrincipalPolicy
+    throttling. Restores any pre-existing values on teardown."""
+    previous = {
+        "AWS_RETRY_MODE": os.environ.get("AWS_RETRY_MODE"),
+        "AWS_MAX_ATTEMPTS": os.environ.get("AWS_MAX_ATTEMPTS"),
+    }
+    os.environ["AWS_RETRY_MODE"] = _RETRY_MODE
+    os.environ["AWS_MAX_ATTEMPTS"] = _MAX_ATTEMPTS
     yield
+    for key, value in previous.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
 
 
-def _is_simulate_policy_throttle(exc):
-    """Return True if ``exc`` is a SimulatePrincipalPolicy throttling ClientError."""
-    from botocore.exceptions import ClientError
+# Failure reasons SageMaker reports when it cannot provision the requested
+# instance capacity, as seen in this account:
+#   Endpoint:          "Unable to provision requested ML compute capacity due to
+#                       InsufficientInstanceCapacity error ..."
+#   AIRecommendationJob: "... Could not deploy an endpoint for instance type
+#                       'ml.g5.2xlarge': all reservation and on-demand capacity
+#                       attempts were exhausted."
+#   OptimizationJob:   "EC2InsufficientCapacityException: ... not available due
+#                       to insufficient capacity."
+_INSUFFICIENT_CAPACITY_REASON = re.compile(
+    r"insufficient\s*(?:instance\s*)?capacity|capacity attempts were exhausted",
+    re.IGNORECASE,
+)
+_XFAIL_REASON_MAX_CHARS = 500
 
-    if not isinstance(exc, ClientError):
-        return False
-    error_code = exc.response.get("Error", {}).get("Code", "")
-    operation = getattr(exc, "operation_name", "") or ""
-    return error_code in _THROTTLE_ERROR_CODES and operation == _SIMULATE_OP
+
+def pytest_configure(config):
+    """Register the ``xfail_on_insufficient_capacity`` marker."""
+    config.addinivalue_line(
+        "markers",
+        "xfail_on_insufficient_capacity: report the test as XFAIL instead of FAIL when it "
+        "fails because SageMaker could not provision the requested instance capacity.",
+    )
 
 
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    """Skip (rather than fail) on residual SimulatePrincipalPolicy throttling that
-    survives the adaptive retries under heavy concurrency."""
-    outcome = yield
-    report = outcome.get_result()
-
-    if report.when != "call" or not report.failed:
-        return
-
-    exc = call.excinfo.value if call.excinfo else None
-    # Walk the exception chain so a wrapped ClientError is still detected.
-    while exc is not None:
-        if _is_simulate_policy_throttle(exc):
-            report.outcome = "skipped"
-            report.wasxfail = (
-                "iam:SimulatePrincipalPolicy throttled under concurrent test load"
-            )
-            break
+def _is_insufficient_capacity(exc):
+    """True if ``exc``, or an exception it was raised from, reports a capacity shortage."""
+    seen = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if _INSUFFICIENT_CAPACITY_REASON.search(str(exc)):
+            return True
         exc = exc.__cause__ or exc.__context__
+    return False
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_call(item):
+    """XFAIL a marked test whose failure is an insufficient-capacity error."""
+    try:
+        return (yield)
+    except Exception as exc:
+        marked = item.get_closest_marker("xfail_on_insufficient_capacity") is not None
+        if marked and _is_insufficient_capacity(exc):
+            pytest.xfail(
+                "SageMaker could not provision the requested instance capacity: "
+                f"{str(exc)[:_XFAIL_REASON_MAX_CHARS]}"
+            )
+        raise

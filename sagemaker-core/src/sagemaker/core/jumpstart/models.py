@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains the model for JumpStart HubContentDocument."""
+
 from __future__ import absolute_import, annotations
 
 from enum import Enum
@@ -21,10 +22,14 @@ from sagemaker.core.jumpstart.configs import BaseConfig
 
 
 class StrEnum(str, Enum):
+    """A string-valued enumeration."""
+
     def __str__(self) -> str:
+        """Return the enum member value as a string."""
         return self.value
 
     def __repr__(self) -> str:
+        """Return the enum member value as its representation."""
         return str(self)
 
 

@@ -28,16 +28,13 @@ from sagemaker.train.evaluate.llm_as_judge_evaluator import (
 from sagemaker.train.common_utils.model_aliases import NOVA_BEDROCK_MODEL_IDS
 from sagemaker.train.evaluate.pipeline_templates import LLMAJ_INSPECTAI_TEMPLATE
 
-
 # Test constants
 DEFAULT_REGION = "us-east-1"
 DEFAULT_ROLE = "arn:aws:iam::123456789012:role/test-role"
 DEFAULT_MODEL = "nova-textgeneration-lite"
 DEFAULT_DATASET = "s3://test-bucket/dataset.jsonl"
 DEFAULT_S3_OUTPUT = "s3://test-bucket/outputs/"
-DEFAULT_MLFLOW_ARN = (
-    "arn:aws:sagemaker:us-east-1:123456789012:mlflow-tracking-server/test-server"
-)
+DEFAULT_MLFLOW_ARN = "arn:aws:sagemaker:us-east-1:123456789012:mlflow-tracking-server/test-server"
 DEFAULT_MODEL_PACKAGE_GROUP_ARN = (
     "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/test-group"
 )
@@ -45,13 +42,9 @@ DEFAULT_BASE_MODEL_ARN = (
     "arn:aws:sagemaker:us-east-1:aws:hub-content/SageMakerPublicHub/Model/"
     "nova-textgeneration-lite/1.0.0"
 )
-DEFAULT_ARTIFACT_ARN = (
-    "arn:aws:sagemaker:us-east-1:123456789012:artifact/test-artifact"
-)
+DEFAULT_ARTIFACT_ARN = "arn:aws:sagemaker:us-east-1:123456789012:artifact/test-artifact"
 DEFAULT_EVALUATOR_MODEL = "amazon.nova-pro-v1:0"
-DEFAULT_MODEL_PACKAGE_ARN = (
-    "arn:aws:sagemaker:us-east-1:123456789012:model-package/test-pkg/1"
-)
+DEFAULT_MODEL_PACKAGE_ARN = "arn:aws:sagemaker:us-east-1:123456789012:model-package/test-pkg/1"
 
 
 def _create_evaluator(
@@ -105,9 +98,7 @@ class TestShouldUseInspectaiPath:
 
     @patch("sagemaker.core.resources.Artifact")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_should_use_inspectai_path_jumpstart_model(
-        self, mock_resolve, mock_artifact
-    ):
+    def test_should_use_inspectai_path_jumpstart_model(self, mock_resolve, mock_artifact):
         """Non-Nova JumpStart model uses existing ServerlessJobConfig path."""
         evaluator = _create_evaluator(
             mock_resolve,
@@ -119,9 +110,7 @@ class TestShouldUseInspectaiPath:
 
     @patch("sagemaker.core.resources.Artifact")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_should_use_inspectai_path_nova_model_package(
-        self, mock_resolve, mock_artifact
-    ):
+    def test_should_use_inspectai_path_nova_model_package(self, mock_resolve, mock_artifact):
         """Nova fine-tuned model (model package ARN) routes to InspectAI path."""
         evaluator = _create_evaluator(
             mock_resolve,
@@ -133,9 +122,7 @@ class TestShouldUseInspectaiPath:
 
     @patch("sagemaker.core.resources.Artifact")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_should_use_inspectai_path_non_nova_model_package(
-        self, mock_resolve, mock_artifact
-    ):
+    def test_should_use_inspectai_path_non_nova_model_package(self, mock_resolve, mock_artifact):
         """Non-Nova fine-tuned model (model package ARN) uses existing path."""
         evaluator = _create_evaluator(
             mock_resolve,
@@ -147,9 +134,7 @@ class TestShouldUseInspectaiPath:
 
     @patch("sagemaker.core.resources.Artifact")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_should_use_inspectai_path_nova_model(
-        self, mock_resolve, mock_artifact
-    ):
+    def test_should_use_inspectai_path_nova_model(self, mock_resolve, mock_artifact):
         """Nova JumpStart model auto-routes to InspectAI+Bedrock path."""
         evaluator = _create_evaluator(
             mock_resolve,
@@ -238,9 +223,7 @@ class TestBuildInspectaiConfig:
             output_s3_uri="s3://bucket/inference/uuid/inference_output.jsonl",
         )
         assert "bedrock" in config["inference_provider"]
-        assert config["inference_provider"]["bedrock"]["model_id"] == (
-            "us.amazon.nova-lite-v1:0"
-        )
+        assert config["inference_provider"]["bedrock"]["model_id"] == ("us.amazon.nova-lite-v1:0")
         assert config["inference_provider"]["bedrock"]["region"] == "us-east-1"
 
     @patch(
@@ -274,9 +257,7 @@ class TestBuildInspectaiConfig:
 
     @patch("sagemaker.core.resources.Artifact")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_build_inspectai_config_eval_defaults(
-        self, mock_resolve, mock_artifact
-    ):
+    def test_build_inspectai_config_eval_defaults(self, mock_resolve, mock_artifact):
         """Config contains expected eval defaults for rate limiting."""
         evaluator = _create_evaluator(
             mock_resolve,
@@ -300,9 +281,7 @@ class TestCostWarning:
 
     @patch("sagemaker.core.resources.Artifact")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_cost_warning_emitted_for_inspectai_path(
-        self, mock_resolve, mock_artifact
-    ):
+    def test_cost_warning_emitted_for_inspectai_path(self, mock_resolve, mock_artifact):
         """Warning logged with instance type when InspectAI path is used."""
         evaluator = _create_evaluator(
             mock_resolve,
@@ -310,9 +289,7 @@ class TestCostWarning:
             base_model_name="nova-textgeneration-lite",
             source_model_package_arn=None,
         )
-        with patch(
-            "sagemaker.train.evaluate.llm_as_judge_evaluator._logger"
-        ) as mock_logger:
+        with patch("sagemaker.train.evaluate.llm_as_judge_evaluator._logger") as mock_logger:
             evaluator._emit_cost_warning("ml.m5.large", "Bedrock")
             mock_logger.warning.assert_called_once()
             warning_msg = mock_logger.warning.call_args[0][0]
@@ -320,9 +297,7 @@ class TestCostWarning:
 
     @patch("sagemaker.core.resources.Artifact")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_no_cost_warning_for_jumpstart_path(
-        self, mock_resolve, mock_artifact
-    ):
+    def test_no_cost_warning_for_jumpstart_path(self, mock_resolve, mock_artifact):
         """No warning emitted when JumpStart path (non-InspectAI) is taken."""
         evaluator = _create_evaluator(
             mock_resolve,
@@ -330,9 +305,7 @@ class TestCostWarning:
             base_model_name="llama3-2-1b-instruct",
             source_model_package_arn=None,
         )
-        with patch(
-            "sagemaker.train.evaluate.llm_as_judge_evaluator._logger"
-        ) as mock_logger:
+        with patch("sagemaker.train.evaluate.llm_as_judge_evaluator._logger") as mock_logger:
             # JumpStart path does not call _emit_cost_warning, so the
             # logger should not receive any warning calls for this evaluator.
             # We verify by checking that the path is not InspectAI and
@@ -392,9 +365,7 @@ class TestLlmajInspectaiTemplate:
 
     def test_inference_output_path_matches_between_steps(self):
         """Config output_s3_uri matches Phase 2 inference_data_s3_path."""
-        inference_output_s3_uri = (
-            "s3://bucket/output/inference/run-id-123/inference_output.jsonl"
-        )
+        inference_output_s3_uri = "s3://bucket/output/inference/run-id-123/inference_output.jsonl"
         context = self._sample_context()
         context["inference_output_s3_uri"] = inference_output_s3_uri
 

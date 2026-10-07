@@ -11,12 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for SageMaker Evaluation Execution Module."""
+
 from __future__ import absolute_import
 
 import json
-import time
 from datetime import datetime
-from unittest.mock import ANY, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
@@ -26,7 +26,6 @@ from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_e
 from sagemaker.train.evaluate.constants import (
     EvalType,
     _get_pipeline_name,
-    _get_pipeline_name_prefix,
 )
 from sagemaker.train.evaluate.execution import (
     BenchmarkEvaluationExecution,
@@ -128,6 +127,51 @@ class TestCreateEvaluationPipeline:
             == DEFAULT_PIPELINE_DEFINITION
         )
         assert result == mock_pipeline
+
+    @patch("sagemaker.train.evaluate.execution._get_pipeline_name")
+    @patch("sagemaker.train.evaluate.execution.Pipeline")
+    def test_create_pipeline_propagates_user_tags(
+        self, mock_pipeline_class, mock_get_name, mock_session
+    ):
+        """User tags must reach Pipeline.create alongside the evaluation discovery tag."""
+        mock_get_name.return_value = DEFAULT_PIPELINE_NAME
+        mock_pipeline_class.create.return_value = MagicMock()
+
+        _create_evaluation_pipeline(
+            eval_type=EvalType.BENCHMARK,
+            role_arn=DEFAULT_ROLE,
+            pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
+            session=mock_session,
+            region=DEFAULT_REGION,
+            tags=[{"key": "sagemaker:project-id", "value": "p-12345"}],
+        )
+
+        created_tags = mock_pipeline_class.create.call_args.kwargs["tags"]
+        pairs = [(t.key, t.value) for t in created_tags]
+        assert ("sagemaker:project-id", "p-12345") in pairs
+        # The evaluation discovery tag must still be present.
+        assert any(key == "SagemakerModelEvaluation" for key, _ in pairs)
+
+    @patch("sagemaker.train.evaluate.execution._get_pipeline_name")
+    @patch("sagemaker.train.evaluate.execution.Pipeline")
+    def test_create_pipeline_accepts_capitalized_user_tags(
+        self, mock_pipeline_class, mock_get_name, mock_session
+    ):
+        """Capitalized user tags must also be converted into Tag objects."""
+        mock_get_name.return_value = DEFAULT_PIPELINE_NAME
+        mock_pipeline_class.create.return_value = MagicMock()
+
+        _create_evaluation_pipeline(
+            eval_type=EvalType.BENCHMARK,
+            role_arn=DEFAULT_ROLE,
+            pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
+            session=mock_session,
+            region=DEFAULT_REGION,
+            tags=[{"Key": "sagemaker:project-id", "Value": "p-12345"}],
+        )
+
+        pairs = [(t.key, t.value) for t in mock_pipeline_class.create.call_args.kwargs["tags"]]
+        assert ("sagemaker:project-id", "p-12345") in pairs
 
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     def test_create_pipeline_waits_for_status(self, mock_pipeline_class, mock_session):
@@ -1440,7 +1484,7 @@ class TestGetMlflowExperimentUrl:
 
         assert (
             result
-            == f"https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
+            == "https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
         )
 
     @patch("sagemaker.core.utils.utils.SageMakerClient")

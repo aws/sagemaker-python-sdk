@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import sys
@@ -32,7 +33,7 @@ import json
 import abc
 import uuid
 from datetime import datetime
-from os.path import abspath, realpath, dirname, normpath, join as joinpath
+from os.path import abspath, realpath, dirname, isabs, normpath, join as joinpath
 
 from importlib import import_module
 
@@ -442,9 +443,7 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
     if not prefix.endswith("/"):
         try:
             file_destination = os.path.join(target, os.path.basename(prefix))
-            s3.Object(bucket_name, prefix).download_file(
-                file_destination, ExtraArgs=extra_args
-            )
+            s3.Object(bucket_name, prefix).download_file(file_destination, ExtraArgs=extra_args)
             return
         except botocore.exceptions.ClientError as e:
             err_info = e.response["Error"]
@@ -469,7 +468,6 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3, extra_args=Non
         extra_args (dict): Optional extra arguments passed to each download_file call.
             Used to carry ExpectedBucketOwner when the bucket is the session's default.
     """
-    target_real = os.path.realpath(target)
     bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
@@ -711,7 +709,7 @@ def _create_or_update_code_dir(
     """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
     resolved_code_dir = _get_resolved_path(code_dir)
-    
+
     # Validate that code_dir does not resolve to a sensitive system path
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
         if resolved_code_dir != "/" and resolved_code_dir.startswith(sensitive_path):
@@ -1734,6 +1732,28 @@ def validate_path_within_directory(file_path, target_directory, source_descripti
         )
 
 
+def _is_within_base(resolved_path, base):
+    """Checks if an already resolved absolute path is contained within a base directory.
+
+    Uses os.path.commonpath rather than a string prefix comparison, so that a sibling
+    directory which merely shares a textual prefix with the base directory (e.g. base
+    "/tmp/extract" and path "/tmp/extract-evil/f") is not treated as contained.
+
+    Args:
+        resolved_path (str): An absolute, normalized path.
+        base (str): An absolute, normalized base directory.
+
+    Returns:
+        bool: True if resolved_path is the base directory or nested under it.
+    """
+    try:
+        return os.path.commonpath([resolved_path, base]) == base
+    except ValueError:
+        # Raised when the paths cannot be compared (e.g. different drives on Windows),
+        # in which case resolved_path cannot be inside base.
+        return False
+
+
 def _is_bad_path(path, base):
     """Checks if the joined path (base directory + file path) is rooted under the base directory
 
@@ -1747,8 +1767,11 @@ def _is_bad_path(path, base):
     Returns:
         bool: True if the path is not rooted under the base directory, False otherwise.
     """
-    # joinpath will ignore base if path is absolute
-    return not _get_resolved_path(joinpath(base, path)).startswith(base)
+    # joinpath would silently discard base for an absolute path, and an archive member
+    # targeting an absolute location is never legitimate, so reject it outright.
+    if isabs(path):
+        return True
+    return not _is_within_base(_get_resolved_path(joinpath(base, path)), base)
 
 
 def _is_bad_link(info, base):
@@ -1768,19 +1791,20 @@ def _is_bad_link(info, base):
     return _is_bad_path(info.linkname, base=tip)
 
 
-def _get_safe_members(members):
+def _get_safe_members(members, base):
     """A generator that yields members that are safe to extract.
 
     It filters out bad paths and bad links.
 
     Args:
         members (list): A list of members to check.
+        base (str): The resolved base directory that members must stay within. This must
+            be the directory the archive is extracted into, since that is what the member
+            paths are resolved against at extraction time.
 
     Yields:
         tarfile.TarInfo: The tar file info.
     """
-    base = _get_resolved_path("")
-
     for file_info in members:
         if _is_bad_path(file_info.name, base):
             logger.error("%s is blocked (illegal path)", file_info.name)
@@ -1811,7 +1835,7 @@ def _validate_extracted_paths(extract_path):
         for dir_name in dirs:
             dir_path = os.path.join(root, dir_name)
             resolved = _get_resolved_path(dir_path)
-            if not resolved.startswith(base):
+            if not _is_within_base(resolved, base):
                 logger.error("Extracted directory escaped extraction path: %s", dir_path)
                 raise ValueError(f"Extracted path outside expected directory: {dir_path}")
 
@@ -1819,7 +1843,7 @@ def _validate_extracted_paths(extract_path):
         for file_name in files:
             file_path = os.path.join(root, file_name)
             resolved = _get_resolved_path(file_path)
-            if not resolved.startswith(base):
+            if not _is_within_base(resolved, base):
                 logger.error("Extracted file escaped extraction path: %s", file_path)
                 raise ValueError(f"Extracted path outside expected directory: {file_path}")
 
@@ -1843,7 +1867,10 @@ def custom_extractall_tarfile(tar, extract_path):
     if hasattr(tarfile, "data_filter"):
         tar.extractall(path=extract_path, filter="data")
     else:
-        tar.extractall(path=extract_path, members=_get_safe_members(tar))
+        # Members are resolved against the directory they are extracted into, so that is
+        # what containment has to be checked against.
+        base = _get_resolved_path(extract_path)
+        tar.extractall(path=extract_path, members=_get_safe_members(tar.getmembers(), base))
         # Re-validate extracted paths to catch symlink race conditions
         _validate_extracted_paths(extract_path)
 
@@ -2176,19 +2203,24 @@ def camel_to_snake(camel_case_string: str) -> str:
 
 
 def walk_and_apply_json(
-    json_obj: Dict[Any, Any], apply, stop_keys: Optional[List[str]] = ["metrics"]
+    json_obj: Dict[Any, Any],
+    apply,
+    stop_keys: Optional[List[str]] = ["metrics", "environment_variables"],
 ) -> Dict[Any, Any]:
     """Recursively walks a json object and applies a given function to the keys.
 
     stop_keys (Optional[list[str]]): List of field keys that should stop the application function.
         Any children of these keys will not have the application function applied to them.
+        A key stops the walk if either its original or its converted form is in stop_keys, so
+        the same list works for camel_to_snake and snake_to_upper_camel passes. Environment
+        variable names are user facing values stored as keys and must never be converted.
     """
 
     def _walk_and_apply_json(json_obj, new):
         if isinstance(json_obj, dict) and isinstance(new, dict):
             for key, value in json_obj.items():
                 new_key = apply(key)
-                if (stop_keys and new_key not in stop_keys) or stop_keys is None:
+                if stop_keys is None or (key not in stop_keys and new_key not in stop_keys):
                     if isinstance(value, dict):
                         new[new_key] = {}
                         _walk_and_apply_json(value, new=new[new_key])
@@ -2417,6 +2449,42 @@ def _check_job_status(job, desc, status_key_name):
         )
 
 
+# Error codes and message patterns the service returns when a create call collides
+# with an existing resource. The service message wording has changed over time
+# (e.g. CreatePipeline/CreateExperiment now return "... names must be unique within
+# an AWS account ..." instead of "... already exists"), so match every known variant.
+# The uniqueness pattern deliberately includes the "within an AWS account" scope so
+# that other uniqueness validation errors (e.g. duplicate step names WITHIN a
+# pipeline definition) are not mistaken for a resource-name collision.
+_ALREADY_EXISTS_ERROR_CODES = ("ValidationException", "ResourceInUse")
+_ALREADY_EXISTS_MSG_PATTERNS = (
+    "Cannot create already existing",
+    "already exists",
+    "must be unique within an AWS account",
+)
+
+
+def _is_resource_already_exists_error(error) -> bool:
+    """Check whether a botocore ClientError means "this resource already exists".
+
+    Use this predicate for every load-or-create / upsert flow instead of matching
+    a single hardcoded message substring, so that service message wording changes
+    do not silently break the already-exists branch.
+
+    Args:
+        error (botocore.exceptions.ClientError): The error raised by a create call.
+
+    Returns:
+        bool: True if the error indicates a name collision with an existing resource.
+    """
+    error_response = getattr(error, "response", None) or {}
+    error_code = error_response.get("Error", {}).get("Code", "")
+    error_message = error_response.get("Error", {}).get("Message", "")
+    return error_code in _ALREADY_EXISTS_ERROR_CODES and any(
+        pattern in error_message for pattern in _ALREADY_EXISTS_MSG_PATTERNS
+    )
+
+
 def _create_resource(create_fn):
     """Call create function and accepts/pass when resource already exists.
 
@@ -2433,14 +2501,7 @@ def _create_resource(create_fn):
         # create function succeeded, resource does not exist already
         return True
     except ClientError as ce:
-        error_code = ce.response["Error"]["Code"]
-        error_message = ce.response["Error"]["Message"]
-        already_exists_exceptions = ["ValidationException", "ResourceInUse"]
-        already_exists_msg_patterns = ["Cannot create already existing", "already exists"]
-        if not (
-            error_code in already_exists_exceptions
-            and any(p in error_message for p in already_exists_msg_patterns)
-        ):
+        if not _is_resource_already_exists_error(ce):
             raise ce
         # no new resource created as resource already exists
         return False

@@ -38,6 +38,17 @@ def _generate_token(credentials: Credentials, region: str, expires: int) -> str:
         params={"Action": "CallWithBearerToken"},
     )
 
+    # Take an atomic snapshot of the credentials before signing. botocore's
+    # SigV4 signer reads access_key, token, and secret_key as three separate,
+    # non-atomic property accesses. With refreshable credentials, a refresh that
+    # lands mid-signature would mix key material from two credential versions and
+    # produce a token that fails verification with InvalidSignature. Freezing
+    # once (under botocore's refresh lock) guarantees all three reads come from a
+    # single credential version. Static credentials also expose this method and
+    # return a coherent snapshot, so this is safe for every credential type.
+    if hasattr(credentials, "get_frozen_credentials"):
+        credentials = credentials.get_frozen_credentials()
+
     auth = SigV4QueryAuth(credentials, SERVICE_NAME, region, expires=expires)
     auth.add_auth(request)
 

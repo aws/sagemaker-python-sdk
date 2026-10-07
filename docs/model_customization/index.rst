@@ -1,5 +1,5 @@
-Customizing Models
-===================
+Model Customization (Foundation Models)
+=========================================
 
 .. raw:: html
 
@@ -23,4 +23,4 @@ Key Benefits
    open_weight_model_customization
    nova
    evaluation
-   deployment
+   notifications_setup

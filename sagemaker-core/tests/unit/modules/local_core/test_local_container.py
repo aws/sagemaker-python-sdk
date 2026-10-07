@@ -12,20 +12,18 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch, mock_open
 import os
 import subprocess
 
 from sagemaker.core.modules.local_core.local_container import (
     _LocalContainer,
-    DOCKER_COMPOSE_FILENAME,
     DOCKER_COMPOSE_HTTP_TIMEOUT_ENV,
     DOCKER_COMPOSE_HTTP_TIMEOUT,
 )
 from sagemaker.core.modules import Session
 from sagemaker.core.modules.configs import Channel
 from sagemaker.core.shapes import DataSource, S3DataSource, FileSystemDataSource
-from sagemaker.core.utils.utils import Unassigned
 
 
 @pytest.fixture
@@ -586,6 +584,34 @@ class TestLocalContainer:
         assert result == ["docker", "compose"]
 
     @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_docker_compose_v2_no_v_prefix(
+        self, mock_check_output, mock_session, basic_channel
+    ):
+        """Brew-installed Docker Compose reports the version without a 'v' prefix.
+
+        Regression test for https://github.com/aws/sagemaker-python-sdk/issues/4137.
+        """
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.return_value = "Docker Compose version 2.22.0"
+
+        result = container._get_compose_cmd_prefix()
+
+        assert result == ["docker", "compose"]
+
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
     @patch("sagemaker.core.modules.local_core.local_container.shutil.which")
     def test_get_compose_cmd_prefix_docker_compose_standalone(
         self, mock_which, mock_check_output, mock_session, basic_channel
@@ -1029,6 +1055,7 @@ class TestRmtree:
     @patch(f"{MODULE}.shutil.rmtree")
     def test_rmtree_success(self, mock_rmtree):
         from sagemaker.core.modules.local_core.local_container import _rmtree
+
         _rmtree("/tmp/test", RMTREE_IMAGE)
         mock_rmtree.assert_called_once_with("/tmp/test")
 
@@ -1036,10 +1063,22 @@ class TestRmtree:
     @patch(f"{MODULE}.subprocess.run")
     def test_rmtree_permission_error_docker_chmod_fallback(self, mock_run, mock_rmtree):
         from sagemaker.core.modules.local_core.local_container import _rmtree
+
         mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
         _rmtree("/tmp/test", RMTREE_IMAGE)
         mock_run.assert_called_once_with(
-            ["docker", "run", "--rm", "-v", "/tmp/test:/delete", RMTREE_IMAGE, "chmod", "-R", "777", "/delete"],
+            [
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                "/tmp/test:/delete",
+                RMTREE_IMAGE,
+                "chmod",
+                "-R",
+                "777",
+                "/delete",
+            ],
             check=True,
             capture_output=True,
         )
@@ -1049,14 +1088,23 @@ class TestRmtree:
     @patch(f"{MODULE}.subprocess.run")
     def test_rmtree_studio_adds_network(self, mock_run, mock_rmtree):
         from sagemaker.core.modules.local_core.local_container import _rmtree
+
         mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
         _rmtree("/tmp/test", RMTREE_IMAGE, is_studio=True)
         mock_run.assert_called_once_with(
             [
-                "docker", "run", "--rm",
-                "--network", "sagemaker",
-                "-v", "/tmp/test:/delete", RMTREE_IMAGE,
-                "chmod", "-R", "777", "/delete",
+                "docker",
+                "run",
+                "--rm",
+                "--network",
+                "sagemaker",
+                "-v",
+                "/tmp/test:/delete",
+                RMTREE_IMAGE,
+                "chmod",
+                "-R",
+                "777",
+                "/delete",
             ],
             check=True,
             capture_output=True,
@@ -1066,6 +1114,7 @@ class TestRmtree:
     @patch(f"{MODULE}.subprocess.run")
     def test_rmtree_docker_fallback_fails_raises(self, mock_run, mock_rmtree):
         from sagemaker.core.modules.local_core.local_container import _rmtree
+
         mock_rmtree.side_effect = PermissionError("Permission denied")
         mock_run.side_effect = Exception("docker failed")
         with pytest.raises(Exception, match="docker failed"):
@@ -1074,6 +1123,7 @@ class TestRmtree:
     @patch(f"{MODULE}.shutil.rmtree")
     def test_rmtree_no_image_raises(self, mock_rmtree):
         from sagemaker.core.modules.local_core.local_container import _rmtree
+
         mock_rmtree.side_effect = PermissionError("Permission denied")
         with pytest.raises(PermissionError):
             _rmtree("/tmp/test")

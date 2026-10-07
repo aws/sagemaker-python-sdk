@@ -11,7 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for data mixing utility functions."""
+
 from __future__ import absolute_import
+
+import os
 
 import pytest
 
@@ -346,9 +349,7 @@ class TestResolveHyperPodDatamixContext:
 
     def _make_mock_session(self):
         """Create a mock sagemaker_session with boto_session, s3 client, and sts client."""
-        from unittest.mock import MagicMock, patch
-        import io
-        import json as json_mod
+        from unittest.mock import MagicMock
 
         session = MagicMock()
         session.boto_session.region_name = "us-west-2"
@@ -372,7 +373,6 @@ class TestResolveHyperPodDatamixContext:
 
     def _setup_s3_responses(self, s3_client, template_content=None, overrides=None):
         """Configure the s3_client mock to return template and overrides content."""
-        import io
         import json as json_mod
         from unittest.mock import MagicMock
 
@@ -398,11 +398,14 @@ class TestResolveHyperPodDatamixContext:
         """Patch _get_hub_content_metadata and get_sagemaker_hub_name."""
         from unittest.mock import patch
 
-        with patch(
-            "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata"
-        ) as mock_get_hub, patch(
-            "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name"
-        ) as mock_hub_name:
+        with (
+            patch(
+                "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata"
+            ) as mock_get_hub,
+            patch(
+                "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name"
+            ) as mock_hub_name,
+        ):
             mock_hub_name.return_value = "SageMakerPublicHub"
             mock_get_hub.return_value = self.MOCK_HUB_METADATA
             yield mock_get_hub, mock_hub_name
@@ -459,7 +462,6 @@ class TestResolveHyperPodDatamixContext:
 
     def test_missing_hp_eks_payload_template_s3_uri_raises_value_error(self, mock_hub_metadata):
         """Missing HpEksPayloadTemplateS3Uri should raise ValueError with field name."""
-        from unittest.mock import patch
         from sagemaker.train.common_utils.data_mixing_utils import (
             resolve_hyperpod_datamix_context,
         )
@@ -523,7 +525,6 @@ class TestResolveHyperPodDatamixContext:
 
     def test_s3_client_error_raises_value_error_with_forge_iam_message(self, mock_hub_metadata):
         """S3 ClientError should raise ValueError referencing Forge subscription and s3:GetObject."""
-        from unittest.mock import MagicMock
         from botocore.exceptions import ClientError
         from sagemaker.train.common_utils.data_mixing_utils import (
             resolve_hyperpod_datamix_context,
@@ -615,7 +616,6 @@ class TestResolveHyperPodDatamixContext:
 
     def test_customer_id_placeholder_resolution(self, mock_hub_metadata):
         """S3 URIs containing {customer_id} should be resolved with the actual account ID."""
-        from unittest.mock import MagicMock, call
         from sagemaker.train.common_utils.data_mixing_utils import (
             resolve_hyperpod_datamix_context,
         )
@@ -649,7 +649,6 @@ class TestResolveHyperPodDatamixContext:
         calls = s3_client.get_object.call_args_list
         assert len(calls) == 2
         # The bucket name should contain the resolved account ID, not the placeholder
-        first_call_bucket = calls[0][1]["Bucket"] if "Bucket" in calls[0][1] else calls[0][0][0]
         assert "123456789012" in str(calls[0])
         assert "{customer_id}" not in str(calls[0])
         assert "{customer_id}" not in str(calls[1])
@@ -772,7 +771,7 @@ class TestBuildHyperPodDatamixRecipeFromContext:
         and data_mixing.sources.nova_data values."""
         import yaml
         from io import StringIO
-        from unittest.mock import patch, MagicMock, mock_open
+        from unittest.mock import patch, MagicMock
 
         from sagemaker.train.common_utils.data_mixing_utils import (
             build_hyperpod_datamix_recipe_from_context,
@@ -823,8 +822,12 @@ class TestBuildHyperPodDatamixRecipeFromContext:
         assert parsed["data_mixing"]["sources"]["nova_data"]["en-entertainment"] == 20
         assert parsed["data_mixing"]["sources"]["nova_data"]["en-scientific"] == 10
 
-    def test_return_value_is_relative_path_and_image_uri(self):
-        """Return value should be (relative_path_without_extension, image_uri)."""
+    def test_return_value_is_absolute_recipe_path_and_image_uri(self):
+        """Return value should be (absolute_recipe_path_with_extension, image_uri).
+
+        The path must be a loadable filesystem path (absolute, .yaml extension
+        intact) because the recipe resolver opens it as a user recipe file.
+        """
         from unittest.mock import patch, MagicMock, mock_open
 
         from sagemaker.train.common_utils.data_mixing_utils import (
@@ -843,12 +846,14 @@ class TestBuildHyperPodDatamixRecipeFromContext:
                 with patch("builtins.open", m_open):
                     result = build_hyperpod_datamix_recipe_from_context(context, config)
 
-        relative_path, image_uri = result
+        recipe_path, image_uri = result
 
-        # relative_path should not end with .yaml
-        assert not relative_path.endswith(".yaml")
-        # relative_path should contain fine-tuning/nova
-        assert "fine-tuning/nova" in relative_path
+        # recipe_path must be an absolute filesystem path
+        assert os.path.isabs(recipe_path)
+        # recipe_path must retain the .yaml extension so it can be opened
+        assert recipe_path.endswith(".yaml")
+        # recipe_path should live under the HyperPod CLI recipes fine-tuning/nova dir
+        assert "fine-tuning/nova" in recipe_path
         # image_uri should match the context
         assert image_uri == self.IMAGE_URI
 
@@ -880,8 +885,6 @@ class TestBuildHyperPodDatamixRecipeFromContext:
 
     def test_missing_hyperpod_cli_raises_runtime_error(self):
         """Missing hyperpod_cli package should raise RuntimeError with install guidance."""
-        import sys
-        import importlib
         from unittest.mock import patch
 
         from sagemaker.train.common_utils.data_mixing_utils import (
@@ -892,7 +895,11 @@ class TestBuildHyperPodDatamixRecipeFromContext:
         config = self._make_validated_config()
 
         # Remove hyperpod_cli from sys.modules if present, and make import fail
-        original_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+        original_import = (
+            __builtins__["__import__"]
+            if isinstance(__builtins__, dict)
+            else __builtins__.__import__
+        )
 
         def mock_import(name, *args, **kwargs):
             if name == "hyperpod_cli":
@@ -1018,8 +1025,7 @@ class TestBuildHyperPodDatamixRecipeFromContext:
         """When nova_data_percentages is None (after validate_data_mixing_categories
         populates defaults), the build should use those defaults in the output."""
         import yaml
-        from io import StringIO
-        from unittest.mock import patch, MagicMock, mock_open
+        from unittest.mock import patch, MagicMock
 
         from sagemaker.train.common_utils.data_mixing_utils import (
             build_hyperpod_datamix_recipe_from_context,
@@ -1044,6 +1050,7 @@ class TestBuildHyperPodDatamixRecipeFromContext:
 
         def capture_write(path, mode="r", **kwargs):
             from io import StringIO as SIO
+
             if mode == "w":
                 sio = SIO()
                 sio.name = path

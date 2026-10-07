@@ -11,13 +11,16 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains class to handle Feature Processor Lineage"""
+
 from __future__ import absolute_import
 
 import re
 import logging
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.mlops.feature_store.feature_processor._constants import FEATURE_GROUP_ARN_REGEX_PATTERN
+from sagemaker.mlops.feature_store.feature_processor._constants import (
+    FEATURE_GROUP_ARN_REGEX_PATTERN,
+)
 from sagemaker.mlops.feature_store.feature_processor.lineage._feature_group_contexts import (
     FeatureGroupContexts,
 )
@@ -97,7 +100,9 @@ class FeatureGroupLineageEntityHandler:
         Returns:
             FeatureGroup: The Feature Group resource.
         """
-        feature_group = FeatureGroup.get(feature_group_name=feature_group_name, session=sagemaker_session.boto_session)
+        feature_group = FeatureGroup.get(
+            feature_group_name=feature_group_name, session=sagemaker_session.boto_session
+        )
         logger.debug(
             "Called describe_feature_group with %s and received: %s",
             feature_group_name,

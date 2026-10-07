@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Shared pytest fixtures for sagemaker-mlops integration tests."""
+
 from __future__ import absolute_import
 
 import json
@@ -31,15 +32,21 @@ from sagemaker.core.workflow.pipeline_context import PipelineSession
 import importlib.util as _importlib_util
 
 _container_build_path = _os.path.abspath(
-    _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "tests", "integ_helpers", "container_build.py")
+    _os.path.join(
+        _os.path.dirname(__file__), "..", "..", "..", "tests", "integ_helpers", "container_build.py"
+    )
 )
-_spec = _importlib_util.spec_from_file_location("integ_helpers.container_build", _container_build_path)
+_spec = _importlib_util.spec_from_file_location(
+    "integ_helpers.container_build", _container_build_path
+)
 _container_build = _importlib_util.module_from_spec(_spec)
 _spec.loader.exec_module(_container_build)
 
 DOCKERFILE_TEMPLATE = _container_build.DOCKERFILE_TEMPLATE
 DOCKERFILE_TEMPLATE_WITH_CONDA = _container_build.DOCKERFILE_TEMPLATE_WITH_CONDA
-DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = _container_build.DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR
+DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = (
+    _container_build.DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR
+)
 build_sdk_tar_once = _container_build.build_sdk_tar_once
 build_container_once = _container_build.build_container_once
 
@@ -59,8 +66,53 @@ CONDA_YML_FILE_TEMPLATE = (
 
 
 # ---------------------------------------------------------------------------
+# IAM SimulatePrincipalPolicy throttling mitigation
+#
+# These tests run under ``pytest -n auto`` (dozens of xdist workers). Many of
+# them resolve/validate an IAM execution role via ``resolve_and_validate_role``
+# (e.g. during ``Pipeline`` create/upsert and feature-processor scheduling),
+# which internally calls the low-TPS ``iam:SimulatePrincipalPolicy`` API. With
+# many workers hitting it at once IAM throttles the request, surfacing as
+# ``ClientError: (Throttling) ... Rate exceeded``. This mitigation is a purely
+# test-harness concurrency fix and is intentionally identical to the block in
+# the sagemaker-train / sagemaker-serve integ conftests.
+#
+# Throttling that still exhausts the adaptive retry budget is deliberately left
+# to fail the test loudly (rather than being converted to a skip), so a
+# persistent rate-limit regression stays visible instead of silently
+# disappearing from the results.
+# ---------------------------------------------------------------------------
+
+# botocore adaptive retry settings for throttling-prone IAM validation calls.
+# Applied via env vars so every client in the worker inherits them, regardless of
+# which boto session the SDK ends up using to build its IAM client.
+_RETRY_MODE = "adaptive"
+_MAX_ATTEMPTS = "10"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _configure_boto_adaptive_retries():
+    """Give every boto3 client in this xdist worker adaptive retries so the IAM
+    clients built by the role resolver absorb transient SimulatePrincipalPolicy
+    throttling. Restores any pre-existing values on teardown."""
+    previous = {
+        "AWS_RETRY_MODE": os.environ.get("AWS_RETRY_MODE"),
+        "AWS_MAX_ATTEMPTS": os.environ.get("AWS_MAX_ATTEMPTS"),
+    }
+    os.environ["AWS_RETRY_MODE"] = _RETRY_MODE
+    os.environ["AWS_MAX_ATTEMPTS"] = _MAX_ATTEMPTS
+    yield
+    for key, value in previous.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
+
+
+# ---------------------------------------------------------------------------
 # CLI options
 # ---------------------------------------------------------------------------
+
 
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
@@ -78,6 +130,7 @@ def pytest_configure(config):
 # ---------------------------------------------------------------------------
 # Core session fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def sagemaker_client_config(request):
@@ -119,6 +172,7 @@ def pipeline_session(boto_session):
 # Workflow-scoped session (isolated to prevent race conditions with other tests)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def sagemaker_session_for_pipeline(sagemaker_client_config, boto_session):
     """Separate SageMaker session scoped to the module to avoid settings race conditions."""
@@ -150,6 +204,7 @@ def region_name(sagemaker_session_for_pipeline):
 # Path fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def test_data_dir():
     return os.path.join(os.path.dirname(__file__), "data")
@@ -163,6 +218,7 @@ def test_code_dir():
 # ---------------------------------------------------------------------------
 # Framework version fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def sklearn_latest_version():
@@ -196,6 +252,7 @@ def sklearn_latest_version():
 # Python version fixture
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def compatible_python_version():
     return "{}.{}".format(sys.version_info.major, sys.version_info.minor)
@@ -204,6 +261,7 @@ def compatible_python_version():
 # ---------------------------------------------------------------------------
 # SDK tar — built once, shared across all xdist workers via file lock
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def sagemaker_sdk_tar_path(tmp_path_factory):
@@ -215,33 +273,46 @@ def sagemaker_sdk_tar_path(tmp_path_factory):
 # Container fixtures — each image built & pushed once, ECR URI cached on disk
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
-def dummy_container_without_error(sagemaker_session, compatible_python_version,
-                                   sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_without_error(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return build_container_once(
         "dummy_container_without_error",
-        sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
-def dummy_container_with_user_and_workdir(sagemaker_session, compatible_python_version,
-                                           sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_with_user_and_workdir(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return build_container_once(
         "dummy_container_with_user_and_workdir",
-        sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
-def dummy_container_with_conda(sagemaker_session, compatible_python_version,
-                                sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_with_conda(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return build_container_once(
         "dummy_container_with_conda",
-        sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE_WITH_CONDA, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE_WITH_CONDA,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 

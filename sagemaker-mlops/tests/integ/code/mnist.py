@@ -42,16 +42,16 @@ class Net(nn.Module):
 def _get_train_data_loader(batch_size, training_dir, is_distributed, **kwargs):
     logger.info("Get train data loader")
     logger.info(f"Training dir: {training_dir}")
-    
+
     # Check directory structure
     if os.path.exists(training_dir):
         logger.info(f"Contents of {training_dir}: {os.listdir(training_dir)}")
-        mnist_raw = os.path.join(training_dir, 'MNIST', 'raw')
+        mnist_raw = os.path.join(training_dir, "MNIST", "raw")
         if os.path.exists(mnist_raw):
             logger.info(f"MNIST/raw exists with files: {os.listdir(mnist_raw)}")
         else:
             logger.warning(f"MNIST/raw not found at {mnist_raw}")
-    
+
     # Try to load dataset, download if files not found
     try:
         dataset = datasets.MNIST(
@@ -80,7 +80,7 @@ def _get_train_data_loader(batch_size, training_dir, is_distributed, **kwargs):
         batch_size=batch_size,
         shuffle=train_sampler is None,
         sampler=train_sampler,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -105,13 +105,8 @@ def _get_test_data_loader(test_batch_size, training_dir, **kwargs):
                 [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
             ),
         )
-    
-    return torch.utils.data.DataLoader(
-        dataset,
-        batch_size=test_batch_size,
-        shuffle=True,
-        **kwargs
-    )
+
+    return torch.utils.data.DataLoader(dataset, batch_size=test_batch_size, shuffle=True, **kwargs)
 
 
 def _average_gradients(model):

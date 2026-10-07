@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow emr_step."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -86,8 +87,13 @@ def test_emr_step_with_both_cluster_id_and_config_raises_error():
             cluster_config={"Instances": {}},
         )
 
+
 def test_emr_step_with_output_args():
-    config = EMRStepConfig(jar="s3://bucket/my.jar", args=["arg1"], output_args={"output": "s3://bucket/my/output/path"})
+    config = EMRStepConfig(
+        jar="s3://bucket/my.jar",
+        args=["arg1"],
+        output_args={"output": "s3://bucket/my/output/path"},
+    )
     step = EMRStep(
         name="emr-step",
         display_name="EMR Step",
