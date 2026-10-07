@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.257.7 (2026-10-07)
+
+### Enhancements
+* Add support for describe_endpoint_config to session (#5193)
+* Update SDK to use latest LMI v29 image for sdk v2.x (#6302)
+
+### Bug Fixes
+* Reject unsupported container_version in image_uris instead of returning a bad URI (#6377)
+* Honor base_job_name for model monitor job definition names (#6373)
+* Allow directory paths in Spark submit_deps (#6368)
+* Clean up temp CSV in AthenaQuery.as_dataframe (#6345)
+* Default AsyncPredictor upload prefix to endpoint name (#6337)
+* Keep AsyncPredictor serializers in sync with wrapped predictor (#6334)
+* Convert ParallelismConfiguration to a dict before passing to boto (#6329)
+* Do not apply user ignore_patterns to the SDK-owned sm_drivers channel (#6328)
+* Allow PipelineVariable keys in HyperparameterTuner hyperparameter_ranges annotation (#6327)
+* Write repack launcher with LF endings so pipelines built on Windows work (#6326)
+* Allow Constraints.set_monitoring to disable monitoring for non-string features (#6325)
+* Shorten local pipeline execution_id (#5283)
+* Send NextToken when JumpStart Hub.list_models pages through hub contents (#6262)
+* Add eusc-de-east-1 JumpStart buckets and name JumpStart in the bucket error (#6242)
+* Preserve instance-variant environment variable names on the JumpStart hub path (#6205)
+
+### Other Changes
+* Remove Bedrock step types and align inference and lineage pipeline steps with v3 (#6223)
+* Stop slow CI Health V2 suite from timing out (#6391)
+* Fix broken and flaky CI Health V2 integ tests (#6386)
+* Replace deprecated ml.t2.medium in integ fixtures (#6284)
+
+
 ## v2.257.6 (2026-08-10)
 
 ### Enhancements
