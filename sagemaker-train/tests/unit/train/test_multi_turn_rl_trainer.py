@@ -2,7 +2,7 @@
 
 import json
 import warnings
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -1057,9 +1057,10 @@ class TestPipelineCapture:
     def test_train_returns_step_arguments_and_submits_nothing(self):
         session = self._pipeline_session()
         trainer = self._make_trainer(sagemaker_session=session)
-        with self._pinned_name(), patch(
-            "sagemaker.train.multi_turn_rl_trainer.Job.create"
-        ) as mock_create:
+        with (
+            self._pinned_name(),
+            patch("sagemaker.train.multi_turn_rl_trainer.Job.create") as mock_create,
+        ):
             step_args = trainer.train()
         assert isinstance(step_args, _StepArguments)
         assert step_args.caller_name == "create_job"
@@ -1137,9 +1138,7 @@ class TestPipelineCapture:
             warnings.simplefilter("always")
             step_args = trainer.train(wait=True)
         assert step_args.func_kwargs.get("wait") is False
-        assert any(
-            "No Wait" in str(w.message) for w in caught
-        ), [str(w.message) for w in caught]
+        assert any("No Wait" in str(w.message) for w in caught), [str(w.message) for w in caught]
 
     # --- parity with the direct submission path -------------------------------
 
@@ -1151,11 +1150,13 @@ class TestPipelineCapture:
             recorded.update(kwargs)
             return MagicMock()
 
-        with self._pinned_name(), patch(
-            "sagemaker.train.multi_turn_rl_trainer.Job.create", side_effect=_record
-        ), patch(
-            "sagemaker.train.multi_turn_rl_trainer.AgentRFTJob.from_job",
-            return_value=MagicMock(),
+        with (
+            self._pinned_name(),
+            patch("sagemaker.train.multi_turn_rl_trainer.Job.create", side_effect=_record),
+            patch(
+                "sagemaker.train.multi_turn_rl_trainer.AgentRFTJob.from_job",
+                return_value=MagicMock(),
+            ),
         ):
             trainer.train(wait=False)
         return recorded
@@ -1203,9 +1204,9 @@ class TestPipelineCapture:
         }
 
         session = self._pipeline_session()
-        captured = dict(self._capture(
-            self._make_trainer(sagemaker_session=session, tags=tags), session
-        ).args)
+        captured = dict(
+            self._capture(self._make_trainer(sagemaker_session=session, tags=tags), session).args
+        )
         # The document is captured as the raw config dict for JobStep to scope and
         # encode; compare it to the direct route's config, and the rest to the wire.
         document = captured.pop("JobConfigDocument")
@@ -1221,9 +1222,9 @@ class TestPipelineCapture:
             self._make_trainer(sagemaker_session=self._direct_session(), tags=tags)
         )
         session = self._pipeline_session()
-        captured = dict(self._capture(
-            self._make_trainer(sagemaker_session=session, tags=tags), session
-        ).args)
+        captured = dict(
+            self._capture(self._make_trainer(sagemaker_session=session, tags=tags), session).args
+        )
         document = captured.pop("JobConfigDocument")
         assert document == json.loads(direct["job_config_document"])
         wire = self._job_create_wire_request(direct, direct["job_config_document"])
@@ -1256,7 +1257,9 @@ class TestPipelineCapture:
         session = self._pipeline_session()
         trainer = self._make_trainer(sagemaker_session=session)
         captured = self._capture(trainer, session).args["JobConfigDocument"]
-        direct = self._make_trainer(sagemaker_session=self._direct_session())._build_job_config_document()
+        direct = self._make_trainer(
+            sagemaker_session=self._direct_session()
+        )._build_job_config_document()
         assert isinstance(captured, dict)
         assert captured == json.loads(direct)
 
@@ -1281,7 +1284,8 @@ class TestPipelineCapture:
     def test_pipeline_variable_document_would_be_a_type_error_unencoded(self):
         """Locks the reason the encoder is needed rather than assuming it."""
         trainer = self._make_trainer(
-            sagemaker_session=self._direct_session(), s3_output_path=ParameterString(name="OutputPath")
+            sagemaker_session=self._direct_session(),
+            s3_output_path=ParameterString(name="OutputPath"),
         )
         with pytest.raises(TypeError, match="not JSON serializable"):
             trainer._build_job_config_document()
@@ -1292,11 +1296,13 @@ class TestPipelineCapture:
         """Criterion: a normal session behaves exactly as before."""
         job_handle = MagicMock()
         trainer = self._make_trainer(sagemaker_session=self._direct_session())
-        with self._pinned_name(), patch(
-            "sagemaker.train.multi_turn_rl_trainer.Job.create"
-        ) as mock_create, patch(
-            "sagemaker.train.multi_turn_rl_trainer.AgentRFTJob.from_job",
-            return_value=job_handle,
+        with (
+            self._pinned_name(),
+            patch("sagemaker.train.multi_turn_rl_trainer.Job.create") as mock_create,
+            patch(
+                "sagemaker.train.multi_turn_rl_trainer.AgentRFTJob.from_job",
+                return_value=job_handle,
+            ),
         ):
             returned = trainer.train(wait=False)
         mock_create.assert_called_once()
@@ -1307,11 +1313,13 @@ class TestPipelineCapture:
     def test_direct_path_honours_wait(self):
         job_handle = MagicMock()
         trainer = self._make_trainer(sagemaker_session=self._direct_session())
-        with self._pinned_name(), patch(
-            "sagemaker.train.multi_turn_rl_trainer.Job.create"
-        ), patch(
-            "sagemaker.train.multi_turn_rl_trainer.AgentRFTJob.from_job",
-            return_value=job_handle,
+        with (
+            self._pinned_name(),
+            patch("sagemaker.train.multi_turn_rl_trainer.Job.create"),
+            patch(
+                "sagemaker.train.multi_turn_rl_trainer.AgentRFTJob.from_job",
+                return_value=job_handle,
+            ),
         ):
             trainer.train(wait=True)
         job_handle.wait.assert_called_once()
