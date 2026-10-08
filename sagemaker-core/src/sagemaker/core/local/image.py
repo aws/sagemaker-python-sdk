@@ -39,6 +39,7 @@ import sagemaker
 from sagemaker.core.config.config_schema import CONTAINER_CONFIG, LOCAL
 import sagemaker.core
 from sagemaker.core.common_utils import custom_extractall_tarfile
+from sagemaker.core.constants import DIR_PARAM_NAME, SAGEMAKER_OUTPUT_LOCATION
 
 CONTAINER_PREFIX = "algo"
 STUDIO_HOST_NAME = "sagemaker-local"
@@ -277,9 +278,7 @@ class _SageMakerContainer(object):
             data_dir, input_data_config, output_data_config, hyperparameters
         )
         # If local, source directory needs to be updated to mounted /opt/ml/code path
-        hyperparameters = self._update_local_src_path(
-            hyperparameters, key=sagemaker.serve.model_builder.DIR_PARAM_NAME
-        )
+        hyperparameters = self._update_local_src_path(hyperparameters, key=DIR_PARAM_NAME)
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -344,15 +343,15 @@ class _SageMakerContainer(object):
         volumes = self._prepare_serving_volumes(model_dir)
 
         # If the user script was passed as a file:// mount it to the container.
-        if sagemaker.serve.model_builder.DIR_PARAM_NAME.upper() in environment:
-            script_dir = environment[sagemaker.serve.model_builder.DIR_PARAM_NAME.upper()]
+        if DIR_PARAM_NAME.upper() in environment:
+            script_dir = environment[DIR_PARAM_NAME.upper()]
             parsed_uri = urlparse(script_dir)
             if parsed_uri.scheme == "file":
                 host_dir = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
                 volumes.append(_Volume(host_dir, "/opt/ml/code"))
                 # Update path to mount location
                 environment = environment.copy()
-                environment[sagemaker.serve.model_builder.DIR_PARAM_NAME.upper()] = "/opt/ml/code"
+                environment[DIR_PARAM_NAME.upper()] = "/opt/ml/code"
 
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
@@ -583,8 +582,8 @@ class _SageMakerContainer(object):
 
         # If there is a training script directory and it is a local directory,
         # mount it to the container.
-        if sagemaker.serve.model_builder.DIR_PARAM_NAME in hyperparameters:
-            training_dir = json.loads(hyperparameters[sagemaker.serve.model_builder.DIR_PARAM_NAME])
+        if DIR_PARAM_NAME in hyperparameters:
+            training_dir = json.loads(hyperparameters[DIR_PARAM_NAME])
             parsed_uri = urlparse(training_dir)
             if parsed_uri.scheme == "file":
                 host_dir = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
@@ -593,10 +592,7 @@ class _SageMakerContainer(object):
                 volumes.append(_Volume(shared_dir, "/opt/ml/shared"))
 
         parsed_uri = urlparse(output_data_config["S3OutputPath"])
-        if (
-            parsed_uri.scheme == "file"
-            and sagemaker.serve.model_builder.SAGEMAKER_OUTPUT_LOCATION in hyperparameters
-        ):
+        if parsed_uri.scheme == "file" and SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
             dir_path = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
             intermediate_dir = os.path.join(dir_path, "output", "intermediate")
             if not os.path.exists(intermediate_dir):
