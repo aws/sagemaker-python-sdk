@@ -20,6 +20,8 @@ import pytest
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 
+from .nova_capacity import nova_capacity_slot, wait_for_nova_training_job
+
 
 @pytest.mark.gpu_intensive
 def test_sft_trainer_lora_complete_workflow(sagemaker_session, mlflow_resource_arn):
@@ -123,22 +125,15 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
         base_job_name=f"sft-nova-integ-{unique_id}",
     )
 
-    # Create training job
-    training_job = sft_trainer_nova.train(wait=False)
-
-    # Manual wait loop
-    max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
-    poll_interval = 30  # Check every 30 seconds
-    start_time = time.time()
-
-    while time.time() - start_time < max_wait_time:
-        training_job.refresh()
-        status = training_job.training_job_status
-
-        if status in ["Completed", "Failed", "Stopped"]:
-            break
-
-        time.sleep(poll_interval)
+    # Nova serverless jobs share a p5 pool with customers: run one at a time and
+    # give the capacity back if the job cannot get instances (see nova_capacity.py).
+    with nova_capacity_slot():
+        training_job = sft_trainer_nova.train(wait=False)
+        wait_for_nova_training_job(
+            training_job,
+            max_wait_time=10800,  # 3 hour timeout (Nova training takes >1 hour)
+            poll_interval=30,
+        )
 
     # Verify job completed successfully
     assert training_job.training_job_status == "Completed"

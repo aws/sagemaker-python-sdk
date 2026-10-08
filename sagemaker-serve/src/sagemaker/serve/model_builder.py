@@ -58,6 +58,7 @@ from sagemaker.core.resources import (
     ModelPackageModelCard,
 )
 from sagemaker.core.utils.utils import logger
+from sagemaker.core.exceptions import CapacityError, UnexpectedStatusException
 from sagemaker.core.helper import session_helper
 from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.helper.session_helper import (
@@ -3767,9 +3768,27 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return LocalEndpoint.get(endpoint_name=endpoint_name, local_session=local_session)
 
     def _wait_for_endpoint(
-        self, endpoint, poll=30, live_logging=False, show_progress=True, wait=True
+        self,
+        endpoint,
+        poll=30,
+        live_logging=False,
+        show_progress=True,
+        wait=True,
+        stream_endpoint_logs=True,
     ):
-        """Enhanced wait with rich progress bar and status logging"""
+        """Wait for an endpoint deployment to finish, with a rich progress bar.
+
+        Args:
+            stream_endpoint_logs (bool): Stream the endpoint's CloudWatch logs while
+                waiting (default: True). Inference-component based endpoints host no
+                model themselves and never get an endpoint log group, so they wait on
+                status only.
+
+        Raises:
+            CapacityError: If the endpoint fails with a CapacityError.
+            UnexpectedStatusException: If the endpoint finishes in any state other
+                than ``InService``.
+        """
         if not wait:
             logger.info(
                 "🚀 Deployment started: Endpoint '%s' using %s in %s mode (deployment in progress)",
@@ -3793,16 +3812,20 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 # Check if we have permission for live logging
                 from sagemaker.core.helper.session_helper import _has_permission_for_live_logging
 
-                if _has_permission_for_live_logging(self.sagemaker_session.boto_session, endpoint):
+                if stream_endpoint_logs and _has_permission_for_live_logging(
+                    self.sagemaker_session.boto_session, endpoint
+                ):
                     # Use live logging with Rich progress tracker
                     cloudwatch_client = self.sagemaker_session.boto_session.client("logs")
                     paginator = cloudwatch_client.get_paginator("filter_log_events")
                     from sagemaker.core.helper.session_helper import (
                         create_paginator_config,
                         EP_LOGGER_POLL,
+                        _EndpointNotFoundBudget,
                     )
 
                     paginator_config = create_paginator_config()
+                    not_found_budget = _EndpointNotFoundBudget()
                     desc = _wait_until(
                         lambda: _live_logging_deploy_done_with_progress(
                             sagemaker_client,
@@ -3811,6 +3834,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                             paginator_config,
                             EP_LOGGER_POLL,
                             progress,
+                            not_found_budget=not_found_budget,
                         ),
                         poll=EP_LOGGER_POLL,
                     )
@@ -3824,29 +3848,37 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             # Existing implementation
             desc = _wait_until(lambda: _deploy_done(sagemaker_client, endpoint), poll)
 
-        # Check final endpoint status and log accordingly
-        try:
-            endpoint_desc = sagemaker_client.describe_endpoint(EndpointName=endpoint)
-            endpoint_status = endpoint_desc["EndpointStatus"]
-            if endpoint_status == "InService":
-                endpoint_arn_info = (
-                    f" (ARN: {endpoint_desc['EndpointArn']})"
-                    if self.mode == Mode.SAGEMAKER_ENDPOINT
-                    else ""
-                )
-                logger.info(
-                    "✅ Deployment successful: Endpoint '%s' using %s in %s mode%s",
-                    endpoint,
-                    self.model_server,
-                    self.mode,
-                    endpoint_arn_info,
-                )
-            else:
-                logger.error(
-                    "❌ Deployment failed: Endpoint '%s' status is '%s'", endpoint, endpoint_status
-                )
-        except Exception as e:
-            logger.error("❌ Deployment failed: Unable to verify endpoint status - %s", str(e))
+        # _wait_until returns the DescribeEndpoint response of the final status.
+        endpoint_status = desc.get("EndpointStatus")
+        if endpoint_status != "InService":
+            reason = desc.get("FailureReason")
+            logger.error(
+                "Deployment failed: Endpoint '%s' status is '%s'. Reason: %s",
+                endpoint,
+                endpoint_status,
+                reason,
+            )
+            error_class = (
+                CapacityError if "CapacityError" in str(reason) else UnexpectedStatusException
+            )
+            raise error_class(
+                message=f"Error hosting endpoint {endpoint}: {endpoint_status}. Reason: {reason}.",
+                allowed_statuses=["InService"],
+                actual_status=endpoint_status,
+            )
+
+        endpoint_arn_info = (
+            f" (ARN: {desc['EndpointArn']})"
+            if self.mode == Mode.SAGEMAKER_ENDPOINT and desc.get("EndpointArn")
+            else ""
+        )
+        logger.info(
+            "Deployment successful: Endpoint '%s' using %s in %s mode%s",
+            endpoint,
+            self.model_server,
+            self.mode,
+            endpoint_arn_info,
+        )
 
         return desc
 
@@ -4110,7 +4142,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     live_logging=False,  # TODO: enable when IC supports this
                     wait=False,
                 )
-                self._wait_for_endpoint(endpoint=self.endpoint_name, show_progress=True, wait=wait)
+                # An IC-based endpoint hosts no model itself, so it never gets an
+                # endpoint log group to stream: wait on its status only.
+                self._wait_for_endpoint(
+                    endpoint=self.endpoint_name,
+                    show_progress=True,
+                    wait=wait,
+                    stream_endpoint_logs=False,
+                )
 
             core_endpoint = Endpoint.get(
                 endpoint_name=self.endpoint_name,
@@ -4151,7 +4190,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 tags=tags,
                 wait=False,
             )
-            self._wait_for_endpoint(endpoint=self.endpoint_name, show_progress=True, wait=wait)
+            self._wait_for_endpoint(
+                endpoint=self.endpoint_name,
+                show_progress=True,
+                wait=wait,
+                stream_endpoint_logs=False,
+            )
 
             return core_endpoint
 
@@ -6059,6 +6103,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
                 or a ``Transformer`` for batch transform inference.
+
+        Raises:
+            UnexpectedStatusException: If ``wait`` is True and the endpoint finishes in a
+                state other than ``InService`` (``CapacityError`` for capacity failures).
+                Model customization and recommendation deployments raise
+                ``FailedStatusError`` instead.
 
         Example:
             >>> model_builder = ModelBuilder(model=my_model, role_arn=role, instance_type="ml.m5.xlarge")

@@ -104,6 +104,13 @@ class SourceCode(BaseConfig):
         command (Optional[str]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        args (Optional[List[Union[str, int, float]]]):
+            A list of arguments to append to ``command`` when it is executed in the training job
+            container. Example: ``["--epochs", 25, "--learning_rate", 0.001]``. Each argument is
+            shell-quoted before being appended, so values may contain spaces or special characters.
+            Only applicable when ``command`` is provided; top-level ``hyperparameters`` are not
+            passed as CLI arguments in ``command`` mode -- they are available inside the container
+            via the ``SM_HPS`` environment variable.
         ignore_patterns: (Optional[List[str]]) :
             The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
             default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
@@ -113,6 +120,7 @@ class SourceCode(BaseConfig):
     requirements: Optional[str] = None
     entry_script: Optional[str] = None
     command: Optional[str] = None
+    args: Optional[List[Union[str, int, float]]] = None
     ignore_patterns: Optional[List[str]] = [
         ".env",
         ".git",

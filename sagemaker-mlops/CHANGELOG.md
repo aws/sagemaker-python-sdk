@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.24.0 (2026-10-07)
+
+### New Features
+
+- feat(mlops): add JobStep and shared pipeline capture for CreateJob producers (#6292)
+
+### Bug Fixes
+
+- fix(mlops): clean up temp CSV in AthenaQuery.as_dataframe (#6344)
+- fix(mlops): set full s3_input fields on QualityCheckStep baseline_dataset pipeline-variable input (#6322)
+- fix(mlops): convert ParallelismConfiguration to request dict before boto pipeline calls (#6315)
+- fix(mlops): write repack launcher with LF endings so pipelines built on Windows work (#6313)
+
+
 ## v1.23.0 (2026-09-24)
 
 ### New Features
