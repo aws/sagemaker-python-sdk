@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.24.0 (2026-10-07)
+
+### New Features
+
+- feat(train): add args field to SourceCode for command-based training (#6356)
+- feat(train): add output_data property to ModelTrainer (#6355)
+- feat(train): allow configurable S3 key prefix for ModelTrainer input uploads (#6354)
+
+### Bug Fixes
+
+- fix(train): fix incorrect model_trainer method call to load hyperparameters from file (#5771)
+- fix(train): handle CRLF line endings (#6088)
+- fix(train): preserve content_type when HyperparameterTuner converts InputData to Channel (#6321)
+- fix(train): allow PipelineVariable keys in HyperparameterTuner hyperparameter_ranges annotation (#6314)
+- fix(train): accept a PipelineVariable for HyperparameterTuner random_seed (#6320)
+- fix(train): apply output KMS key to ModelTrainer source-code S3 uploads (#6339)
+- fix(train): do not apply user ignore_patterns to the sm_drivers driver channel (#6316)
+
+### Tests
+
+- test(train): serialize Nova serverless integ jobs (#6387)
+- test(train): stop MTRL training integ tests churning fixture MPG (#6362)
+- test(train): stop test_sourcecode_args from depending on an ambient HOME (#6383)
+
+
 ## v1.23.0 (2026-09-24)
 
 ### New Features

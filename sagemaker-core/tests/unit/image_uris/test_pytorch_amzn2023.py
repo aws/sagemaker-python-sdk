@@ -25,16 +25,20 @@ DEFAULT_DOMAIN = "amazonaws.com"
 # encodes CUDA directly (e.g. 2.13-cu133-amzn2023-sagemaker) with no "gpu" token,
 # so these versions set "processor_in_tag": false and bake the accelerator into
 # container_version.
-AMZN2023_VERSIONS = ["2.11", "2.12", "2.13"]
+# Versions that must stay resolvable. Newer versions added by the automated
+# image_uri_configs updates are picked up from the config automatically, so this
+# set only needs to grow when a version must be guaranteed to remain available.
+REQUIRED_AMZN2023_VERSIONS = {"2.11", "2.12", "2.13", "2.14"}
 
 
 @pytest.mark.parametrize("load_config", ["pytorch-amzn2023.json"], indirect=True)
 def test_pytorch_amzn2023_training_uris(load_config):
     """pytorch-amzn2023 resolves both cpu and gpu; the gpu tag carries cuNNN, not "gpu"."""
     training = load_config["training"]
-    assert sorted(training["versions"]) == sorted(AMZN2023_VERSIONS)
-    for version in AMZN2023_VERSIONS:
-        version_config = training["versions"][version]
+    versions = training["versions"]
+    assert REQUIRED_AMZN2023_VERSIONS <= set(versions)
+    assert training["version_aliases"]["latest"] in versions
+    for version, version_config in versions.items():
         assert version_config["repository"] == "pytorch"
         assert version_config["processor_in_tag"] is False
         container_version = version_config["container_version"]

@@ -1,5 +1,63 @@
 # Changelog
 
+## v3.24.0 (2026-10-07)
+
+### New Features
+
+- feat(core): add image_uris list_frameworks/list_versions/list_py_versions helpers (#6357)
+- feat(train): add args field to SourceCode for command-based training (#6356)
+- feat(train): add output_data property to ModelTrainer (#6355)
+- feat(train): allow configurable S3 key prefix for ModelTrainer input uploads (#6354)
+- feat(mlops): add JobStep and shared pipeline capture for CreateJob producers (#6292)
+- feat: advertise Python 3.13 support (#6348)
+
+### Bug Fixes
+
+- fix(core): fall back to ARN in ModelPackage.refresh for versioned packages (#6378)
+- fix(core): allow Constraints.set_monitoring to disable monitoring for non-string features (#6312)
+- fix(core): respect session region when waiting for processing jobs (#6369)
+- fix(core): reject unsupported container_version instead of returning a bad URI (#6376)
+- fix(core): SageMakerClient honors the passed boto3 session and config (#6273)
+- fix(core): close temp tarball before reading it (#6319)
+- fix(core): make all pipeline Parameters hashable (#6351)
+- fix(core): stop LineIterator hanging when the stream ends without a trailing newline (#6279)
+- fix(core): stop mutating global logging state on import (#6341)
+- fix(core): freeze credentials before signing bearer token (#6360)
+- fix(core): make DataCaptureConfigSummary.kms_key_id optional (#6346)
+- fix(core): lazily initialize DEFAULT_JUMPSTART_SAGEMAKER_SESSION (#6330)
+- fix(core): add PyTorch 2.6 graviton (arm64) inference image (#6342)
+- fix(train): fix incorrect model_trainer method call to load hyperparameters from file (#5771)
+- fix(train): handle CRLF line endings (#6088)
+- fix(train): preserve content_type when HyperparameterTuner converts InputData to Channel (#6321)
+- fix(train): allow PipelineVariable keys in HyperparameterTuner hyperparameter_ranges annotation (#6314)
+- fix(train): accept a PipelineVariable for HyperparameterTuner random_seed (#6320)
+- fix(train): apply output KMS key to ModelTrainer source-code S3 uploads (#6339)
+- fix(train): do not apply user ignore_patterns to the sm_drivers driver channel (#6316)
+- fix(serve): stop deploy waits hanging; follow empty list pages (#6367)
+- fix(serve): pass instance_type to _deploy once when creating an inference component (#6203)
+- fix(serve): support pipeline variable image_uri in ModelBuilder.build (#6347)
+- fix(serve): default AsyncPredictor upload prefix to endpoint name (#6336)
+- fix(serve): keep AsyncPredictor serializers in sync with wrapped predictor (#6335)
+- fix(mlops): clean up temp CSV in AthenaQuery.as_dataframe (#6344)
+- fix(mlops): set full s3_input fields on QualityCheckStep baseline_dataset pipeline-variable input (#6322)
+- fix(mlops): convert ParallelismConfiguration to request dict before boto pipeline calls (#6315)
+- fix(mlops): write repack launcher with LF endings so pipelines built on Windows work (#6313)
+
+### Tests
+
+- test(image_uris): derive pytorch-amzn2023 versions from config (#6385)
+- test(train): serialize Nova serverless integ jobs (#6387)
+- test(train): stop MTRL training integ tests churning fixture MPG (#6362)
+- test(train): stop test_sourcecode_args from depending on an ambient HOME (#6383)
+- test(serve): skip hang-prone endpoint integ tests in PR check (#6332)
+- style(serve): drop unused pytest imports in integ tests (#6361)
+
+### Other
+
+- change: update image_uri_configs (#6374)
+- docs: fix typo in shapes.py docstring (#5545)
+
+
 ## v3.23.0 (2026-09-24)
 
 ### New Features

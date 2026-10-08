@@ -326,6 +326,7 @@ class TestModelCustomizationFromModelPackage:
         assert model.model_arn is not None
 
     @pytest.mark.slow_test
+    @pytest.mark.xfail_on_insufficient_capacity
     def test_deploy_from_model_package(
         self, model_package_arn, cleanup_endpoints, sagemaker_session
     ):

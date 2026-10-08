@@ -56,6 +56,7 @@ from sagemaker.core.tools.templates import (
     GENERIC_METHOD_TEMPLATE,
     GET_METHOD_TEMPLATE,
     INITIALIZE_CLIENT_TEMPLATE,
+    INITIALIZE_OBJECT_CLIENT_TEMPLATE,
     REFRESH_METHOD_TEMPLATE,
     RESOURCE_BASE_CLASS_TEMPLATE,
     RETURN_ITERATOR_TEMPLATE,
@@ -96,6 +97,14 @@ SCHEMA_VERSION = "SchemaVersion"
 RESOURCES = "Resources"
 REQUIRED = "required"
 GLOBAL_DEFAULTS = "GlobalDefaults"
+
+# Some resources do not return their *Name identifier from the List API for certain
+# variants (e.g. a versioned ModelPackage returns only ModelPackageArn). Because the
+# Describe API accepts either the name or the ARN for the *Name parameter, refresh()
+# falls back to the ARN attribute when the name identifier is Unassigned. See issue #5606.
+REFRESH_IDENTIFIER_FALLBACKS = {
+    "ModelPackage": {"ModelPackageName": "model_package_arn"},
+}
 
 
 class ResourcesCodeGen:
@@ -177,7 +186,7 @@ class ResourcesCodeGen:
             "import datetime",
             "import time",
             "import functools",
-            "from pydantic import validate_call",
+            "from pydantic import PrivateAttr, validate_call",
             "from typing import Dict, List, Literal, Optional, Union, Any\n"
             "from boto3.session import Session",
             "from rich.console import Group",
@@ -760,7 +769,10 @@ class ResourcesCodeGen:
         return operation_input_args
 
     def _generate_operation_input_necessary_args(
-        self, resource_operation: dict, resource_attributes: list
+        self,
+        resource_operation: dict,
+        resource_attributes: list,
+        identifier_fallbacks: dict = None,
     ) -> str:
         """Generate the operation input arguments string.
 
@@ -769,7 +781,10 @@ class ResourcesCodeGen:
 
         Args:
             resource_operation (dict): The resource operation dictionary.
-            is_class_method (bool): Indicates method is class method, else object method.
+            resource_attributes (list): The resource object attributes available on self.
+            identifier_fallbacks (dict, optional): Maps an input member name to a resource
+                attribute to fall back to when the member's own attribute is Unassigned
+                (e.g. {"ModelPackageName": "model_package_arn"}). See issue #5606.
 
         Returns:
             str: The formatted operation input arguments string.
@@ -777,12 +792,22 @@ class ResourcesCodeGen:
         input_shape_name = resource_operation["input"]["shape"]
         input_shape_members = list(self.shapes[input_shape_name]["members"].keys())
 
+        identifier_fallbacks = identifier_fallbacks or {}
         args = list()
         for member in input_shape_members:
-            if convert_to_snake_case(member) in resource_attributes:
-                args.append(f"'{member}': self.{convert_to_snake_case(member)}")
+            snake_member = convert_to_snake_case(member)
+            if snake_member in resource_attributes:
+                if member in identifier_fallbacks:
+                    fallback_attr = identifier_fallbacks[member]
+                    args.append(
+                        f"'{member}': self.{snake_member} "
+                        f"if not isinstance(self.{snake_member}, Unassigned) "
+                        f"else self.{fallback_attr}"
+                    )
+                else:
+                    args.append(f"'{member}': self.{snake_member}")
             else:
-                args.append(f"'{member}': {convert_to_snake_case(member)}")
+                args.append(f"'{member}': {snake_member}")
 
         operation_input_args = ",\n".join(args)
         operation_input_args += ","
@@ -1299,7 +1324,9 @@ class ResourcesCodeGen:
         )
 
         operation_input_args = self._generate_operation_input_necessary_args(
-            operation_metadata, kwargs["resource_attributes"]
+            operation_metadata,
+            kwargs["resource_attributes"],
+            identifier_fallbacks=REFRESH_IDENTIFIER_FALLBACKS.get(resource_name),
         )
 
         operation = convert_to_snake_case(operation_name)
@@ -1406,7 +1433,7 @@ class ResourcesCodeGen:
             exclude_resource_attrs=exclude_resource_attrs,
         )
 
-        initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name="sagemaker")
+        initialize_client = INITIALIZE_OBJECT_CLIENT_TEMPLATE.format(service_name="sagemaker")
 
         formatted_method = GENERIC_METHOD_TEMPLATE.format(
             docstring=docstring,
@@ -1456,6 +1483,17 @@ class ResourcesCodeGen:
         )
         return formatted_method
 
+    @staticmethod
+    def _initialize_client_template(method: Method) -> str:
+        """Pick the client-initialization template for a generated method.
+
+        Object methods fall back to the session/region the resource was loaded with;
+        class and static methods only use the arguments passed to them.
+        """
+        if method.method_type in (MethodType.CLASS.value, MethodType.STATIC.value):
+            return INITIALIZE_CLIENT_TEMPLATE
+        return INITIALIZE_OBJECT_CLIENT_TEMPLATE
+
     def generate_method(self, method: Method, resource_attributes: list):
         # TODO: Use special templates for some methods with different formats like list and wait
         """Generate a resource method from its operation metadata."""
@@ -1501,7 +1539,9 @@ class ResourcesCodeGen:
         method_args += add_indent("session: Optional[Session] = None,\n", 4)
         method_args += add_indent("region: Optional[str] = None,", 4)
 
-        initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name=method.service_name)
+        initialize_client = self._initialize_client_template(method).format(
+            service_name=method.service_name
+        )
         if len(self.shapes[operation_input_shape_name]["members"]) != 0:
             # the method has input arguments
             serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
@@ -1540,7 +1580,9 @@ class ResourcesCodeGen:
                 return_type_conversion=return_type_conversion,
             )
 
-        initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name=method.service_name)
+        initialize_client = self._initialize_client_template(method).format(
+            service_name=method.service_name
+        )
         if len(self.shapes[operation_input_shape_name]["members"]) != 0:
             # the method has input arguments
             if method.resource_name == "Endpoint" and method.method_name == "invoke":
@@ -1647,8 +1689,16 @@ class ResourcesCodeGen:
         list_method = convert_to_snake_case(method.operation_name)
 
         # TODO: add rules for custom key mapping and list methods with no args
+        if method.method_type in (MethodType.CLASS.value, MethodType.STATIC.value):
+            client_context_args = ["session=session", "region=region"]
+        else:
+            client_context_args = [
+                "session=session or self._session",
+                "region=region or self._region",
+            ]
         resource_iterator_args_list = [
             "client=client",
+            *client_context_args,
             f"list_method='{list_method}'",
             f"summaries_key='{summaries_key}'",
             f"summary_name='{summary_name}'",
@@ -1661,7 +1711,9 @@ class ResourcesCodeGen:
         serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
             operation_input_args=operation_input_args
         )
-        initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name=method.service_name)
+        initialize_client = self._initialize_client_template(method).format(
+            service_name=method.service_name
+        )
         deserialize_response = RETURN_ITERATOR_TEMPLATE.format(
             resource_iterator_args=resource_iterator_args
         )
@@ -1931,6 +1983,8 @@ if not isinstance(self.resource_config, Unassigned):
 
         resource_iterator_args_list = [
             "client=client",
+            "session=session",
+            "region=region",
             f"list_method='{operation}'",
             f"summaries_key='{summaries_key}'",
             f"summary_name='{summary_name}'",

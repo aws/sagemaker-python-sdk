@@ -278,11 +278,12 @@ class Processor(object):
         self.role = resolve_value_from_config(
             role, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not self.role:
+        if not self.role and self.instance_type not in ("local", "local_gpu"):
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
+            # after fetching the config. In Local Mode the role is never used
+            # (LocalSagemakerClient.create_processing_job discards it), so it is not required.
             raise ValueError("An AWS IAM role is required to create a Processing job.")
 
         self.env = resolve_value_from_config(
@@ -368,7 +369,17 @@ class Processor(object):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
         """Extend inputs and outputs based on extra parameters"""
@@ -757,11 +768,12 @@ class Processor(object):
             process_request_args["network_config"] = self.network_config._to_request_dict()
         else:
             process_request_args["network_config"] = None
-        process_request_args["role_arn"] = (
-            self.role
-            if is_pipeline_variable(self.role)
-            else self.sagemaker_session.expand_role(self.role)
-        )
+        if self.role is None or is_pipeline_variable(self.role):
+            # No role in Local Mode (see __init__): the local client discards RoleArn,
+            # and expand_role(None) would raise.
+            process_request_args["role_arn"] = self.role
+        else:
+            process_request_args["role_arn"] = self.sagemaker_session.expand_role(self.role)
         process_request_args["tags"] = self.tags
         return process_request_args
 
@@ -937,7 +949,17 @@ class ScriptProcessor(Processor):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.
@@ -1297,7 +1319,9 @@ class FrameworkProcessor(ScriptProcessor):
             raise ValueError(f"source_dir does not exist: {source_dir}")
 
         # Create tar.gz with source_dir contents + dependencies
-        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+        tmp = tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False)
+        tmp.close()
+        try:
             with tarfile.open(tmp.name, "w:gz") as tar:
                 # Add all files from source_dir
                 for item in os.listdir(source_dir):
@@ -1319,15 +1343,19 @@ class FrameworkProcessor(ScriptProcessor):
                 "sourcedir.tar.gz",
             )
 
+            with open(tmp.name, "rb") as tar_file:
+                tar_bytes = tar_file.read()
+
             s3.S3Uploader.upload_string_as_file_body(
-                body=open(tmp.name, "rb").read(),
+                body=tar_bytes,
                 desired_s3_uri=s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
 
-            os.unlink(tmp.name)
             return s3_uri
+        finally:
+            os.unlink(tmp.name)
 
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
     @runnable_by_pipeline
@@ -1872,6 +1900,36 @@ def _get_process_request(
     return process_request
 
 
+def _wait_for_processing_job(sagemaker_session, job_name, poll=10):
+    """Wait for a processing job to reach a terminal state, respecting the session region.
+
+    Unlike ``ProcessingJob.wait()`` (which resolves a default, global SageMaker client),
+    this describes the job through ``sagemaker_session.sagemaker_client`` so the job is
+    polled in the same region it was created in (issue #5796).
+
+    Args:
+        sagemaker_session: The session used to create the job; its region-aware
+            ``sagemaker_client`` is used to describe the job.
+        job_name (str): Name of the processing job to wait for.
+        poll (int): The interval in seconds between polling for job completion.
+
+    Raises:
+        ValueError: If the processing job fails.
+    """
+    terminal_states = ("Completed", "Failed", "Stopped")
+
+    def _describe_if_terminal():
+        description = sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        )
+        if description["ProcessingJobStatus"] in terminal_states:
+            return description
+        return None
+
+    description = _wait_until(_describe_if_terminal, poll)
+    _check_job_status(job_name, description, "ProcessingJobStatus")
+
+
 def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """Display logs for a given processing job, optionally tailing them until the is complete.
 
@@ -1887,11 +1945,9 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """
 
     description = _wait_until(
-        lambda: ProcessingJob.get(
-            processing_job_name=job_name, session=sagemaker_session.boto_session
-        )
-        .refresh()
-        .__dict__,
+        lambda: sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        ),
         poll,
     )
 
@@ -1941,12 +1997,8 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
         if state == LogState.JOB_COMPLETE:
             state = LogState.COMPLETE
         elif time.time() - last_describe_job_call >= 30:
-            description = (
-                ProcessingJob.get(
-                    processing_job_name=job_name, session=sagemaker_session.boto_session
-                )
-                .refresh()
-                .__dict__
+            description = sagemaker_session.sagemaker_client.describe_processing_job(
+                ProcessingJobName=job_name
             )
             last_describe_job_call = time.time()
 
