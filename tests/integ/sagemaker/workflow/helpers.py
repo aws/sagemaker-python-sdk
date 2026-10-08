@@ -38,7 +38,9 @@ def create_and_execute_pipeline(
     step_status,
     step_result_type=None,
     step_result_value=None,
-    wait_duration=400,  # seconds
+    # Two sequential function steps routinely take ~8 minutes when each step's
+    # instance spends ~3 minutes in Starting, so 400s was too tight.
+    wait_duration=1000,  # seconds
     selective_execution_config=None,
 ):
     create_arn = None

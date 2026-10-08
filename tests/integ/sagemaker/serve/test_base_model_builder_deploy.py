@@ -170,7 +170,11 @@ def xgboost_model_builder(mb_sagemaker_session):
     training_job.wait()
 
     xgboost_model_builder = ModelBuilder(
-        name="ModelBuilderTest",
+        # Unique per fixture instance: xdist runs this module's tests on separate
+        # workers, and each test's cleanup deletes the model. A shared fixed name
+        # let one worker delete the model another worker's endpoint was being
+        # created from ("Model ... does not exist").
+        name=f"ModelBuilderTest-{uuid.uuid4().hex[:8]}",
         model_path=training_job.model_artifacts.s3_model_artifacts,
         role_arn=role,
         inference_spec=XGBoostSpec(),

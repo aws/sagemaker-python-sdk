@@ -8965,6 +8965,12 @@ def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, pagina
             return desc
     except ClientError as e:
         if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            # The log group only exists once a container has started, so an endpoint
+            # that fails before any instance is provisioned (e.g. on
+            # InsufficientInstanceCapacity, or a missing model) never gets one. A missing
+            # log group must not keep an already finished deployment waiting forever.
+            if stop:
+                return desc
             LOGGER.debug("Waiting for endpoint log group to appear")
             return None
         raise e
