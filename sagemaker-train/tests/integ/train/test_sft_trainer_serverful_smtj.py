@@ -41,9 +41,20 @@ from sagemaker.train import SFTTrainer
 from sagemaker.train.common import TrainingType
 from sagemaker.core.training.configs import TrainingJobCompute
 
+from ..capacity import wait_for_training_job_with_capacity_timeout
+
 logger = logging.getLogger(__name__)
 
 # Test configuration
+SMTJ_INSTANCE_TYPE = "ml.g6.12xlarge"
+# In us-east-1, SMTJ jobs for this test waited 0 min to 48 h for an ml.g6.12xlarge
+# (median ~2 h); once the instance is acquired, download + training + upload take
+# <= ~21 min. A job still waiting after 90 min is treated as a capacity shortage.
+# The total bound covers that wait plus the job's own run time, and keeps the test
+# well inside the CI build timeout.
+SMTJ_PENDING_TIMEOUT_SECONDS = 90 * 60
+SMTJ_MAX_WAIT_SECONDS = 2 * 3600
+
 DATA_PREFIX = "sft-smtj-integ"
 DATA_S3_KEY = f"{DATA_PREFIX}/sft_smtj_sample_data.jsonl"
 
@@ -116,7 +127,7 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
         training_dataset=training_resources["training_dataset"],
         s3_output_path=training_resources["s3_output_path"],
         compute=TrainingJobCompute(
-            instance_type="ml.g6.12xlarge",
+            instance_type=SMTJ_INSTANCE_TYPE,
             instance_count=1,
         ),
         sagemaker_session=sagemaker_session_us_east_1,
@@ -140,27 +151,20 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
     assert training_job.training_job_name is not None
     logger.info(f"Training job submitted: {training_job.training_job_name}")
 
-    # Poll for completion
-    max_wait_time = 10800  # 3 hour timeout (Nova training can be slow)
-    poll_interval = 60
-    start_time = time.time()
+    # Poll for completion with a bounded wait for capacity. On a capacity shortage
+    # the job is stopped and the test is skipped, so it neither holds the build
+    # until CodeBuild times out nor leaves the job queued behind a killed build.
+    status = wait_for_training_job_with_capacity_timeout(
+        training_job,
+        max_wait_time=SMTJ_MAX_WAIT_SECONDS,
+        poll_interval=60,
+        pending_timeout=SMTJ_PENDING_TIMEOUT_SECONDS,
+        capacity_label=SMTJ_INSTANCE_TYPE,
+    )
 
-    while time.time() - start_time < max_wait_time:
-        training_job.refresh()
-        status = training_job.training_job_status
-
-        if status in ["Completed", "Failed", "Stopped"]:
-            break
-
-        logger.info(
-            f"Job {training_job.training_job_name} status: {status} "
-            f"({int(time.time() - start_time)}s elapsed)"
-        )
-        time.sleep(poll_interval)
-
-    assert training_job.training_job_status == "Completed", (
-        f"Training job {training_job.training_job_name} ended with status: "
-        f"{training_job.training_job_status}"
+    assert status == "Completed", (
+        f"Training job {training_job.training_job_name} ended with status {status}: "
+        f"{training_job.failure_reason}"
     )
     logger.info(f"Training job completed successfully: {training_job.training_job_name}")
 
