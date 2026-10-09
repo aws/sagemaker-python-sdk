@@ -1003,6 +1003,15 @@ class BaseTrainer(ABC):
         role = self.role
 
         compute = self.compute
+        # Recipes are rendered for one instance type (device class, image,
+        # launcher), so a service-chosen type cannot apply. Fail before the
+        # recipe fetch, and before the type-enum check reports a confusing
+        # "Instance type 'None' is not supported".
+        if getattr(compute, "instance_preferences", None):
+            raise ValueError(
+                "Training recipes do not support ``instance_preferences``. "
+                "Set a single ``instance_type`` in Compute when using a recipe-based trainer."
+            )
         customization_technique = self._customization_technique
 
         # Resolve the recipe S3 URI from hub metadata
