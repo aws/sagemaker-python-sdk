@@ -8,7 +8,6 @@ from __future__ import absolute_import
 # Standard library imports
 import json
 import logging
-import os
 import time
 import uuid
 from datetime import datetime
@@ -303,7 +302,6 @@ def _start_pipeline_execution(
     Raises:
         ClientError: If AWS service call fails
     """
-    import os
 
     import boto3
 
@@ -388,7 +386,6 @@ def _extract_output_s3_location_from_steps(
         S3 output location from OutputDataConfig if found, None otherwise
     """
     try:
-        import os
 
         import boto3
 
@@ -562,6 +559,8 @@ class EvaluationPipelineExecution(BaseModel):
     )
 
     class Config:
+        """Pydantic model configuration."""
+
         arbitrary_types_allowed = True
 
     def __init__(self, **data):
@@ -603,8 +602,6 @@ class EvaluationPipelineExecution(BaseModel):
             ClientError: If AWS service call fails.
         """
         # Validate pipeline_definition is valid JSON
-        import json
-
         try:
             json.loads(pipeline_definition)
         except json.JSONDecodeError as e:
@@ -650,7 +647,6 @@ class EvaluationPipelineExecution(BaseModel):
             )
 
         except ClientError as e:
-            error_code = e.response["Error"]["Code"]
             error_message = e.response["Error"]["Message"]
             logger.error(f"AWS service error when starting pipeline execution: {error_message}")
             execution.status.overall_status = "Failed"
@@ -763,11 +759,10 @@ class EvaluationPipelineExecution(BaseModel):
                     if "ResourceNotFound" in error_code or "ValidationException" in error_code:
                         logger.debug(f"No pipelines found with prefix {pipeline_name_prefix}")
                         continue
-                    else:
-                        logger.warning(
-                            f"Error searching for pipelines with prefix {pipeline_name_prefix}: {e}"
-                        )
-                        continue
+                    logger.warning(
+                        f"Error searching for pipelines with prefix {pipeline_name_prefix}: {e}"
+                    )
+                    continue
                 except Exception as e:
                     logger.warning(f"Error processing eval type {et.value}: {str(e)}")
                     continue
@@ -883,7 +878,6 @@ class EvaluationPipelineExecution(BaseModel):
             self._update_step_details_from_raw_steps(raw_steps)
 
         except ClientError as e:
-            error_code = e.response["Error"]["Code"]
             error_message = e.response["Error"]["Message"]
             logger.error(f"AWS service error when refreshing pipeline execution: {error_message}")
         except Exception as e:
@@ -900,7 +894,6 @@ class EvaluationPipelineExecution(BaseModel):
         try:
             # TODO: Move to sagemaker_core PipelineExecution.stop() when session handling is fixed
             # For now, use boto3 directly to stop the pipeline execution
-            import os
 
             import boto3
 
@@ -925,7 +918,6 @@ class EvaluationPipelineExecution(BaseModel):
             self.refresh()
 
         except ClientError as e:
-            error_code = e.response["Error"]["Code"]
             error_message = e.response["Error"]["Message"]
             logger.error(f"AWS service error when stopping pipeline execution: {error_message}")
         except Exception as e:
@@ -965,14 +957,13 @@ class EvaluationPipelineExecution(BaseModel):
             ipython = get_ipython()
             if ipython is not None and "IPKernelApp" in ipython.config:
                 is_jupyter = True
-                from IPython.display import HTML, clear_output, display
-        except:
+                from IPython.display import clear_output
+        except Exception:
             pass
 
         if is_jupyter:
             # Jupyter notebook experience with rich library
             from rich.console import Console, Group
-            from rich.layout import Layout
             from rich.panel import Panel
             from rich.table import Table
             from rich.text import Text
@@ -1100,9 +1091,13 @@ class EvaluationPipelineExecution(BaseModel):
                     if pipeline_name and _is_in_studio():
                         base = _get_studio_base_url(region)
                         if base:
-                            pipeline_url = f"{base}/jobs/evaluation/detail?pipeline_name={pipeline_name}&execution_id={exec_id}"
+                            pipeline_url = (
+                                f"{base}/jobs/evaluation/detail?"
+                                f"pipeline_name={pipeline_name}&execution_id={exec_id}"
+                            )
                             links.append(
-                                f"[bright_blue underline][link={pipeline_url}]🔗 Pipeline Execution (Studio)[/link][/bright_blue underline]"
+                                f"[bright_blue underline][link={pipeline_url}]🔗 Pipeline Execution (Studio)"
+                                f"[/link][/bright_blue underline]"
                             )
                 except Exception:
                     pass
@@ -1118,7 +1113,8 @@ class EvaluationPipelineExecution(BaseModel):
                                 cw_url = get_cloudwatch_logs_url(step.job_arn)
                                 if cw_url:
                                     links.append(
-                                        f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs[/link][/bright_blue underline]"
+                                        f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs"
+                                        f"[/link][/bright_blue underline]"
                                     )
                                 break
                 except Exception:
@@ -1129,7 +1125,8 @@ class EvaluationPipelineExecution(BaseModel):
                     cached_mlflow_url = getattr(self, "mlflow_url", None)
                 if cached_mlflow_url:
                     links.append(
-                        f"[bright_blue underline][link={cached_mlflow_url}]🔗 MLflow Experiment[/link][/bright_blue underline]"
+                        f"[bright_blue underline][link={cached_mlflow_url}]🔗 MLflow Experiment"
+                        f"[/link][/bright_blue underline]"
                     )
                 if links:
                     header_table.add_row("Links", " | ".join(links))
@@ -1168,15 +1165,13 @@ class EvaluationPipelineExecution(BaseModel):
                         duration = ""
                         if step.start_time and step.end_time:
                             try:
-                                from datetime import datetime
-
                                 start = datetime.fromisoformat(
                                     step.start_time.replace("Z", "+00:00")
                                 )
                                 end = datetime.fromisoformat(step.end_time.replace("Z", "+00:00"))
                                 duration_seconds = (end - start).total_seconds()
                                 duration = f"{duration_seconds:.1f}s"
-                            except:
+                            except Exception:
                                 duration = "N/A"
                         elif step.start_time:
                             duration = "Running..."
@@ -1207,8 +1202,6 @@ class EvaluationPipelineExecution(BaseModel):
                                 row_data.append("")
 
                         steps_table.add_row(*row_data)
-
-                    from rich.console import Group
 
                     content_parts = [
                         status_table,
@@ -1265,10 +1258,16 @@ class EvaluationPipelineExecution(BaseModel):
                                 arn = entry["job_arn"]
                                 url = get_console_job_url(arn)
                                 if url:
-                                    console_link = f"[bright_blue underline][link={url}]🔗 link[/link][/bright_blue underline]"
+                                    console_link = (
+                                        f"[bright_blue underline][link={url}]🔗 link"
+                                        f"[/link][/bright_blue underline]"
+                                    )
                                 cw_url = get_cloudwatch_logs_url(arn)
                                 if cw_url:
-                                    logs_link = f"[bright_blue underline][link={cw_url}]🔗 link[/link][/bright_blue underline]"
+                                    logs_link = (
+                                        f"[bright_blue underline][link={cw_url}]🔗 link"
+                                        f"[/link][/bright_blue underline]"
+                                    )
                                 if in_studio and studio_base:
                                     parsed = _parse_job_arn(arn)
                                     if parsed:
@@ -1277,7 +1276,10 @@ class EvaluationPipelineExecution(BaseModel):
                                             if resource.startswith(prefix):
                                                 job_name = resource.split("/", 1)[1]
                                                 s_url = f"{studio_base}/{path}{job_name}"
-                                                studio_link = f"[bright_blue underline][link={s_url}]🔗 link[/link][/bright_blue underline]"
+                                                studio_link = (
+                                                    f"[bright_blue underline][link={s_url}]🔗 link"
+                                                    f"[/link][/bright_blue underline]"
+                                                )
                                                 break
                             except Exception:
                                 pass
@@ -1355,8 +1357,6 @@ class EvaluationPipelineExecution(BaseModel):
                         check = ""
                         if step.start_time and step.end_time:
                             try:
-                                from datetime import datetime
-
                                 start_dt = datetime.fromisoformat(
                                     step.start_time.replace("Z", "+00:00")
                                 )
@@ -1369,7 +1369,7 @@ class EvaluationPipelineExecution(BaseModel):
                             check = "✓"
                         elif step.start_time:
                             try:
-                                from datetime import datetime, timezone
+                                from datetime import timezone
 
                                 start_dt = datetime.fromisoformat(
                                     step.start_time.replace("Z", "+00:00")

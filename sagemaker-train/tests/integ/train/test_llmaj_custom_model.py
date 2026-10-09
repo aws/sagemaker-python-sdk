@@ -25,14 +25,12 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_llmaj_custom_model.py -v -s
 """
+
 import json
 import logging
-import os
 
-import boto3
 import pytest
 
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.evaluate import LLMAsJudgeEvaluator
 from sagemaker.train.utils import _get_unique_name
 
@@ -103,9 +101,7 @@ def test_resources(sagemaker_session_us_east_1):
 class TestLLMAJCustomModelIntegration:
     """Integration tests for LLMAsJudgeEvaluator with InspectAI inference path."""
 
-    def test_llmaj_bedrock_inference_end_to_end(
-        self, sagemaker_session_us_east_1, test_resources
-    ):
+    def test_llmaj_bedrock_inference_end_to_end(self, sagemaker_session_us_east_1, test_resources):
         """Test full InspectAI-based LLMAJ pipeline with Bedrock inference.
 
         This test exercises:
@@ -128,7 +124,7 @@ class TestLLMAJCustomModelIntegration:
             builtin_metrics=["Correctness", "Helpfulness"],
             s3_output_path=test_resources["s3_output_path"],
             region=REGION,
-            sagemaker_session=sagemaker_session_us_east_1
+            sagemaker_session=sagemaker_session_us_east_1,
         )
 
         assert evaluator is not None

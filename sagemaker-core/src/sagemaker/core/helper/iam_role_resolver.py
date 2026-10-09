@@ -11,10 +11,12 @@ the only code path here that writes IAM. Auto-creation was removed from the
 default path because mutating a customer's IAM account as a side effect of an
 ordinary SDK call is an elevation-of-privilege risk.
 """
+
 from __future__ import absolute_import
 
 import json
 import logging
+import os
 import time
 from typing import List, Optional, Set, Tuple, Union
 from urllib.parse import unquote
@@ -25,7 +27,15 @@ from sagemaker.core.helper.iam_policies import IAM_POLICY_CONFIG
 
 logger = logging.getLogger(__name__)
 
-ROLE_TYPES = ("training", "serving", "pipeline", "feature_store", "bedrock", "hyperpod", "model_eval")
+ROLE_TYPES = (
+    "training",
+    "serving",
+    "pipeline",
+    "feature_store",
+    "bedrock",
+    "hyperpod",
+    "model_eval",
+)
 
 # Permissions the HyperPod CLI flow needs on the *caller* identity — the local
 # principal that runs `hyperpod connect-cluster` and `hyperpod start-job`. The CLI
@@ -46,7 +56,7 @@ HYPERPOD_CLI_CONNECT_ACTIONS = (
 # directly. These actions must be held by whoever calls evaluator.evaluate(),
 # NOT by the job execution role (which is covered by role_type="training").
 # See verify_evaluation_caller_permissions().
-from sagemaker.core.helper.iam_policies import EVALUATION_CALLER_ACTIONS
+from sagemaker.core.helper.iam_policies import EVALUATION_CALLER_ACTIONS  # noqa: E402
 
 
 class RoleValidationError(Exception):
@@ -189,7 +199,7 @@ def _apply_partition(resource, partition: str):
         if isinstance(value, str) and value.startswith("arn:aws:"):
             # Replace the "aws" partition token only; keep the ":service:..."
             # remainder intact.
-            return "arn:" + partition + value[len("arn:aws"):]
+            return "arn:" + partition + value[len("arn:aws") :]
         return value
 
     if isinstance(resource, list):
@@ -215,9 +225,7 @@ def _replace_placeholders(
             if resource == "S3_PLACEHOLDER":
                 statement["Resource"] = _expand_s3_resource(s3_resource, partition)
             elif resource == "KMS_PLACEHOLDER":
-                statement["Resource"] = _expand_kms_resource(
-                    kms_resource, partition, account_id
-                )
+                statement["Resource"] = _expand_kms_resource(kms_resource, partition, account_id)
             elif resource == "IAM_PASSROLE_PLACEHOLDER":
                 # Scope iam:PassRole to the SDK's own auto-created roles in the
                 # caller's account (rather than all roles), so this role can only
@@ -306,16 +314,103 @@ def _resolve_caller_role_arn(
         raise
 
 
+def _config_path_for_role_type(role_type: str) -> Optional[str]:
+    """Return the SageMaker config key path holding a default role ARN for a role type.
+
+    Returns None for role types the config schema has no dedicated role-ARN path
+    for, in which case there is no config default to consult.
+    """
+    try:
+        from sagemaker.core.config.config_schema import (
+            TRAINING_JOB_ROLE_ARN_PATH,
+            FEATURE_GROUP_ROLE_ARN_PATH,
+        )
+    except Exception:  # pragma: no cover - defensive against import/layout changes
+        return None
+    return {
+        "training": TRAINING_JOB_ROLE_ARN_PATH,
+        "feature_store": FEATURE_GROUP_ROLE_ARN_PATH,
+    }.get(role_type)
+
+
+def _resolve_config_default_role(role_type: str, sagemaker_session=None) -> Optional[str]:
+    """Return a default role ARN from the SageMaker intelligent-defaults config, if set.
+
+    This lets a caller whose own identity has no backing role (an IAM user or the
+    account root) configure a default execution role in the SageMaker config
+    (e.g. ``SageMaker.TrainingJob.RoleArn``) instead of being forced to pass
+    ``role=`` on every call. Returns None when no config default is set, the role
+    type has no config path, or the config cannot be read — in every such case the
+    caller falls back to caller-identity resolution exactly as before.
+    """
+    config_path = _config_path_for_role_type(role_type)
+    if not config_path:
+        return None
+    try:
+        from sagemaker.core.common_utils import resolve_value_from_config
+
+        config_role = resolve_value_from_config(
+            direct_input=None,
+            config_path=config_path,
+            sagemaker_session=sagemaker_session,
+        )
+    except Exception as e:  # pragma: no cover - defensive; treat as "no config default"
+        logger.debug(
+            "Could not read a default role from the SageMaker config for '%s': %s",
+            role_type,
+            e,
+        )
+        return None
+    # Only trust a concrete string ARN/name; anything else means "not configured".
+    if isinstance(config_role, str) and config_role:
+        return config_role
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Read-only permission / trust validation
 # ---------------------------------------------------------------------------
-def _simulate_denied_actions(iam_client, role_arn: str, actions: List[str]) -> List[str]:
-    """Return the subset of ``actions`` that ``role_arn`` is NOT allowed to perform.
+def _is_unverifiable_denial(result: dict) -> bool:
+    """Return True if an evaluation result's non-allowed decision is unverifiable.
+
+    Because iam:SimulatePrincipalPolicy does not evaluate condition-based SCPs or
+    condition-based permissions boundaries, an `implicitDeny` caused by (or
+    masked by) `AllowedByOrganizations == false` or
+    `AllowedByPermissionsBoundary == false` cannot be definitively verified by
+    the client-side policy simulator.
+    """
+    if result.get("EvalDecision") == "explicitDeny":
+        return False
+    org_detail = result.get("OrganizationsDecisionDetail", {})
+    org_allowed = org_detail.get("AllowedByOrganizations") if isinstance(org_detail, dict) else None
+    pb_detail = result.get("PermissionsBoundaryDecisionDetail", {})
+    pb_allowed = (
+        pb_detail.get("AllowedByPermissionsBoundary") if isinstance(pb_detail, dict) else None
+    )
+
+    # Handle boolean False, string "false", "False", etc.
+    if org_allowed in (False, "false", "False") or pb_allowed in (False, "false", "False"):
+        return True
+    return False
+
+
+def _simulate_denied_actions(
+    iam_client, role_arn: str, actions: List[str]
+) -> Tuple[List[str], List[str]]:
+    """Return lists of (denied_actions, unverifiable_actions) for ``role_arn``.
 
     Wraps the paginated ``iam:SimulatePrincipalPolicy`` call so both the role-
     validation path and the HyperPod caller-side check share one implementation.
-    An empty list means every action is allowed. The pagination matters: a
-    truncated first page must not produce a false "all allowed" verdict.
+    The pagination matters: a truncated first page must not produce a false
+    "all allowed" verdict.
+
+    Returns:
+        (denied_actions, unverifiable_actions):
+            denied_actions: actions definitively denied (explicitDeny, or
+                implicitDeny without org/permissions-boundary conditions).
+            unverifiable_actions: actions returning implicitDeny with
+                AllowedByOrganizations=False or AllowedByPermissionsBoundary=False,
+                which the simulator cannot evaluate due to conditions.
 
     Raises ClientError on failures the caller must interpret (e.g. AccessDenied
     when the principal can't self-simulate, NoSuchEntity when the role is gone).
@@ -325,11 +420,16 @@ def _simulate_denied_actions(iam_client, role_arn: str, actions: List[str]) -> L
     for page in paginator.paginate(PolicySourceArn=role_arn, ActionNames=actions):
         evaluation_results.extend(page.get("EvaluationResults", []))
 
-    return [
-        result["EvalActionName"]
-        for result in evaluation_results
-        if result["EvalDecision"] != "allowed"
-    ]
+    denied = []
+    unverifiable = []
+    for result in evaluation_results:
+        if result.get("EvalDecision") != "allowed":
+            action_name = result["EvalActionName"]
+            if _is_unverifiable_denial(result):
+                unverifiable.append(action_name)
+            else:
+                denied.append(action_name)
+    return denied, unverifiable
 
 
 def _evaluate_permissions(
@@ -345,14 +445,15 @@ def _evaluate_permissions(
         verdict True  — all gated actions are allowed (denied_actions empty).
         verdict False — at least one gated action is denied (denied_actions lists them).
         verdict None  — could not be determined, e.g. the caller lacks
-                        iam:SimulatePrincipalPolicy (denied_actions empty).
+                        iam:SimulatePrincipalPolicy or conditional SCPs prevent
+                        evaluation (denied_actions empty).
     """
     required_actions = _get_smoke_test_actions(role_type)
     if not required_actions:
         return True, []
 
     try:
-        denied = _simulate_denied_actions(iam_client, role_arn, required_actions)
+        denied, unverifiable = _simulate_denied_actions(iam_client, role_arn, required_actions)
         if denied:
             logger.info(
                 "Role '%s' is missing permissions for: %s",
@@ -360,6 +461,16 @@ def _evaluate_permissions(
                 ", ".join(denied[:5]) + ("..." if len(denied) > 5 else ""),
             )
             return False, denied
+        if unverifiable:
+            logger.info(
+                "Cannot definitively verify permissions for role '%s' due to "
+                "Organizations SCPs or permissions boundaries (%s returned implicitDeny "
+                "with AllowedByOrganizations/AllowedByPermissionsBoundary=false); "
+                "permission verdict unknown.",
+                role_arn,
+                ", ".join(unverifiable[:5]) + ("..." if len(unverifiable) > 5 else ""),
+            )
+            return None, []
         return True, []
 
     except ClientError as e:
@@ -367,8 +478,7 @@ def _evaluate_permissions(
         if error_code in ("AccessDenied", "AccessDeniedException"):
             # Cannot simulate — verdict is unknown.
             logger.info(
-                "Cannot simulate policies for '%s' (access denied); "
-                "permission verdict unknown.",
+                "Cannot simulate policies for '%s' (access denied); " "permission verdict unknown.",
                 role_arn,
             )
             return None, []
@@ -377,9 +487,7 @@ def _evaluate_permissions(
         raise
 
 
-def _role_has_sufficient_permissions(
-    iam_client, role_arn: str, role_type: str
-) -> Optional[bool]:
+def _role_has_sufficient_permissions(iam_client, role_arn: str, role_type: str) -> Optional[bool]:
     """Return True/False/None for whether a role has the required permissions.
 
     Thin wrapper over :func:`_evaluate_permissions` that drops the denied-action
@@ -505,8 +613,7 @@ def _build_validation_error_message(
         lines.append("Missing permissions: " + ", ".join(sorted(set(missing_actions))))
     else:
         lines.append(
-            "Required permissions: "
-            + ", ".join(sorted(set(_get_required_actions(role_type))))
+            "Required permissions: " + ", ".join(sorted(set(_get_required_actions(role_type))))
         )
 
     lines += [
@@ -524,28 +631,37 @@ def _build_validation_error_message(
 
 
 def resolve_and_validate_role(
-    provided_role: Optional[str],
-    role_type: str,
+    provided_role: Optional[str] = None,
+    role_type: str = "training",
     sagemaker_session=None,
+    validate_role: bool = True,
+    *,
+    role_arn: Optional[str] = None,
 ) -> str:
     """Resolve the role to use and validate it (read-only; does not mutate IAM).
 
-    Resolution:
+    Resolution (first match wins):
         1. ``provided_role`` given → resolve it to an ARN (must exist).
-        2. Otherwise → resolve the caller's own identity role.
+        2. A default role set in the SageMaker config for this role type
+           (e.g. ``SageMaker.TrainingJob.RoleArn``) → resolve it to an ARN.
+        3. Otherwise → resolve the caller's own identity role.
 
     The resolved role is then VALIDATED (read-only, via iam:SimulatePrincipalPolicy
-    + trust inspection):
+    + trust inspection) unless ``validate_role=False`` or environment variable
+    ``SAGEMAKER_VALIDATE_ROLE=false`` is set:
         * permissions allowed AND trusted → return the ARN.
         * a required permission is definitively denied → raise RoleValidationError.
         * the trust policy definitively excludes the service → raise RoleValidationError.
         * permissions cannot be verified (caller lacks iam:SimulatePrincipalPolicy,
-          the common Studio/notebook case) → return the ARN with a WARNING.
+          or conditional SCPs/permissions boundaries prevent evaluation) → return
+          the ARN with a WARNING.
 
     Args:
         provided_role: User-supplied role name or ARN. If set, used directly.
         role_type: One of ROLE_TYPES.
         sagemaker_session: SageMaker session (used to get the boto session).
+        validate_role: If False, skips client-side permission/trust validation.
+        role_arn: Keyword alias for ``provided_role``.
 
     Returns:
         IAM role ARN.
@@ -558,20 +674,38 @@ def resolve_and_validate_role(
     if role_type not in ROLE_TYPES:
         raise ValueError(f"Invalid role_type '{role_type}'. Must be one of: {ROLE_TYPES}")
 
+    provided_role = provided_role or role_arn
     boto_session = _get_boto_session(sagemaker_session)
     iam_client = boto_session.client("iam")
 
     if provided_role:
         role_arn = _resolve_explicit_role(provided_role, sagemaker_session)
     else:
-        sts_client = boto_session.client("sts")
-        caller_identity = sts_client.get_caller_identity()
-        caller_arn = caller_identity["Arn"]
-        account_id = caller_identity["Account"]
-        partition = _partition_from_arn(caller_arn)
-        role_arn = _resolve_caller_role_arn(iam_client, caller_arn, account_id, partition)
-        if not role_arn:
-            raise RoleValidationError(_build_validation_error_message(None, role_type))
+        # Prefer a default role configured in the SageMaker config for this role
+        # type (e.g. SageMaker.TrainingJob.RoleArn) before falling back to
+        # caller-identity inference. This is what lets an IAM-user or root caller
+        # (whose identity has no backing role) run without passing role= on every
+        # call, as long as they have configured a default execution role.
+        config_role = _resolve_config_default_role(role_type, sagemaker_session)
+        if config_role:
+            role_arn = _resolve_explicit_role(config_role, sagemaker_session)
+        else:
+            sts_client = boto_session.client("sts")
+            caller_identity = sts_client.get_caller_identity()
+            caller_arn = caller_identity["Arn"]
+            account_id = caller_identity["Account"]
+            partition = _partition_from_arn(caller_arn)
+            role_arn = _resolve_caller_role_arn(iam_client, caller_arn, account_id, partition)
+            if not role_arn:
+                raise RoleValidationError(_build_validation_error_message(None, role_type))
+
+    if not validate_role or os.getenv("SAGEMAKER_VALIDATE_ROLE", "true").lower() in (
+        "false",
+        "0",
+        "no",
+    ):
+        logger.info("Skipping IAM role validation for '%s' (%s).", role_arn, role_type)
+        return role_arn
 
     # Permission check (definitive denial blocks; unverifiable warns).
     verdict, denied = _evaluate_permissions(iam_client, role_arn, role_type)
@@ -590,7 +724,8 @@ def resolve_and_validate_role(
     if verdict is None:
         logger.warning(
             "Could not verify permissions for role '%s' (caller lacks "
-            "iam:SimulatePrincipalPolicy). Proceeding with it. If the operation "
+            "iam:SimulatePrincipalPolicy or conditional SCPs/permissions boundaries "
+            "prevent evaluation). Proceeding with it. If the operation "
             "later fails with an access-denied error, ensure the role has the "
             "required permissions for '%s' (see "
             "IamRoleResolver().get_required_actions('%s')) or create a dedicated "
@@ -649,7 +784,7 @@ def verify_hyperpod_connect_permissions(
         return None
 
     try:
-        denied = _simulate_denied_actions(
+        denied, unverifiable = _simulate_denied_actions(
             iam_client, caller_role_arn, list(HYPERPOD_CLI_CONNECT_ACTIONS)
         )
     except ClientError as e:
@@ -677,9 +812,16 @@ def verify_hyperpod_connect_permissions(
         )
         return False
 
-    logger.info(
-        "Caller '%s' has the HyperPod CLI connect permissions.", caller_role_arn
-    )
+    if unverifiable:
+        logger.info(
+            "Cannot definitively verify HyperPod connect permissions for '%s' due to "
+            "Organizations SCPs or permissions boundaries; the HyperPod CLI will "
+            "validate access at submit time.",
+            caller_role_arn,
+        )
+        return None
+
+    logger.info("Caller '%s' has the HyperPod CLI connect permissions.", caller_role_arn)
     return True
 
 
@@ -700,7 +842,9 @@ def verify_evaluation_caller_permissions(
 
     Returns:
         True  — all evaluation caller actions are allowed.
-        None  — could not be determined (caller is not a role, or cannot simulate).
+        None  — could not be determined (caller is not a role, cannot simulate, or
+            the decision is unverifiable because of condition-based SCPs or
+            permissions boundaries).
 
     Raises:
         RoleValidationError: If permissions are definitively denied.
@@ -723,7 +867,7 @@ def verify_evaluation_caller_permissions(
         return None
 
     try:
-        denied = _simulate_denied_actions(
+        denied, unverifiable = _simulate_denied_actions(
             iam_client, caller_role_arn, list(EVALUATION_CALLER_ACTIONS)
         )
     except ClientError as e:
@@ -750,6 +894,15 @@ def verify_evaluation_caller_permissions(
             f"AmazonSageMakerFullAccess managed policy."
         )
         raise RoleValidationError(message)
+
+    if unverifiable:
+        logger.info(
+            "Cannot definitively verify evaluation pipeline permissions for '%s' due to "
+            "Organizations SCPs or permissions boundaries; errors will surface at "
+            "pipeline creation time.",
+            caller_role_arn,
+        )
+        return None
 
     logger.info(
         "Caller '%s' has the evaluation pipeline orchestration permissions.",
@@ -813,6 +966,22 @@ class IamRoleResolver:
         self._sts_client = self._boto_session.client("sts")
 
     # -- public API ---------------------------------------------------------
+    def resolve_and_validate_role(
+        self,
+        provided_role: Optional[str] = None,
+        role_type: str = "training",
+        *,
+        role_arn: Optional[str] = None,
+        validate_role: bool = True,
+    ) -> str:
+        """Resolve and validate an IAM role (read-only; does not mutate IAM)."""
+        return resolve_and_validate_role(
+            provided_role=provided_role or role_arn,
+            role_type=role_type,
+            sagemaker_session=self._sagemaker_session,
+            validate_role=validate_role,
+        )
+
     def get_required_actions(self, role_type: str) -> List[str]:
         """Return the IAM actions a role of ``role_type`` needs (read-only preview)."""
         self._validate_role_type(role_type)
@@ -862,18 +1031,12 @@ class IamRoleResolver:
         policies = _replace_placeholders(
             role_config["policies"], s3_resource, kms_resource, partition, account_id
         )
-        trust_policy = self._scope_trust_policy_to_account(
-            role_config["trust_policy"], account_id
-        )
+        trust_policy = self._scope_trust_policy_to_account(role_config["trust_policy"], account_id)
 
         try:
-            role_arn = self._create_or_get_role(
-                target_role_name, trust_policy, role_type
-            )
+            role_arn = self._create_or_get_role(target_role_name, trust_policy, role_type)
             if update_if_exists:
-                self._ensure_policies_attached(
-                    target_role_name, policies, account_id, partition
-                )
+                self._ensure_policies_attached(target_role_name, policies, account_id, partition)
             logger.info("Waiting %ds for IAM propagation...", _IAM_PROPAGATION_DELAY_SECONDS)
             time.sleep(_IAM_PROPAGATION_DELAY_SECONDS)
             logger.info("Using role: %s", role_arn)
@@ -884,9 +1047,7 @@ class IamRoleResolver:
                 self._raise_auto_creation_error(target_role_name, e, role_type)
             raise
 
-    def delete_execution_role(
-        self, role_type: str, *, role_name: Optional[str] = None
-    ) -> None:
+    def delete_execution_role(self, role_type: str, *, role_name: Optional[str] = None) -> None:
         """Delete a role created by :meth:`create_execution_role` and its policies.
 
         Idempotent and best-effort: detaches and deletes the SDK-managed policies,
@@ -934,9 +1095,7 @@ class IamRoleResolver:
     @staticmethod
     def _validate_role_type(role_type: str) -> None:
         if role_type not in ROLE_TYPES:
-            raise ValueError(
-                f"Invalid role_type '{role_type}'. Must be one of: {ROLE_TYPES}"
-            )
+            raise ValueError(f"Invalid role_type '{role_type}'. Must be one of: {ROLE_TYPES}")
 
     @staticmethod
     def _build_role_tags(role_type: str) -> List[dict]:
@@ -975,9 +1134,7 @@ class IamRoleResolver:
             f"Original error: {original_error}"
         ) from original_error
 
-    def _create_or_get_role(
-        self, role_name: str, trust_policy: dict, role_type: str
-    ) -> str:
+    def _create_or_get_role(self, role_name: str, trust_policy: dict, role_type: str) -> str:
         """Create the role, or reuse it if it already exists. Returns the ARN."""
         iam = self._iam_client
         try:
@@ -1011,18 +1168,14 @@ class IamRoleResolver:
         """Idempotently ensure a role carries the SDK ownership tags."""
         iam = self._iam_client
         try:
-            existing = {
-                t["Key"] for t in iam.list_role_tags(RoleName=role_name).get("Tags", [])
-            }
+            existing = {t["Key"] for t in iam.list_role_tags(RoleName=role_name).get("Tags", [])}
             desired = self._build_role_tags(role_type)
             missing = [t for t in desired if t["Key"] not in existing]
             if missing:
                 iam.tag_role(RoleName=role_name, Tags=desired)
                 logger.info("Applied SDK ownership tags to role '%s'.", role_name)
         except ClientError as e:
-            logger.info(
-                "Could not verify/apply ownership tags on role '%s': %s", role_name, e
-            )
+            logger.info("Could not verify/apply ownership tags on role '%s': %s", role_name, e)
 
     def _get_attached_policy_names(self, role_name: str) -> Set[str]:
         """Return the set of policy names already attached to a role (lowercased)."""
@@ -1035,9 +1188,7 @@ class IamRoleResolver:
         try:
             policy = iam.get_policy(PolicyArn=policy_arn)
             default_version_id = policy["Policy"]["DefaultVersionId"]
-            version = iam.get_policy_version(
-                PolicyArn=policy_arn, VersionId=default_version_id
-            )
+            version = iam.get_policy_version(PolicyArn=policy_arn, VersionId=default_version_id)
             current_document = version["PolicyVersion"]["Document"]
         except ClientError:
             return False
@@ -1129,8 +1280,7 @@ class IamRoleResolver:
         reattached = [name for name in attached if name not in created]
         if reattached:
             logger.warning(
-                "SageMaker Python SDK attached %d existing IAM managed %s to role "
-                "'%s': %s",
+                "SageMaker Python SDK attached %d existing IAM managed %s to role " "'%s': %s",
                 len(reattached),
                 "policy" if len(reattached) == 1 else "policies",
                 role_name,

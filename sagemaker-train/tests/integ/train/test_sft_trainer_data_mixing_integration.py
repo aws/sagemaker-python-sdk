@@ -24,9 +24,9 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_sft_trainer_data_mixing_integration.py -v -s
 """
+
 from __future__ import absolute_import
 
-import io
 import json
 import logging
 import time
@@ -36,6 +36,8 @@ import pytest
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 from sagemaker.train.data_mixing_config import DataMixingConfig
+
+from .nova_capacity import nova_capacity_slot, wait_for_nova_training_job
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,7 +58,9 @@ def _generate_training_data() -> str:
         sample = {
             "schemaVersion": "bedrock-conversation-2024",
             "system": [
-                {"text": "You are a helpful assistant who answers the question based on the task assigned"}
+                {
+                    "text": "You are a helpful assistant who answers the question based on the task assigned"
+                }
             ],
             "messages": [
                 {"role": "user", "content": [{"text": f"Q{i}"}]},
@@ -153,39 +157,35 @@ def test_sft_trainer_nova_lite2_with_data_mixing(sagemaker_session_us_east_1, tr
         overrides={"name": f"sft-nova-datamix-integ-{unique_id}"},
     )
 
-    logger.info("Submitting SFT training job with data mixing config...")
-    try:
-        training_job = sft_trainer.train(wait=False)
-    except ValueError as e:
-        if "Failed to download from S3 Access Point" in str(e):
-            pytest.skip(
-                "Skipping: account does not have Forge subscription for data mixing recipes. "
-                "This is expected for non-subscribed accounts. "
-                "See https://docs.aws.amazon.com/sagemaker/latest/dg/nova-forge.html#nova-forge-prereq-access"
-            )
-        raise
+    # Nova serverless jobs share a p5 pool with customers: run one at a time and
+    # give the capacity back if the job cannot get instances (see nova_capacity.py).
+    with nova_capacity_slot():
+        logger.info("Submitting SFT training job with data mixing config...")
+        try:
+            training_job = sft_trainer.train(wait=False)
+        except ValueError as e:
+            if "Failed to download from S3 Access Point" in str(e):
+                pytest.skip(
+                    "Skipping: account does not have Forge subscription for data mixing recipes. "
+                    "This is expected for non-subscribed accounts. "
+                    "See https://docs.aws.amazon.com/sagemaker/latest/dg/nova-forge.html#nova-forge-prereq-access"
+                )
+            raise
 
-    assert training_job is not None
-    logger.info(f"Training job submitted: {training_job.training_job_name}")
+        assert training_job is not None
+        logger.info(f"Training job submitted: {training_job.training_job_name}")
 
-    # Manual wait loop — Nova training can take over an hour
-    max_wait_time = 10800  # 3 hour timeout
-    poll_interval = 30  # Check every 30 seconds
-    start_time = time.time()
-
-    while time.time() - start_time < max_wait_time:
-        training_job.refresh()
-        status = training_job.training_job_status
-
-        if status in ["Completed", "Failed", "Stopped"]:
-            break
-
-        time.sleep(poll_interval)
+        # Nova training can take over an hour
+        wait_for_nova_training_job(
+            training_job,
+            max_wait_time=10800,  # 3 hour timeout
+            poll_interval=30,
+        )
 
     # Verify job completed successfully
-    assert training_job.training_job_status == "Completed", (
-        f"Training job did not complete. Status: {training_job.training_job_status}"
-    )
+    assert (
+        training_job.training_job_status == "Completed"
+    ), f"Training job did not complete. Status: {training_job.training_job_status}"
     assert hasattr(training_job, "output_model_package_arn")
     assert training_job.output_model_package_arn is not None
     logger.info("SFT training with data mixing completed successfully.")

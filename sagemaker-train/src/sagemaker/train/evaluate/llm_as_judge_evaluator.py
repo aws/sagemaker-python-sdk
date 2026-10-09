@@ -7,7 +7,7 @@ to evaluate LLM responses based on quality and responsible AI metrics.
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Set, Union
 
 from pydantic import root_validator, validator
 
@@ -20,15 +20,91 @@ from .constants import (
     _get_nova_inference_image_uri,
     _REGION_TO_BEDROCK_PREFIX,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.common_utils.data_utils import validate_data_path_exists
 from sagemaker.train.common_utils.model_aliases import NOVA_BEDROCK_MODEL_IDS
 from sagemaker.train.common_utils.recipe_utils import _is_nova_model
-from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
 from sagemaker.train.defaults import TrainDefaults
 
 _logger = logging.getLogger(__name__)
+
+# Documentation listing the Bedrock foundation models supported as LLM-as-Judge
+# evaluators. Surfaced to users when evaluator_model validation cannot run or fails.
+_EVALUATOR_JUDGE_DOCS_URL = (
+    "https://docs.aws.amazon.com/bedrock/latest/userguide/"
+    "evaluation-judge.html#evaluation-judge-supported"
+)
+
+# S3 key of the service-maintained supported-judge-models list, mirrored per region
+# under the JumpStart cache bucket. This file is the source of truth for which
+# Bedrock models are supported as LLM-as-Judge evaluators (kept current by the
+# Bedrock evaluation control plane), so the SDK reads it instead of hardcoding a list.
+_SUPPORTED_JUDGE_MODELS_S3_KEY = "fmhMetadata/supported-llmaj-judge-models.json"
+
+
+def _supported_judge_models_s3_uri(region: str) -> str:
+    """Return the S3 URI of the supported-judge-models list for ``region``."""
+    return f"s3://jumpstart-cache-prod-{region}/{_SUPPORTED_JUDGE_MODELS_S3_KEY}"
+
+
+def _fetch_supported_judge_model_ids(session: Any, region: str) -> Optional[Set[str]]:
+    """Fetch the set of supported LLM-as-Judge model IDs for ``region``.
+
+    Reads ``s3://jumpstart-cache-prod-<region>/fmhMetadata/supported-llmaj-judge-models.json``,
+    the per-region mirror of the Bedrock evaluation control plane's supported-judge
+    allowlist. Membership answers only "is this a judge-capable model" — the list
+    is a superset that can still include models past end of life, so whether the
+    model is currently in service is checked separately by
+    :meth:`LLMAsJudgeEvaluator._check_evaluator_model_lifecycle`.
+
+    This never raises: if the list cannot be fetched or parsed (missing object,
+    denied access, network error, or unexpected shape) it returns ``None`` so the
+    caller can fall back to the non-blocking degradation path. The two failure
+    modes are logged at ``debug`` to aid diagnosis without adding user-facing noise.
+
+    Args:
+        session: SageMaker session used to read the object.
+        region: AWS region whose JumpStart cache bucket holds the list.
+
+    Returns:
+        A non-empty set of model ID strings, or ``None`` if unavailable.
+    """
+    from sagemaker.core.s3.client import S3Downloader
+
+    s3_uri = _supported_judge_models_s3_uri(region)
+    try:
+        raw = S3Downloader.read_file(s3_uri=s3_uri, sagemaker_session=session)
+        doc = json.loads(raw)
+    except Exception as e:  # noqa: BLE001 - degrade gracefully on any fetch/parse error
+        _logger.debug("Could not read supported-judge-models list from %s: %s", s3_uri, e)
+        return None
+
+    entries = doc.get("supported_judge_models") if isinstance(doc, dict) else None
+    if not isinstance(entries, list):
+        _logger.debug(
+            "Supported-judge-models list at %s has an unexpected shape (missing a "
+            "'supported_judge_models' array); skipping validation.",
+            s3_uri,
+        )
+        return None
+
+    model_ids: Set[str] = set()
+    for entry in entries:
+        if isinstance(entry, dict):
+            model_id = entry.get("model_id")
+            if isinstance(model_id, str):
+                model_ids.add(model_id)
+
+    if not model_ids:
+        # Parsed, but no usable model IDs — treat as "cannot verify" and degrade
+        # rather than reject every model.
+        _logger.debug(
+            "Supported-judge-models list at %s parsed but contained no model IDs; "
+            "skipping validation.",
+            s3_uri,
+        )
+        return None
+    return model_ids
 
 
 def _resolve_bedrock_model_id(base_model_name: str, region: str) -> Optional[str]:
@@ -59,8 +135,8 @@ def _resolve_bedrock_model_id(base_model_name: str, region: str) -> Optional[str
 
 
 class LLMAsJudgeEvaluator(BaseEvaluator):
-    """LLM-as-judge evaluation job.
-    
+    r"""LLM-as-judge evaluation job.
+
     This evaluator uses foundation models to evaluate LLM responses
     based on various quality and responsible AI metrics.
 
@@ -104,12 +180,12 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         kms_key_id (Optional[str]): KMS key ID for encryption. Inherited from BaseEvaluator.
         model_package_group (Optional[Union[str, ModelPackageGroup]]): Model package group.
             Inherited from BaseEvaluator.
-    
+
     Example:
         .. code:: python
-        
+
             from sagemaker.train.evaluate import LLMAsJudgeEvaluator
-            
+
             # Example with built-in metrics (prefix optional)
             # Both formats work - with or without 'Builtin.' prefix
             evaluator = LLMAsJudgeEvaluator(
@@ -121,13 +197,14 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 s3_output_path="s3://my-bucket/output"
             )
             execution = evaluator.evaluate()
-            
+
             # Example with custom metrics
             custom_metrics = [
                 {
                     "customMetricDefinition": {
                         "name": "PositiveSentiment",
-                        "instructions": "Assess if the response has positive sentiment. Prompt: {{prompt}}\\nResponse: {{prediction}}",
+                        "instructions": "Assess if the response has positive sentiment. "
+                        "Prompt: {{prompt}}\nResponse: {{prediction}}",
                         "ratingScale": [
                             {"definition": "Good", "value": {"floatValue": 1.0}},
                             {"definition": "Poor", "value": {"floatValue": 0.0}}
@@ -135,7 +212,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                     }
                 }
             ]
-            
+
             evaluator = LLMAsJudgeEvaluator(
                 base_model="llama-3-3-70b-instruct",
                 evaluator_model="anthropic.claude-3-haiku-20240307-v1:0",
@@ -144,7 +221,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 s3_output_path="s3://my-bucket/output"
             )
             execution = evaluator.evaluate()
-            
+
             # Example evaluating only custom model (skip base model)
             evaluator = LLMAsJudgeEvaluator(
                 base_model="llama-3-3-70b-instruct",
@@ -156,7 +233,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             )
             execution = evaluator.evaluate()
     """
-    
+
     evaluator_model: str
     dataset: Union[str, Any]
     builtin_metrics: Optional[List[str]] = None
@@ -164,16 +241,18 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
 
     # Template-required fields
     evaluate_base_model: bool = False
-    
-    @validator('dataset', pre=True)
+
+    @validator("dataset", pre=True)
+    @classmethod
     def _resolve_dataset(cls, v):
         """Resolve dataset to string (S3 URI or ARN) and validate format.
 
         Uses BaseEvaluator's common validation logic to avoid code duplication.
         """
         return BaseEvaluator._validate_and_resolve_dataset(v)
-    
+
     @root_validator(skip_on_failure=True)
+    @classmethod
     def _validate_model_compatibility(cls, values):
         """Validate Nova model region compatibility for LLM-as-Judge.
 
@@ -181,49 +260,158 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         inference path. This validator ensures the session region supports
         Bedrock cross-region inference for Nova models.
         """
-        
+
         # Get resolved model info if available
-        resolved_info = values.get('_resolved_model_info')
+        resolved_info = values.get("_resolved_model_info")
         if resolved_info and resolved_info.base_model_name:
             base_model_name = resolved_info.base_model_name
             is_nova = _is_nova_model(base_model_name)
-            
+
             if is_nova:
-                session = values.get('sagemaker_session')
-                region = session.boto_region_name if session and hasattr(session, 'boto_region_name') else None
+                session = values.get("sagemaker_session")
+                region = (
+                    session.boto_region_name
+                    if session and hasattr(session, "boto_region_name")
+                    else None
+                )
                 if region and region not in _REGION_TO_BEDROCK_PREFIX:
                     raise ValueError(
                         f"Nova model '{base_model_name}' is not supported for "
                         f"LLM-as-Judge evaluation in region '{region}'. "
                         f"Supported regions: {list(_REGION_TO_BEDROCK_PREFIX.keys())}"
                     )
-        
+
         return values
 
-    @validator('evaluator_model')
+    @validator("evaluator_model")
+    @classmethod
     def _validate_evaluator_model(cls, v, values):
-        """Validate evaluator_model is allowed and check region compatibility."""
-        
-        if v not in _ALLOWED_EVALUATOR_MODELS:
-            raise ValueError(
-                f"Invalid evaluator_model '{v}'. "
-                f"Allowed models are: {list(_ALLOWED_EVALUATOR_MODELS.keys())}"
+        """Validate that evaluator_model is a supported judge model (construction step 1).
+
+        Fetches the service-maintained supported-judge-models list for the
+        session's region (see :func:`_fetch_supported_judge_model_ids`) and fails
+        fast at construction if ``v`` is not in it. This list is the catalog of
+        judge-*capable* models; it can still contain models that have reached end
+        of life, so it only answers "is this a valid judge model" — whether the
+        model is still in service is checked separately, at evaluate() time, by
+        :meth:`_check_evaluator_model_lifecycle`.
+
+        Degradation route: if the list cannot be retrieved (no session/region, or
+        the file cannot be read/parsed), emit a warning and continue without
+        blocking — the evaluation job may still succeed.
+        """
+        session = values.get("sagemaker_session")
+        region = None
+        if session is not None and hasattr(session, "boto_region_name"):
+            region = session.boto_region_name
+        if not region:
+            region = values.get("region")
+
+        supported_model_ids = None
+        if session is not None and region:
+            supported_model_ids = _fetch_supported_judge_model_ids(session, region)
+
+        if supported_model_ids is None:
+            _logger.warning(
+                "The SDK couldn't retrieve the list of supported judge models, so it "
+                "can't confirm '%s' is a valid judge model. The evaluation will still "
+                "run, but it may fail if the model isn't supported. See the list of "
+                "supported judge models: %s",
+                v,
+                _EVALUATOR_JUDGE_DOCS_URL,
             )
-        
-        # Get current region from session
-        session = values.get('sagemaker_session')
-        if session and hasattr(session, 'boto_region_name'):
-            current_region = session.boto_region_name
-            allowed_regions = _ALLOWED_EVALUATOR_MODELS[v]
-            
-            if current_region not in allowed_regions:
-                raise ValueError(
-                    f"Evaluator model '{v}' is not available in region '{current_region}'. "
-                    f"Available regions for this model: {allowed_regions}"
-                )
-            
+            return v
+
+        if v not in supported_model_ids:
+            raise ValueError(
+                f"evaluator_model '{v}' is not a supported LLM-as-Judge model in "
+                f"region '{region}'. Choose one of the supported judge models. "
+                f"See {_EVALUATOR_JUDGE_DOCS_URL}"
+            )
+
         return v
-    
+
+    def _check_evaluator_model_lifecycle(self, region: str) -> None:
+        """Fail fast if evaluator_model is retired (past end of life) in ``region``.
+
+        Evaluate() step 2, complementing the construction-time supported-model
+        check. The supported-judge-models list is a superset that can still list
+        models past end of life, so this queries Bedrock ``GetFoundationModel``
+        for the model's live lifecycle and raises before the job is submitted when
+        the model is no longer usable.
+
+        The permission needed for the lookup (``bedrock:GetFoundationModel``) is a
+        resource-scoped action, so we do NOT pre-check it with
+        ``iam:SimulatePrincipalPolicy`` — simulating a resource-scoped action
+        without ``ResourceArns`` yields false ``implicitDeny`` verdicts for callers
+        who scope their grants, which would silently skip this very check. Instead
+        we call ``GetFoundationModel`` directly and interpret the result:
+
+        * ``ResourceNotFoundException`` / ``ValidationException`` → the model is
+          not available in the region (unsupported or fully retired) → raise.
+        * ``endOfLifeTime`` in the past → the model has reached end of life → raise.
+        * ``AccessDenied`` → the caller lacks the permission → warn and continue.
+        * any other error (throttling, service issue) → warn and continue.
+
+        Args:
+            region: AWS region resolved for the evaluation.
+        """
+        from datetime import datetime, timezone
+
+        from botocore.exceptions import ClientError
+
+        from sagemaker.core.helper.iam_role_resolver import _get_boto_session
+
+        boto_session = _get_boto_session(self.sagemaker_session)
+        try:
+            client = boto_session.client("bedrock", region_name=region)
+            response = client.get_foundation_model(modelIdentifier=self.evaluator_model)
+        except Exception as e:  # noqa: BLE001 - map Bedrock errors, degrade on the rest
+            error_code = (
+                e.response.get("Error", {}).get("Code", "") if isinstance(e, ClientError) else ""
+            )
+            if error_code in ("ResourceNotFoundException", "ValidationException"):
+                raise ValueError(
+                    f"evaluator_model '{self.evaluator_model}' is not available in "
+                    f"region '{region}'. It may be unsupported in this region or have "
+                    f"reached end of life. Choose a judge model that is in service in "
+                    f"this region. See {_EVALUATOR_JUDGE_DOCS_URL}"
+                ) from e
+            if error_code in ("AccessDeniedException", "AccessDenied", "UnauthorizedOperation"):
+                _logger.warning(
+                    "Your IAM role does not include the bedrock:GetFoundationModel "
+                    "permission, so the SDK can't check whether the evaluator model "
+                    "'%s' is still in service or has reached end of life. The "
+                    "evaluation will still run, but it may fail if this model has been "
+                    "retired. Add bedrock:GetFoundationModel to your role to enable "
+                    "this check. See the list of supported judge models: %s",
+                    self.evaluator_model,
+                    _EVALUATOR_JUDGE_DOCS_URL,
+                )
+                return
+            # Any other error (throttling, service issue): don't block the user.
+            _logger.warning(
+                "The SDK couldn't verify whether the evaluator model '%s' is still in "
+                "service right now (a temporary error occurred). The evaluation will "
+                "still run, but it may fail if this model has been retired. See the "
+                "list of supported judge models: %s",
+                self.evaluator_model,
+                _EVALUATOR_JUDGE_DOCS_URL,
+            )
+            return
+
+        details = response.get("modelDetails", {}) if isinstance(response, dict) else {}
+        lifecycle = details.get("modelLifecycle", {}) if isinstance(details, dict) else {}
+        end_of_life = lifecycle.get("endOfLifeTime") if isinstance(lifecycle, dict) else None
+
+        if isinstance(end_of_life, datetime) and end_of_life <= datetime.now(timezone.utc):
+            raise ValueError(
+                f"evaluator_model '{self.evaluator_model}' has reached end of life in "
+                f"region '{region}' (end-of-life {end_of_life.isoformat()}) and can no "
+                f"longer be used as a judge. Choose a judge model that is in service. "
+                f"See {_EVALUATOR_JUDGE_DOCS_URL}"
+            )
+
     def _should_use_inspectai_path(self) -> bool:
         """Determine if the InspectAI path should be used for Phase 1 inference.
 
@@ -247,48 +435,48 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
 
     def _process_builtin_metrics(self, metrics: Optional[List[str]]) -> List[str]:
         """Process builtin metrics by removing 'Builtin.' prefix if present.
-        
+
         Args:
             metrics: List of metric names, potentially with 'Builtin.' prefix
-            
+
         Returns:
             List[str]: Processed metric names without 'Builtin.' prefix
         """
         if not metrics:
             return []
-        
+
         processed_metrics = []
         for metric in metrics:
             # Remove 'Builtin.' prefix if present (case-insensitive)
-            if metric.lower().startswith('builtin.'):
+            if metric.lower().startswith("builtin."):
                 processed_metric = metric[8:]  # Remove first 8 characters ('Builtin.')
             else:
                 processed_metric = metric
             processed_metrics.append(processed_metric)
-        
+
         return processed_metrics
-    
+
     def _validate_custom_metrics_json(self, custom_metrics_json: Optional[str]) -> Optional[str]:
         """Validate custom metrics JSON string if provided.
-        
+
         Args:
             custom_metrics_json: JSON string to validate
-            
+
         Returns:
             Optional[str]: Validated JSON string or None
-            
+
         Raises:
             ValueError: If JSON is invalid
         """
         if not custom_metrics_json:
             return None
-        
+
         try:
             json.loads(custom_metrics_json)  # Validate JSON
             return custom_metrics_json
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in custom_metrics: {e}")
-    
+
     def _resolve_llmaj_proxy_model_arn(self, region: str) -> str:
         """Resolve a non-Nova model ARN for the LLMAJEvaluation judging step.
 
@@ -312,9 +500,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 _LLMAJ_PROXY_MODEL_ID,
                 sagemaker_session=self.sagemaker_session,
             )
-            _logger.info(
-                f"Resolved LLMAJ proxy model ARN for Nova: {proxy_info.base_model_arn}"
-            )
+            _logger.info(f"Resolved LLMAJ proxy model ARN for Nova: {proxy_info.base_model_arn}")
             return proxy_info.base_model_arn
         except Exception as e:
             raise ValueError(
@@ -393,9 +579,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 }
             }
         else:
-            model_s3_uri, inference_image_uri = (
-                self._resolve_model_artifacts_for_endpoint(region)
-            )
+            model_s3_uri, inference_image_uri = self._resolve_model_artifacts_for_endpoint(region)
             config["inference_provider"] = {
                 "sagemaker_endpoint": {
                     "model_s3_uri": model_s3_uri,
@@ -469,9 +653,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
 
         try:
             session = self.sagemaker_session
-            boto_session = (
-                session.boto_session if hasattr(session, "boto_session") else session
-            )
+            boto_session = session.boto_session if hasattr(session, "boto_session") else session
             mp = ModelPackage.get(
                 model_package_name=model_package_arn,
                 session=boto_session,
@@ -546,8 +728,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             )
 
         _logger.info(
-            "Resolved model artifacts for endpoint: model_s3_uri=%s, "
-            "inference_image_uri=%s",
+            "Resolved model artifacts for endpoint: model_s3_uri=%s, " "inference_image_uri=%s",
             model_s3_uri,
             inference_image_uri,
         )
@@ -586,7 +767,11 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
 
         # 2. Resolve dataset URI (handle ARN → S3 URI if needed)
         dataset_uri = self.dataset
-        if dataset_uri.startswith("arn:") and "hub-content" in dataset_uri and "/DataSet/" in dataset_uri:
+        if (
+            dataset_uri.startswith("arn:")
+            and "hub-content" in dataset_uri
+            and "/DataSet/" in dataset_uri
+        ):
             dataset_uri = self._resolve_dataset_arn_to_s3_uri(dataset_uri)
 
         # 3. Download customer dataset from S3
@@ -596,9 +781,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 sagemaker_session=self.sagemaker_session,
             )
         except Exception as e:
-            raise ValueError(
-                f"Failed to download dataset from {dataset_uri}: {e}"
-            ) from e
+            raise ValueError(f"Failed to download dataset from {dataset_uri}: {e}") from e
 
         # 4. Convert to InspectAI format
         converted_dataset = convert_dataset_to_inspectai_format(raw_content)
@@ -637,8 +820,6 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         :rtype: str
         :raises ValueError: If the ARN cannot be resolved to an S3 location.
         """
-        import json as _json
-
         from sagemaker.ai_registry.air_hub import AIRHub
         from sagemaker.ai_registry.air_constants import (
             DOC_KEY_DATASET_S3_BUCKET,
@@ -653,9 +834,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             resource_parts = arn_parts[-1].split("/")
             hub_content_name = resource_parts[3]
         except (IndexError, ValueError) as e:
-            raise ValueError(
-                f"Failed to parse dataset ARN '{dataset_arn}': {e}"
-            ) from e
+            raise ValueError(f"Failed to parse dataset ARN '{dataset_arn}': {e}") from e
 
         try:
             response = AIRHub.describe_hub_content(
@@ -663,7 +842,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 hub_content_name=hub_content_name,
                 session=self.sagemaker_session,
             )
-            doc = _json.loads(response[RESPONSE_KEY_HUB_CONTENT_DOCUMENT])
+            doc = json.loads(response[RESPONSE_KEY_HUB_CONTENT_DOCUMENT])
             bucket = doc.get(DOC_KEY_DATASET_S3_BUCKET, "")
             prefix = doc.get(DOC_KEY_DATASET_S3_PREFIX, "")
 
@@ -677,81 +856,80 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         except ValueError:
             raise
         except Exception as e:
-            raise ValueError(
-                f"Failed to resolve dataset ARN '{dataset_arn}' to S3 URI: {e}"
-            ) from e
+            raise ValueError(f"Failed to resolve dataset ARN '{dataset_arn}' to S3 URI: {e}") from e
 
     def _upload_custom_metrics_to_s3(self, custom_metrics_json: str, eval_name: str) -> str:
         """Upload custom metrics JSON to S3 and return the S3 path.
-        
+
         Args:
             custom_metrics_json: JSON string of custom metrics
             eval_name: Evaluation name for path generation
-            
+
         Returns:
             str: S3 path where custom metrics were uploaded
         """
         from datetime import datetime
         from sagemaker.core.s3.client import S3Uploader
-        
+
         # Generate timestamp
-        timestamp = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
-        
+        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+
         # Strip trailing slash from S3 output path
-        s3_base = self.s3_output_path.rstrip('/')
-        
+        s3_base = self.s3_output_path.rstrip("/")
+
         # Construct S3 path: s3_output_path/evaluationinputs/{evaluation_name}{timestamp}/custom-metrics.json
         s3_path = f"{s3_base}/evaluationinputs/{eval_name}{timestamp}/custom-metrics.json"
-        
+
         # Upload to S3 using S3Uploader
         _logger.info(f"Uploading custom metrics to S3: {s3_path}")
         S3Uploader.upload_string_as_file_body(
             body=custom_metrics_json,
             desired_s3_uri=s3_path,
             kms_key=self.kms_key_id,
-            sagemaker_session=self.sagemaker_session
+            sagemaker_session=self.sagemaker_session,
         )
-        
+
         _logger.info(f"Successfully uploaded custom metrics to: {s3_path}")
         return s3_path
-    
+
     def _get_llmaj_template_additions(self, eval_name: str) -> dict:
         """Get LLM-as-judge specific template context additions.
-        
+
         Args:
             eval_name: Evaluation name for S3 path generation
-        
+
         Returns:
             dict: LLM-as-judge specific template context fields
         """
         # Process builtin_metrics - remove 'Builtin.' prefix and convert to JSON string
         processed_metrics = self._process_builtin_metrics(self.builtin_metrics)
         llmaj_metrics_json = json.dumps(processed_metrics)
-        
+
         # Validate custom_metrics JSON string if provided
         custom_metrics_json = self._validate_custom_metrics_json(self.custom_metrics)
-        
+
         # Upload custom_metrics to S3 and get path if provided
         custom_metrics_s3_path = None
         if custom_metrics_json:
             custom_metrics_s3_path = self._upload_custom_metrics_to_s3(
-                custom_metrics_json, 
-                eval_name
+                custom_metrics_json, eval_name
             )
-        
+
         # Strip trailing slash from S3 output path to avoid double slashes
-        s3_output_path = self.s3_output_path.rstrip('/') if self.s3_output_path else self.s3_output_path
-        
+        s3_output_path = (
+            self.s3_output_path.rstrip("/") if self.s3_output_path else self.s3_output_path
+        )
+
         return {
-            'judge_model_id': self.evaluator_model,
-            's3_output_path': s3_output_path,
-            'llmaj_metrics': llmaj_metrics_json,
-            'custom_metrics': custom_metrics_s3_path,
-            'max_new_tokens': str(8192),
-            'temperature': str(0),
-            'top_k': str(-1),
-            'top_p': str(1.0),
-            'evaluate_base_model': self.evaluate_base_model,
+            "judge_model_id": self.evaluator_model,
+            "s3_output_path": s3_output_path,
+            "llmaj_metrics": llmaj_metrics_json,
+            "custom_metrics": custom_metrics_s3_path,
+            "max_new_tokens": str(8192),
+            "temperature": str(0),
+            "top_k": str(-1),
+            "top_p": str(1.0),
+            "evaluate_base_model": self.evaluate_base_model,
         }
 
     @_telemetry_emitter(
@@ -760,16 +938,17 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         telemetry_params=[
             ("evaluator_model", TelemetryParamType.ATTR_VALUE),
             ("custom_metrics", TelemetryParamType.ATTR_EXISTS),
-        ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
+        ]
+        + BASE_EVALUATOR_TELEMETRY_PARAMS,
     )
     def evaluate(self, dry_run: bool = False):
         """Create and start an LLM-as-judge evaluation job.
-        
+
         This method initiates a 2-phase evaluation job:
-        
+
         1. Phase 1: Generate inference responses from base and custom models
         2. Phase 2: Use judge model to evaluate responses with built-in and custom metrics
-        
+
         When the InspectAI path is active (custom model or Nova JumpStart model),
         Phase 1 runs inside an InspectAI container that generates
         inference responses and writes them to S3. Phase 2 remains unchanged —
@@ -785,13 +964,13 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         Returns:
             EvaluationPipelineExecution: The created LLM-as-judge evaluation execution,
             or None if dry_run=True.
-        
+
         Raises:
             ValueError: If invalid model, dataset, or metric configurations are provided
-        
+
         Example:
             .. code:: python
-            
+
                 evaluator = LLMAsJudgeEvaluator(
                     base_model="llama-3-3-70b-instruct",
                     evaluator_model="anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -802,15 +981,15 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 execution = evaluator.evaluate()
                 execution.wait()
         """
-        from .constants import EvalType, _get_inspect_ai_default_image_uri
         from .pipeline_templates import (
             LLMAJ_INSPECTAI_TEMPLATE,
             LLMAJ_TEMPLATE,
             LLMAJ_TEMPLATE_BASE_MODEL_ONLY,
         )
-        
+
         # S3 checkpoint paths are not supported on serverless evaluation
         from sagemaker.train.common_utils.model_resolution import _ModelType
+
         info = self._get_resolved_model_info()
         if info and info.model_type == _ModelType.S3_CHECKPOINT:
             raise ValueError(
@@ -824,15 +1003,22 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         # so it validates the execution role against the "model_eval" role type,
         # which additionally gates the required Bedrock permissions.
         aws_context = self._get_aws_execution_context(role_type="model_eval")
-        region = aws_context['region']
-        role_arn = aws_context['role_arn']
-        
+        region = aws_context["region"]
+        role_arn = aws_context["role_arn"]
+
+        # Step 2 of evaluator_model validation: fail fast (before submitting the job)
+        # if the judge model has reached end of life. The construction-time check
+        # only confirmed the model is judge-capable; this confirms it is still in
+        # service. Gated on caller permissions — warns and continues if it can't be
+        # verified.
+        self._check_evaluator_model_lifecycle(region)
+
         # Resolve model artifacts
         artifacts = self._resolve_model_artifacts(region)
-        
+
         # Get or infer model_package_group ARN (handles all cases internally)
         model_package_group_arn = self._get_model_package_group_arn()
-        
+
         # Log resolved model information for debugging
         _logger.info(
             f"Resolved model info - base_model_name: {self._base_model_name}, "
@@ -859,19 +1045,13 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 f"{s3_base}/inference/{inference_run_id}/inference_output.jsonl"
             )
 
-            benchmark_s3_path = self._upload_benchmark_and_dataset(
-                region, inference_output_s3_uri
-            )
+            benchmark_s3_path = self._upload_benchmark_and_dataset(region, inference_output_s3_uri)
 
             inspectai_config = self._build_inspectai_config(
                 region, benchmark_s3_path, inference_output_s3_uri
             )
-            yaml_content = yaml.dump(
-                inspectai_config, default_flow_style=False, sort_keys=False
-            )
-            config_s3_prefix = (
-                f"{s3_base}/inspectai-config/{inference_run_id}"
-            )
+            yaml_content = yaml.dump(inspectai_config, default_flow_style=False, sort_keys=False)
+            config_s3_prefix = f"{s3_base}/inspectai-config/{inference_run_id}"
             config_s3_uri = f"{config_s3_prefix}/config.yaml"
             _logger.info(f"Uploading InspectAI config to: {config_s3_uri}")
             S3Uploader.upload_string_as_file_body(
@@ -886,7 +1066,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             # Resolve mlflow_experiment_name: required when ModelPackageGroupArn is absent
             mlflow_experiment_name = self.mlflow_experiment_name
             if not mlflow_experiment_name and self.mlflow_resource_arn:
-                mlflow_experiment_name = '{{ pipeline_name }}'
+                mlflow_experiment_name = "{{ pipeline_name }}"
                 _logger.info(
                     "No mlflow_experiment_name provided for InspectAI path, "
                     "using pipeline_name as default"
@@ -900,26 +1080,24 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 judge_step_base_model_arn = self._base_model_arn or self.model
 
             template_context = {
-                'role_arn': role_arn,
-                'mlflow_resource_arn': self.mlflow_resource_arn,
-                'mlflow_experiment_name': mlflow_experiment_name,
-                'inspectai_image_uri': inspectai_image_uri,
-                'inspectai_instance_type': inspectai_instance_type,
-                'inspectai_config_s3_uri': config_s3_prefix,
-                's3_output_path': s3_base,
-                'base_model_arn': judge_step_base_model_arn,
-                'inference_output_s3_uri': inference_output_s3_uri,
+                "role_arn": role_arn,
+                "mlflow_resource_arn": self.mlflow_resource_arn,
+                "mlflow_experiment_name": mlflow_experiment_name,
+                "inspectai_image_uri": inspectai_image_uri,
+                "inspectai_instance_type": inspectai_instance_type,
+                "inspectai_config_s3_uri": config_s3_prefix,
+                "s3_output_path": s3_base,
+                "base_model_arn": judge_step_base_model_arn,
+                "inference_output_s3_uri": inference_output_s3_uri,
             }
 
             llmaj_additions = self._get_llmaj_template_additions(name)
             template_context.update(llmaj_additions)
 
             if self._source_model_package_arn and model_package_group_arn:
-                template_context['model_package_config'] = True
-                template_context['model_package_group_arn'] = model_package_group_arn
-                template_context['source_model_package_arn'] = (
-                    self._source_model_package_arn
-                )
+                template_context["model_package_config"] = True
+                template_context["model_package_group_arn"] = model_package_group_arn
+                template_context["source_model_package_arn"] = self._source_model_package_arn
 
             template_context = self._add_vpc_and_kms_to_context(template_context)
 
@@ -944,38 +1122,31 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         template_context = self._get_base_template_context(
             role_arn=role_arn,
             region=region,
-            account_id=aws_context['account_id'],
+            account_id=aws_context["account_id"],
             model_package_group_arn=model_package_group_arn,
-            resolved_model_artifact_arn=artifacts['resolved_model_artifact_arn']
+            resolved_model_artifact_arn=artifacts["resolved_model_artifact_arn"],
         )
-        
+
         # Add dataset URI
-        template_context['dataset_uri'] = self.dataset
-        
+        template_context["dataset_uri"] = self.dataset
+
         # Add LLM-as-judge specific template additions (needs eval name for S3 upload)
         llmaj_additions = self._get_llmaj_template_additions(name)
         template_context.update(llmaj_additions)
-        
+
         # Add VPC and KMS configuration
         template_context = self._add_vpc_and_kms_to_context(template_context)
-        
+
         # Select appropriate template
-        template_str = self._select_template(
-            LLMAJ_TEMPLATE_BASE_MODEL_ONLY,
-            LLMAJ_TEMPLATE
-        )
-        
+        template_str = self._select_template(LLMAJ_TEMPLATE_BASE_MODEL_ONLY, LLMAJ_TEMPLATE)
+
         # Render pipeline definition
         pipeline_definition = self._render_pipeline_definition(template_str, template_context)
 
         # Validate dataset path exists
-        if hasattr(self, 'dataset') and self.dataset:
-            session = TrainDefaults.get_sagemaker_session(
-                sagemaker_session=self.sagemaker_session
-            )
-            validate_data_path_exists(
-                self.dataset, session, label="evaluation dataset"
-            )
+        if hasattr(self, "dataset") and self.dataset:
+            session = TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session)
+            validate_data_path_exists(self.dataset, session, label="evaluation dataset")
 
         if dry_run:
             _logger.info("Dry-run validation passed. No evaluation submitted.")
@@ -989,44 +1160,43 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             role_arn=role_arn,
             region=region,
         )
-    
+
     @classmethod
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="LLMAsJudgeEvaluator.get_all")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="LLMAsJudgeEvaluator.get_all"
+    )
     def get_all(cls, session: Optional[Any] = None, region: Optional[str] = None):
         """Get all LLM-as-judge evaluation executions.
-        
+
         Uses ``EvaluationPipelineExecution.get_all()`` to retrieve all LLM-as-judge
         evaluation executions as an iterator.
-        
+
         Args:
             session (Optional[Any]): Optional boto3 session. If not provided, will be inferred.
             region (Optional[str]): Optional AWS region. If not provided, will be inferred.
-        
+
         Yields:
             EvaluationPipelineExecution: LLM-as-judge evaluation execution instances
-        
+
         Example:
             .. code:: python
-            
+
                 # Get all LLM-as-judge evaluations as iterator
                 evaluations = LLMAsJudgeEvaluator.get_all()
                 all_executions = list(evaluations)
-                
+
                 # Or iterate directly
                 for execution in LLMAsJudgeEvaluator.get_all():
                     print(f"{execution.name}: {execution.status.overall_status}")
-                
+
                 # With specific session/region
                 evaluations = LLMAsJudgeEvaluator.get_all(session=my_session, region='us-west-2')
                 all_executions = list(evaluations)
         """
         from .execution import EvaluationPipelineExecution
-        from .constants import EvalType
-        
+
         # Use EvaluationPipelineExecution.get_all() with LLM_AS_JUDGE eval_type
         # This returns a generator, so we yield from it
         yield from EvaluationPipelineExecution.get_all(
-            eval_type=EvalType.LLM_AS_JUDGE,
-            session=session,
-            region=region
+            eval_type=EvalType.LLM_AS_JUDGE, session=session, region=region
         )

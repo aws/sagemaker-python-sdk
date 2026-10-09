@@ -14,8 +14,7 @@
 """Extended unit tests for sagemaker.core.jumpstart.utils module"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List
+from unittest.mock import Mock, patch
 
 from sagemaker.core.jumpstart import utils, constants, enums
 from sagemaker.core.jumpstart.types import JumpStartModelSpecs
@@ -340,7 +339,7 @@ class TestAddJumpStartUriTags:
     @patch("sagemaker.core.jumpstart.utils.is_pipeline_variable", return_value=True)
     def test_skip_pipeline_variable(self, mock_is_pipeline):
         """Test skipping pipeline variables"""
-        with patch("sagemaker.core.jumpstart.utils.logging") as mock_logging:
+        with patch("sagemaker.core.jumpstart.utils.logging"):
             tags = utils.add_jumpstart_uri_tags(inference_model_uri=Mock())  # Pipeline variable
             assert tags is None or len(tags) == 0
 
@@ -498,7 +497,7 @@ class TestGetSagemakerVersion:
         mock_get.return_value = ""
         mock_parse.return_value = "2.100.0"
 
-        version = utils.get_sagemaker_version()
+        utils.get_sagemaker_version()
 
         mock_parse.assert_called_once()
         mock_set.assert_called_once_with("2.100.0")

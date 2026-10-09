@@ -24,12 +24,12 @@ from pydantic import BaseModel, ValidationError
 
 from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 
-
 logger = logging.getLogger(__name__)
 
 LAMBDA_ARN_REGEX = re.compile(
     r"^arn:aws[a-zA-Z-]*:lambda:[a-z0-9-]+:\d{12}:function:[A-Za-z0-9-_]+$"
 )
+
 
 class RewardMetric(BaseModel):
     """A single metric or reward entry from a reward function output."""
@@ -99,6 +99,7 @@ def _unwrap_response(payload: Any, is_nova: bool) -> Any:
     # body is already parsed (e.g., local handler returned dict directly)
     return body
 
+
 def verify_reward_function(
     reward_function: str,
     sample_data: List[Dict[str, Any]],
@@ -106,8 +107,7 @@ def verify_reward_function(
     compute: Optional[Union[TrainingJobCompute, HyperPodCompute]] = None,
     is_nova: bool = True,
 ) -> Dict[str, Any]:
-    """
-    Verify a reward function with sample data before using it in RLVR training or evaluation.
+    """Verify a reward function with sample data before using it in RLVR training or evaluation.
 
     This function allows you to test your reward function implementation with sample
     conversation data to ensure it works correctly before submitting a training or evaluation job.
@@ -193,7 +193,8 @@ def verify_reward_function(
                 # Check if function name contains 'SageMaker' (case-insensitive)
                 if not re.search(r"sagemaker", function_name, re.IGNORECASE):
                     raise ValueError(
-                        f"Lambda ARN for HyperPod compute must contain 'SageMaker' in the function name for Nova models. "
+                        f"Lambda ARN for HyperPod compute must contain 'SageMaker' "
+                        f"in the function name for Nova models. "
                         f"Current function name: '{function_name}'. "
                         f"Expected format: 'arn:aws:lambda:*:*:function:*SageMaker*'"
                     )
@@ -316,7 +317,7 @@ def verify_reward_function(
                         json.dumps(payload, indent=2) if isinstance(payload, dict) else str(payload)
                     )
                     logger.info(f"Result:\n{result_str}")
-                    
+
                     results.append(
                         {
                             "sample_index": 0,

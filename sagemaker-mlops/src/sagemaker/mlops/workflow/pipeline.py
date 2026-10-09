@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The Pipeline entity for workflow."""
+
 from __future__ import absolute_import
 
 import json
@@ -40,6 +41,7 @@ from sagemaker.core.common_utils import (
     retry_with_backoff,
     format_tags,
     Tags,
+    _is_resource_already_exists_error,
 )
 
 # Orchestration imports (now in mlops)
@@ -180,6 +182,8 @@ class Pipeline:
         description: str = None,
         tags: Optional[Tags] = None,
         parallelism_config: ParallelismConfiguration = None,
+        *,
+        _log_name_collision_hint: bool = True,
     ) -> Dict[str, Any]:
         """Creates a Pipeline in the Pipelines service.
 
@@ -219,7 +223,21 @@ class Pipeline:
             Tags=tags,
         )
         # TODO: replace with sagemaker-core methods
-        return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
+        try:
+            return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
+        except ClientError as ce:
+            # upsert() handles the name collision itself (create-or-update), so it
+            # suppresses this hint -- otherwise every successful upsert of an
+            # existing pipeline would log a misleading ERROR.
+            if _log_name_collision_hint and _is_resource_already_exists_error(ce):
+                logger.error(
+                    "A pipeline named '%s' already exists in this account and Region. "
+                    "To update the existing pipeline (or create it only if missing), call "
+                    "pipeline.upsert() instead of pipeline.create(). To keep both, choose a "
+                    "unique pipeline name.",
+                    self.name,
+                )
+            raise ce
 
     def _create_args(
         self, role_arn: str, description: str, parallelism_config: ParallelismConfiguration
@@ -263,7 +281,10 @@ class Pipeline:
             }
 
         update_args(
-            kwargs, PipelineDescription=description, ParallelismConfiguration=parallelism_config
+            kwargs,
+            PipelineDescription=description,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
         )
         return kwargs
 
@@ -353,11 +374,15 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             sagemaker_session=self.sagemaker_session,
         )
         try:
-            response = self.create(role_arn, description, tags, parallelism_config)
+            response = self.create(
+                role_arn,
+                description,
+                tags,
+                parallelism_config,
+                _log_name_collision_hint=False,
+            )
         except ClientError as ce:
-            error_code = ce.response["Error"]["Code"]
-            error_message = ce.response["Error"]["Message"]
-            if not (error_code == "ValidationException" and "already exists" in error_message):
+            if not _is_resource_already_exists_error(ce):
                 raise ce
             # already exists
             response = self.update(role_arn, description, parallelism_config=parallelism_config)
@@ -444,7 +469,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
-            ParallelismConfiguration=parallelism_config,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
             SelectiveExecutionConfig=selective_execution_config,
             MlflowExperimentName=mlflow_experiment_name,
             PipelineVersionId=pipeline_version_id,
@@ -945,6 +971,20 @@ def _map_lambda_outputs(steps: List[Step]):
     return lambda_output_map
 
 
+def _resolve_parallelism_config(parallelism_config):
+    """Normalize a parallelism_config into the request dict boto expects.
+
+    boto's create/update/start pipeline APIs expect ``ParallelismConfiguration`` as a dict
+    (``{"MaxParallelExecutionSteps": int}``), not a ``ParallelismConfiguration`` object
+    (issue #5354). This converts the object via ``to_request()``. A dict is passed through
+    unchanged so callers who adopted the pre-fix ``.to_request()`` workaround keep working,
+    and ``None`` is returned as-is so ``update_args`` can drop the key.
+    """
+    if isinstance(parallelism_config, ParallelismConfiguration):
+        return parallelism_config.to_request()
+    return parallelism_config
+
+
 def update_args(args: Dict[str, Any], **kwargs):
     """Updates the request arguments dict with a value, if populated.
 
@@ -1187,7 +1227,10 @@ def get_function_step_result(
     #
     # Cases 1 and 2 both end with RESULTS_FOLDER; case 3 does not.
     s3_output_path_stripped = s3_output_path.rstrip("/")
-    if s3_output_path_stripped.endswith("/" + RESULTS_FOLDER) or s3_output_path_stripped == RESULTS_FOLDER:
+    if (
+        s3_output_path_stripped.endswith("/" + RESULTS_FOLDER)
+        or s3_output_path_stripped == RESULTS_FOLDER
+    ):
         # S3OutputPath already points to the results folder (new or old format)
         s3_uri = s3_output_path_stripped
     else:

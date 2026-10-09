@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests that removed v2 modules raise actionable guidance in v3."""
+
 from __future__ import absolute_import
 
 import importlib

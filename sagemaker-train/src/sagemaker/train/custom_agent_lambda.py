@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 
 """CustomAgentLambda — Lambda-based agent environment for Agentic RFT."""
+
 from __future__ import annotations
 
 import io
@@ -40,6 +41,7 @@ class CustomAgentLambda:
         self.lambda_arn = lambda_arn
 
     def __repr__(self):
+        """Return a representation of the custom agent Lambda."""
         return f"CustomAgentLambda(lambda_arn={self.lambda_arn!r})"
 
     @classmethod
@@ -151,7 +153,7 @@ class CustomAgentLambda:
 
 def _parse_s3_uri(uri: str) -> tuple[str, str]:
     """Parse an S3 URI into (bucket, key)."""
-    path = uri[len("s3://"):]
+    path = uri[len("s3://") :]
     bucket, _, key = path.partition("/")
     return bucket, key
 

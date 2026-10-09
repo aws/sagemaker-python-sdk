@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Functions for generating ECR image URIs for pre-built SageMaker Docker images."""
+
 from __future__ import absolute_import
 
 import json
@@ -18,7 +19,6 @@ import logging
 import os
 from typing import Optional
 from packaging.version import Version
-import requests
 
 
 from sagemaker.core.serverless_inference_config import ServerlessInferenceConfig
@@ -186,7 +186,9 @@ def _validate_for_suppported_frameworks_and_instance_type(framework, instance_ty
 
 def config_for_framework(framework):
     """Loads the JSON config for the given framework."""
-    fname = os.path.join(os.path.dirname(__file__), "..", "image_uri_config", "{}.json".format(framework))
+    fname = os.path.join(
+        os.path.dirname(__file__), "..", "image_uri_config", "{}.json".format(framework)
+    )
     with open(fname) as f:
         return json.load(f)
 
@@ -454,9 +456,7 @@ def _retrieve_pytorch_uri_inputs_are_all_default(
     inference_tool: Optional[str] = None,
     serverless_inference_config: ServerlessInferenceConfig = None,
 ) -> bool:
-    """
-    Determine if the inputs for _retrieve_pytorch_uri() are all default values.
-    """
+    """Determine if the inputs for _retrieve_pytorch_uri() are all default values."""
     return (
         not version
         and not py_version
@@ -474,9 +474,7 @@ def _retrieve_pytorch_uri_inputs_are_all_default(
 
 
 def _retrieve_latest_pytorch_training_uri(region: str):
-    """
-    Retrive the URI for the latest PyTorch training image for CPU
-    """
+    """Retrive the URI for the latest PyTorch training image for CPU"""
     config = config_for_framework("pytorch")
     image_scope = "training"
 

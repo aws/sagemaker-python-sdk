@@ -286,9 +286,7 @@ class TestValidateDataPathExists(unittest.TestCase):
     def test_unrecognized_format_raises(self):
         session = Mock()
         with self.assertRaises(ValueError) as ctx:
-            validate_data_path_exists(
-                "arn:aws:sagemaker:us-east-1:123:dataset/foo", session
-            )
+            validate_data_path_exists("arn:aws:sagemaker:us-east-1:123:dataset/foo", session)
         self.assertIn("Invalid", str(ctx.exception))
 
     def test_dataset_object_extracts_arn(self):
@@ -298,7 +296,9 @@ class TestValidateDataPathExists(unittest.TestCase):
         session.sagemaker_client = sm_client
 
         dataset = Mock(spec=DataSet)
-        dataset.arn = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/my-dataset/1.0.0"
+        dataset.arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/my-dataset/1.0.0"
+        )
 
         sm_client.describe_hub_content.return_value = {}
         validate_data_path_exists(dataset, session, label="training dataset")
@@ -316,7 +316,9 @@ class TestValidateDataPathExists(unittest.TestCase):
         session.sagemaker_client = sm_client
 
         dataset = Mock(spec=DataSet)
-        dataset.arn = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/bad-dataset/1.0.0"
+        dataset.arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/bad-dataset/1.0.0"
+        )
 
         sm_client.describe_hub_content.side_effect = ClientError(
             {"Error": {"Code": "ResourceNotFound", "Message": "Not found"}},

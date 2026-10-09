@@ -1,10 +1,13 @@
+"""SFT (Supervised Fine-Tuning) trainer for SageMaker fine-tuning."""
+
 from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
 from sagemaker.core.resources import TrainingJob, ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
-from sagemaker.core.workflow.pipeline_context import PipelineSession
+from sagemaker.core.workflow.pipeline_capture import capture_training_request
+from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 from sagemaker.ai_registry.dataset import DataSet
@@ -24,7 +27,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_mlflow_config,
     _create_model_package_config,
     _validate_eula_for_gated_model,
-    _validate_hyperparameter_values
+    _validate_hyperparameter_values,
 )
 from sagemaker.train.common_utils.data_utils import is_multimodal_data, validate_data_path_exists
 from sagemaker.train.common_utils.data_mixing_utils import (
@@ -69,19 +72,19 @@ class SFTTrainer(BaseTrainer):
             model="meta-llama/Llama-2-7b-hf",
             model_package_group="my-fine-tuned-models"
         )
-        
+
         # Create training job (non-blocking)
         training_job = trainer.train(
             training_dataset="s3://bucket/train.jsonl",
             wait=False
         )
-        
+
         # Wait for completion
         training_job.wait()
-        
+
         # Refresh job status
         training_job.refresh()
-        
+
         # Get the fine-tuned model artifacts ARN
         model_package_arn = training_job.output_model_package_arn
 
@@ -175,10 +178,18 @@ class SFTTrainer(BaseTrainer):
         notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, notifications=notifications, **kwargs)
+        super().__init__(
+            base_model_name=base_model_name,
+            disable_output_compression=disable_output_compression,
+            notifications=notifications,
+            **kwargs,
+        )
 
         self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
-            model, self.base_model_name, compute, self.sagemaker_session,
+            model,
+            self.base_model_name,
+            compute,
+            self.sagemaker_session,
             resolve_fn=_resolve_model_and_name,
         )
 
@@ -214,18 +225,25 @@ class SFTTrainer(BaseTrainer):
         self.data_mixing_config = data_mixing_config
 
         # Initialize fine-tuning options with beta session fallback
-        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
-                                                                     CustomizationTechnique.SFT.value,
-                                                                     self.training_type,
-                                                                     self.sagemaker_session or TrainDefaults.get_sagemaker_session(
-                                                                     sagemaker_session=self.sagemaker_session
-                                                                     ),
-                                                                     sequence_length=self.sequence_length,
-                                                                     compute=self.compute)
+        self.hyperparameters, self._model_arn, is_gated_model = (
+            _get_fine_tuning_options_and_model_arn(
+                self._model_name,
+                CustomizationTechnique.SFT.value,
+                self.training_type,
+                self.sagemaker_session
+                or TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
+                sequence_length=self.sequence_length,
+                compute=self.compute,
+            )
+        )
 
         # Process hyperparameters
         self._process_hyperparameters()
-        
+
+        # Re-apply any hyperparameters passed at construction (see BaseTrainer),
+        # which the FineTuningOptions rebuild above would otherwise drop.
+        self._apply_user_hyperparameters(self._constructor_hyperparameters)
+
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
 
@@ -233,36 +251,46 @@ class SFTTrainer(BaseTrainer):
         """Remove hyperparameter keys that are handled by constructor inputs."""
         if self.hyperparameters:
             # Remove keys that are handled by constructor inputs
-            if hasattr(self.hyperparameters, 'data_path'):
-                delattr(self.hyperparameters, 'data_path')
-                self.hyperparameters._specs.pop('data_path', None)
-            if hasattr(self.hyperparameters, 'output_path'):
-                delattr(self.hyperparameters, 'output_path')
-                self.hyperparameters._specs.pop('output_path', None)
-            if hasattr(self.hyperparameters, 'data_s3_path'):
-                delattr(self.hyperparameters, 'data_s3_path')
-                self.hyperparameters._specs.pop('data_s3_path', None)
-            if hasattr(self.hyperparameters, 'output_s3_path'):
-                delattr(self.hyperparameters, 'output_s3_path')
-                self.hyperparameters._specs.pop('output_s3_path', None)
-            if hasattr(self.hyperparameters, 'training_data_name'):
-                delattr(self.hyperparameters, 'training_data_name')
-                self.hyperparameters._specs.pop('training_data_name', None)
-            if hasattr(self.hyperparameters, 'validation_data_name'):
-                delattr(self.hyperparameters, 'validation_data_name')
-                self.hyperparameters._specs.pop('validation_data_name', None)
-            if hasattr(self.hyperparameters, 'validation_data_path'):
-                delattr(self.hyperparameters, 'validation_data_path')
-                self.hyperparameters._specs.pop('validation_data_path', None)
+            if hasattr(self.hyperparameters, "data_path"):
+                delattr(self.hyperparameters, "data_path")
+                self.hyperparameters._specs.pop("data_path", None)
+            if hasattr(self.hyperparameters, "output_path"):
+                delattr(self.hyperparameters, "output_path")
+                self.hyperparameters._specs.pop("output_path", None)
+            if hasattr(self.hyperparameters, "data_s3_path"):
+                delattr(self.hyperparameters, "data_s3_path")
+                self.hyperparameters._specs.pop("data_s3_path", None)
+            if hasattr(self.hyperparameters, "output_s3_path"):
+                delattr(self.hyperparameters, "output_s3_path")
+                self.hyperparameters._specs.pop("output_s3_path", None)
+            if hasattr(self.hyperparameters, "training_data_name"):
+                delattr(self.hyperparameters, "training_data_name")
+                self.hyperparameters._specs.pop("training_data_name", None)
+            if hasattr(self.hyperparameters, "validation_data_name"):
+                delattr(self.hyperparameters, "validation_data_name")
+                self.hyperparameters._specs.pop("validation_data_name", None)
+            if hasattr(self.hyperparameters, "validation_data_path"):
+                delattr(self.hyperparameters, "validation_data_path")
+                self.hyperparameters._specs.pop("validation_data_path", None)
 
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="SFTTrainer.train",
-        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS
+        + [
             ("compute", TelemetryParamType.ATTR_TYPE),
         ],
     )
-    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
+    @runnable_by_pipeline
+    def train(
+        self,
+        training_dataset: Optional[Union[str, DataSet]] = None,
+        validation_dataset: Optional[Union[str, DataSet]] = None,
+        wait: bool = True,
+        wait_timeout: Optional[int] = None,
+        poll: int = 5,
+        dry_run: bool = False,
+    ):
         """Execute the SFT training job.
 
         Parameters:
@@ -290,10 +318,8 @@ class SFTTrainer(BaseTrainer):
         # Dispatch based on compute type
         if isinstance(self.compute, HyperPodCompute):
             if self.data_mixing_config is not None:
-                from sagemaker.train.defaults import TrainDefaults as _TrainDefaults
-
                 validate_data_mixing_model(self._model_name)
-                _session = _TrainDefaults.get_sagemaker_session(
+                _session = TrainDefaults.get_sagemaker_session(
                     sagemaker_session=self.sagemaker_session
                 )
                 is_multimodal = self.is_multimodal if self.is_multimodal is not None else False
@@ -324,7 +350,7 @@ class SFTTrainer(BaseTrainer):
                 poll=poll,
                 dry_run=dry_run,
             )
-        elif isinstance(self.compute, TrainingJobCompute):
+        if isinstance(self.compute, TrainingJobCompute):
             if self.data_mixing_config is not None:
                 validate_data_mixing_platform(TrainingPlatform.SAGEMAKER_TRAINING_JOB_SERVERFUL)
             return self._train_serverful_smtj(
@@ -348,10 +374,10 @@ class SFTTrainer(BaseTrainer):
 
         logger.info(f"Training Job Name: {current_training_job_name}")
 
-        #data
-        input_data_config = _create_input_data_config(training_dataset or self.training_dataset,
-                                                     validation_dataset or self.validation_dataset
-                                                     )
+        # data
+        input_data_config = _create_input_data_config(
+            training_dataset or self.training_dataset, validation_dataset or self.validation_dataset
+        )
         channels = _convert_input_data_to_channels(
             input_data_config,
             s3_data_type="Converse" if _is_nova_model(self._model_name) else "S3Prefix",
@@ -361,7 +387,7 @@ class SFTTrainer(BaseTrainer):
             s3_output_path=self.s3_output_path,
             sagemaker_session=sagemaker_session,
             kms_key_id=self.kms_key_id,
-            disable_output_compression=getattr(self, 'disable_output_compression', False),
+            disable_output_compression=getattr(self, "disable_output_compression", False),
         )
 
         serverless_config = _create_serverless_config(
@@ -370,7 +396,7 @@ class SFTTrainer(BaseTrainer):
             training_type=self.training_type,
             accept_eula=self.accept_eula,
             sequence_length=self.sequence_length,
-            job_type=JOB_TYPE
+            job_type=JOB_TYPE,
         )
         mlflow_config = _create_mlflow_config(
             sagemaker_session,
@@ -409,7 +435,7 @@ class SFTTrainer(BaseTrainer):
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group,
             model=self.model,
-            sagemaker_session=sagemaker_session
+            sagemaker_session=sagemaker_session,
         )
 
         vpc_config = self.networking if self.networking else None
@@ -438,13 +464,11 @@ class SFTTrainer(BaseTrainer):
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
 
-        # If running within a PipelineSession, intercept the request and store
-        # step arguments instead of launching a training job.
-        # This must come before data path validation since in pipeline mode
-        # the data path may be a pipeline parameter that doesn't exist yet.
+        # Capture must come before data path validation: in pipeline mode the
+        # data path may be a pipeline parameter that doesn't exist yet.
         if isinstance(sagemaker_session, PipelineSession):
-            sagemaker_session._intercept_create_request(create_args, None, "train")
-            return sagemaker_session.context
+            capture_training_request(sagemaker_session, create_args)
+            return
 
         # Validate data paths exist before submission
         effective_training = training_dataset or self.training_dataset
@@ -471,11 +495,12 @@ class SFTTrainer(BaseTrainer):
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
             from sagemaker.core.utils.exceptions import TimeoutExceededError
+
             try:
                 wait_kwargs = {}
                 if wait_timeout is not None:
-                    wait_kwargs['timeout'] = wait_timeout
-                wait_kwargs['poll'] = poll
+                    wait_kwargs["timeout"] = wait_timeout
+                wait_kwargs["poll"] = poll
                 _wait(training_job, **wait_kwargs)
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)

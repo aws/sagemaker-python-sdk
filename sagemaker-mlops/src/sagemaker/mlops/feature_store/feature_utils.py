@@ -1,17 +1,20 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Utilities for working with FeatureGroups and FeatureStores."""
+
 import logging
 import os
 import time
+from collections import Counter
 from pathlib import Path
 import re
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import boto3
 import pandas
 import pandas as pd
 from pandas import DataFrame, Series, read_csv
+from sagemaker.core.shapes import FeatureValue, TtlDuration
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
 from sagemaker.core.helper.session_helper import Session
@@ -25,9 +28,9 @@ from sagemaker.mlops.feature_store.feature_definition import (
     StringFeatureDefinition,
 )
 from sagemaker.mlops.feature_store.ingestion_manager_pandas import IngestionManagerPandas
+from sagemaker.mlops.feature_store.inputs import TargetStoreEnum
 
 from sagemaker.core.utils import unique_name_from_base
-
 
 logger = logging.getLogger(__name__)
 
@@ -59,16 +62,33 @@ _DTYPE_TO_FEATURE_TYPE_MAP = {
 }
 
 _INTEGER_TYPES = {
-    "int_", "int8", "int16", "int32", "int64",
-    "uint8", "uint16", "uint32", "uint64",
+    "int_",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
     # pandas nullable integer dtypes
-    "Int8", "Int16", "Int32", "Int64",
-    "UInt8", "UInt16", "UInt32", "UInt64",
+    "Int8",
+    "Int16",
+    "Int32",
+    "Int64",
+    "UInt8",
+    "UInt16",
+    "UInt32",
+    "UInt64",
 }
 _FLOAT_TYPES = {
-    "float_", "float16", "float32", "float64",
+    "float_",
+    "float16",
+    "float32",
+    "float64",
     # pandas nullable float dtypes
-    "Float32", "Float64",
+    "Float32",
+    "Float64",
 }
 _STRING_TYPES = {"object", "string"}
 
@@ -86,16 +106,20 @@ _ALLOWED_ICEBERG_PROPERTIES = {
     "write.delete.granularity",
     "history.expire.max-ref-age-ms",
     "read.split.open-file-cost",
-    "write.target-file-size-bytes"
+    "write.target-file-size-bytes",
 }
 
-_ICEBERG_PERMISSIONS_ERROR_MESSAGE = (                                                                                                                                                                                                                                                         
-      "If this feature group uses Lake Formation governance, ensure you have "                                                                                                                                                                                                                   
-      "SELECT, DESCRIBE, and ALTER permissions on the table in Lake Formation, "                                                                                                                                                                                                                 
-      "in addition to IAM permissions.\n"                                                                                                                                                                                                                                                        
-      "If this feature group uses IAM governance, ensure your role has "                                                                                                                                                                                                                         
-      "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."                                                                                                                                                                                                        
-  ) 
+_ICEBERG_PERMISSIONS_ERROR_MESSAGE = (
+    "If this feature group uses Lake Formation governance, ensure you have "
+    "SELECT, DESCRIBE, and ALTER permissions on the table in Lake Formation, "
+    "in addition to IAM permissions.\n"
+    "If this feature group uses IAM governance, ensure your role has "
+    "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."
+)
+
+# UpdateRecord supports at most 100 features per call.
+MAX_UPDATE_RECORD_FEATURES = 100
+
 
 def _get_athena_client(session: Session):
     """Get Athena client from session."""
@@ -167,7 +191,9 @@ def wait_for_athena_query(session: Session, query_execution_id: str, poll: int =
         poll: Polling interval in seconds (default: 5).
     """
     while True:
-        state = get_query_execution(session, query_execution_id)["QueryExecution"]["Status"]["State"]
+        state = get_query_execution(session, query_execution_id)["QueryExecution"]["Status"][
+            "State"
+        ]
         if state in ("SUCCEEDED", "FAILED"):
             logger.info("Query %s %s.", query_execution_id, state.lower())
             break
@@ -344,10 +370,11 @@ def get_session_from_role(region: str, assume_role: str = None) -> Session:
 
 # --- FeatureDefinition Functions ---
 
+
 def _is_collection_column(series: Series, sample_size: int = 1000) -> bool:
     """Check if column contains list/set values."""
     sample = series.head(sample_size).dropna()
-    return sample.apply(lambda x: isinstance(x, (list, set))).any()
+    return bool(sample.apply(lambda x: isinstance(x, (list, set))).any())
 
 
 def _generate_feature_definition(
@@ -397,6 +424,7 @@ def load_feature_definitions_from_dataframe(
 
 
 # --- FeatureGroup Functions ---
+
 
 def create_athena_query(feature_group_name: str, session: Session):
     """Create an AthenaQuery for a FeatureGroup.
@@ -521,7 +549,11 @@ def ingest_dataframe(
     for fd in fg.feature_definitions:
         collection_type = getattr(fd, "collection_type", None)
         # Handle Unassigned, empty string, or None as None
-        if isinstance(collection_type, Unassigned) or collection_type == "" or collection_type is None:
+        if (
+            isinstance(collection_type, Unassigned)
+            or collection_type == ""
+            or collection_type is None
+        ):
             collection_type = None
         feature_definitions[fd.feature_name] = {
             "FeatureType": fd.feature_type,
@@ -576,6 +608,107 @@ def list_records(
         kwargs["region"] = region
 
     return fg.list_records(**kwargs)
+
+
+def _to_feature_value(feature: Union[FeatureValue, Dict[str, Any]]) -> FeatureValue:
+    """Coerce a dict or FeatureValue into a core FeatureValue.
+
+    Args:
+        feature: A ``FeatureValue`` or a dict with ``feature_name`` (or ``FeatureName``)
+            and exactly one of ``value_as_string``/``ValueAsString`` or
+            ``value_as_string_list``/``ValueAsStringList``.
+
+    Returns:
+        A ``FeatureValue`` instance.
+    """
+    if isinstance(feature, FeatureValue):
+        return feature
+    if isinstance(feature, dict):
+        name = feature.get("feature_name", feature.get("FeatureName"))
+        value = feature.get("value_as_string", feature.get("ValueAsString"))
+        value_list = feature.get("value_as_string_list", feature.get("ValueAsStringList"))
+        kwargs: Dict[str, Any] = {"feature_name": name}
+        if value is not None:
+            kwargs["value_as_string"] = value
+        if value_list is not None:
+            kwargs["value_as_string_list"] = value_list
+        return FeatureValue(**kwargs)
+    raise TypeError(f"Unsupported feature type: {type(feature)}. Expected FeatureValue or dict.")
+
+
+@_telemetry_emitter(Feature.FEATURE_STORE, "update_record")
+def update_record(
+    feature_group_name: str,
+    record_identifier_value_as_string: str,
+    features: Sequence[Union[FeatureValue, Dict[str, Any]]],
+    target_stores: Optional[Sequence[str]] = None,
+    ttl_duration: Optional[TtlDuration] = None,
+    region: str = None,
+) -> None:
+    """Perform a feature-level (partial) write to a record via the UpdateRecord API.
+
+    ``UpdateRecord`` is supported only for feature groups whose ``OnlineStoreConfig``
+    ``StorageType`` is ``Standard_V2`` or ``InMemory``. Unlike ``PutRecord``, which overwrites
+    the whole record, only the features supplied in ``features`` are written; any feature not
+    included is preserved. This avoids the ``GetRecord`` -> merge -> ``PutRecord`` round
+    trip and prevents lost writes when independent pipelines own different features on the
+    same record. The record must already exist in the online store (use ``PutRecord`` to
+    create it); otherwise the service returns ``ResourceNotFound``.
+
+    Args:
+        feature_group_name: Name or ARN of the FeatureGroup to update (``Standard_V2`` or
+            ``InMemory`` online store).
+        record_identifier_value_as_string: The record identifier value, in string format.
+        features: The features to update (up to 100). Each entry is a ``FeatureValue`` or a
+            dict. Features not listed here are preserved. Pass ``EventTime`` as a feature
+            in this list, not as a top-level parameter.
+        target_stores: Stores to apply the update to. Defaults to all stores configured on
+            the FeatureGroup. A value that resolves to the ``OfflineStore`` only is rejected.
+        ttl_duration: Time to live for the record; ``ExpiresAt = EventTime + TtlDuration``.
+            The service requires the record's event-time feature to be present in ``features``.
+        region: Region name.
+
+    Raises:
+        ValueError: If ``features`` is empty, exceeds 100 entries, contains duplicate
+            feature names, or ``target_stores`` resolves to the ``OfflineStore`` only.
+    """
+    if not features:
+        raise ValueError("features must contain at least one feature to update.")
+    if len(features) > MAX_UPDATE_RECORD_FEATURES:
+        raise ValueError(
+            f"features may contain at most {MAX_UPDATE_RECORD_FEATURES} entries, "
+            f"got {len(features)}."
+        )
+
+    feature_values = [_to_feature_value(f) for f in features]
+
+    feature_names = [fv.feature_name for fv in feature_values]
+    duplicates = sorted(name for name, count in Counter(feature_names).items() if count > 1)
+    if duplicates:
+        raise ValueError(f"Duplicate feature names are not allowed: {duplicates}.")
+
+    resolved_target_stores = list(target_stores) if target_stores is not None else None
+    if resolved_target_stores is not None and set(resolved_target_stores) == {
+        TargetStoreEnum.OFFLINE_STORE.value
+    }:
+        raise ValueError(
+            "UpdateRecord cannot target the OfflineStore only; include the OnlineStore."
+        )
+
+    fg = CoreFeatureGroup.get(feature_group_name=feature_group_name, region=region)
+
+    kwargs: Dict[str, Any] = {
+        "record_identifier_value_as_string": record_identifier_value_as_string,
+        "features": feature_values,
+    }
+    if resolved_target_stores is not None:
+        kwargs["target_stores"] = resolved_target_stores
+    if ttl_duration is not None:
+        kwargs["ttl_duration"] = ttl_duration
+    if region is not None:
+        kwargs["region"] = region
+
+    fg.update_record(**kwargs)
 
 
 @_telemetry_emitter(Feature.FEATURE_STORE, "get_feature_group_as_dataframe")
@@ -821,6 +954,7 @@ def _format_column_names(data: pandas.DataFrame) -> pandas.DataFrame:
     """
     data.rename(columns=lambda x: x.replace(" ", "_").replace(".", "").lower()[:62], inplace=True)
     return data
+
 
 def _cast_object_to_string(data_frame: pandas.DataFrame) -> pandas.DataFrame:
     """Cast properly pandas object types to strings

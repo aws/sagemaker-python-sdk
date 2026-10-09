@@ -15,6 +15,7 @@
 Wraps each row to replace the default repr without owning the data;
 attribute access forwards to the underlying shape transparently.
 """
+
 from __future__ import absolute_import
 
 from collections import defaultdict
@@ -249,8 +250,10 @@ class _RecommendationView:
         p.text("..." if cycle else str(self))
 
     def _perf_records(self) -> List[Dict[str, Any]]:
-        """(metric, stat, value, unit) records for this row's expected
-        performance — the rows of the printed table, one per (metric, stat)."""
+        """Return ``(metric, stat, value, unit)`` records for this row's expected performance.
+
+        These are the rows of the printed table, one per (metric, stat).
+        """
         ep = getattr(self._raw, "expected_performance", None) or []
         return [
             {
@@ -263,8 +266,9 @@ class _RecommendationView:
         ]
 
     def to_dataframe(self):
-        """Return this recommendation's expected performance as a pandas
-        ``DataFrame`` — the same ``metric``/``stat``/``value``/``unit`` rows the
+        """Return this recommendation's expected performance as a pandas ``DataFrame``.
+
+        These are the same ``metric``/``stat``/``value``/``unit`` rows the
         printed ``expected performance`` table shows, one row per (metric, stat).
 
         Requires pandas.
@@ -401,8 +405,9 @@ class _RecommendationsView(list):
         )
 
     def to_dataframe(self):
-        """Return the recommendations as a pandas ``DataFrame`` — one row per
-        recommendation, columns matching the printed comparative table
+        """Return the recommendations as a pandas ``DataFrame``.
+
+        One row per recommendation, columns matching the printed comparative table
         (``instance_type``, ``instances``, ``req/s``, ``lat_p50``, ...), indexed
         by the recommendation index ``idx``.
 

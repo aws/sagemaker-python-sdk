@@ -1,5 +1,145 @@
 # Changelog
 
+## v3.24.0 (2026-10-07)
+
+### New Features
+
+- feat(core): add image_uris list_frameworks/list_versions/list_py_versions helpers (#6357)
+- feat(train): add args field to SourceCode for command-based training (#6356)
+- feat(train): add output_data property to ModelTrainer (#6355)
+- feat(train): allow configurable S3 key prefix for ModelTrainer input uploads (#6354)
+- feat(mlops): add JobStep and shared pipeline capture for CreateJob producers (#6292)
+- feat: advertise Python 3.13 support (#6348)
+
+### Bug Fixes
+
+- fix(core): fall back to ARN in ModelPackage.refresh for versioned packages (#6378)
+- fix(core): allow Constraints.set_monitoring to disable monitoring for non-string features (#6312)
+- fix(core): respect session region when waiting for processing jobs (#6369)
+- fix(core): reject unsupported container_version instead of returning a bad URI (#6376)
+- fix(core): SageMakerClient honors the passed boto3 session and config (#6273)
+- fix(core): close temp tarball before reading it (#6319)
+- fix(core): make all pipeline Parameters hashable (#6351)
+- fix(core): stop LineIterator hanging when the stream ends without a trailing newline (#6279)
+- fix(core): stop mutating global logging state on import (#6341)
+- fix(core): freeze credentials before signing bearer token (#6360)
+- fix(core): make DataCaptureConfigSummary.kms_key_id optional (#6346)
+- fix(core): lazily initialize DEFAULT_JUMPSTART_SAGEMAKER_SESSION (#6330)
+- fix(core): add PyTorch 2.6 graviton (arm64) inference image (#6342)
+- fix(train): fix incorrect model_trainer method call to load hyperparameters from file (#5771)
+- fix(train): handle CRLF line endings (#6088)
+- fix(train): preserve content_type when HyperparameterTuner converts InputData to Channel (#6321)
+- fix(train): allow PipelineVariable keys in HyperparameterTuner hyperparameter_ranges annotation (#6314)
+- fix(train): accept a PipelineVariable for HyperparameterTuner random_seed (#6320)
+- fix(train): apply output KMS key to ModelTrainer source-code S3 uploads (#6339)
+- fix(train): do not apply user ignore_patterns to the sm_drivers driver channel (#6316)
+- fix(serve): stop deploy waits hanging; follow empty list pages (#6367)
+- fix(serve): pass instance_type to _deploy once when creating an inference component (#6203)
+- fix(serve): support pipeline variable image_uri in ModelBuilder.build (#6347)
+- fix(serve): default AsyncPredictor upload prefix to endpoint name (#6336)
+- fix(serve): keep AsyncPredictor serializers in sync with wrapped predictor (#6335)
+- fix(mlops): clean up temp CSV in AthenaQuery.as_dataframe (#6344)
+- fix(mlops): set full s3_input fields on QualityCheckStep baseline_dataset pipeline-variable input (#6322)
+- fix(mlops): convert ParallelismConfiguration to request dict before boto pipeline calls (#6315)
+- fix(mlops): write repack launcher with LF endings so pipelines built on Windows work (#6313)
+
+### Tests
+
+- test(image_uris): derive pytorch-amzn2023 versions from config (#6385)
+- test(train): serialize Nova serverless integ jobs (#6387)
+- test(train): stop MTRL training integ tests churning fixture MPG (#6362)
+- test(train): stop test_sourcecode_args from depending on an ambient HOME (#6383)
+- test(serve): skip hang-prone endpoint integ tests in PR check (#6332)
+- style(serve): drop unused pytest imports in integ tests (#6361)
+
+### Other
+
+- change: update image_uri_configs (#6374)
+- docs: fix typo in shapes.py docstring (#5545)
+
+
+## v3.23.0 (2026-09-24)
+
+### New Features
+
+- feat(pipeline): add inference and lineage step types (#6224)
+- feat(train): finetuningoptions validation telemetry (#6286)
+- feat(train): apply constructor hyperparameters in fine-tuning trainers (#6293)
+- feat(serve): update SDK to use latest LMI v29 image for sdk v3.x (#6301)
+
+### Bug Fixes
+
+- fix(core): recognize new duplicate-name wording; actionable train() errors (#6256)
+- fix(train): raise on invalid constructor hyperparameters (#6306)
+- fix(core): keep environment variable names intact when parsing private hub model documents (#6204)
+- fix: migrate llama-cpp-arm64 to cpu processor schema and align image_uri unit tests (#6290)
+- fix(serve): use the correct AMI when on cu130 to avoid crashes at launch (#6281)
+
+### Other
+
+- change: update image_uri_configs 09-23-2026 (#6308)
+- change: update image_uri_configs 09-22-2026 (#6304)
+- add: metadata for huggingface vllm v0.29 (#6300)
+
+### Tests
+
+- fix PR check tests (#6272)
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v3.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix(jumpstart): name JumpStart in the content bucket error (#6243)
+- fix(core): send NextToken when Hub.list_models pages through hub contents (#6263)
+- fix(train): enforce S3 ownership on ai_registry default bucket (#6275)
+- fix: vllm and vllm-omni tasks in routing logic (#6007)
+- fix: restore model customization reuse state (#6264)
+
+### Other
+
+- add: metadata for hf-vllm 0.22.1, 0.25.1, 0.26, 0.27.1 and 0.28 (#6060)
+- add sklearn 1.9-0 image URI config (#6037)
+
+
+## v3.22.0 (2026-09-14)
+
+### New Features
+
+- feat(train): add list_hyperparameters() for pre-trainer hyperparameter discovery (#6149)
+- feat(train): validate raw base model names in SageMaker Hub (#6227)
+- feat(core,train): add InstancePreferences for multi-instance-type training and processing (#6249)
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(train): add PipelineSession support to SFT, DPO, RLAIF, and RLVR trainers (#6213)
+- fix(feature-store): register HubContent Dataset from DatasetBuilder CSV paths (#6212)
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+- fix(train): resolve private Hub models and aliased references for ModelTrainer (#6201)
+- fix(core): resolve default training role from sagemaker config (#6228)
+- fix(train): validate evaluator models against the live supported-model list (#6217)
+- fix(train): complete PipelineSession support for SFT, DPO, RLAIF, and RLVR trainers (#6235)
+- fix(train): preserve training_plan_arn during serverful compute reconstruction (#6258)
+
+### Other
+
+- change(core): add image URI configs for DLC serving frameworks and Amazon Linux 2023 PyTorch (#6220)
+- change(core): add image URI configs for vLLM and SGLang (#6218)
+- ci(core): add botocore-sync workflows (#6226)
+- change(core): add TensorFlow inference 2.20 and training 2.21 image URI configs (#6230)
+- change(core): add Ray/llama-cpp CPU images and device-selectable DLC serving configs (#6229)
+- change(core): refresh generated image URI configs (55c2a9bd)
+- change(serve): emit the JumpStart model ID in ModelBuilder telemetry (#6234)
+
+### Tests
+
+- fix(ci,train): stop integ tests from rerunning the shallow suite (#6216)
+- docs(train): add guidance for maintaining shallow integration tests (#6219)
+- fix(train): refresh MTRL attached-job integration fixtures (#6259)
+- fix(train): add training_plan_arn to serverful test fixtures (#6270)
+
 ## v3.21.0 (2026-08-25)
 
 ### New Features
