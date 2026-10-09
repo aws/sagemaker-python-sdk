@@ -412,7 +412,12 @@ class Transformer(object):
         transformed = transform_util(serialized_request, "CreateTransformJobRequest")
         # Remove tags from transformed dict as TransformJob resource doesn't accept it
         transformed.pop("tags", None)
-        self.latest_transform_job = TransformJob(**transformed)
+        # Bind the job to this session's boto session and region so wait()/refresh()/stop()
+        # poll the job where it was created instead of the default region.
+        self.latest_transform_job = TransformJob(**transformed)._set_client_context(
+            session=self.sagemaker_session.boto_session,
+            region=self.sagemaker_session.boto_region_name,
+        )
 
         if wait:
             self.latest_transform_job.wait(logs=logs)
@@ -496,7 +501,9 @@ class Transformer(object):
         sagemaker_session = sagemaker_session or Session()
 
         transform_job = TransformJob.get(
-            transform_job_name=transform_job_name, session=sagemaker_session
+            transform_job_name=transform_job_name,
+            session=sagemaker_session.boto_session,
+            region=sagemaker_session.boto_region_name,
         )
         if not transform_job:
             raise ValueError(f"Transform job {transform_job_name} not found")
@@ -504,7 +511,9 @@ class Transformer(object):
         init_params = cls._prepare_init_params_from_job_description(job_details)
         transformer = cls(sagemaker_session=sagemaker_session, **init_params)
         transformer.latest_transform_job = TransformJob.get(
-            transform_job_name=init_params["base_transform_job_name"], session=sagemaker_session
+            transform_job_name=init_params["base_transform_job_name"],
+            session=sagemaker_session.boto_session,
+            region=sagemaker_session.boto_region_name,
         )
 
         return transformer
@@ -752,7 +761,9 @@ def logs_for_transform_job(sagemaker_session, job_name, wait=False, poll=10):
     """
 
     description = _wait_until(
-        lambda: TransformJob.get(transform_job_name=job_name, session=sagemaker_session).__dict__,
+        lambda: sagemaker_session.sagemaker_client.describe_transform_job(
+            TransformJobName=job_name
+        ),
         poll,
     )
 
@@ -802,8 +813,9 @@ def logs_for_transform_job(sagemaker_session, job_name, wait=False, poll=10):
         if state == LogState.JOB_COMPLETE:
             state = LogState.COMPLETE
         elif time.time() - last_describe_job_call >= 30:
-            transform_job = TransformJob.get(transform_job_name=job_name, session=sagemaker_session)
-            description = transform_job.__dict__ if transform_job else None
+            description = sagemaker_session.sagemaker_client.describe_transform_job(
+                TransformJobName=job_name
+            )
             last_describe_job_call = time.time()
 
             status = description["TransformJobStatus"]
