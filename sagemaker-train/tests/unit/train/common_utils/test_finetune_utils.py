@@ -881,7 +881,7 @@ class TestFinetuneUtils:
             Bucket="test-bucket", Key="prefix/", Body=b""
         )
 
-    @patch('boto3.client')
+    @patch("boto3.client")
     def test__validate_s3_path_exists_with_prefix_not_exists_kms(self, mock_boto_client):
         """Test S3 path validation uses SSE-KMS when kms_key_id is provided"""
         mock_session = Mock()
@@ -894,7 +894,7 @@ class TestFinetuneUtils:
         mock_s3_client.put_object.assert_called_once_with(
             Bucket="test-bucket",
             Key="prefix/",
-            Body=b'',
+            Body=b"",
             ServerSideEncryption="aws:kms",
             SSEKMSKeyId="kms-key",
         )
