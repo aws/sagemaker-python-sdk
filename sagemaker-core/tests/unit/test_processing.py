@@ -2643,6 +2643,8 @@ class TestProcessorKmsKeyDefault:
             processor.run(wait=False, logs=False, kms_key="arn:aws:kms:us-west-2:1:key/explicit")
 
         assert captured["kms_key"] == "arn:aws:kms:us-west-2:1:key/explicit"
+
+
 class TestProcessorLocalModeRole:
     def test_role_not_required_for_local_instance(self, mock_session):
         """A role is optional when instance_type is local (role is unused locally)."""
