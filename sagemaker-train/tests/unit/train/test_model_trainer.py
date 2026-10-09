@@ -2559,3 +2559,26 @@ def test_output_data_strips_trailing_slash_on_fallback(model_trainer):
     assert model_trainer.output_data == (
         f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
     )
+
+
+def test_create_training_job_args_boto3_tags_use_api_casing():
+    """The boto3/pipeline payload must use the API's Key/Value tag casing."""
+    from sagemaker.train.aws_batch.batch_api_helper import _submit_service_job
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        tags=[Tag(key="team", value="ml")],
+    )
+
+    args = trainer._create_training_job_args(boto3=True)
+
+    assert args["Tags"] == [{"Key": "team", "Value": "ml"}]
+
+    # TrainingQueue.submit merges these tags into the Batch job tags.
+    with patch("sagemaker.train.aws_batch.batch_api_helper.get_batch_boto_client") as mock_client:
+        _submit_service_job(args, "job-name", "queue-name")
+    assert mock_client.return_value.submit_service_job.call_args.kwargs["tags"] == {"team": "ml"}
