@@ -46,9 +46,11 @@ from tests.integ.sagemaker.jumpstart.utils import (
     EndpointInvoker,
     get_sm_session,
     get_training_dataset_for_model_and_version,
+    x_fail_if_ice,
 )
 
 
+@x_fail_if_ice
 def test_jumpstart_transfer_learning_estimator_class(setup):
 
     model_id, model_version = "huggingface-spc-bert-base-cased", "1.2.3"

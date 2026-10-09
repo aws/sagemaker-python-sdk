@@ -20,6 +20,7 @@ import tests.integ
 import tests.integ.timeout
 
 from sagemaker import image_uris
+from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.iterators import LineIterator
 from sagemaker.model import Model
 from sagemaker.predictor import Predictor
@@ -56,12 +57,21 @@ def endpoint_name(sagemaker_session):
             name=lmi_endpoint_name,  # model name
             role=ROLE,
         )
-        lmi_model.deploy(
-            INSTANCE_COUNT,
-            INSTANCE_TYPE,
-            endpoint_name=lmi_endpoint_name,
-            container_startup_health_check_timeout=900,
-        )
+        try:
+            lmi_model.deploy(
+                INSTANCE_COUNT,
+                INSTANCE_TYPE,
+                endpoint_name=lmi_endpoint_name,
+                container_startup_health_check_timeout=900,
+            )
+        except UnexpectedStatusException as e:
+            # Insufficient ml.g5.2xlarge capacity is a transient, region-level AWS
+            # condition, not a SDK defect. Mark it as an expected failure so the
+            # canary doesn't go red, and so pytest-rerunfailures doesn't retry a
+            # ~30 minute deploy that is unlikely to get capacity on retry.
+            if "InsufficientInstanceCapacity" in str(e):
+                pytest.xfail(str(e))
+            raise
         yield lmi_endpoint_name
 
 

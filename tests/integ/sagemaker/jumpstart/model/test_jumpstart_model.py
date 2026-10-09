@@ -112,6 +112,7 @@ def test_prepacked_jumpstart_model(setup):
     tests.integ.test_region() not in GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS,
     reason=f"JumpStart model package inference models unavailable in {tests.integ.test_region()}.",
 )
+@x_fail_if_ice
 def test_model_package_arn_jumpstart_model(setup):
 
     model_id = "meta-textgeneration-llama-2-7b"

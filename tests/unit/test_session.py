@@ -7374,3 +7374,57 @@ def test_get_most_recently_created_approved_model_package(sagemaker_session):
         model_package.model_package_arn
         == "arn:aws:sagemaker:us-west-2:123456789012:model-package/model-version/3"
     )
+
+
+def _log_group_not_found():
+    return ClientError(
+        {"Error": {"Code": "ResourceNotFoundException", "Message": "log group not found"}},
+        "FilterLogEvents",
+    )
+
+
+@patch("sagemaker.session.time.sleep")
+def test_live_logging_deploy_done_returns_failed_endpoint_without_log_group(sleep):
+    # An endpoint that fails before any container starts never gets a log group.
+    # The wait must stop instead of polling for the log group forever.
+    desc = {"EndpointStatus": "Failed", "FailureReason": "InsufficientInstanceCapacity"}
+    sagemaker_client = Mock(describe_endpoint=Mock(return_value=desc))
+    paginator = Mock(paginate=Mock(side_effect=_log_group_not_found()))
+
+    result = sagemaker.session._live_logging_deploy_done(
+        sagemaker_client, "my-endpoint", paginator, {}, poll=5
+    )
+
+    assert result == desc
+    sleep.assert_called_once_with(5)
+
+
+@patch("sagemaker.session.time.sleep")
+def test_live_logging_deploy_done_keeps_waiting_for_creating_endpoint_without_log_group(sleep):
+    sagemaker_client = Mock(describe_endpoint=Mock(return_value={"EndpointStatus": "Creating"}))
+    paginator = Mock(paginate=Mock(side_effect=_log_group_not_found()))
+
+    result = sagemaker.session._live_logging_deploy_done(
+        sagemaker_client, "my-endpoint", paginator, {}, poll=5
+    )
+
+    assert result is None
+    sleep.assert_not_called()
+
+
+def test_wait_for_endpoint_live_logging_raises_on_failed_endpoint_without_log_group(
+    sagemaker_session,
+):
+    failed = {"EndpointStatus": "Failed", "FailureReason": "Model does not exist."}
+    # Bound the polls so a regression fails the test instead of hanging it.
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        side_effect=[failed] * 3 + [AssertionError("wait_for_endpoint kept polling")]
+    )
+    logs_client = Mock()
+    logs_client.get_paginator.return_value.paginate.side_effect = _log_group_not_found()
+    sagemaker_session.boto_session.client = Mock(return_value=logs_client)
+
+    with patch("sagemaker.session._has_permission_for_live_logging", return_value=True):
+        with patch("sagemaker.session.time.sleep"):
+            with pytest.raises(exceptions.UnexpectedStatusException, match="Model does not exist"):
+                sagemaker_session.wait_for_endpoint("my-endpoint", live_logging=True)
