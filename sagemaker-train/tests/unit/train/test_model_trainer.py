@@ -256,6 +256,60 @@ def test_model_trainer_param_validation(test_case, modules_session):
         assert trainer.base_job_name == DEFAULT_BASE_NAME
 
 
+def test_pipeline_session_request_keeps_training_job_name(modules_session):
+    """Regression for #5776 / #6299.
+
+    Under a PipelineSession the request must KEEP TrainingJobName. The TrainingStep strips it via
+    trim_request_dict (dropped by default, prefix preserved when use_custom_job_prefix=True);
+    popping it here left use_custom_job_prefix nothing to preserve.
+    """
+    from unittest.mock import Mock
+    from sagemaker.core.workflow.pipeline_context import PipelineSession
+
+    session = Mock(spec=PipelineSession)
+    session.default_bucket.return_value = DEFAULT_BUCKET
+    session.default_bucket_prefix = DEFAULT_BUCKET_PREFIX
+    session.boto_region_name = DEFAULT_REGION
+    session.sagemaker_config = {}
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        base_job_name="my-prefix",
+        sagemaker_session=session,
+    )
+
+    args = trainer._create_training_job_args(input_data_config=[])
+
+    assert "TrainingJobName" in args, "TrainingJobName must survive into the pipeline request"
+    assert args["TrainingJobName"].startswith("my-prefix")
+
+    # The generated name must use a timestamp format base_from_name can strip, otherwise
+    # trim_request_dict bakes a definition-time timestamp into the pipeline definition
+    # instead of preserving the base prefix.
+    from sagemaker.core.common_utils import base_from_name
+
+    assert base_from_name(args["TrainingJobName"]) == "my-prefix"
+
+    # End-to-end: with use_custom_job_prefix=True, trim_request_dict must leave exactly the base.
+    from types import SimpleNamespace
+    from sagemaker.core.workflow.utilities import trim_request_dict
+    from sagemaker.core.workflow.pipeline_definition_config import PipelineDefinitionConfig
+
+    custom_prefix_config = SimpleNamespace(
+        pipeline_definition_config=PipelineDefinitionConfig(use_custom_job_prefix=True)
+    )
+    trimmed = trim_request_dict(dict(args), "TrainingJobName", custom_prefix_config)
+    assert trimmed["TrainingJobName"] == "my-prefix"
+
+    # And by default (no config) the key is dropped entirely.
+    dropped = trim_request_dict(dict(args), "TrainingJobName", None)
+    assert "TrainingJobName" not in dropped
+
+
 @patch("sagemaker.train.model_trainer.TrainingJob")
 @patch("sagemaker.train.model_trainer.ModelTrainer.create_input_data_channel")
 def test_sm_drivers_channel_ignores_user_ignore_patterns(
@@ -1047,7 +1101,7 @@ def test_remote_debug_config(mock_training_job, modules_session):
         )
 
 
-@patch("sagemaker.train.model_trainer._get_unique_name")
+@patch("sagemaker.train.model_trainer.name_from_base")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_session):
     def mock_upload_data(path, bucket, key_prefix, extra_args=None):
@@ -1323,7 +1377,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
 
 # TODO: Re-Enable after local mode fully migrated to v3
 # @patch("sagemaker.train.model_trainer._LocalContainer")
-# @patch("sagemaker.train.model_trainer._get_unique_name")
+# @patch("sagemaker.train.model_trainer.name_from_base")
 # @patch("sagemaker.train.local.local_container.download_folder")
 # def test_model_trainer_local_full_init(
 #     mock_download_folder, mock_unique_name, mock_local_container, modules_session
@@ -1579,7 +1633,7 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
             )
 
 
-@patch("sagemaker.train.model_trainer._get_unique_name")
+@patch("sagemaker.train.model_trainer.name_from_base")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_model_trainer_default_paths(mock_training_job, mock_unique_name, modules_session):
     def mock_upload_data(path, bucket, key_prefix, extra_args=None):
@@ -1770,7 +1824,7 @@ def test_metric_definitions(mock_training_job, modules_session):
         )
 
 
-@patch("sagemaker.train.model_trainer._get_unique_name")
+@patch("sagemaker.train.model_trainer.name_from_base")
 @patch("sagemaker.core.resources.TrainingJob")
 def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
     def mock_upload_data(path, bucket, key_prefix, extra_args=None):
@@ -2145,7 +2199,7 @@ def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
         os.unlink(recipe.name)
 
 
-@patch("sagemaker.train.model_trainer._get_unique_name")
+@patch("sagemaker.train.model_trainer.name_from_base")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_llmft_recipe(mock_training_job, mock_unique_name, modules_session):
     def mock_upload_data(path, bucket, key_prefix, extra_args=None):
