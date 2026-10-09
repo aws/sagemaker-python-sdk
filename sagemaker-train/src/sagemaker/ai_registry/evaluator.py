@@ -524,7 +524,7 @@ class Evaluator(AIRHubEntity):
                 keywords = {}
             json_content = json.loads(doc.get(DOC_KEY_JSON_CONTENT, "{}"))
             reference = json_content.get(DOC_KEY_REFERENCE, "")
-            type = doc.get(DOC_KEY_SUB_TYPE, "")
+            type = json_content.get(DOC_KEY_SUB_TYPE, "")
             method_str = keywords.get(TAG_KEY_METHOD, EVALUATOR_DEFAULT_METHOD)
 
             evaluators.append(
