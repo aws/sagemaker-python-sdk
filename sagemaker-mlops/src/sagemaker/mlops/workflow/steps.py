@@ -871,7 +871,9 @@ class JobStep(ConfigurableRetryStep):
         """
         from sagemaker.core.workflow.execution_variables import ExecutionVariables
         from sagemaker.core.workflow.functions import Join
-        from sagemaker.core.workflow.job_config_document import convert_job_config_document_to_string
+        from sagemaker.core.workflow.job_config_document import (
+            convert_job_config_document_to_string,
+        )
         from sagemaker.core.workflow.utilities import execute_job_functions
         from sagemaker.core.workflow.utilities import _pipeline_config
 
