@@ -434,6 +434,63 @@ def test_train_with_intelligent_defaults_training_job_space(
     training_job_instance.wait.assert_called_once_with(logs=True)
 
 
+@pytest.mark.parametrize(
+    "train_kwargs",
+    [{}, {"input_data_config": None}, {"input_data_config": []}],
+    ids=["omitted", "none", "empty-list"],
+)
+@patch("sagemaker.train.local.local_container.check_for_studio", return_value=False)
+@patch("sagemaker.train.model_trainer._LocalContainer.train", autospec=True)
+def test_train_local_without_input_data(mock_train, mock_check_for_studio, train_kwargs, tmp_path):
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        training_mode=Mode.LOCAL_CONTAINER,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        local_container_root=str(tmp_path),
+    )
+
+    trainer.train(**train_kwargs)
+
+    mock_train.assert_called_once_with(ANY, True)
+    local_container = mock_train.call_args.args[0]
+    assert local_container.input_data_config == []
+    assert local_container.input_from_s3 is False
+
+
+@pytest.mark.parametrize(
+    "train_kwargs",
+    [{}, {"input_data_config": None}, {"input_data_config": []}],
+    ids=["omitted", "none", "empty-list"],
+)
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_managed_without_input_data(mock_training_job, train_kwargs, model_trainer):
+    model_trainer.train(**train_kwargs)
+
+    mock_training_job.create.assert_called_once()
+    assert mock_training_job.create.call_args.kwargs["input_data_config"] is None
+
+
+@patch("sagemaker.train.local.local_container.check_for_studio", return_value=False)
+@patch("sagemaker.train.model_trainer._LocalContainer.train", autospec=True)
+def test_train_local_preserves_input_data(mock_train, mock_check_for_studio, tmp_path):
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        training_mode=Mode.LOCAL_CONTAINER,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        local_container_root=str(tmp_path),
+    )
+    input_data = InputData(channel_name="train", data_source=str(tmp_path))
+
+    trainer.train(input_data_config=[input_data])
+
+    mock_train.assert_called_once_with(ANY, True)
+    local_container = mock_train.call_args.args[0]
+    assert len(local_container.input_data_config) == 1
+    channel = local_container.input_data_config[0]
+    assert channel.channel_name == "train"
+    assert channel.data_source.file_system_data_source.directory_path == str(tmp_path)
+
+
 @patch("sagemaker.train.model_trainer.TrainingJob")
 @patch.object(ModelTrainer, "_get_input_data_config")
 def test_train_with_input_data_channels(mock_get_input_config, mock_training_job, model_trainer):
