@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 import threading
 import time
@@ -39,6 +40,9 @@ class AsyncPredictor:
             predictor (sagemaker.predictor.Predictor): General ``Predictor``
                 object has useful methods and variables. ``AsyncPredictor``
                 stands on top of it with capability for async inference.
+            name (str): Optional. Name used as the prefix of the Amazon S3 key when
+                input data is uploaded for async inference. If not specified, the
+                endpoint name is used. (Default: None)
         """
         self.predictor = predictor
         self.endpoint_name = predictor.endpoint_name
@@ -51,13 +55,39 @@ class AsyncPredictor:
         else:
             self.s3_client = self.sagemaker_session.s3_client
 
-        self.serializer = predictor.serializer
-        self.deserializer = predictor.deserializer
         self.name = name
         self._endpoint_config_name = None
         self._model_names = None
         self._context = None
         self._input_path = None
+
+    @property
+    def serializer(self):
+        """The serializer used to encode request data uploaded to Amazon S3.
+
+        Reads from and writes to the wrapped predictor, so it always stays in
+        sync with the serializer the underlying predictor uses.
+        """
+        return self.predictor.serializer
+
+    @serializer.setter
+    def serializer(self, serializer):
+        """Set the serializer on the wrapped predictor."""
+        self.predictor.serializer = serializer
+
+    @property
+    def deserializer(self):
+        """The deserializer used to decode the async inference result.
+
+        Reads from and writes to the wrapped predictor, so the ``Accept`` header
+        and the decoding of the Amazon S3 output both honor the configured value.
+        """
+        return self.predictor.deserializer
+
+    @deserializer.setter
+    def deserializer(self, deserializer):
+        """Set the deserializer on the wrapped predictor."""
+        self.predictor.deserializer = deserializer
 
     def predict(
         self,
@@ -168,10 +198,13 @@ class AsyncPredictor:
             my_uuid = str(uuid.uuid4())
             timestamp = sagemaker_timestamp()
             bucket = self.sagemaker_session.default_bucket()
+            # ``name`` is optional; fall back to the endpoint name so the default
+            # ``AsyncPredictor(predictor)`` construction can upload input data.
+            base_name = self.name or self.endpoint_name
             key = s3.s3_path_join(
                 self.sagemaker_session.default_bucket_prefix,
                 "async-endpoint-inputs",
-                name_from_base(self.name, short=True),
+                name_from_base(base_name, short=True),
                 "{}-{}".format(timestamp, my_uuid),
             )
 

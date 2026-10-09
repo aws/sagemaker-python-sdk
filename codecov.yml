@@ -12,10 +12,14 @@
 # The `ignore:` list below scopes the Codecov report to product code only.
 
 codecov:
-  # Wait for all four sub-package unit-test jobs to upload before finalizing, so the
-  # project % is computed over the complete report rather than whichever job lands first.
+  # Finalize the report only after CI completes. Do NOT pin a fixed upload count:
+  # this repo's CI runs unit tests per CHANGED submodule (detect-changes), so a PR
+  # touching only 1-3 submodules produces fewer than 4 uploads. A fixed
+  # `after_n_builds: 4` would make Codecov wait forever on those PRs and never post a
+  # report (observed on PR #6055, which changed only sagemaker-mlops: state=error,
+  # sessions=0, no status). `wait_for_ci: true` alone waits for CI and finalizes
+  # whatever uploaded, regardless of submodule count.
   notify:
-    after_n_builds: 4
     wait_for_ci: true
 
 coverage:

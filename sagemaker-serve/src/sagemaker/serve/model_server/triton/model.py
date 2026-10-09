@@ -18,6 +18,9 @@ TRITON_MODEL_DIR = os.getenv("TRITON_MODEL_DIR")
 class TritonPythonModel:
     """A class for Triton Python Backend"""
 
+    # pylint: disable=attribute-defined-outside-init
+    # Triton backend contract populates attributes in initialize(), not __init__.
+
     @staticmethod
     def auto_complete_config(auto_complete_model_config):
         """Placeholder docstring"""

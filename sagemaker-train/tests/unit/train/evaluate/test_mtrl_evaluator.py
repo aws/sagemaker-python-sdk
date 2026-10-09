@@ -11,15 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for MultiTurnRLEvaluator — pipeline search and model resolution."""
+
 from __future__ import absolute_import
 
-import json
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
 from sagemaker.train.evaluate.multi_turn_rl_evaluator import MultiTurnRLEvaluator
 from sagemaker.train.evaluate.constants import EvalType, _get_pipeline_name_prefix
-
 
 # --- Constants ---
 REGION = "us-west-2"
@@ -41,7 +40,9 @@ class TestStartMtrlExecution:
         """Create a mock evaluator with the real _start_mtrl_execution method bound."""
         evaluator = MagicMock()
         evaluator.s3_output_path = OUTPUT
-        evaluator._start_mtrl_execution = MultiTurnRLEvaluator._start_mtrl_execution.__get__(evaluator)
+        evaluator._start_mtrl_execution = MultiTurnRLEvaluator._start_mtrl_execution.__get__(
+            evaluator
+        )
         return evaluator
 
     @patch("sagemaker.core.resources.PipelineExecution")
@@ -53,7 +54,9 @@ class TestStartMtrlExecution:
         mock_boto3_client.return_value = mock_client
         mock_client.list_pipelines.return_value = {"PipelineSummaries": []}
         mock_client.start_pipeline_execution.return_value = {
-            "PipelineExecutionArn": f"arn:aws:sagemaker:us-west-2:123:pipeline/{PIPELINE_PREFIX}/execution/exec-1"
+            "PipelineExecutionArn": (
+                f"arn:aws:sagemaker:us-west-2:123:pipeline/{PIPELINE_PREFIX}/execution/exec-1"
+            )
         }
 
         result = evaluator._start_mtrl_execution(
@@ -80,7 +83,7 @@ class TestStartMtrlExecution:
             "PipelineExecutionArn": f"arn:aws:sagemaker:us-west-2:123:pipeline/{PIPELINE_PREFIX}/execution/exec-2"
         }
 
-        result = evaluator._start_mtrl_execution(
+        evaluator._start_mtrl_execution(
             pipeline_definition='{"Steps": []}',
             name="test-eval",
             role_arn=ROLE,
@@ -107,7 +110,7 @@ class TestStartMtrlExecution:
         }
 
         evaluator._start_mtrl_execution(
-            pipeline_definition='{}',
+            pipeline_definition="{}",
             name="test",
             role_arn=ROLE,
             region=REGION,
@@ -130,7 +133,7 @@ class TestStartMtrlExecution:
         }
 
         result = evaluator._start_mtrl_execution(
-            pipeline_definition='{}',
+            pipeline_definition="{}",
             name="test",
             role_arn=ROLE,
             region=REGION,
@@ -138,6 +141,118 @@ class TestStartMtrlExecution:
 
         mock_client.create_pipeline.assert_called_once()
         assert result.arn.endswith("exec-1")
+
+    @patch("sagemaker.core.resources.PipelineExecution")
+    @patch("boto3.client")
+    def test_lowercase_user_tags_sent_capitalized(self, mock_boto3_client, mock_pe_cls):
+        """Lowercase tags must be converted before reaching boto3 CreatePipeline.
+
+        This path uses raw boto3, which rejects the lowercase key/value form that the other
+        evaluators pass to the pydantic-validated Pipeline.create.
+        """
+        evaluator = self._make_evaluator()
+        evaluator.tags = [{"key": "sagemaker:project-id", "value": "p-12345"}]
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_client.list_pipelines.return_value = {"PipelineSummaries": []}
+        mock_client.start_pipeline_execution.return_value = {
+            "PipelineExecutionArn": (
+                f"arn:aws:sagemaker:us-west-2:123:pipeline/{PIPELINE_PREFIX}/execution/exec-1"
+            )
+        }
+
+        evaluator._start_mtrl_execution(
+            pipeline_definition='{"Steps": []}',
+            name="test-eval",
+            role_arn=ROLE,
+            region=REGION,
+        )
+
+        sent_tags = mock_client.create_pipeline.call_args.kwargs["Tags"]
+        assert {"Key": "sagemaker:project-id", "Value": "p-12345"} in sent_tags
+        # Every entry must use the capitalized form boto3 requires.
+        for tag in sent_tags:
+            assert set(tag.keys()) == {"Key", "Value"}
+
+    @patch("sagemaker.core.resources.PipelineExecution")
+    @patch("boto3.client")
+    def test_capitalized_user_tags_passed_through(self, mock_boto3_client, mock_pe_cls):
+        """Tags already in the capitalized form must be preserved unchanged."""
+        evaluator = self._make_evaluator()
+        evaluator.tags = [{"Key": "sagemaker:project-id", "Value": "p-12345"}]
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_client.list_pipelines.return_value = {"PipelineSummaries": []}
+        mock_client.start_pipeline_execution.return_value = {
+            "PipelineExecutionArn": (
+                f"arn:aws:sagemaker:us-west-2:123:pipeline/{PIPELINE_PREFIX}/execution/exec-1"
+            )
+        }
+
+        evaluator._start_mtrl_execution(
+            pipeline_definition='{"Steps": []}',
+            name="test-eval",
+            role_arn=ROLE,
+            region=REGION,
+        )
+
+        sent_tags = mock_client.create_pipeline.call_args.kwargs["Tags"]
+        assert {"Key": "sagemaker:project-id", "Value": "p-12345"} in sent_tags
+
+    @patch("sagemaker.core.resources.PipelineExecution")
+    @patch("boto3.client")
+    def test_no_user_tags_keeps_only_discovery_tag(self, mock_boto3_client, mock_pe_cls):
+        """Omitting tags must leave the evaluation discovery tag as the only tag."""
+        evaluator = self._make_evaluator()
+        evaluator.tags = None
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_client.list_pipelines.return_value = {"PipelineSummaries": []}
+        mock_client.start_pipeline_execution.return_value = {
+            "PipelineExecutionArn": (
+                f"arn:aws:sagemaker:us-west-2:123:pipeline/{PIPELINE_PREFIX}/execution/exec-1"
+            )
+        }
+
+        evaluator._start_mtrl_execution(
+            pipeline_definition='{"Steps": []}',
+            name="test-eval",
+            role_arn=ROLE,
+            region=REGION,
+        )
+
+        sent_tags = mock_client.create_pipeline.call_args.kwargs["Tags"]
+        assert sent_tags == [{"Key": "SagemakerModelEvaluation", "Value": "true"}]
+
+
+class TestTagsWithCapitalizedKeys:
+    """Tests for the tag-casing conversion used by the MTRL evaluator paths."""
+
+    def test_converts_lowercase(self):
+        from sagemaker.train.evaluate.multi_turn_rl_evaluator import _tags_with_capitalized_keys
+
+        assert _tags_with_capitalized_keys([{"key": "a", "value": "b"}]) == [
+            {"Key": "a", "Value": "b"}
+        ]
+
+    def test_preserves_capitalized(self):
+        from sagemaker.train.evaluate.multi_turn_rl_evaluator import _tags_with_capitalized_keys
+
+        assert _tags_with_capitalized_keys([{"Key": "a", "Value": "b"}]) == [
+            {"Key": "a", "Value": "b"}
+        ]
+
+    def test_returns_empty_for_none(self):
+        from sagemaker.train.evaluate.multi_turn_rl_evaluator import _tags_with_capitalized_keys
+
+        assert _tags_with_capitalized_keys(None) == []
+
+    def test_skips_entries_missing_key_or_value(self):
+        from sagemaker.train.evaluate.multi_turn_rl_evaluator import _tags_with_capitalized_keys
+
+        assert _tags_with_capitalized_keys([{"nope": "x"}, {"key": "ok", "value": "1"}]) == [
+            {"Key": "ok", "Value": "1"}
+        ]
 
 
 class TestModelResolutionWithLatestJob:
@@ -157,13 +272,13 @@ class TestModelResolutionWithLatestJob:
 
         resolver = _ModelResolver()
 
-        with patch.object(resolver, '_resolve_model_package_arn') as mock_resolve:
+        with patch.object(resolver, "_resolve_model_package_arn") as mock_resolve:
             mock_resolve.return_value = MagicMock(
                 base_model_name=BASE_MODEL,
                 base_model_arn="arn:aws:sagemaker:us-west-2:aws:hub-content/test",
                 source_model_package_arn=SOURCE_MP_ARN,
             )
-            result = resolver.resolve_model_info(mock_trainer)
+            resolver.resolve_model_info(mock_trainer)
 
             mock_resolve.assert_called_once_with(SOURCE_MP_ARN)
 
@@ -195,12 +310,12 @@ class TestModelResolutionWithLatestJob:
 
         resolver = _ModelResolver()
 
-        with patch.object(resolver, '_resolve_model_package_arn') as mock_resolve:
+        with patch.object(resolver, "_resolve_model_package_arn") as mock_resolve:
             mock_resolve.return_value = MagicMock(
                 base_model_name=BASE_MODEL,
                 base_model_arn="arn:aws:sagemaker:us-west-2:aws:hub-content/test",
                 source_model_package_arn=SOURCE_MP_ARN,
             )
-            result = resolver.resolve_model_info(mock_trainer)
+            resolver.resolve_model_info(mock_trainer)
 
             mock_resolve.assert_called_once_with(SOURCE_MP_ARN)

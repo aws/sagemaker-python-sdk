@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains utils for JumpStart."""
+
 from __future__ import absolute_import
 
 from typing import Optional
@@ -21,7 +22,7 @@ from copy import copy
 import logging
 import os
 from functools import lru_cache, wraps
-from typing import Any, Dict, List, Set, Optional, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union
 from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
@@ -54,7 +55,6 @@ from sagemaker.core.jumpstart.types import (
     JumpStartVersionedModelId,
     DeploymentConfigMetadata,
 )
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.config.config import load_sagemaker_config
 from sagemaker.core.common_utils import (
     resolve_value_from_config,
@@ -71,7 +71,7 @@ def is_pipeline_variable(var: object) -> bool:
     return isinstance(var, PipelineVariable)
 
 
-from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix
+from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix  # noqa: E402
 
 
 def get_eula_url(document: HubContentDocument, sagemaker_session: Optional[Session] = None) -> str:
@@ -204,7 +204,7 @@ def get_jumpstart_content_bucket(
         except KeyError:
             formatted_launched_regions_str = get_jumpstart_launched_regions_message()
             raise ValueError(
-                f"Unable to get content bucket for Neo in {region} region. "
+                f"Unable to get content bucket for JumpStart in {region} region. "
                 f"{formatted_launched_regions_str}"
             )
 
@@ -1196,8 +1196,19 @@ def get_jumpstart_configs(
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
     hub_arn: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
 ) -> Dict[str, JumpStartMetadataConfig]:
     """Returns metadata configs for the given model ID and region.
+
+    Args:
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
 
     Raises:
         ValueError: If the script scope is not supported by JumpStart.
@@ -1210,6 +1221,8 @@ def get_jumpstart_configs(
         scope=scope,
         model_type=model_type,
         hub_arn=hub_arn,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
     if scope == enums.JumpStartScriptScope.INFERENCE:
@@ -1429,8 +1442,19 @@ def get_metrics_from_deployment_configs(
     if not deployment_configs:
         return {}
 
-    data = {"Instance Type": [], "Config Name": [], "Concurrent Users": []}
-    instance_rate_data = {}
+    # Build per-row records, then pivot to column-oriented at the end, padding
+    # columns a row didn't set with None. Keeps every column the same length and
+    # each value on its own row; appending columns independently would crash
+    # pd.DataFrame on ragged lengths and misalign the sparse (pricing) column.
+    rows: List[Dict[str, Any]] = []
+    column_order: List[str] = ["Instance Type", "Config Name", "Concurrent Users"]
+    seen_columns = set(column_order)
+
+    def _register_column(name: str) -> None:
+        if name not in seen_columns:
+            seen_columns.add(name)
+            column_order.append(name)
+
     for index, deployment_config in enumerate(deployment_configs):
         benchmark_metrics = deployment_config.benchmark_metrics
         if not deployment_config.deployment_args or not benchmark_metrics:
@@ -1452,25 +1476,31 @@ def get_metrics_from_deployment_configs(
                     else current_instance_type
                 )
 
-                data["Config Name"].append(deployment_config.deployment_config_name)
-                data["Instance Type"].append(instance_type_to_display)
-                data["Concurrent Users"].append(concurrent_user)
+                row: Dict[str, Any] = {
+                    "Instance Type": instance_type_to_display,
+                    "Config Name": deployment_config.deployment_config_name,
+                    "Concurrent Users": concurrent_user,
+                }
+
+                for metric in metrics:
+                    column_name = _normalize_benchmark_metric_column_name(metric.name, metric.unit)
+                    _register_column(column_name)
+                    row[column_name] = metric.value
 
                 if instance_type_rate:
                     instance_rate_column_name = (
                         f"{instance_type_rate.name} ({instance_type_rate.unit})"
                     )
-                    instance_rate_data[instance_rate_column_name] = instance_rate_data.get(
-                        instance_rate_column_name, []
-                    )
-                    instance_rate_data[instance_rate_column_name].append(instance_type_rate.value)
+                    _register_column(instance_rate_column_name)
+                    row[instance_rate_column_name] = instance_type_rate.value
 
-                for metric in metrics:
-                    column_name = _normalize_benchmark_metric_column_name(metric.name, metric.unit)
-                    data[column_name] = data.get(column_name, [])
-                    data[column_name].append(metric.value)
+                rows.append(row)
 
-    data = {**data, **instance_rate_data}
+    # Pivot to column-oriented, padding unset cells with None.
+    data: Dict[str, List[Any]] = {column: [] for column in column_order}
+    for row in rows:
+        for column in column_order:
+            data[column].append(row.get(column))
     return data
 
 

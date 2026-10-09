@@ -25,7 +25,7 @@ from typing import Optional, Union, List
 from pydantic import BaseModel, model_validator, ConfigDict
 
 import sagemaker.core.shapes as shapes
-from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar, BoolPipeVar
+from sagemaker.core.helper.pipeline_variable import StrPipeVar
 
 # TODO: Can we add custom logic to some of these to set better defaults?
 from sagemaker.core.shapes import (
@@ -49,7 +49,7 @@ from sagemaker.core.shapes import (
     DatasetSource,
 )
 
-from sagemaker.core.training.utils import convert_unassigned_to_none
+from sagemaker.core.training.utils import convert_unassigned_to_none, validate_instance_preferences
 
 __all__ = [
     "BaseConfig",
@@ -107,6 +107,13 @@ class SourceCode(BaseConfig):
         command (Optional[StrPipeVar]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        args (Optional[List[Union[str, int, float]]]):
+            A list of arguments to append to ``command`` when it is executed in the training job
+            container. Example: ``["--epochs", 25, "--learning_rate", 0.001]``. Each argument is
+            shell-quoted before being appended, so values may contain spaces or special characters.
+            Only applicable when ``command`` is provided; top-level ``hyperparameters`` are not
+            passed as CLI arguments in ``command`` mode -- they are available inside the container
+            via the ``SM_HPS`` environment variable.
         ignore_patterns: (Optional[List[str]]) :
             The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
             default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
@@ -116,6 +123,7 @@ class SourceCode(BaseConfig):
     requirements: Optional[StrPipeVar] = None
     entry_script: Optional[StrPipeVar] = None
     command: Optional[StrPipeVar] = None
+    args: Optional[List[Union[str, int, float]]] = None
     ignore_patterns: Optional[List[str]] = [
         ".env",
         ".git",
@@ -124,29 +132,6 @@ class SourceCode(BaseConfig):
         ".cache",
         ".ipynb_checkpoints",
     ]
-
-class OutputDataConfig(shapes.OutputDataConfig):
-    """OutputDataConfig.
-
-    Provides the configuration for the output data location of the training job 
-    (will not be carried over to any model repository or deployment).
-
-    Parameters:
-        s3_output_path (Optional[StrPipeVar]):
-            The S3 URI where the output data will be stored. This is the location where the
-            training job will save its output data, such as model artifacts and logs.
-        kms_key_id (Optional[StrPipeVar]):
-            The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that
-            SageMaker uses to encrypt the model artifacts at rest using Amazon S3 server-side
-            encryption.
-        compression_type (Optional[StrPipeVar]):
-            The model output compression type. Select None to output an uncompressed model,
-            recommended for large model outputs. Defaults to gzip.
-    """
-
-    s3_output_path: Optional[StrPipeVar] = None
-    kms_key_id: Optional[StrPipeVar] = None
-    compression_type: Optional[StrPipeVar] = None
 
 
 class Compute(shapes.ResourceConfig):
@@ -175,6 +160,11 @@ class Compute(shapes.ResourceConfig):
             A list of instance groups for heterogeneous clusters to be used in the training job.
         training_plan_arn (Optional[StrPipeVar]):
             The Amazon Resource Name (ARN) of the training plan to use for this resource configuration.
+        instance_preferences (Optional[List[InstancePreference]]):
+            An ordered list of candidate instance types (maximum 5). When set, the platform tries
+            each candidate in list order and launches the job on the first type with available
+            capacity. Mutually exclusive with ``instance_type``, ``instance_groups``, and
+            ``instance_placement_config``.
         enable_managed_spot_training (Optional[BoolPipeVar]):
             To train models using managed spot training, choose True. Managed spot training
             provides a fully managed and scalable infrastructure for training machine learning
@@ -187,8 +177,10 @@ class Compute(shapes.ResourceConfig):
 
     @model_validator(mode="after")
     def _model_validator(self) -> "Compute":
-        """Convert Unassigned values to None."""
-        return convert_unassigned_to_none(self)
+        """Convert Unassigned values to None and validate instance_preferences."""
+        converted = convert_unassigned_to_none(self)
+        validate_instance_preferences(converted)
+        return converted
 
     def _to_resource_config(self) -> shapes.ResourceConfig:
         """Convert to a sagemaker.core.shapes.ResourceConfig object."""
@@ -201,6 +193,11 @@ class Compute(shapes.ResourceConfig):
         }
         if not filtered_dict:
             return None
+        # Preserve the nested InstancePreference model objects instead of the
+        # dumped dicts, so pydantic does not re-validate their optional scalar
+        # fields (e.g. an unset per-preference instance_count) as Unassigned().
+        if self.instance_preferences:
+            filtered_dict["instance_preferences"] = self.instance_preferences
         return shapes.ResourceConfig(**filtered_dict)
 
 
@@ -367,6 +364,7 @@ class CheckpointConfig(shapes.CheckpointConfig):
 
     s3_uri: Optional[StrPipeVar] = None
     local_path: Optional[StrPipeVar] = "/opt/ml/checkpoints"
+
 
 # Backward-compatible alias
 TrainingJobCompute = Compute

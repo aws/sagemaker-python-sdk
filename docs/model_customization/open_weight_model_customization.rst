@@ -6,5 +6,5 @@ This section walks you through the process to get started with open weight model
 .. toctree::
    :maxdepth: 1
 
-   ../../v3-examples/model-customization-examples/ai_registry_example
+   ../../v3-examples/model-customization-examples/serverless/ai_registry_example
    model_customization

@@ -128,9 +128,7 @@ def test_feature_processor_passes_use_lake_formation_credentials(
     with patch.object(
         FeatureProcessorConfig, "create", return_value=fp_config
     ) as fp_config_create_method:
-        with patch.object(
-            UDFWrapperFactory, "get_udf_wrapper", return_value=udf_wrapper
-        ):
+        with patch.object(UDFWrapperFactory, "get_udf_wrapper", return_value=udf_wrapper):
             with patch.object(
                 ValidatorFactory,
                 "get_validation_chain",

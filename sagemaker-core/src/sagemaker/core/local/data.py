@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import os
@@ -121,7 +122,7 @@ class LocalFileDataSource(DataSource):
         super(LocalFileDataSource, self).__init__()
 
         self.root_path = os.path.abspath(root_path)
-        
+
         # Validate that the path is not in restricted locations
         for restricted_path in _SENSITIVE_SYSTEM_PATHS:
             if self.root_path != "/" and self.root_path.startswith(restricted_path):
@@ -129,7 +130,7 @@ class LocalFileDataSource(DataSource):
                     f"Local Mode does not support mounting from restricted system paths. "
                     f"Got: {root_path}"
                 )
-        
+
         if not os.path.exists(self.root_path):
             raise RuntimeError("Invalid data source: %s does not exist." % self.root_path)
 
@@ -356,15 +357,19 @@ class MultiRecordStrategy(BatchStrategy):
         Returns:
             generator of records
         """
-        buffer = ""
+        buffer = None
         for element in self.splitter.split(file):
+            if buffer is None:
+                # Match the buffer type to the record type so binary inputs
+                # concatenate correctly instead of raising a TypeError.
+                buffer = b"" if isinstance(element, bytes) else ""
             if _payload_size_within_limit(buffer + element, size):
                 buffer += element
             else:
                 tmp = buffer
                 buffer = element
                 yield tmp
-        if _validate_payload_size(buffer, size):
+        if buffer is not None and _validate_payload_size(buffer, size):
             yield buffer
 
 

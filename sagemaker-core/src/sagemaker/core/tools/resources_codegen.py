@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Generates the resource classes for the service model."""
+
 from functools import lru_cache
 
 import os
@@ -55,6 +56,7 @@ from sagemaker.core.tools.templates import (
     GENERIC_METHOD_TEMPLATE,
     GET_METHOD_TEMPLATE,
     INITIALIZE_CLIENT_TEMPLATE,
+    INITIALIZE_OBJECT_CLIENT_TEMPLATE,
     REFRESH_METHOD_TEMPLATE,
     RESOURCE_BASE_CLASS_TEMPLATE,
     RETURN_ITERATOR_TEMPLATE,
@@ -96,10 +98,17 @@ RESOURCES = "Resources"
 REQUIRED = "required"
 GLOBAL_DEFAULTS = "GlobalDefaults"
 
+# Some resources do not return their *Name identifier from the List API for certain
+# variants (e.g. a versioned ModelPackage returns only ModelPackageArn). Because the
+# Describe API accepts either the name or the ARN for the *Name parameter, refresh()
+# falls back to the ARN attribute when the name identifier is Unassigned. See issue #5606.
+REFRESH_IDENTIFIER_FALLBACKS = {
+    "ModelPackage": {"ModelPackageName": "model_package_arn"},
+}
+
 
 class ResourcesCodeGen:
-    """
-    A class for generating resources based on a service JSON file.
+    """A class for generating resources based on a service JSON file.
 
     Args:
         service_json (dict): The Botocore service.json containing the shape definitions.
@@ -119,7 +128,6 @@ class ResourcesCodeGen:
 
     Raises:
         Exception: If the service ID is not supported or the protocol is not supported.
-
     """
 
     def __init__(self, service_json: dict):
@@ -159,18 +167,15 @@ class ResourcesCodeGen:
         self.generate_resources()
 
     def generate_license(self) -> str:
-        """
-        Generate the license for the generated resources file.
+        """Generate the license for the generated resources file.
 
         Returns:
             str: The license.
-
         """
         return LICENCES_STRING
 
     def generate_imports(self) -> str:
-        """
-        Generate the import statements for the generated resources file.
+        """Generate the import statements for the generated resources file.
 
         Returns:
             str: The import statements.
@@ -181,7 +186,7 @@ class ResourcesCodeGen:
             "import datetime",
             "import time",
             "import functools",
-            "from pydantic import validate_call",
+            "from pydantic import PrivateAttr, validate_call",
             "from typing import Dict, List, Literal, Optional, Union, Any\n"
             "from boto3.session import Session",
             "from rich.console import Group",
@@ -194,7 +199,7 @@ class ResourcesCodeGen:
             "from sagemaker.core.helper.pipeline_variable import StrPipeVar",
             "from sagemaker.core.utils.code_injection.codec import transform",
             "from sagemaker.core.utils.code_injection.constants import Color",
-            "from sagemaker.core.utils.utils import SageMakerClient, ResourceIterator, Unassigned, get_textual_rich_logger, "
+            "from sagemaker.core.utils.utils import SageMakerClient, ResourceIterator, Unassigned, get_textual_rich_logger, "  # noqa: E501
             "snake_to_pascal, pascal_to_snake, is_not_primitive, is_not_str_dict, is_primitive_list, serialize",
             "from sagemaker.core.config.config_manager import SageMakerConfig",
             "from sagemaker.core.utils.logs import MultiLogStreamHandler",
@@ -211,22 +216,18 @@ class ResourcesCodeGen:
         return formated_imports
 
     def generate_base_class(self) -> str:
-        """
-        Generate the base class for the resources.
+        """Generate the base class for the resources.
 
         Returns:
             str: The base class.
-
         """
         return RESOURCE_BASE_CLASS_TEMPLATE
 
     def generate_logging(self) -> str:
-        """
-        Generate the logging statements for the generated resources file.
+        """Generate the logging statements for the generated resources file.
 
         Returns:
             str: The logging statements.
-
         """
         return LOGGER_STRING
 
@@ -234,6 +235,7 @@ class ResourcesCodeGen:
     def generate_defaults_decorator(
         config_schema_for_resource: dict, resource_name: str, class_attributes: dict
     ) -> str:
+        """Generate the populate-defaults decorator for a resource."""
         return POPULATE_DEFAULTS_DECORATOR_TEMPLATE.format(
             config_schema_for_resource=add_indent(
                 json.dumps(config_schema_for_resource.get(PROPERTIES), indent=2), 4
@@ -248,8 +250,7 @@ class ResourcesCodeGen:
         output_folder: str = GENERATED_CLASSES_LOCATION,
         file_name: str = RESOURCES_CODEGEN_FILE_NAME,
     ) -> str:
-        """
-        Generate the resources file.
+        """Generate the resources file.
 
         Args:
             output_folder (str, optional): The output folder path. Defaults to "GENERATED_CLASSES_LOCATION".
@@ -338,8 +339,7 @@ class ResourcesCodeGen:
         resource_status_chain: list,
         resource_states: list,
     ) -> str:
-        """
-        Generate the resource class for a resource.
+        """Generate the resource class for a resource.
 
         Args:
             resource_name (str): The name of the resource.
@@ -350,7 +350,6 @@ class ResourcesCodeGen:
 
         Returns:
             str: The formatted resource class.
-
         """
         # Initialize an empty string for the resource class
         resource_class = ""
@@ -365,7 +364,7 @@ class ResourcesCodeGen:
             resource_class = f"class {resource_name}(Base):\n"
 
             class_documentation_string = f"Class representing resource {resource_name}\n\n"
-            class_documentation_string += f"Attributes:\n"
+            class_documentation_string += "Attributes:\n"
             class_documentation_string += self._get_shape_attr_documentation_string(
                 attributes_and_documentation
             )
@@ -509,7 +508,7 @@ class ResourcesCodeGen:
                 self.shapes_extractor.fetch_shape_members_and_doc_strings(get_operation_shape)
             )
             # Some resources are configured in the service.json inconsistently.
-            # These resources take in the main identifier in the create and get methods , but is not present in the describe response output
+            # These resources take in the main identifier in the create and get methods , but is not present in the describe response output  # noqa: E501
             # Hence for consistent behaviour of functions such as refresh and delete, the identifiers are hardcoded
             if resource_name == "ImageVersion":
                 class_attributes["image_name"] = "StrPipeVar"
@@ -650,7 +649,7 @@ class ResourcesCodeGen:
                 #  exclude resource attributes from documentation
                 continue
             else:
-                if documentation == None:
+                if documentation is None:
                     documentation_string += f"{attribute_snake}: \n"
                 else:
                     documentation_string += f"{attribute_snake}: {documentation}\n"
@@ -662,8 +661,10 @@ class ResourcesCodeGen:
         self, operation_input_shape_name: str, resource_name: str
     ) -> str:
         """Generates the arguments for a method.
+
         Args:
             operation_input_shape_name (str): The name of the input shape for the operation.
+
         Returns:
             str: The generated arguments string.
         """
@@ -768,14 +769,22 @@ class ResourcesCodeGen:
         return operation_input_args
 
     def _generate_operation_input_necessary_args(
-        self, resource_operation: dict, resource_attributes: list
+        self,
+        resource_operation: dict,
+        resource_attributes: list,
+        identifier_fallbacks: dict = None,
     ) -> str:
-        """
-        Generate the operation input arguments string.
-        This will try to re-use args from the object attributes if present and it not presebt will use te ones provided in the parameter.
+        """Generate the operation input arguments string.
+
+        This will try to re-use args from the object attributes if present and it not
+        presebt will use te ones provided in the parameter.
+
         Args:
             resource_operation (dict): The resource operation dictionary.
-            is_class_method (bool): Indicates method is class method, else object method.
+            resource_attributes (list): The resource object attributes available on self.
+            identifier_fallbacks (dict, optional): Maps an input member name to a resource
+                attribute to fall back to when the member's own attribute is Unassigned
+                (e.g. {"ModelPackageName": "model_package_arn"}). See issue #5606.
 
         Returns:
             str: The formatted operation input arguments string.
@@ -783,12 +792,22 @@ class ResourcesCodeGen:
         input_shape_name = resource_operation["input"]["shape"]
         input_shape_members = list(self.shapes[input_shape_name]["members"].keys())
 
+        identifier_fallbacks = identifier_fallbacks or {}
         args = list()
         for member in input_shape_members:
-            if convert_to_snake_case(member) in resource_attributes:
-                args.append(f"'{member}': self.{convert_to_snake_case(member)}")
+            snake_member = convert_to_snake_case(member)
+            if snake_member in resource_attributes:
+                if member in identifier_fallbacks:
+                    fallback_attr = identifier_fallbacks[member]
+                    args.append(
+                        f"'{member}': self.{snake_member} "
+                        f"if not isinstance(self.{snake_member}, Unassigned) "
+                        f"else self.{fallback_attr}"
+                    )
+                else:
+                    args.append(f"'{member}': self.{snake_member}")
             else:
-                args.append(f"'{member}': {convert_to_snake_case(member)}")
+                args.append(f"'{member}': {snake_member}")
 
         operation_input_args = ",\n".join(args)
         operation_input_args += ","
@@ -799,9 +818,11 @@ class ResourcesCodeGen:
     def _generate_method_args(
         self, operation_input_shape_name: str, exclude_list: list = []
     ) -> str:
-        """Generates the arguments for a method.
-        This will exclude attributes in the exclude_list from the arguments. For example, This is used for update() method
-         which does not require the resource identifier attributes to be passed as arguments.
+        """Generate the arguments for a method.
+
+        This will exclude attributes in the exclude_list from the arguments. For example,
+        This is used for update() method which does not require the resource identifier
+        attributes to be passed as arguments.
 
         Args:
             operation_input_shape_name (str): The name of the input shape for the operation.
@@ -827,8 +848,7 @@ class ResourcesCodeGen:
         return method_args
 
     def _generate_get_args(self, resource_name: str, operation_input_shape_name: str) -> str:
-        """
-        Generates a resource identifier based on the required members for the Describe and Create operations.
+        """Generates a resource identifier based on the required members for the Describe and Create operations.
 
         Args:
             resource_name (str): The name of the resource.
@@ -859,15 +879,13 @@ class ResourcesCodeGen:
         return get_args
 
     def generate_create_method(self, resource_name: str, **kwargs) -> str:
-        """
-        Auto-generate the CREATE method for a resource.
+        """Auto-generate the CREATE method for a resource.
 
         Args:
             resource_name (str): The resource name.
 
         Returns:
             str: The formatted Create Method template.
-
         """
         # Get the operation and shape for the 'create' method
         operation_name = "Create" + resource_name
@@ -1001,8 +1019,7 @@ class ResourcesCodeGen:
         include_intelligent_defaults_errors: bool = False,
         exclude_resource_attrs: list = None,
     ) -> str:
-        """
-        Generate the docstring for a method of a resource.
+        """Generate the docstring for a method of a resource.
 
         Args:
             title (str): The title of the docstring.
@@ -1028,13 +1045,13 @@ class ResourcesCodeGen:
                 exclude_resource_attrs=exclude_resource_attrs,
             )
             if _shape_attr_documentation_string:
-                docstring += f"\nParameters:\n"
+                docstring += "\nParameters:\n"
                 docstring += _shape_attr_documentation_string
 
         if include_session_region:
             if not _shape_attr_documentation_string:
-                docstring += f"\nParameters:\n"
-            docstring += add_indent(f"session: Boto3 session.\nregion: Region name.\n")
+                docstring += "\nParameters:\n"
+            docstring += add_indent("session: Boto3 session.\nregion: Region name.\n")
 
         if include_return_resource_docstring:
             docstring += f"\nReturns:\n" f"    The {resource_name} resource.\n"
@@ -1055,15 +1072,13 @@ class ResourcesCodeGen:
         return docstring
 
     def generate_import_method(self, resource_name: str) -> str:
-        """
-        Auto-generate the IMPORT method for a resource.
+        """Auto-generate the IMPORT method for a resource.
 
         Args:
             resource_name (str): The resource name.
 
         Returns:
             str: The formatted Import Method template.
-
         """
         # Get the operation and shape for the 'import' method
         operation_name = "Import" + resource_name
@@ -1111,25 +1126,24 @@ class ResourcesCodeGen:
         return formatted_method
 
     def generate_get_name_method(self, resource_lower: str) -> str:
-        """
-        Autogenerate the method that would return the identifier of the object
+        """Autogenerate the method that would return the identifier of the object
+
         Args:
             resource_name: Name of Resource
+
         Returns:
             str: Formatted Get Name Method
         """
         return GET_NAME_METHOD_TEMPLATE.format(resource_lower=resource_lower)
 
     def generate_update_method(self, resource_name: str, **kwargs) -> str:
-        """
-        Auto-generate the UPDATE method for a resource.
+        """Auto-generate the UPDATE method for a resource.
 
         Args:
             resource_name (str): The resource name.
 
         Returns:
             str: The formatted Update Method template.
-
         """
         # Get the operation and shape for the 'update' method
         operation_name = "Update" + resource_name
@@ -1198,15 +1212,13 @@ class ResourcesCodeGen:
         return formatted_method
 
     def generate_get_method(self, resource_name: str) -> str:
-        """
-        Auto-generate the GET method (describe API) for a resource.
+        """Auto-generate the GET method (describe API) for a resource.
 
         Args:
             resource_name (str): The resource name.
 
         Returns:
             str: The formatted Get Method template.
-
         """
         operation_name = "Describe" + resource_name
         operation_metadata = self.operations[operation_name]
@@ -1312,7 +1324,9 @@ class ResourcesCodeGen:
         )
 
         operation_input_args = self._generate_operation_input_necessary_args(
-            operation_metadata, kwargs["resource_attributes"]
+            operation_metadata,
+            kwargs["resource_attributes"],
+            identifier_fallbacks=REFRESH_IDENTIFIER_FALLBACKS.get(resource_name),
         )
 
         operation = convert_to_snake_case(operation_name)
@@ -1419,7 +1433,7 @@ class ResourcesCodeGen:
             exclude_resource_attrs=exclude_resource_attrs,
         )
 
-        initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name="sagemaker")
+        initialize_client = INITIALIZE_OBJECT_CLIENT_TEMPLATE.format(service_name="sagemaker")
 
         formatted_method = GENERIC_METHOD_TEMPLATE.format(
             docstring=docstring,
@@ -1469,8 +1483,20 @@ class ResourcesCodeGen:
         )
         return formatted_method
 
+    @staticmethod
+    def _initialize_client_template(method: Method) -> str:
+        """Pick the client-initialization template for a generated method.
+
+        Object methods fall back to the session/region the resource was loaded with;
+        class and static methods only use the arguments passed to them.
+        """
+        if method.method_type in (MethodType.CLASS.value, MethodType.STATIC.value):
+            return INITIALIZE_CLIENT_TEMPLATE
+        return INITIALIZE_OBJECT_CLIENT_TEMPLATE
+
     def generate_method(self, method: Method, resource_attributes: list):
         # TODO: Use special templates for some methods with different formats like list and wait
+        """Generate a resource method from its operation metadata."""
         if method.method_name.startswith("get_all"):
             return self.generate_additional_get_all_method(method, resource_attributes)
         operation_metadata = self.operations[method.operation_name]
@@ -1513,7 +1539,9 @@ class ResourcesCodeGen:
         method_args += add_indent("session: Optional[Session] = None,\n", 4)
         method_args += add_indent("region: Optional[str] = None,", 4)
 
-        initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name=method.service_name)
+        initialize_client = self._initialize_client_template(method).format(
+            service_name=method.service_name
+        )
         if len(self.shapes[operation_input_shape_name]["members"]) != 0:
             # the method has input arguments
             serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
@@ -1552,7 +1580,9 @@ class ResourcesCodeGen:
                 return_type_conversion=return_type_conversion,
             )
 
-        initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name=method.service_name)
+        initialize_client = self._initialize_client_template(method).format(
+            service_name=method.service_name
+        )
         if len(self.shapes[operation_input_shape_name]["members"]) != 0:
             # the method has input arguments
             if method.resource_name == "Endpoint" and method.method_name == "invoke":
@@ -1659,8 +1689,16 @@ class ResourcesCodeGen:
         list_method = convert_to_snake_case(method.operation_name)
 
         # TODO: add rules for custom key mapping and list methods with no args
+        if method.method_type in (MethodType.CLASS.value, MethodType.STATIC.value):
+            client_context_args = ["session=session", "region=region"]
+        else:
+            client_context_args = [
+                "session=session or self._session",
+                "region=region or self._region",
+            ]
         resource_iterator_args_list = [
             "client=client",
+            *client_context_args,
             f"list_method='{list_method}'",
             f"summaries_key='{summaries_key}'",
             f"summary_name='{summary_name}'",
@@ -1673,7 +1711,9 @@ class ResourcesCodeGen:
         serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
             operation_input_args=operation_input_args
         )
-        initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name=method.service_name)
+        initialize_client = self._initialize_client_template(method).format(
+            service_name=method.service_name
+        )
         deserialize_response = RETURN_ITERATOR_TEMPLATE.format(
             resource_iterator_args=resource_iterator_args
         )
@@ -1703,8 +1743,10 @@ class ResourcesCodeGen:
 
     def _get_failure_reason_ref(self, resource_name: str) -> str:
         """Get the failure reason reference for a resource object.
+
         Args:
             resource_name (str): The resource name.
+
         Returns:
             str: The failure reason reference for resource object
         """
@@ -1719,8 +1761,10 @@ class ResourcesCodeGen:
 
     def _get_instance_count_ref(self, resource_name: str) -> str:
         """Get the instance count reference for a resource object.
+
         Args:
             resource_name (str): The resource name.
+
         Returns:
             str: The instance count reference for resource object
         """
@@ -1932,13 +1976,15 @@ if not isinstance(self.resource_config, Unassigned):
                 custom_key_mapping_str = add_indent(custom_key_mapping_str, 4)
             else:
                 log.warning(
-                    f"Resource {resource_name} summaries do not have required members to create object instance. Resource may require custom key mapping for get_all().\n"
-                    f"List {summary_name} Members: {summary_members}, Object Required Members: {get_operation_required_input}"
+                    f"Resource {resource_name} summaries do not have required members to create object instance. Resource may require custom key mapping for get_all().\n"  # noqa: E501
+                    f"List {summary_name} Members: {summary_members}, Object Required Members: {get_operation_required_input}"  # noqa: E501
                 )
                 return ""
 
         resource_iterator_args_list = [
             "client=client",
+            "session=session",
+            "region=region",
             f"list_method='{operation}'",
             f"summaries_key='{summaries_key}'",
             f"summary_name='{summary_name}'",
@@ -1946,7 +1992,7 @@ if not isinstance(self.resource_config, Unassigned):
         ]
 
         if custom_key_mapping_str:
-            resource_iterator_args_list.append(f"custom_key_mapping=custom_key_mapping")
+            resource_iterator_args_list.append("custom_key_mapping=custom_key_mapping")
 
         exclude_list = ["next_token", "max_results"]
         get_all_args = self._generate_method_args(operation_input_shape_name, exclude_list)
@@ -1995,9 +2041,10 @@ if not isinstance(self.resource_config, Unassigned):
         return formatted_method
 
     def generate_config_schema(self) -> str:
-        """
-        Generates the Config Schema that is used by json Schema to validate config jsons .
-        This function creates a python file with a variable that is consumed in the scripts to further fetch configs.
+        """Generate the Config Schema that is used by json Schema to validate config jsons.
+
+        This function creates a python file with a variable that is consumed in the
+        scripts to further fetch configs.
 
         Input for generating the Schema is the service JSON that is already loaded in the class
 
@@ -2066,14 +2113,13 @@ if not isinstance(self.resource_config, Unassigned):
         return output
 
     def _cleanup_class_attributes_types(self, class_attributes: dict) -> dict:
-        """
-        Helper function that creates a direct mapping of attribute to type without default parameters assigned and without Optionals
+        """Create a direct mapping of attribute to type without defaults or Optionals.
+
         Args:
             class_attributes: attributes of the class in raw form
 
         Returns:
             class attributes that have a direct mapping and can be used for processing
-
         """
         cleaned_class_attributes = {}
         for key, value in class_attributes.items():
@@ -2084,15 +2130,16 @@ if not isinstance(self.resource_config, Unassigned):
         return cleaned_class_attributes
 
     def _get_dict_with_default_configurable_attributes(self, class_attributes: dict) -> dict:
-        """
-        Creates default attributes dict for a particular resource.
-        Iterates through all class attributes and filters by attributes that have particular substrings in their name
+        """Create default attributes dict for a particular resource.
+
+        Iterates through all class attributes and filters by attributes that have
+        particular substrings in their name
+
         Args:
             class_attributes: Dict that has all the attributes of a class
 
         Returns:
             Dict with attributes that can be configurable
-
         """
         PYTHON_TYPES = ["StrPipeVar", "IntPipeVar", "datetime.datetime", "bool", "int", "float"]
         default_attributes = {}
@@ -2127,9 +2174,8 @@ if not isinstance(self.resource_config, Unassigned):
         return default_attributes
 
     def _get_json_schema_type_from_python_type(self, python_type) -> str:
-        """
-        Helper for generating Schema
-        Converts Python Types to JSON Schema compliant string
+        """Helper for generating Schema Converts Python Types to JSON Schema compliant string
+
         Args:
             python_type: Type as a string
 
@@ -2142,8 +2188,8 @@ if not isinstance(self.resource_config, Unassigned):
 
     @staticmethod
     def _is_get_in_class_methods(class_methods) -> bool:
-        """
-        Helper to check if class methods contain Get
+        """Helper to check if class methods contain Get
+
         Args:
             class_methods: list of methods
 
@@ -2155,9 +2201,7 @@ if not isinstance(self.resource_config, Unassigned):
     @staticmethod
     @lru_cache(maxsize=None)
     def _get_config_schema_for_resources():
-        """
-        Fetches Schema JSON for all resources from generated file
-        """
+        """Fetches Schema JSON for all resources from generated file"""
         return SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA[PROPERTIES][SAGEMAKER][PROPERTIES][PYTHON_SDK][
             PROPERTIES
         ][RESOURCES][PROPERTIES]

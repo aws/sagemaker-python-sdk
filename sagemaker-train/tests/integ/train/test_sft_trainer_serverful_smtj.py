@@ -27,6 +27,7 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_sft_trainer_serverful_smtj.py -v -s
 """
+
 from __future__ import absolute_import
 
 import logging
@@ -115,7 +116,7 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
         training_dataset=training_resources["training_dataset"],
         s3_output_path=training_resources["s3_output_path"],
         compute=TrainingJobCompute(
-            instance_type="ml.g6.48xlarge",
+            instance_type="ml.g6.12xlarge",
             instance_count=1,
         ),
         sagemaker_session=sagemaker_session_us_east_1,
@@ -129,9 +130,9 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
     logger.info(f"Resolved training_config: {training_config}")
 
     # Nova Micro uses trainer.max_epochs for step control
-    assert training_config["trainer"]["max_epochs"] == 1, (
-        f"Expected max_epochs=1, got: {training_config.get('trainer')}"
-    )
+    assert (
+        training_config["trainer"]["max_epochs"] == 1
+    ), f"Expected max_epochs=1, got: {training_config.get('trainer')}"
 
     # Submit (non-blocking)
     training_job = sft_trainer.train(wait=False)
@@ -162,3 +163,36 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
         f"{training_job.training_job_status}"
     )
     logger.info(f"Training job completed successfully: {training_job.training_job_name}")
+
+    # Verify show_metrics() returns valid training metrics after completion
+    # Use non-interactive backend so plt.show() doesn't require a display in CI
+    import matplotlib
+
+    matplotlib.use("Agg")
+
+    df = sft_trainer.show_metrics()
+    assert df is not None, "show_metrics() returned None"
+    assert not df.empty, "show_metrics() returned empty DataFrame"
+    assert "global_step" in df.columns, f"Expected 'global_step' column, got: {list(df.columns)}"
+    assert len(df) > 0
+    logger.info(f"show_metrics() returned {len(df)} rows, columns: {list(df.columns)}")
+
+    # Verify metric filter
+    df_filtered = sft_trainer.show_metrics(metrics=["training_loss"])
+    assert not df_filtered.empty
+    assert set(df_filtered.columns) == {"global_step", "training_loss"}
+
+    # Verify step range filter
+    min_step = int(df["global_step"].min())
+    max_step = int(df["global_step"].max())
+    if max_step > min_step:
+        mid = (min_step + max_step) // 2
+        df_range = sft_trainer.show_metrics(starting_step=mid, ending_step=max_step)
+        assert not df_range.empty
+        assert df_range["global_step"].min() >= mid
+        assert df_range["global_step"].max() <= max_step
+        logger.info(f"Step range [{mid}, {max_step}] returned {len(df_range)}/{len(df)} rows")
+
+    # Verify stream_logs() exits without error on a completed job
+    sft_trainer.stream_logs(poll=2)
+    logger.info("stream_logs() completed without error")

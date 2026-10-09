@@ -1,4 +1,141 @@
 # Changelog
+
+## v1.24.0 (2026-10-07)
+
+### New Features
+
+- feat(train): add args field to SourceCode for command-based training (#6356)
+- feat(train): add output_data property to ModelTrainer (#6355)
+- feat(train): allow configurable S3 key prefix for ModelTrainer input uploads (#6354)
+
+### Bug Fixes
+
+- fix(train): fix incorrect model_trainer method call to load hyperparameters from file (#5771)
+- fix(train): handle CRLF line endings (#6088)
+- fix(train): preserve content_type when HyperparameterTuner converts InputData to Channel (#6321)
+- fix(train): allow PipelineVariable keys in HyperparameterTuner hyperparameter_ranges annotation (#6314)
+- fix(train): accept a PipelineVariable for HyperparameterTuner random_seed (#6320)
+- fix(train): apply output KMS key to ModelTrainer source-code S3 uploads (#6339)
+- fix(train): do not apply user ignore_patterns to the sm_drivers driver channel (#6316)
+
+### Tests
+
+- test(train): serialize Nova serverless integ jobs (#6387)
+- test(train): stop MTRL training integ tests churning fixture MPG (#6362)
+- test(train): stop test_sourcecode_args from depending on an ambient HOME (#6383)
+
+
+## v1.23.0 (2026-09-24)
+
+### New Features
+
+- feat(train): finetuningoptions validation telemetry (#6286)
+- feat(train): apply constructor hyperparameters in fine-tuning trainers (#6293)
+
+### Bug Fixes
+
+- fix(train): raise on invalid constructor hyperparameters (#6306)
+
+### Tests
+
+- fix PR check tests (#6272)
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v1.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix(train): enforce S3 ownership on ai_registry default bucket (#6275)
+
+
+## v1.22.0 (2026-09-14)
+
+### New Features
+
+- feat(train): add list_hyperparameters() for pre-trainer hyperparameter discovery (#6149)
+- feat(train): validate raw base model names in SageMaker Hub (#6227)
+- feat(train): add InstancePreferences for multi-instance-type training (#6249)
+
+### Bug Fixes
+
+- fix(train): add PipelineSession support to SFT, DPO, RLAIF, and RLVR trainers (#6213)
+- fix(train): resolve private Hub models and aliased references for ModelTrainer (#6201)
+- fix(train): validate evaluator models against the live supported-model list (#6217)
+- fix(train): complete PipelineSession support for SFT, DPO, RLAIF, and RLVR trainers (#6235)
+- fix(train): preserve training_plan_arn during serverful compute reconstruction (#6258)
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+
+### Tests
+
+- fix(ci,train): stop integ tests from rerunning the shallow suite (#6216)
+- docs(train): add guidance for maintaining shallow integration tests (#6219)
+- fix(train): refresh MTRL attached-job integration fixtures (#6259)
+- fix(train): add training_plan_arn to serverful test fixtures (#6270)
+
+## v1.21.0 (2026-08-25)
+
+### New Features
+
+- feat(train): Add inherited list_supported_models to BaseTrainer (#6187)
+
+### Bug Fixes
+
+- fix(rlaif): accept preset reward_prompt template names (#6192)
+
+### Tests
+
+- change(train): gate deep integ tests behind gpu_intensive, add shallow submit-then-stop suite (#6176)
+- fix(ci,train): run fast-integ-tests in CodeBuild and give shallow RLVR cases a reward signal (#6207)
+- fix(train): make CPT integ tests dry run for optimize for capacity constraints (#6194)
+- test(train): add unit test to prevent future regression of preset reward function (#6182)
+
+
+## v1.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(train): revert preset reward function deletion from hyperparams dict (#6181)
+
+### Tests
+
+- test(train): Fix RLVR integ test (#6183)
+- test(train): update timeout of RLVR sequence_length test (#6180)
+
+
+## v1.19.0 (2026-08-10)
+
+### New Features
+
+- feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
+- feat(train): Job notifications, log streaming, and metrics visualization for training jobs (#6051)
+
+
+## v1.18.0 (2026-07-30)
+
+### Bug Fixes
+
+- fix(train): assign SDK-managed channels to instance groups on heterogeneous clusters (#6116)
+- fix: infer logic of agent_run_time from the attached input trainer (#6115)
+
+
+## v1.17.0 (2026-07-24)
+
+### Bug Fixes
+
+- fix(train): correct Networking field names in ModelTrainer intelligent defaults (#6064)
+- fix: resolve MTRL eval base-model ARN against the configured hub (#6040)
+- fix(train): Fall back to public hub when private hub lacks base model (#6092)
+- fix: datamixing recipe path fix (#6073)
+
+### Tests
+
+- test: Doc update and added SFT integ test (#6018)
+- test: Fix role issue in mtrl integ tests (#6070)
+- test: Fix gpu integ test failure due to outdated MPG (#6097)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
 ## v1.16.0 (2026-07-15)
 
 ### Bug Fixes

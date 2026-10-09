@@ -14,7 +14,7 @@
 """Unit tests for sagemaker.core.lineage.query module"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime
 
 from sagemaker.core.lineage.query import (
@@ -447,7 +447,7 @@ class TestLineageQuery:
         query = LineageQuery(mock_session)
         filter_obj = LineageFilter(entities=[LineageEntityEnum.ARTIFACT])
 
-        result = query.query(
+        query.query(
             start_arns=["arn:start"],
             query_filter=filter_obj,
         )
