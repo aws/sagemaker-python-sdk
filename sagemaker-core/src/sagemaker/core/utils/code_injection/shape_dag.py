@@ -1,3 +1,5 @@
+"""Generated shape dependency graph used for serialization."""
+
 SHAPE_DAG = {
     "AIBenchmarkEndpoint": {
         "members": [
@@ -1593,6 +1595,51 @@ SHAPE_DAG = {
                 "name": "ExcludeFeaturesAttribute",
                 "shape": "ExcludeFeaturesAttribute",
                 "type": "string",
+            },
+        ],
+        "type": "structure",
+    },
+    "BatchWriteRecordEntries": {
+        "member_shape": "BatchWriteRecordEntry",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "BatchWriteRecordEntry": {
+        "members": [
+            {"name": "FeatureGroupName", "shape": "FeatureGroupNameOrArn", "type": "string"},
+            {"name": "Record", "shape": "Record", "type": "list"},
+            {"name": "TargetStores", "shape": "TargetStores", "type": "list"},
+            {"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"},
+        ],
+        "type": "structure",
+    },
+    "BatchWriteRecordError": {
+        "members": [
+            {"name": "Entry", "shape": "BatchWriteRecordEntry", "type": "structure"},
+            {"name": "ErrorCode", "shape": "ValueAsString", "type": "string"},
+            {"name": "ErrorMessage", "shape": "Message", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "BatchWriteRecordErrors": {
+        "member_shape": "BatchWriteRecordError",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "BatchWriteRecordRequest": {
+        "members": [
+            {"name": "Entries", "shape": "BatchWriteRecordEntries", "type": "list"},
+            {"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"},
+        ],
+        "type": "structure",
+    },
+    "BatchWriteRecordResponse": {
+        "members": [
+            {"name": "Errors", "shape": "BatchWriteRecordErrors", "type": "list"},
+            {
+                "name": "UnprocessedEntries",
+                "shape": "UnprocessedBatchWriteRecordEntries",
+                "type": "list",
             },
         ],
         "type": "structure",
@@ -10118,6 +10165,19 @@ SHAPE_DAG = {
         "member_type": "structure",
         "type": "list",
     },
+    "InstancePreference": {
+        "members": [
+            {"name": "InstanceType", "shape": "TrainingInstanceType", "type": "string"},
+            {"name": "InstanceCount", "shape": "TrainingInstanceCount", "type": "integer"},
+            {"name": "TrainingPlanArns", "shape": "TrainingPlanArnList", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "InstancePreferenceList": {
+        "member_shape": "InstancePreference",
+        "member_type": "structure",
+        "type": "list",
+    },
     "InstanceRequirementsEniConfiguration": {
         "members": [
             {"name": "CustomerEni", "shape": "String", "type": "string"},
@@ -12221,6 +12281,22 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ListRecordsRequest": {
+        "members": [
+            {"name": "FeatureGroupName", "shape": "FeatureGroupNameOrArn", "type": "string"},
+            {"name": "MaxResults", "shape": "ListRecordsMaxResults", "type": "integer"},
+            {"name": "NextToken", "shape": "ListRecordsNextToken", "type": "string"},
+            {"name": "IncludeSoftDeletedRecords", "shape": "Boolean", "type": "boolean"},
+        ],
+        "type": "structure",
+    },
+    "ListRecordsResponse": {
+        "members": [
+            {"name": "RecordIdentifiers", "shape": "RecordIdentifierList", "type": "list"},
+            {"name": "NextToken", "shape": "ListRecordsNextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
     "ListResourceCatalogsRequest": {
         "members": [
             {"name": "NameContains", "shape": "ResourceCatalogName", "type": "string"},
@@ -14039,7 +14115,10 @@ SHAPE_DAG = {
         "type": "structure",
     },
     "OnlineStoreConfigUpdate": {
-        "members": [{"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"}],
+        "members": [
+            {"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"},
+            {"name": "StorageType", "shape": "StorageType", "type": "string"},
+        ],
         "type": "structure",
     },
     "OnlineStoreSecurityConfig": {
@@ -14726,6 +14805,17 @@ SHAPE_DAG = {
             {"name": "InstanceType", "shape": "ProcessingInstanceType", "type": "string"},
             {"name": "VolumeSizeInGB", "shape": "ProcessingVolumeSizeInGB", "type": "integer"},
             {"name": "VolumeKmsKeyId", "shape": "KmsKeyId", "type": "string"},
+            {
+                "name": "InstancePreferences",
+                "shape": "ProcessingInstancePreferenceList",
+                "type": "list",
+            },
+            {"name": "SelectedInstanceType", "shape": "ProcessingInstanceType", "type": "string"},
+            {
+                "name": "SelectedInstanceCount",
+                "shape": "ProcessingInstanceCount",
+                "type": "integer",
+            },
         ],
         "type": "structure",
     },
@@ -14751,6 +14841,18 @@ SHAPE_DAG = {
     },
     "ProcessingInputs": {
         "member_shape": "ProcessingInput",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ProcessingInstancePreference": {
+        "members": [
+            {"name": "InstanceType", "shape": "ProcessingInstanceType", "type": "string"},
+            {"name": "InstanceCount", "shape": "ProcessingInstanceCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ProcessingInstancePreferenceList": {
+        "member_shape": "ProcessingInstancePreference",
         "member_type": "structure",
         "type": "list",
     },
@@ -15583,6 +15685,11 @@ SHAPE_DAG = {
         "type": "structure",
     },
     "Record": {"member_shape": "FeatureValue", "member_type": "structure", "type": "list"},
+    "RecordIdentifierList": {
+        "member_shape": "ValueAsString",
+        "member_type": "string",
+        "type": "list",
+    },
     "RecordIdentifiers": {"member_shape": "ValueAsString", "member_type": "string", "type": "list"},
     "RedshiftDatasetDefinition": {
         "members": [
@@ -15754,6 +15861,9 @@ SHAPE_DAG = {
                 "shape": "InstancePlacementConfig",
                 "type": "structure",
             },
+            {"name": "InstancePreferences", "shape": "InstancePreferenceList", "type": "list"},
+            {"name": "SelectedInstanceType", "shape": "TrainingInstanceType", "type": "string"},
+            {"name": "SelectedInstanceCount", "shape": "TrainingInstanceCount", "type": "integer"},
         ],
         "type": "structure",
     },
@@ -16206,6 +16316,7 @@ SHAPE_DAG = {
             {"name": "Peft", "shape": "Peft", "type": "string"},
             {"name": "EvaluationType", "shape": "EvaluationType", "type": "string"},
             {"name": "EvaluatorArn", "shape": "EvaluatorArn", "type": "string"},
+            {"name": "SequenceLength", "shape": "SequenceLength", "type": "string"},
         ],
         "type": "structure",
     },
@@ -17137,6 +17248,11 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "TrainingPlanArnList": {
+        "member_shape": "TrainingPlanArn",
+        "member_type": "string",
+        "type": "list",
+    },
     "TrainingPlanArns": {
         "member_shape": "TrainingPlanArn",
         "member_type": "string",
@@ -17742,6 +17858,11 @@ SHAPE_DAG = {
             },
         ],
         "type": "structure",
+    },
+    "UnprocessedBatchWriteRecordEntries": {
+        "member_shape": "BatchWriteRecordEntry",
+        "member_type": "structure",
+        "type": "list",
     },
     "UnprocessedIdentifiers": {
         "member_shape": "BatchGetRecordIdentifier",
@@ -18612,6 +18733,16 @@ SHAPE_DAG = {
                 "shape": "ListTrialComponentKey256",
                 "type": "list",
             },
+        ],
+        "type": "structure",
+    },
+    "UpdateRecordRequest": {
+        "members": [
+            {"name": "FeatureGroupName", "shape": "FeatureGroupNameOrArn", "type": "string"},
+            {"name": "RecordIdentifierValueAsString", "shape": "ValueAsString", "type": "string"},
+            {"name": "Features", "shape": "Record", "type": "list"},
+            {"name": "TargetStores", "shape": "TargetStores", "type": "list"},
+            {"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"},
         ],
         "type": "structure",
     },

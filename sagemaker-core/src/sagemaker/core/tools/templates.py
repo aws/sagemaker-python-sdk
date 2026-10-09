@@ -22,7 +22,7 @@ class {class_name}:
 
 RESOURCE_METHOD_EXCEPTION_DOCSTRING = """
 Raises:
-    botocore.exceptions.ClientError: This exception is raised for AWS service related errors. 
+    botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
         The error message and error code can be parsed from the exception as follows:
         ```
         try:
@@ -49,9 +49,11 @@ def create(
     operation_input_args = {{
 {operation_input_args}
     }}
-    
-    operation_input_args = Base.populate_chained_attributes(resource_name='{resource_name}', operation_input_args=operation_input_args)
-        
+
+    operation_input_args = Base.populate_chained_attributes(
+        resource_name='{resource_name}', operation_input_args=operation_input_args
+    )
+
     logger.debug(f"Input request: {{operation_input_args}}")
     # serialize the input request
     operation_input_args = serialize(operation_input_args)
@@ -80,9 +82,11 @@ def create(
     operation_input_args = {{
 {operation_input_args}
     }}
-    
-    operation_input_args = Base.populate_chained_attributes(resource_name='{resource_name}', operation_input_args=operation_input_args)
-        
+
+    operation_input_args = Base.populate_chained_attributes(
+        resource_name='{resource_name}', operation_input_args=operation_input_args
+    )
+
     logger.debug(f"Input request: {{operation_input_args}}")
     # serialize the input request
     operation_input_args = serialize(operation_input_args)
@@ -130,11 +134,11 @@ def get_name(self) -> str:
     resource_name = '{resource_lower}_name'
     resource_name_split = resource_name.split('_')
     attribute_name_candidates = []
-    
+
     l = len(resource_name_split)
     for i in range(0, l):
         attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-    
+
     for attribute, value in attributes.items():
         if attribute == 'name' or attribute in attribute_name_candidates:
             return value
@@ -152,7 +156,7 @@ def update(
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info("Updating {resource_lower} resource.")
-    client = Base.get_sagemaker_client()
+    client = self._get_client()
 
     operation_input_args = {{
 {operation_input_args}
@@ -179,7 +183,7 @@ def update(
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info("Updating {resource_lower} resource.")
-    client = Base.get_sagemaker_client()
+    client = self._get_client()
 
     operation_input_args = {{
 {operation_input_args}
@@ -203,7 +207,12 @@ def populate_inputs_decorator(create_func):
     def wrapper(*args, **kwargs):
         config_schema_for_resource = \\
 {config_schema_for_resource}
-        return create_func(*args, **Base.get_updated_kwargs_with_configured_attributes(config_schema_for_resource, "{resource_name}", **kwargs))
+        return create_func(
+            *args,
+            **Base.get_updated_kwargs_with_configured_attributes(
+                config_schema_for_resource, "{resource_name}", **kwargs
+            )
+        )
     return wrapper
 """
 
@@ -232,6 +241,7 @@ def get(
     # deserialize the response
     transformed_response = transform(response, '{describe_operation_output_shape}')
     {resource_lower} = cls(**transformed_response)
+    {resource_lower}._set_client_context(session=session, region=region){post_processing}
     return {resource_lower}
 """
 
@@ -239,7 +249,7 @@ REFRESH_METHOD_TEMPLATE = """
 @Base.add_validate_call
 def refresh(
     self,
- {refresh_args}   
+ {refresh_args}
     ) -> Optional["{resource_name}"]:
 {docstring}
     operation_input_args = {{
@@ -249,7 +259,7 @@ def refresh(
     operation_input_args = serialize(operation_input_args)
     logger.debug(f"Serialized input request: {{operation_input_args}}")
 
-    client = Base.get_sagemaker_client()
+    client = self._get_client()
     response = client.{operation}(**operation_input_args)
 
     # deserialize response and update self
@@ -276,7 +286,14 @@ PRINT_WAIT_LOGS = """
 if logs and multi_stream_logger.ready():
     stream_log_events = multi_stream_logger.get_latest_log_events()
     for stream_id, event in stream_log_events:
-        logger.info(f"{stream_id}:\\n{event['message']}")
+        # Container log lines are arbitrary text and may contain
+        # square brackets (e.g. file paths like [.../main_ppo.py]).
+        # Disable rich markup parsing for these records so they are
+        # not misread as markup tags (raises MarkupError otherwise).
+        logger.info(
+            f"{stream_id}:\\n{event['message']}",
+            extra={"markup": False},
+        )
 """
 
 
@@ -290,7 +307,7 @@ def wait(
 ) -> None:
     """
     Wait for a {resource_name} resource.
-    
+
     Parameters:
         poll: The number of seconds to wait between each poll.
         timeout: The maximum number of seconds to wait before timing out.
@@ -299,7 +316,7 @@ def wait(
         TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
         FailedStatusError:   If the resource reaches a failed state.
         WaiterError: Raised when an error occurs while waiting.
-    
+
     """
     terminal_states = {terminal_resource_states}
     start_time = time.time()
@@ -332,7 +349,9 @@ def wait(
                 return
 
             if timeout is not None and time.time() - start_time >= timeout:
-                raise TimeoutExceededError(resource_type="{resource_name}", status=current_status, message="{timeout_message}")
+                raise TimeoutExceededError(
+                    resource_type="{resource_name}", status=current_status, message="{timeout_message}"
+                )
             time.sleep(poll)
 '''
 
@@ -346,12 +365,12 @@ def wait_for_status(
 ) -> None:
     """
     Wait for a {resource_name} resource to reach certain status.
-    
+
     Parameters:
         target_status: The status to wait for.
         poll: The number of seconds to wait between each poll.
         timeout: The maximum number of seconds to wait before timing out.
-    
+
     Raises:
         TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
         FailedStatusError:   If the resource reaches a failed state.
@@ -398,13 +417,13 @@ def wait_for_delete(
 ) -> None:
     """
     Wait for a {resource_name} resource to be deleted.
-    
+
     Parameters:
         poll: The number of seconds to wait between each poll.
         timeout: The maximum number of seconds to wait before timing out.
-    
+
     Raises:
-        botocore.exceptions.ClientError: This exception is raised for AWS service related errors. 
+        botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
             The error message and error code can be parsed from the exception as follows:
             ```
             try:
@@ -439,7 +458,7 @@ def wait_for_delete(
                     raise TimeoutExceededError(resource_type="{resource_name}", status=current_status)
             except botocore.exceptions.ClientError as e:
                 error_code = e.response["Error"]["Code"]
-                
+
                 if "ResourceNotFound" in error_code or "ValidationException" in error_code:
                     logger.info("Resource was not found. It may have been deleted.")
                     return
@@ -465,7 +484,7 @@ def delete(
 {delete_args}
     ) -> None:
 {docstring}
-    client = Base.get_sagemaker_client()
+    client = self._get_client()
 
     operation_input_args = {{
 {operation_input_args}
@@ -475,7 +494,7 @@ def delete(
     logger.debug(f"Serialized input request: {{operation_input_args}}")
 
     client.{operation}(**operation_input_args)
-    
+
     logger.info(f"Deleting {{self.__class__.__name__}} - {{self.get_name()}}")
 """
 
@@ -483,7 +502,7 @@ STOP_METHOD_TEMPLATE = """
 @Base.add_validate_call
 def stop(self) -> None:
 {docstring}
-    client = SageMakerClient().sagemaker_client
+    client = self._get_client()
 
     operation_input_args = {{
 {operation_input_args}
@@ -508,7 +527,7 @@ def get_all(
 ) -> ResourceIterator["{resource}"]:
 {docstring}
     client = Base.get_sagemaker_client(session=session, region_name=region, service_name="{service_name}")
-        
+
     operation_input_args = {{
 {operation_input_args}
     }}
@@ -516,7 +535,7 @@ def get_all(
     # serialize the input request
     operation_input_args = serialize(operation_input_args)
     logger.debug(f"Serialized input request: {{operation_input_args}}")
-    
+
     return ResourceIterator(
 {resource_iterator_args}
     )
@@ -532,7 +551,7 @@ def get_all(
 ) -> ResourceIterator["{resource}"]:
     """
     Get all {resource} resources.
-    
+
     Parameters:
         session: Boto3 session.
         region: Region name.
@@ -572,6 +591,9 @@ SERIALIZE_INPUT_TEMPLATE = """
 INITIALIZE_CLIENT_TEMPLATE = """
     client = Base.get_sagemaker_client(session=session, region_name=region, service_name='{service_name}')"""
 
+INITIALIZE_OBJECT_CLIENT_TEMPLATE = """
+    client = self._get_client(service_name='{service_name}', session=session, region=region)"""
+
 CALL_OPERATION_API_TEMPLATE = """
     logger.debug(f"Calling {operation} API")
     response = client.{operation}(**operation_input_args)
@@ -600,13 +622,40 @@ DESERIALIZE_INPUT_AND_RESPONSE_TO_CLS_TEMPLATE = """
 
 RESOURCE_BASE_CLASS_TEMPLATE = """
 class Base(BaseModel):
-    model_config = ConfigDict(protected_namespaces=(), validate_assignment=True, extra="forbid", arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        protected_namespaces=(),
+        validate_assignment=True,
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
     config_manager: ClassVar[SageMakerConfig] = SageMakerConfig()
-    
+    # Session and region the resource was created or loaded with. Object methods
+    # (refresh, wait, update, delete, stop, ...) reuse them so a resource obtained
+    # with an explicit session keeps talking to the same account and region.
+    _session: Optional[Session] = PrivateAttr(default=None)
+    _region: Optional[str] = PrivateAttr(default=None)
+
     @classmethod
     def get_sagemaker_client(cls, session = None, region_name = None, service_name = 'sagemaker'):
         return SageMakerClient(session=session, region_name=region_name).get_client(service_name=service_name)
-    
+
+    def _set_client_context(self, session: Optional[Session] = None, region: Optional[str] = None):
+        self._session = session
+        self._region = region
+        return self
+
+    def _get_client(
+        self,
+        service_name: str = 'sagemaker',
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ):
+        return Base.get_sagemaker_client(
+            session=session or self._session,
+            region_name=region or self._region,
+            service_name=service_name,
+        )
+
     @staticmethod
     def get_updated_kwargs_with_configured_attributes(
         config_schema_for_resource: dict, resource_name: str, **kwargs
@@ -629,9 +678,9 @@ class Base(BaseModel):
         except BaseException as e:
             logger.debug("Could not load Default Configs. Continuing.", exc_info=True)
             # Continue with existing kwargs if no default configs found
-        return kwargs 
-        
-    
+        return kwargs
+
+
     @staticmethod
     def populate_chained_attributes(resource_name: str, operation_input_args: Union[dict, object]):
         resource_name_in_snake_case = pascal_to_snake(resource_name)
@@ -702,7 +751,7 @@ class {class_name}:
 
 RESOURCE_METHOD_EXCEPTION_DOCSTRING = """
 Raises:
-    botocore.exceptions.ClientError: This exception is raised for AWS service related errors. 
+    botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
         The error message and error code can be parsed from the exception as follows:
         ```
         try:

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Feature Processor schedule APIs."""
+
 from __future__ import absolute_import
 import logging
 import json
@@ -76,6 +77,7 @@ from sagemaker.core.s3 import s3_path_join
 from sagemaker.core.resources import FeatureGroup
 
 from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.mlops.feature_store.feature_processor._event_bridge_scheduler_helper import (
     EventBridgeSchedulerHelper,
 )
@@ -164,7 +166,14 @@ def to_pipeline(
     remote_decorator_config = _get_remote_decorator_config_from_input(
         wrapped_func=step, sagemaker_session=_sagemaker_session
     )
-    _role = role_arn or get_execution_role(_sagemaker_session)
+    # Resolve and validate the feature_store role: role_arn if explicitly provided,
+    # otherwise the caller's own identity role. A RoleValidationError explains
+    # remediation if the resolved role is insufficient.
+    _role = resolve_and_validate_role(
+        provided_role=role_arn,
+        role_type="feature_store",
+        sagemaker_session=_sagemaker_session,
+    )
 
     runtime_env_manager = RuntimeEnvironmentManager()
     client_python_version = runtime_env_manager._current_python_version()
@@ -324,7 +333,15 @@ def schedule(
     _sagemaker_session = sagemaker_session or Session()
     _validate_pipeline_lineage_resources(pipeline_name, _sagemaker_session)
     _start_date = start_date or datetime.now(tz=pytz.utc)
-    _role_arn = role_arn or get_execution_role(_sagemaker_session)
+
+    # Resolve and validate the feature_store role: role_arn if explicitly provided,
+    # otherwise the caller's own identity role. A RoleValidationError explains
+    # remediation if the resolved role is insufficient.
+    _role_arn = resolve_and_validate_role(
+        provided_role=role_arn,
+        role_type="feature_store",
+        sagemaker_session=_sagemaker_session,
+    )
     event_bridge_scheduler_helper = EventBridgeSchedulerHelper(
         _sagemaker_session,
         _sagemaker_session.boto_session.client("scheduler"),
@@ -774,7 +791,9 @@ def _validate_fg_lineage_resources(feature_group_name: str, sagemaker_session: S
         groups.
     """
 
-    feature_group = FeatureGroup.get(feature_group_name=feature_group_name, session=sagemaker_session.boto_session)
+    feature_group = FeatureGroup.get(
+        feature_group_name=feature_group_name, session=sagemaker_session.boto_session
+    )
     feature_group_creation_time = feature_group.creation_time.strftime("%s")
     feature_group_context = _get_feature_group_lineage_context_name(
         feature_group_name=feature_group_name,
@@ -883,8 +902,7 @@ def _prepare_model_trainer_from_remote_decorator_config(
         spark_dependency_paths=spark_dependency_paths,
     )
     joined_command = " ".join(
-        entry_point_and_args["container_entry_point"]
-        + entry_point_and_args["container_arguments"]
+        entry_point_and_args["container_entry_point"] + entry_point_and_args["container_arguments"]
     )
     source_code = SourceCode(command=joined_command)
     logger.info("SourceCode command: %s", joined_command)

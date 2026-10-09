@@ -1,0 +1,131 @@
+name: AI Code Review (Claude on Bedrock)
+
+# The review runs in the SageMaker team's AWS account; this workflow only
+# starts it and reports the build status. Reviews and commit statuses are
+# posted as github-actions[bot]: the run's GITHUB_TOKEN is handed to the build,
+# so nothing long-lived has to be stored or rotated for posting.
+#
+# Fork safety: this uses pull_request_target (needed to assume the trigger
+# role), so it reuses the same collaborator gate as pr-checks-master.yml.
+# Collaborator PRs -> `auto-approve` env (runs immediately). Fork/external
+# PRs -> `manual-approval` env (a maintainer must approve the run before the
+# trigger role is exposed). No PR code is checked out or executed here.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, ready_for_review, reopened]
+    # Scope to the same product directories the other PR checks use, so pure
+    # docs/example PRs don't trigger a model review. Remove this block to
+    # review every PR.
+    paths:
+      - 'sagemaker-train/**'
+      - 'sagemaker-serve/**'
+      - 'sagemaker-mlops/**'
+      - 'sagemaker-core/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write        # OIDC federation to assume the trigger role
+  contents: read
+
+jobs:
+  # Identical gate to pr-checks-master.yml: collaborators auto-approve,
+  # everyone else requires manual approval via the `manual-approval` environment.
+  collab-check:
+    runs-on: ubuntu-latest
+    outputs:
+      approval-env: ${{ steps.collab-check.outputs.result }}
+    steps:
+      - name: Collaborator Check
+        uses: actions/github-script@v7
+        id: collab-check
+        with:
+          github-token: ${{ secrets.COLLAB_CHECK_TOKEN }}
+          result-encoding: string
+          script: |
+            try {
+              const res = await github.rest.repos.checkCollaborator({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: "${{ github.event.pull_request.user.login }}",
+              });
+              console.log("Verified ${{ github.event.pull_request.user.login }} is a repo collaborator. Auto approving AI review.")
+              return res.status == "204" ? "auto-approve" : "manual-approval"
+            } catch (error) {
+              console.log("${{ github.event.pull_request.user.login }} is not a collaborator. Requiring manual approval to run AI review.")
+              return "manual-approval"
+            }
+
+  wait-for-approval:
+    runs-on: ubuntu-latest
+    needs: [collab-check]
+    environment: ${{ needs.collab-check.outputs.approval-env }}
+    steps:
+      - run: echo "Approved — starting AI code review."
+
+  review:
+    runs-on: ubuntu-latest
+    needs: [wait-for-approval]
+    # The run token is handed to the review build, so this job's permissions
+    # are exactly what the runner may do with it: post one review (public mode)
+    # and set one commit status (internal mode). Nothing else gets write.
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+      statuses: write
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [public, internal]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AI_REVIEW_TRIGGER_ROLE }}
+          aws-region: us-west-2
+
+      - name: Start AI review build
+        id: start
+        env:
+          PROJECT_NAME: ${{ vars.AI_REVIEW_PROJECT }}
+          MODE: ${{ matrix.mode }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          # Run-scoped; expires when this job ends. The "Wait" step below keeps
+          # the job alive for the build's duration. GitHub masks it in logs.
+          GITHUB_POST_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BUILD_ID=$(aws codebuild start-build \
+            --project-name "$PROJECT_NAME" \
+            --environment-variables-override \
+              "name=MODE,value=$MODE,type=PLAINTEXT" \
+              "name=PR_NUMBER,value=$PR_NUMBER,type=PLAINTEXT" \
+              "name=HEAD_SHA,value=$HEAD_SHA,type=PLAINTEXT" \
+              "name=BASE_SHA,value=$BASE_SHA,type=PLAINTEXT" \
+              "name=GITHUB_POST_TOKEN,value=$GITHUB_POST_TOKEN,type=PLAINTEXT" \
+            --query 'build.id' --output text)
+          echo "build-id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "Started build $BUILD_ID"
+
+      - name: Wait for review build
+        env:
+          BUILD_ID: ${{ steps.start.outputs.build-id }}
+        run: |
+          set -euo pipefail
+          STATUS="IN_PROGRESS"
+          for _ in $(seq 1 60); do
+            STATUS=$(aws codebuild batch-get-builds --ids "$BUILD_ID" \
+              --query 'builds[0].buildStatus' --output text)
+            if [ "$STATUS" != "IN_PROGRESS" ]; then
+              break
+            fi
+            sleep 30
+          done
+          echo "Build $BUILD_ID: $STATUS"
+          [ "$STATUS" = "SUCCEEDED" ] || exit 1

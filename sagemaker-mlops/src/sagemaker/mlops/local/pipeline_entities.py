@@ -11,12 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Local pipeline execution entities."""
+
 from __future__ import absolute_import
 
 import enum
 import datetime
 import logging
-from uuid import uuid4
+import random
+import string
 from copy import deepcopy
 from botocore.exceptions import ClientError
 
@@ -24,11 +26,23 @@ from sagemaker.mlops.local.exceptions import StepExecutionException
 
 logger = logging.getLogger(__name__)
 
+_EXECUTION_ID_LENGTH = 12
+_EXECUTION_ID_ALPHABET = string.ascii_uppercase + string.digits
+
+
+def _generate_execution_id():
+    """Generate a service-like local execution id.
+
+    The SageMaker service returns short uppercase alphanumeric execution ids
+    (for example ``2DRR2511NGO3``). Local mode previously used a 36-char UUID,
+    which overflowed downstream name-length limits. This mirrors the service
+    format so local and remote executions behave the same.
+    """
+    return "".join(random.choices(_EXECUTION_ID_ALPHABET, k=_EXECUTION_ID_LENGTH))
+
 
 class _LocalPipeline(object):
     """Class representing a local SageMaker Pipeline"""
-
-    _executions = {}
 
     def __init__(
         self,
@@ -38,6 +52,7 @@ class _LocalPipeline(object):
     ):
         from sagemaker.core.local import LocalSession
 
+        self._executions = {}
         self.local_session = local_session or LocalSession()
         self.pipeline = pipeline
         self.pipeline_description = pipeline_description
@@ -62,7 +77,7 @@ class _LocalPipeline(object):
         """Start a pipeline execution. Returns a _LocalPipelineExecution object."""
         from sagemaker.mlops.local.pipeline import LocalPipelineExecutor
 
-        execution_id = str(uuid4())
+        execution_id = _generate_execution_id()
         execution = _LocalPipelineExecution(
             execution_id=execution_id,
             pipeline=self.pipeline,
@@ -227,7 +242,7 @@ class _LocalPipelineExecution(object):
                     )
                     raise ClientError(error_msg, "start_pipeline_execution")
                 parameter_type = default_parameters[param_name].parameter_type
-                if type(param_value) != parameter_type.python_type:  # pylint: disable=C0123
+                if type(param_value) is not parameter_type.python_type:
                     error_msg = self._construct_validation_exception_message(
                         "Unexpected type for parameter '{}'. Expected {} but found "
                         "{}.".format(param_name, parameter_type.python_type, type(param_value))

@@ -57,9 +57,7 @@ from sagemaker.core.remote_function.job import (
     _JobSettings,
     SPARK_APP_SCRIPT_PATH,
     RUNTIME_SCRIPTS_CHANNEL_NAME,
-    REMOTE_FUNCTION_WORKSPACE,
     ENTRYPOINT_SCRIPT_NAME,
-    SPARK_CONF_CHANNEL_NAME,
 )
 from sagemaker.core.workflow.parameters import Parameter, ParameterTypeEnum
 from sagemaker.mlops.workflow.retry import (
@@ -178,7 +176,6 @@ def config_uploader():
     "sagemaker.mlops.feature_store.feature_processor.feature_scheduler._get_spark_image_uri",
     return_value="some_image_uri",
 )
-@patch("sagemaker.mlops.feature_store.feature_processor._config_uploader.TrainingInput")
 @patch("sagemaker.mlops.feature_store.feature_processor.feature_scheduler.TrainingStep")
 @patch("sagemaker.mlops.feature_store.feature_processor.feature_scheduler.ModelTrainer")
 @patch(
@@ -191,10 +188,12 @@ def config_uploader():
     return_value="some_s3_uri",
 )
 @patch(
-    "sagemaker.mlops.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_runtime_scripts",
+    "sagemaker.mlops.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_runtime_scripts",  # noqa: E501
     return_value="some_s3_uri",
 )
-@patch("sagemaker.mlops.feature_store.feature_processor.feature_scheduler.RuntimeEnvironmentManager")
+@patch(
+    "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.RuntimeEnvironmentManager"
+)
 @patch(
     "sagemaker.mlops.feature_store.feature_processor._config_uploader.ConfigUploader._prepare_and_upload_callable"
 )
@@ -210,9 +209,7 @@ def config_uploader():
         pipeline_version_context_name="pipeline-version-context-name",
     ),
 )
-@patch(
-    "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.PipelineSession"
-)
+@patch("sagemaker.mlops.feature_store.feature_processor.feature_scheduler.PipelineSession")
 @patch("sagemaker.core.remote_function.job.Session", return_value=mock_session())
 @patch("sagemaker.core.remote_function.job.expand_role", side_effect=lambda session, role: role)
 @patch("sagemaker.core.remote_function.job.get_execution_role", return_value=EXECUTION_ROLE_ARN)
@@ -230,7 +227,6 @@ def test_to_pipeline(
     mock_spark_dependency_upload,
     mock_model_trainer,
     mock_training_step,
-    mock_training_input,
     mock_spark_image,
     pipeline,
     lineage_validator,
@@ -280,14 +276,19 @@ def test_to_pipeline(
     wrapped_func.job_settings.return_value = job_settings
     wrapped_func.wrapped_func.return_value = job_function
 
-    pipeline_arn = to_pipeline(
-        pipeline_name="pipeline_name",
-        step=wrapped_func,
-        role_arn=EXECUTION_ROLE_ARN,
-        max_retries=1,
-        tags=[("tag_key_1", "tag_value_1"), ("tag_key_2", "tag_value_2")],
-        sagemaker_session=session,
-    )
+    with patch(
+        "sagemaker.mlops.feature_store.feature_processor.feature_scheduler."
+        "resolve_and_validate_role",
+        side_effect=lambda provided_role, **kw: provided_role,
+    ):
+        pipeline_arn = to_pipeline(
+            pipeline_name="pipeline_name",
+            step=wrapped_func,
+            role_arn=EXECUTION_ROLE_ARN,
+            max_retries=1,
+            tags=[("tag_key_1", "tag_value_1"), ("tag_key_2", "tag_value_2")],
+            sagemaker_session=session,
+        )
     assert pipeline_arn == PIPELINE_ARN
 
     assert mock_upload_callable.called_once_with(job_function)
@@ -305,7 +306,7 @@ def test_to_pipeline(
         [
             "pip install --root-user-action=ignore 'sagemaker-feature-store-pyspark>=2,<3'",
             (
-                "python3 -c \"import feature_store_pyspark, shutil, os, glob, re; "
+                'python3 -c "import feature_store_pyspark, shutil, os, glob, re; '
                 "release_file = os.path.join(os.environ.get('SPARK_HOME', '/usr/lib/spark'), 'RELEASE'); "
                 "spark_ver = '3.5'; "
                 "rf = open(release_file).read() if os.path.exists(release_file) else ''; "
@@ -683,7 +684,11 @@ def test_to_pipeline_used_reserved_tags(get_execution_role, mock_spark_image, se
     "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.FeatureProcessorLineageHandler",
     return_value=mock_feature_processor_lineage(),
 )
-def test_schedule(lineage, helper, validation, get_tags):
+@patch(
+    "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.resolve_and_validate_role",
+    return_value=SCHEDULE_ROLE_ARN,
+)
+def test_schedule(mock_resolve, lineage, helper, validation, get_tags):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
     session.sagemaker_client.describe_pipeline = Mock(
         return_value={"PipelineArn": "my:arn", "CreationTime": NOW}
@@ -699,6 +704,12 @@ def test_schedule(lineage, helper, validation, get_tags):
     )
 
     assert schedule_arn == SCHEDULE_ARN
+    # The role flows through the IAM resolver with the feature_store role type.
+    mock_resolve.assert_called_once_with(
+        provided_role=SCHEDULE_ROLE_ARN,
+        role_type="feature_store",
+        sagemaker_session=session,
+    )
 
 
 @patch(
@@ -815,9 +826,7 @@ def test_execute(validation):
 
 
 def test_validate_fg_lineage_resources_happy_case():
-    with patch.object(
-        FeatureGroup, "get", return_value=FEATURE_GROUP_MOCK
-    ) as fg_get_method:
+    with patch.object(FeatureGroup, "get", return_value=FEATURE_GROUP_MOCK) as fg_get_method:
         with patch.object(
             Context, "load", side_effect=[CONTEXT_MOCK_01, CONTEXT_MOCK_02, CONTEXT_MOCK_03]
         ) as context_load:
@@ -828,18 +837,18 @@ def test_validate_fg_lineage_resources_happy_case():
                 feature_group_name="some_fg",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             )
-    fg_get_method.assert_called_once_with(feature_group_name="some_fg", session=SAGEMAKER_SESSION_MOCK.boto_session)
+    fg_get_method.assert_called_once_with(
+        feature_group_name="some_fg", session=SAGEMAKER_SESSION_MOCK.boto_session
+    )
     creation_time_str = FEATURE_GROUP_MOCK.creation_time.strftime("%s")
     context_load.assert_has_calls(
         [
             call(
-                context_name=f'{"some_fg"}-{creation_time_str}'
-                f"-feature-group-pipeline",
+                context_name=f'{"some_fg"}-{creation_time_str}' f"-feature-group-pipeline",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             ),
             call(
-                context_name=f'{"some_fg"}-{creation_time_str}'
-                f"-feature-group-pipeline-version",
+                context_name=f'{"some_fg"}-{creation_time_str}' f"-feature-group-pipeline-version",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             ),
         ]
@@ -1074,7 +1083,7 @@ def test_disable_trigger(mock_disable_rule):
 
 
 @patch(
-    "sagemaker.mlops.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.list_targets_by_rule",
+    "sagemaker.mlops.feature_store.feature_processor._event_bridge_rule_helper.EventBridgeRuleHelper.list_targets_by_rule",  # noqa: E501
     return_value=[{"Targets": [{"Id": "target_pipeline"}]}],
 )
 @patch(

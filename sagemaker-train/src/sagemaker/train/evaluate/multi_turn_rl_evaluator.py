@@ -12,7 +12,7 @@ from __future__ import absolute_import
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pydantic import Field, root_validator, validator
 
@@ -23,7 +23,8 @@ from .mtrl_pipeline_templates import (
     MTRL_TEMPLATE_BASE_MODEL_ONLY,
     MTRL_TEMPLATE_FINE_TUNED_ONLY,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_EVALUATOR_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 
 if TYPE_CHECKING:
@@ -35,12 +36,39 @@ _logger = logging.getLogger(__name__)
 _BEDROCK_AGENTCORE_ARN_RE = re.compile(
     r"^arn:aws[a-z\-]*:bedrock-agentcore:[a-z0-9\-]+:[0-9]{12}:(?:agent-runtime|runtime)/.+$"
 )
-_LAMBDA_ARN_RE = re.compile(
-    r"^arn:aws[a-z\-]*:lambda:[a-z0-9\-]+:[0-9]{12}:function:.+$"
-)
+_LAMBDA_ARN_RE = re.compile(r"^arn:aws[a-z\-]*:lambda:[a-z0-9\-]+:[0-9]{12}:function:.+$")
 
 # Stopping-condition bounds (seconds): 0 < v <= 72 hours.
 _MAX_STOPPING_CONDITION_SECONDS = 72 * 60 * 60
+
+
+def _tags_with_capitalized_keys(tags: Optional[List[Dict[str, str]]]) -> List[Dict[str, str]]:
+    """Convert tags to the capitalized ``Key``/``Value`` form this evaluator's paths require.
+
+    Both the raw boto3 ``CreatePipeline`` call and the ``Tags`` block rendered into the
+    pipeline definition use the API's capitalized form, whereas the other evaluators hand
+    tags to the pydantic-validated ``Pipeline.create``, which takes the lowercase form.
+    Either form is accepted here so that the inherited ``tags`` field behaves the same way
+    across evaluator subclasses.
+
+    Args:
+        tags: Tags using either ``key``/``value`` or ``Key``/``Value``, or None.
+
+    Returns:
+        The tags in capitalized form; empty when none were supplied. Entries missing a key
+        or value are skipped, since SageMaker rejects them.
+    """
+    normalized = []
+    for tag in tags or []:
+        if isinstance(tag, dict):
+            key = tag.get("Key", tag.get("key"))
+            value = tag.get("Value", tag.get("value"))
+        else:
+            key = getattr(tag, "key", None)
+            value = getattr(tag, "value", None)
+        if key is not None and value is not None:
+            normalized.append({"Key": key, "Value": value})
+    return normalized
 
 
 class MultiTurnRLEvaluator(BaseEvaluator):
@@ -133,10 +161,10 @@ class MultiTurnRLEvaluator(BaseEvaluator):
     _agent_kind: Optional[str] = None  # "bedrock" | "lambda"
     _hyperparameters: Optional[Any] = None
 
-
     # --- Validators ------------------------------------------------------
 
     @validator("dataset", pre=True, always=True)
+    @classmethod
     def _resolve_dataset(cls, v):
         if v is None:
             raise ValueError(
@@ -147,6 +175,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         return BaseEvaluator._validate_and_resolve_dataset(v)
 
     @validator("agent_config", pre=True, always=True)
+    @classmethod
     def _resolve_agent_config(cls, v):
         if v is None:
             return None
@@ -163,13 +192,12 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         )
 
     @validator("stopping_condition", always=True)
+    @classmethod
     def _validate_stopping_condition(cls, v):
         if v is None:
             return 86400
         if v <= 0:
-            raise ValueError(
-                f"[PySDK Error] 'stopping_condition' must be > 0; got {v}."
-            )
+            raise ValueError(f"[PySDK Error] 'stopping_condition' must be > 0; got {v}.")
         if v > _MAX_STOPPING_CONDITION_SECONDS:
             raise ValueError(
                 f"[PySDK Error] 'stopping_condition' must be <= "
@@ -179,6 +207,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         return v
 
     @root_validator(skip_on_failure=True)
+    @classmethod
     def _check_agent_config_for_non_trainer_models(cls, values):
         """When the model is not a ``MultiTurnRLTrainer``, require ``agent_config``.
 
@@ -202,7 +231,6 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             )
         return values
 
-
     # --- Trainer / model resolution -------------------------------------
 
     def _resolve_trainer_defaults(self) -> None:
@@ -219,9 +247,8 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         # Resolve the output model package ARN from the completed job.
         # MultiTurnRLTrainer stores the job in _latest_job (AgentRFTJob),
         # which exposes output_model_package_arn as a property.
-        source_mp = (
-            getattr(trainer, "output_model_package_arn", None)
-            or getattr(trainer, "model_package_arn", None)
+        source_mp = getattr(trainer, "output_model_package_arn", None) or getattr(
+            trainer, "model_package_arn", None
         )
         if not source_mp and hasattr(trainer, "_latest_job") and trainer._latest_job is not None:
             source_mp = getattr(trainer._latest_job, "output_model_package_arn", None)
@@ -252,10 +279,16 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 or getattr(trainer, "_agent_config", None)
                 or getattr(trainer, "agent_env", None)
             )
-            # AgentRFTJob.agent_config returns a dict like {"AgentRuntimeArn": "..."}
+            # AgentRFTJob.agent_config returns a nested dict like
+            # {"BedrockAgentCoreConfig": {"AgentRuntimeArn": "arn:..."}} or
+            # {"CustomAgentLambdaConfig": {"LambdaArn": "arn:..."}}
             if isinstance(resolved_agent, dict):
+                bedrock_cfg = resolved_agent.get("BedrockAgentCoreConfig", {})
+                lambda_cfg = resolved_agent.get("CustomAgentLambdaConfig", {})
                 self.agent_config = (
-                    resolved_agent.get("AgentRuntimeArn")
+                    bedrock_cfg.get("AgentRuntimeArn")
+                    or lambda_cfg.get("LambdaArn")
+                    or resolved_agent.get("AgentRuntimeArn")
                     or resolved_agent.get("AgentLambdaArn")
                     or resolved_agent.get("LambdaArn")
                 )
@@ -334,7 +367,6 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         self._hyperparameters = FineTuningOptions(spec)
         return self._hyperparameters
 
-
     # --- Helpers ---------------------------------------------------------
 
     def _resolve_agent_arn(self) -> None:
@@ -357,9 +389,8 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             if callable(materialize):
                 arn = materialize()
             else:
-                arn = (
-                    getattr(self.agent_config, "lambda_arn", None)
-                    or getattr(self.agent_config, "arn", None)
+                arn = getattr(self.agent_config, "lambda_arn", None) or getattr(
+                    self.agent_config, "arn", None
                 )
             if not isinstance(arn, str):
                 raise ValueError(
@@ -399,7 +430,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
 
         hparams: Dict[str, Any] = {}
         try:
-            hparams = self.hyperparameters.to_dict() if self._base_model_name_cache else {}
+            hparams = self._get_effective_hyperparameters()
         except Exception as e:  # hub fetch can fail in offline envs
             _logger.info(f"Skipping hub-sourced hyperparameters: {e}")
 
@@ -418,9 +449,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             vpc_subnets = list(getattr(networking, "subnets", []) or [])
 
         base_model_arn = (
-            self._base_model_arn_cache
-            or self._base_model_arn
-            or artifacts.get("base_model_arn")
+            self._base_model_arn_cache or self._base_model_arn or artifacts.get("base_model_arn")
         )
 
         # --- Build JobConfigDocument as a dict, then json.dumps() it ----
@@ -464,8 +493,14 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 "AcceptEula": True,
             }
             hp: Dict[str, str] = {}
-            for k in ("eval_group_size", "sampling_temperature", "top_p",
-                       "max_tokens", "pass_k_values", "success_threshold"):
+            for k in (
+                "eval_group_size",
+                "sampling_temperature",
+                "top_p",
+                "max_tokens",
+                "pass_k_values",
+                "success_threshold",
+            ):
                 v = hparams.get(k)
                 if v is not None:
                     hp[k] = str(v)
@@ -494,13 +529,17 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             return _json.dumps(doc)
 
         # Build both variants (base-only and fine-tuned).
-        job_config_doc_str = _build_job_config_doc(include_mpc=False, mlflow_run_name="base-model-eval")
-        job_config_doc_ft_str = _build_job_config_doc(include_mpc=True, mlflow_run_name="fine-tuned-model-eval")
+        job_config_doc_str = _build_job_config_doc(
+            include_mpc=False, mlflow_run_name="base-model-eval"
+        )
+        job_config_doc_ft_str = _build_job_config_doc(
+            include_mpc=True, mlflow_run_name="fine-tuned-model-eval"
+        )
 
         return {
             "pipeline_name": aws_context.get("pipeline_name")
-                or artifacts.get("pipeline_name")
-                or f"SagemakerEvaluation-MTRLEvaluation",
+            or artifacts.get("pipeline_name")
+            or "SagemakerEvaluation-MTRLEvaluation",
             "role_arn": aws_context["role_arn"],
             "base_model_arn": base_model_arn,
             "agent_arn": self._agent_arn_resolved,
@@ -509,7 +548,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             "s3_output_path": self.s3_output_path,
             "mlflow_resource_arn": self.mlflow_resource_arn,
             "mlflow_experiment_name": getattr(self, "mlflow_experiment_name", None)
-                or aws_context.get("pipeline_name"),
+            or aws_context.get("pipeline_name"),
             "eval_group_size": _str_or_none(hparams.get("eval_group_size")),
             "sampling_temperature": _str_or_none(hparams.get("sampling_temperature")),
             "top_p": _str_or_none(hparams.get("top_p")),
@@ -525,7 +564,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             "vpc_config": bool(networking),
             "vpc_security_group_ids": vpc_security_group_ids,
             "vpc_subnets": vpc_subnets,
-            "tags": self.tags,
+            "tags": _tags_with_capitalized_keys(self.tags) or None,
             # Pre-stringified JobConfigDocument for the templates.
             "job_config_document_str": job_config_doc_str,
             "job_config_document_ft_str": job_config_doc_ft_str,
@@ -536,12 +575,26 @@ class MultiTurnRLEvaluator(BaseEvaluator):
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="MultiTurnRLEvaluator.evaluate",
+        telemetry_params=[
+            ("agent_qualifier", TelemetryParamType.ATTR_VALUE),
+            ("agent_config", TelemetryParamType.ATTR_EXISTS),
+            ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
+        ]
+        + BASE_EVALUATOR_TELEMETRY_PARAMS,
     )
-    def evaluate(self) -> 'MTRLEvaluationExecution':
+    def evaluate(self, dry_run: bool = False) -> Optional["MTRLEvaluationExecution"]:
         """Render the MTRL pipeline and start a non-blocking execution.
 
+        Args:
+            dry_run (bool):
+                If True, runs all validation (IAM, agent resolution, model
+                resolution, template rendering) without submitting the
+                evaluation. Returns None on success, raises on validation
+                failure. Defaults to False.
+
         Returns:
-            MTRLEvaluationExecution: The started pipeline execution.
+            MTRLEvaluationExecution: The started pipeline execution, or None
+            if dry_run=True.
             Call ``.wait()`` to block until completion and ``.show_results()``
             to render the aggregate report.
 
@@ -552,6 +605,9 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 execution = evaluator.evaluate()
                 execution.wait()
                 execution.show_results()
+
+                # Validate without submitting:
+                evaluator.evaluate(dry_run=True)
         """
         # 1. Trainer-sourced resolution (no-op if model is not a trainer).
         self._resolve_trainer_defaults()
@@ -590,8 +646,13 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         template_str = self._select_mtrl_template()
         pipeline_definition = self._render_pipeline_definition(template_str, template_context)
 
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
+
         # Dump the pipeline definition to a local JSON file for debugging.
         import json as _json_mod
+
         _debug_path = "mtrl_eval_pipeline_input.json"
         with open(_debug_path, "w") as _f:
             _json_mod.dump(_json_mod.loads(pipeline_definition), _f, indent=2)
@@ -628,9 +689,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         # Try presigned URL via the provided client first (respects beta endpoint).
         if sm_client is not None:
             try:
-                response = sm_client.create_presigned_mlflow_app_url(
-                    Arn=self.mlflow_resource_arn
-                )
+                response = sm_client.create_presigned_mlflow_app_url(Arn=self.mlflow_resource_arn)
                 base_url = response.get("AuthorizedUrl")
             except Exception as e:
                 _logger.debug(f"Presigned MLflow URL via sm_client failed: {e}")
@@ -639,10 +698,9 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         if not base_url:
             try:
                 from sagemaker.core.utils.utils import SageMakerClient
+
                 client = SageMakerClient().sagemaker_client
-                response = client.create_presigned_mlflow_app_url(
-                    Arn=self.mlflow_resource_arn
-                )
+                response = client.create_presigned_mlflow_app_url(Arn=self.mlflow_resource_arn)
                 base_url = response.get("AuthorizedUrl")
             except Exception as e:
                 _logger.debug(f"Presigned MLflow URL via SageMakerClient failed: {e}")
@@ -654,6 +712,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         # We can't resolve experiment name → ID without an authenticated MLflow session,
         # so we use the experiment name directly in the search filter deep link
         from sagemaker.train.common_utils.mlflow_url_utils import _build_mlflow_deep_link_by_name
+
         return _build_mlflow_deep_link_by_name(base_url, eval_experiment_name)
 
     def _start_mtrl_execution(self, pipeline_definition, name, role_arn, region):
@@ -671,6 +730,11 @@ class MultiTurnRLEvaluator(BaseEvaluator):
 
         pipeline_prefix = _get_pipeline_name_prefix(EvalType.MTRL)
         pipeline_name = pipeline_prefix
+
+        # Customer tags are merged into the pipeline tags. This path uses raw boto3, which
+        # requires the API's capitalized Key/Value form.
+        pipeline_tags = [{"Key": _TAG_SAGEMAKER_MODEL_EVALUATION, "Value": "true"}]
+        pipeline_tags.extend(_tags_with_capitalized_keys(self.tags))
 
         # Search for existing MTRL pipeline
         existing_pipeline_name = None
@@ -698,7 +762,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 PipelineDisplayName=pipeline_name,
                 PipelineDescription="MTRL evaluation pipeline",
                 ClientRequestToken=str(uuid.uuid4()),
-                Tags=[{"Key": _TAG_SAGEMAKER_MODEL_EVALUATION, "Value": "true"}],
+                Tags=pipeline_tags,
             )
             _logger.info(f"Created pipeline: {pipeline_name}")
 
@@ -740,7 +804,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             eval_mode = "Base + Fine-tuned comparison"
 
         print(f"\n{'─' * 60}")
-        print(f"  MTRL Evaluation Job")
+        print("  MTRL Evaluation Job")
         print(f"{'─' * 60}")
         print(f"  Model          : {self._base_model_name_cache or self.model}")
         print(f"  Eval mode      : {eval_mode}")
@@ -781,6 +845,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             EvaluationPipelineExecution: MTRL evaluation execution instances.
         """
         from .execution import EvaluationPipelineExecution
+
         yield from EvaluationPipelineExecution.get_all(
             eval_type=EvalType.MTRL, session=session, region=region
         )
@@ -803,6 +868,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             List of hub content model names supporting MTRL evaluation.
         """
         from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
         return _list_hub_models_by_recipe(
             recipe_type="FineTuning", technique="MTRL", session=session
         )

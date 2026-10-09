@@ -274,7 +274,9 @@ def _build_uv_index_env(python_executable, index):
 
 
 def install_requirements(
-    requirements_file="requirements.txt", python_executable=None, auth_method=CodeArtifactAuthMethod.AUTO
+    requirements_file="requirements.txt",
+    python_executable=None,
+    auth_method=CodeArtifactAuthMethod.AUTO,
 ):
     """Install requirements with ``uv`` and optional CodeArtifact authentication.
 

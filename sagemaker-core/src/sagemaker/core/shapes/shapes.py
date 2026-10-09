@@ -325,6 +325,71 @@ class BatchGetRecordResponse(Base):
     unprocessed_identifiers: List[BatchGetRecordIdentifier]
 
 
+class TtlDuration(Base):
+    """
+    TtlDuration
+      Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+
+    Attributes
+    ----------------------
+    unit:  TtlDuration time unit.
+    value:  TtlDuration time value.
+    """
+
+    unit: Optional[StrPipeVar] = Unassigned()
+    value: Optional[int] = Unassigned()
+
+
+class BatchWriteRecordEntry(Base):
+    """
+    BatchWriteRecordEntry
+      An entry to write as part of a BatchWriteRecord request.
+
+    Attributes
+    ----------------------
+    feature_group_name: The name or Amazon Resource Name (ARN) of the FeatureGroup to write the record to.
+    record: List of FeatureValues to be inserted. This will be a full over-write.
+    target_stores: A list of stores to which you're adding the record. By default, Feature Store adds the record to all of the stores that you're using for the FeatureGroup.
+    ttl_duration: Time to live duration for this entry, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. This overrides the request level TtlDuration.
+    """
+
+    feature_group_name: Union[StrPipeVar, object]
+    record: List[FeatureValue]
+    target_stores: Optional[List[StrPipeVar]] = Unassigned()
+    ttl_duration: Optional[TtlDuration] = Unassigned()
+
+
+class BatchWriteRecordError(Base):
+    """
+    BatchWriteRecordError
+      The error that has occurred when attempting to write a record in a batch.
+
+    Attributes
+    ----------------------
+    entry: The entry that failed to be written.
+    error_code: The error code for the failed record write.
+    error_message: The error message for the failed record write.
+    """
+
+    entry: BatchWriteRecordEntry
+    error_code: StrPipeVar
+    error_message: StrPipeVar
+
+
+class BatchWriteRecordResponse(Base):
+    """
+    BatchWriteRecordResponse
+
+    Attributes
+    ----------------------
+    errors: A list of errors that occurred when writing records in the batch.
+    unprocessed_entries: A list of entries that were not processed. These entries can be retried.
+    """
+
+    errors: List[BatchWriteRecordError]
+    unprocessed_entries: List[BatchWriteRecordEntry]
+
+
 class GetRecordResponse(Base):
     """
     GetRecordResponse
@@ -339,19 +404,18 @@ class GetRecordResponse(Base):
     expires_at: Optional[StrPipeVar] = Unassigned()
 
 
-class TtlDuration(Base):
+class ListRecordsResponse(Base):
     """
-    TtlDuration
-      Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+    ListRecordsResponse
 
     Attributes
     ----------------------
-    unit:  TtlDuration time unit.
-    value:  TtlDuration time value.
+    record_identifiers: A list of record identifier values for the records stored in the OnlineStore.
+    next_token: A token to resume pagination if the response includes more record identifiers than MaxResults.
     """
 
-    unit: Optional[StrPipeVar] = Unassigned()
-    value: Optional[int] = Unassigned()
+    record_identifiers: List[StrPipeVar]
+    next_token: Optional[StrPipeVar] = Unassigned()
 
 
 class ResourceNotFound(Base):
@@ -1591,6 +1655,23 @@ class InstanceGroup(Base):
     instance_group_name: StrPipeVar
 
 
+class InstancePreference(Base):
+    """
+    InstancePreference
+      Defines a single candidate instance type in an ordered InstancePreferences list. When a training job specifies InstancePreferences, the platform tries each candidate type in list order and launches the job on the first type with available capacity.
+
+    Attributes
+    ----------------------
+    instance_type: The ML compute instance type for this candidate.
+    instance_count: The number of ML compute instances to use for this candidate. Optional; mutually exclusive with the uniform ResourceConfig.InstanceCount (either every preference sets its own count, or the uniform count is used for whichever type wins).
+    training_plan_arns: The training plan(s) to target for this candidate type. Optional; list is capped at 1. Training-only; mutually exclusive with the whole-job ResourceConfig.TrainingPlanArn.
+    """
+
+    instance_type: StrPipeVar
+    instance_count: Optional[IntPipeVar] = Unassigned()
+    training_plan_arns: Optional[List[StrPipeVar]] = Unassigned()
+
+
 class PlacementSpecification(Base):
     """
     PlacementSpecification
@@ -1636,6 +1717,9 @@ class ResourceConfig(Base):
     instance_groups: The configuration of a heterogeneous cluster in JSON format.
     training_plan_arn: The Amazon Resource Name (ARN); of the training plan to use for this resource configuration.
     instance_placement_config: Configuration for how training job instances are placed and allocated within UltraServers. Only applicable for UltraServer capacity.
+    instance_preferences: An ordered list of candidate instance types (max 5). When set, the platform tries each candidate in list order and launches the job on the first type with available capacity. Mutually exclusive with instance_type, instance_groups, and instance_placement_config.
+    selected_instance_type: The instance type the job was launched on when instance_preferences is used. Output-only (returned in DescribeTrainingJob); ignored on CreateTrainingJob.
+    selected_instance_count: The resolved number of instances the job was launched with when instance_preferences is used. Output-only (returned in DescribeTrainingJob); ignored on CreateTrainingJob.
     """
 
     instance_type: Optional[StrPipeVar] = Unassigned()
@@ -1646,6 +1730,9 @@ class ResourceConfig(Base):
     instance_groups: Optional[List[InstanceGroup]] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     instance_placement_config: Optional[InstancePlacementConfig] = Unassigned()
+    instance_preferences: Optional[List[InstancePreference]] = Unassigned()
+    selected_instance_type: Optional[StrPipeVar] = Unassigned()
+    selected_instance_count: Optional[IntPipeVar] = Unassigned()
 
 
 class StoppingCondition(Base):
@@ -7351,7 +7438,7 @@ class HyperParameterTuningJobConfig(Base):
     parameter_ranges: Optional[ParameterRanges] = Unassigned()
     training_job_early_stopping_type: Optional[StrPipeVar] = Unassigned()
     tuning_job_completion_criteria: Optional[TuningJobCompletionCriteria] = Unassigned()
-    random_seed: Optional[int] = Unassigned()
+    random_seed: Optional[IntPipeVar] = Unassigned()
 
 
 class HyperParameterAlgorithmSpecification(Base):
@@ -9255,6 +9342,21 @@ class ProcessingOutputConfig(Base):
     kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
+class ProcessingInstancePreference(Base):
+    """
+    ProcessingInstancePreference
+      Defines a single candidate instance type in an ordered InstancePreferences list for a processing job. When a processing job specifies InstancePreferences, the platform tries each candidate type in list order and launches the job on the first type with available capacity. Per-type training plans are training-only and do not apply to processing.
+
+    Attributes
+    ----------------------
+    instance_type: The ML compute instance type for this candidate.
+    instance_count: The number of ML compute instances to use for this candidate. Optional; mutually exclusive with the uniform ProcessingClusterConfig.InstanceCount (either every preference sets its own count, or the uniform count is used for whichever type wins).
+    """
+
+    instance_type: StrPipeVar
+    instance_count: Optional[IntPipeVar] = Unassigned()
+
+
 class ProcessingClusterConfig(Base):
     """
     ProcessingClusterConfig
@@ -9266,12 +9368,18 @@ class ProcessingClusterConfig(Base):
     instance_type: The ML compute instance type for the processing job.
     volume_size_in_gb: The size of the ML storage volume in gigabytes that you want to provision. You must specify sufficient ML storage for your scenario.  Certain Nitro-based instances include local storage with a fixed total size, dependent on the instance type. When using these instances for processing, Amazon SageMaker mounts the local instance storage instead of Amazon EBS gp2 storage. You can't request a VolumeSizeInGB greater than the total size of the local instance storage. For a list of instance types that support local instance storage, including the total size per instance type, see Instance Store Volumes.
     volume_kms_key_id: The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt data on the storage volume attached to the ML compute instance(s) that run the processing job.   Certain Nitro-based instances include local storage, dependent on the instance type. Local storage volumes are encrypted using a hardware module on the instance. You can't request a VolumeKmsKeyId when using an instance type with local storage. For a list of instance types that support local instance storage, see Instance Store Volumes. For more information about local instance storage encryption, see SSD Instance Store Volumes.
+    instance_preferences: An ordered list of candidate instance types (max 5). When set, the platform tries each candidate in list order and launches the job on the first type with available capacity. Mutually exclusive with instance_type/instance_count.
+    selected_instance_type: The instance type the job was launched on when instance_preferences is used. Output-only (returned in DescribeProcessingJob); ignored on CreateProcessingJob.
+    selected_instance_count: The resolved number of instances the job was launched with when instance_preferences is used. Output-only (returned in DescribeProcessingJob); ignored on CreateProcessingJob.
     """
 
-    instance_count: int
-    instance_type: StrPipeVar
+    instance_count: Optional[IntPipeVar] = Unassigned()
+    instance_type: Optional[StrPipeVar] = Unassigned()
     volume_size_in_gb: int
     volume_kms_key_id: Optional[StrPipeVar] = Unassigned()
+    instance_preferences: Optional[List[ProcessingInstancePreference]] = Unassigned()
+    selected_instance_type: Optional[StrPipeVar] = Unassigned()
+    selected_instance_count: Optional[IntPipeVar] = Unassigned()
 
 
 class ProcessingResources(Base):
@@ -9717,6 +9825,7 @@ class ServerlessJobConfig(Base):
     peft:  The parameter-efficient fine-tuning configuration.
     evaluation_type:  The evaluation job type. Required when serverless job type is Evaluation.
     evaluator_arn:  The evaluator Amazon Resource Name (ARN) used as reward function or reward prompt.
+    sequence_length:  The sequence length for the training job.
     """
 
     base_model_arn: StrPipeVar
@@ -9726,6 +9835,7 @@ class ServerlessJobConfig(Base):
     peft: Optional[StrPipeVar] = Unassigned()
     evaluation_type: Optional[StrPipeVar] = Unassigned()
     evaluator_arn: Optional[StrPipeVar] = Unassigned()
+    sequence_length: Optional[StrPipeVar] = Unassigned()
 
 
 class MlflowConfig(Base):
@@ -9905,7 +10015,9 @@ class OidcMemberDefinition(Base):
 
     Attributes
     ----------------------
-    groups: A list of comma seperated strings that identifies user groups in your OIDC IdP. Each user group is made up of a group of private workers.
+    groups: A list of comma-separated strings that identifies user groups in your OIDC IdP. Each user group is made up of a group of private workers.
+    group
+    member_definition_id
     """
 
     groups: Optional[List[StrPipeVar]] = Unassigned()
@@ -10015,7 +10127,7 @@ class DataCaptureConfigSummary(Base):
     capture_status: StrPipeVar
     current_sampling_percentage: int
     destination_s3_uri: StrPipeVar
-    kms_key_id: StrPipeVar
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
 class DebugRuleEvaluationStatus(Base):
@@ -14560,9 +14672,11 @@ class OnlineStoreConfigUpdate(Base):
     Attributes
     ----------------------
     ttl_duration: Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+    storage_type: The online store storage type to migrate the feature group to. Use this parameter to migrate an existing feature group from Standard to Standard_V2 storage format, enabling support for the UpdateRecord operation. Migration is a one-way operation and cannot be reversed.
     """
 
     ttl_duration: Optional[TtlDuration] = Unassigned()
+    storage_type: Optional[StrPipeVar] = Unassigned()
 
 
 class Parent(Base):

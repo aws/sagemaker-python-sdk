@@ -13,73 +13,78 @@
 """Unit tests for trainer_wait module."""
 
 import pytest
-import time
-from unittest.mock import MagicMock, patch, Mock, call
+from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
 
-from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededError
+from sagemaker.core.utils.exceptions import FailedStatusError
 
 from sagemaker.train.common_utils.trainer_wait import (
     _setup_mlflow_integration,
-    _is_jupyter_environment,
     _is_unassigned_attribute,
     _calculate_training_progress,
     _calculate_transition_duration,
     get_mlflow_url,
-    wait
+    wait,
 )
 
 
 class MockUnassignedAttribute:
     """Mock class to simulate unassigned attributes."""
+
     def __init__(self):
-        self.__class__.__name__ = 'UnassignedValue'
+        self.__class__.__name__ = "UnassignedValue"
 
 
 class TestSetupMLflowIntegration:
     """Test cases for _setup_mlflow_integration function."""
 
-    @patch('boto3.client')
+    @patch("boto3.client")
     def test_successful_mlflow_setup(self, mock_boto3_client):
         """Test successful MLflow integration setup."""
         # Mock training job with MLflow config
         training_job = MagicMock()
-        training_job.mlflow_config.mlflow_resource_arn = 'arn:aws:sagemaker:us-west-2:123456789:mlflow-tracking-server/test-server'
-        training_job.mlflow_config.mlflow_run_name = 'test-run'
-        training_job.mlflow_config.mlflow_experiment_name = 'test-experiment'
+        training_job.mlflow_config.mlflow_resource_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789:mlflow-tracking-server/test-server"
+        )
+        training_job.mlflow_config.mlflow_run_name = "test-run"
+        training_job.mlflow_config.mlflow_experiment_name = "test-experiment"
 
         # Mock SageMaker client
         mock_sm_client = MagicMock()
         mock_sm_client.create_presigned_mlflow_app_url.return_value = {
-            'AuthorizedUrl': 'https://test-mlflow-url.com'
+            "AuthorizedUrl": "https://test-mlflow-url.com"
         }
         mock_boto3_client.return_value = mock_sm_client
 
-        with patch('sagemaker.train.common_utils.trainer_wait._MLflowMetricsUtil') as mock_metrics_util:
+        with patch(
+            "sagemaker.train.common_utils.trainer_wait._MLflowMetricsUtil"
+        ) as mock_metrics_util:
             mock_util_instance = MagicMock()
             mock_metrics_util.return_value = mock_util_instance
 
             mlflow_url, metrics_util, mlflow_run_name = _setup_mlflow_integration(training_job)
 
-            assert mlflow_url == 'https://test-mlflow-url.com'
+            assert mlflow_url == "https://test-mlflow-url.com"
             assert metrics_util == mock_util_instance
-            assert mlflow_run_name == 'test-run'
-            
-            mock_boto3_client.assert_called_once_with('sagemaker')
+            assert mlflow_run_name == "test-run"
+
+            mock_boto3_client.assert_called_once_with("sagemaker")
             mock_sm_client.create_presigned_mlflow_app_url.assert_called_once_with(
-                Arn='arn:aws:sagemaker:us-west-2:123456789:mlflow-tracking-server/test-server'
+                Arn="arn:aws:sagemaker:us-west-2:123456789:mlflow-tracking-server/test-server"
             )
             mock_metrics_util.assert_called_once_with(
-                tracking_uri='arn:aws:sagemaker:us-west-2:123456789:mlflow-tracking-server/test-server',
-                experiment_name='test-experiment'
+                tracking_uri="arn:aws:sagemaker:us-west-2:123456789:mlflow-tracking-server/test-server",
+                experiment_name="test-experiment",
             )
 
     def test_mlflow_setup_exception(self):
         """Test MLflow setup when exception occurs."""
         training_job = MagicMock()
-        training_job.mlflow_config.mlflow_resource_arn = 'arn:aws:sagemaker:us-west-2:123456789:mlflow-tracking-server/test-server'
+        training_job.mlflow_config.mlflow_resource_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789:mlflow-tracking-server/test-server"
+        )
 
-        with patch('boto3.client', side_effect=Exception("boto3 error")):
+        with patch("boto3.client", side_effect=Exception("boto3 error")):
             mlflow_url, metrics_util, mlflow_run_name = _setup_mlflow_integration(training_job)
 
             assert mlflow_url is None
@@ -91,14 +96,15 @@ class TestSetupMLflowIntegration:
         training_job = MagicMock()
         training_job.mlflow_config = None
 
-        with patch('boto3.client') as mock_boto3_client:
+        with patch("boto3.client") as mock_boto3_client:
             mock_boto3_client.side_effect = AttributeError("'NoneType' object has no attribute")
-            
+
             mlflow_url, metrics_util, mlflow_run_name = _setup_mlflow_integration(training_job)
 
             assert mlflow_url is None
             assert metrics_util is None
             assert mlflow_run_name is None
+
 
 class TestIsUnassignedAttribute:
     """Test cases for _is_unassigned_attribute function."""
@@ -141,12 +147,12 @@ class TestCalculateTrainingProgress:
 
         metrics_util = MagicMock()
         metrics_util._get_most_recent_total_loss.return_value = 0.123456789
-        
+
         training_job = MagicMock()
-        training_job.mlflow_details.mlflow_run_id = 'test-run-id'
+        training_job.mlflow_details.mlflow_run_id = "test-run-id"
 
         progress_pct, progress_text = _calculate_training_progress(
-            progress_info, metrics_util, 'test-run', training_job
+            progress_info, metrics_util, "test-run", training_job
         )
 
         expected_pct = ((5 - 1) * 100 + 50) / (10 * 100) * 100  # 45%
@@ -156,9 +162,7 @@ class TestCalculateTrainingProgress:
 
     def test_calculate_progress_no_progress_info(self):
         """Test progress calculation with no progress info."""
-        progress_pct, progress_text = _calculate_training_progress(
-            None, None, None, None
-        )
+        progress_pct, progress_text = _calculate_training_progress(None, None, None, None)
 
         assert progress_pct is None
         assert progress_text == ""
@@ -166,10 +170,8 @@ class TestCalculateTrainingProgress:
     def test_calculate_progress_unassigned_progress_info(self):
         """Test progress calculation with unassigned progress info."""
         progress_info = MockUnassignedAttribute()
-        
-        progress_pct, progress_text = _calculate_training_progress(
-            progress_info, None, None, None
-        )
+
+        progress_pct, progress_text = _calculate_training_progress(progress_info, None, None, None)
 
         assert progress_pct is None
         assert progress_text == ""
@@ -182,9 +184,7 @@ class TestCalculateTrainingProgress:
         progress_info.current_epoch = 5
         progress_info.current_step = 50
 
-        progress_pct, progress_text = _calculate_training_progress(
-            progress_info, None, None, None
-        )
+        progress_pct, progress_text = _calculate_training_progress(progress_info, None, None, None)
 
         assert progress_pct is None
         assert progress_text == ""
@@ -197,9 +197,7 @@ class TestCalculateTrainingProgress:
         progress_info.current_epoch = 5
         progress_info.current_step = 50
 
-        progress_pct, progress_text = _calculate_training_progress(
-            progress_info, None, None, None
-        )
+        progress_pct, progress_text = _calculate_training_progress(progress_info, None, None, None)
 
         assert progress_pct is None
         assert progress_text == ""
@@ -212,9 +210,7 @@ class TestCalculateTrainingProgress:
         progress_info.current_epoch = None
         progress_info.current_step = None
 
-        progress_pct, progress_text = _calculate_training_progress(
-            progress_info, None, None, None
-        )
+        progress_pct, progress_text = _calculate_training_progress(progress_info, None, None, None)
 
         expected_pct = ((0 - 1) * 100 + 0) / (10 * 100) * 100  # -1%
         assert progress_pct == expected_pct
@@ -230,11 +226,11 @@ class TestCalculateTrainingProgress:
 
         metrics_util = MagicMock()
         metrics_util._get_most_recent_total_loss.side_effect = Exception("metrics error")
-        
+
         training_job = MagicMock()
 
         progress_pct, progress_text = _calculate_training_progress(
-            progress_info, metrics_util, 'test-run', training_job
+            progress_info, metrics_util, "test-run", training_job
         )
 
         expected_pct = ((5 - 1) * 100 + 50) / (10 * 100) * 100  # 45%
@@ -251,7 +247,7 @@ class TestCalculateTrainingProgress:
         progress_info.current_step = 50
 
         progress_pct, progress_text = _calculate_training_progress(
-            progress_info, None, 'test-run', None
+            progress_info, None, "test-run", None
         )
 
         expected_pct = ((5 - 1) * 100 + 50) / (10 * 100) * 100  # 45%
@@ -267,7 +263,7 @@ class TestCalculateTransitionDuration:
         """Test duration calculation for completed transition."""
         start_time = datetime.now()
         end_time = start_time + timedelta(seconds=10.5)
-        
+
         trans = MagicMock()
         trans.start_time = start_time
         trans.end_time = end_time
@@ -299,14 +295,17 @@ class TestCalculateTransitionDuration:
         assert duration == ""
         assert check == ""
 
+
 class TestWaitFunction:
     """Test cases for wait function."""
 
-    @patch('time.sleep')
-    @patch('time.time')
-    @patch('sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration')
-    @patch('sagemaker.train.common_utils.trainer_wait._is_jupyter_environment')
-    def test_wait_completed_non_jupyter(self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep):
+    @patch("time.sleep")
+    @patch("time.time")
+    @patch("sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration")
+    @patch("sagemaker.train.common_utils.trainer_wait._is_jupyter_environment")
+    def test_wait_completed_non_jupyter(
+        self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep
+    ):
         """Test wait function with completed job in non-Jupyter environment."""
         mock_is_jupyter.return_value = False
         mock_setup_mlflow.return_value = (None, None, None)
@@ -314,9 +313,9 @@ class TestWaitFunction:
 
         # Mock training job
         training_job = MagicMock()
-        training_job.training_job_name = 'test-job'
-        training_job.training_job_status = 'Completed'
-        training_job.secondary_status = 'Completed'
+        training_job.training_job_name = "test-job"
+        training_job.training_job_status = "Completed"
+        training_job.secondary_status = "Completed"
         training_job.secondary_status_transitions = []
         training_job.failure_reason = None
 
@@ -325,12 +324,14 @@ class TestWaitFunction:
         training_job.refresh.assert_called()
         mock_sleep.assert_called_with(1)
 
-    @patch('time.sleep')
-    @patch('time.time')
-    @patch('sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration')
-    @patch('sagemaker.train.common_utils.trainer_wait._is_jupyter_environment')
-    @patch('sagemaker.train.common_utils.trainer_wait._is_unassigned_attribute')
-    def test_wait_failed_job(self, mock_is_unassigned, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep):
+    @patch("time.sleep")
+    @patch("time.time")
+    @patch("sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration")
+    @patch("sagemaker.train.common_utils.trainer_wait._is_jupyter_environment")
+    @patch("sagemaker.train.common_utils.trainer_wait._is_unassigned_attribute")
+    def test_wait_failed_job(
+        self, mock_is_unassigned, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep
+    ):
         """Test wait function with failed job."""
         mock_is_jupyter.return_value = False
         mock_setup_mlflow.return_value = (None, None, None)
@@ -338,21 +339,22 @@ class TestWaitFunction:
         mock_is_unassigned.return_value = False  # failure_reason is not unassigned
 
         training_job = MagicMock()
-        training_job.training_job_name = 'test-job'
-        training_job.training_job_status = 'InProgress'  # Not in terminal states yet
-        training_job.secondary_status = 'Failed'
+        training_job.training_job_name = "test-job"
+        training_job.training_job_status = "InProgress"  # Not in terminal states yet
+        training_job.secondary_status = "Failed"
         training_job.secondary_status_transitions = []
-        training_job.failure_reason = 'Job failed due to error'
+        training_job.failure_reason = "Job failed due to error"
 
         with pytest.raises(FailedStatusError):
             wait(training_job, poll=1)
 
-
-    @patch('time.sleep')
-    @patch('time.time')
-    @patch('sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration')
-    @patch('sagemaker.train.common_utils.trainer_wait._is_jupyter_environment')
-    def test_wait_with_transitions_non_jupyter(self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep):
+    @patch("time.sleep")
+    @patch("time.time")
+    @patch("sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration")
+    @patch("sagemaker.train.common_utils.trainer_wait._is_jupyter_environment")
+    def test_wait_with_transitions_non_jupyter(
+        self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep
+    ):
         """Test wait function with status transitions in non-Jupyter environment."""
         mock_is_jupyter.return_value = False
         mock_setup_mlflow.return_value = (None, None, None)
@@ -360,15 +362,15 @@ class TestWaitFunction:
 
         # Mock transition
         trans = MagicMock()
-        trans.status = 'Training'
-        trans.status_message = 'Training in progress'
+        trans.status = "Training"
+        trans.status_message = "Training in progress"
         trans.start_time = datetime.now()
         trans.end_time = None
 
         training_job = MagicMock()
-        training_job.training_job_name = 'test-job'
-        training_job.training_job_status = 'Completed'
-        training_job.secondary_status = 'Completed'
+        training_job.training_job_name = "test-job"
+        training_job.training_job_status = "Completed"
+        training_job.secondary_status = "Completed"
         training_job.secondary_status_transitions = [trans]
         training_job.failure_reason = None
         training_job.progress_info = None
@@ -385,21 +387,23 @@ class TestWaitFunction:
         with pytest.raises(RuntimeError, match="Training job monitoring failed"):
             wait(training_job)
 
-    @patch('time.sleep')
-    @patch('time.time')
-    @patch('sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration')
-    @patch('sagemaker.train.common_utils.trainer_wait._is_jupyter_environment')
-    def test_wait_with_mlflow_metrics_completed(self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep):
+    @patch("time.sleep")
+    @patch("time.time")
+    @patch("sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration")
+    @patch("sagemaker.train.common_utils.trainer_wait._is_jupyter_environment")
+    def test_wait_with_mlflow_metrics_completed(
+        self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep
+    ):
         """Test wait function with MLflow metrics for completed job."""
         mock_is_jupyter.return_value = False
-        
+
         # Mock MLflow setup
         metrics_util = MagicMock()
         metrics_util._get_loss_metrics_by_epoch.return_value = {
-            0: {'loss': 0.5, 'accuracy': 0.8},
-            1: {'loss': 0.3, 'accuracy': 0.9}
+            0: {"loss": 0.5, "accuracy": 0.8},
+            1: {"loss": 0.3, "accuracy": 0.9},
         }
-        mock_setup_mlflow.return_value = ('https://mlflow.com', metrics_util, 'test-run')
+        mock_setup_mlflow.return_value = ("https://mlflow.com", metrics_util, "test-run")
         mock_time.side_effect = [0, 5]
 
         # Mock progress info
@@ -407,9 +411,9 @@ class TestWaitFunction:
         progress_info.total_step_count_per_epoch = 100
 
         training_job = MagicMock()
-        training_job.training_job_name = 'test-job'
-        training_job.training_job_status = 'Completed'
-        training_job.secondary_status = 'Completed'
+        training_job.training_job_name = "test-job"
+        training_job.training_job_status = "Completed"
+        training_job.secondary_status = "Completed"
         training_job.secondary_status_transitions = []
         training_job.failure_reason = None
         training_job.progress_info = progress_info
@@ -418,20 +422,22 @@ class TestWaitFunction:
 
         metrics_util._get_loss_metrics_by_epoch.assert_called_once()
 
-    @patch('time.sleep')
-    @patch('time.time')  
-    @patch('sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration')
-    @patch('sagemaker.train.common_utils.trainer_wait._is_jupyter_environment')
-    def test_wait_unassigned_failure_reason(self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep):
+    @patch("time.sleep")
+    @patch("time.time")
+    @patch("sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration")
+    @patch("sagemaker.train.common_utils.trainer_wait._is_jupyter_environment")
+    def test_wait_unassigned_failure_reason(
+        self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep
+    ):
         """Test wait function with unassigned failure reason."""
         mock_is_jupyter.return_value = False
         mock_setup_mlflow.return_value = (None, None, None)
         mock_time.side_effect = [0, 5]
 
         training_job = MagicMock()
-        training_job.training_job_name = 'test-job' 
-        training_job.training_job_status = 'Completed'
-        training_job.secondary_status = 'Completed'
+        training_job.training_job_name = "test-job"
+        training_job.training_job_status = "Completed"
+        training_job.secondary_status = "Completed"
         training_job.secondary_status_transitions = []
         training_job.failure_reason = MockUnassignedAttribute()
 
@@ -439,10 +445,10 @@ class TestWaitFunction:
 
         training_job.refresh.assert_called()
 
-    @patch('time.sleep')
-    @patch('time.time')
-    @patch('sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration')
-    @patch('sagemaker.train.common_utils.trainer_wait._is_jupyter_environment')
+    @patch("time.sleep")
+    @patch("time.time")
+    @patch("sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration")
+    @patch("sagemaker.train.common_utils.trainer_wait._is_jupyter_environment")
     def test_wait_stopped_job(self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep):
         """Test wait function with stopped job."""
         mock_is_jupyter.return_value = False
@@ -450,9 +456,9 @@ class TestWaitFunction:
         mock_time.side_effect = [0, 5]
 
         training_job = MagicMock()
-        training_job.training_job_name = 'test-job'
-        training_job.training_job_status = 'Stopped'
-        training_job.secondary_status = 'Stopped'
+        training_job.training_job_name = "test-job"
+        training_job.training_job_status = "Stopped"
+        training_job.secondary_status = "Stopped"
         training_job.secondary_status_transitions = []
         training_job.failure_reason = None
 
@@ -460,18 +466,20 @@ class TestWaitFunction:
 
         training_job.refresh.assert_called()
 
-    @patch('time.sleep')
-    @patch('time.time')
-    @patch('sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration')
-    @patch('sagemaker.train.common_utils.trainer_wait._is_jupyter_environment')
-    def test_wait_metrics_exception_non_jupyter(self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep):
+    @patch("time.sleep")
+    @patch("time.time")
+    @patch("sagemaker.train.common_utils.trainer_wait._setup_mlflow_integration")
+    @patch("sagemaker.train.common_utils.trainer_wait._is_jupyter_environment")
+    def test_wait_metrics_exception_non_jupyter(
+        self, mock_is_jupyter, mock_setup_mlflow, mock_time, mock_sleep
+    ):
         """Test wait function with metrics exception in non-Jupyter environment."""
         mock_is_jupyter.return_value = False
-        
+
         # Mock MLflow setup with exception
         metrics_util = MagicMock()
         metrics_util._get_loss_metrics_by_epoch.side_effect = Exception("metrics error")
-        mock_setup_mlflow.return_value = ('https://mlflow.com', metrics_util, 'test-run')
+        mock_setup_mlflow.return_value = ("https://mlflow.com", metrics_util, "test-run")
         mock_time.side_effect = [0, 5]
 
         # Mock progress info
@@ -479,9 +487,9 @@ class TestWaitFunction:
         progress_info.total_step_count_per_epoch = 100
 
         training_job = MagicMock()
-        training_job.training_job_name = 'test-job'
-        training_job.training_job_status = 'Completed'
-        training_job.secondary_status = 'Completed'
+        training_job.training_job_name = "test-job"
+        training_job.training_job_status = "Completed"
+        training_job.secondary_status = "Completed"
         training_job.secondary_status_transitions = []
         training_job.failure_reason = None
         training_job.progress_info = progress_info
@@ -501,7 +509,9 @@ class TestGetMlflowUrl:
         mock_helper.return_value = "https://mlflow.example.com/auth?token=abc#/experiments/42"
 
         training_job = MagicMock()
-        training_job.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        training_job.mlflow_config.mlflow_resource_arn = (
+            "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        )
         training_job.mlflow_config.mlflow_experiment_name = "my-experiment"
 
         result = get_mlflow_url(training_job)
@@ -518,7 +528,9 @@ class TestGetMlflowUrl:
         """Test that a string job name is resolved via TrainingJob.get()."""
         mock_helper.return_value = "https://mlflow.example.com/auth"
         mock_tj = MagicMock()
-        mock_tj.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        mock_tj.mlflow_config.mlflow_resource_arn = (
+            "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        )
         mock_tj.mlflow_config.mlflow_experiment_name = None
         mock_tj_class.get.return_value = mock_tj
 
@@ -548,7 +560,9 @@ class TestGetMlflowUrl:
         mock_helper.return_value = None
 
         training_job = MagicMock()
-        training_job.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        training_job.mlflow_config.mlflow_resource_arn = (
+            "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        )
         training_job.mlflow_config.mlflow_experiment_name = "exp"
 
         with pytest.raises(ValueError, match="Failed to generate presigned MLflow URL"):
