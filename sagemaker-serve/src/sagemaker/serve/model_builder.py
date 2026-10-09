@@ -4247,25 +4247,20 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 explainer_config_dict = explainer_config._to_request_dict()
 
             if update_endpoint:
+                # Use a unique config name: the model name is reused across updates, and
+                # endpoint config names cannot be reused.
                 endpoint_config_name = self.sagemaker_session.create_endpoint_config(
-                    name=self.model_name,
-                    model_name=self.model_name,
-                    initial_instance_count=initial_instance_count,
-                    instance_type=instance_type,
-                    accelerator_type=accelerator_type,
+                    name=unique_name_from_base(self.model_name),
+                    production_variants=[production_variant],
                     tags=tags,
                     kms_key=kms_key,
                     data_capture_config_dict=data_capture_config_dict,
-                    volume_size=volume_size,
-                    model_data_download_timeout=model_data_download_timeout,
-                    container_startup_health_check_timeout=container_startup_health_check_timeout,
-                    explainer_config_dict=explainer_config_dict,
                     async_inference_config_dict=async_inference_config_dict,
-                    serverless_inference_config_dict=serverless_inference_config_dict,
-                    routing_config=routing_config,
-                    inference_ami_version=inference_ami_version,
+                    explainer_config_dict=explainer_config_dict,
                 )
-                self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+                self.sagemaker_session.update_endpoint(
+                    self.endpoint_name, endpoint_config_name, wait=wait
+                )
             else:
                 self.sagemaker_session.endpoint_from_production_variants(
                     name=self.endpoint_name,
