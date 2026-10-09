@@ -28,6 +28,7 @@ Limitations, both inherent to splicing values into finished JSON text:
   number or boolean reaches the service quoted. Parameterise string-valued
   fields only.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -67,9 +68,7 @@ def convert_job_config_document_to_string(job_config) -> Union[str, PipelineVari
         if isinstance(obj, PipelineVariable):
             variables.append(obj)
             return "%s%d__" % (token_prefix, len(variables) - 1)
-        raise TypeError(
-            "Object of type %s is not JSON serializable" % obj.__class__.__name__
-        )
+        raise TypeError("Object of type %s is not JSON serializable" % obj.__class__.__name__)
 
     document = json.dumps(job_config, default=_placeholder)
     if not variables:
