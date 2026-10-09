@@ -27,6 +27,8 @@ from sagemaker.core.helper.pipeline_variable import RequestType
 from sagemaker.core.workflow.properties import Properties
 from sagemaker.core.workflow.utilities import trim_request_dict
 
+_CREATE_MODEL_RETRY_POLICIES = "create_model_retry_policies"
+_REGISTER_MODEL_RETRY_POLICIES = "register_model_retry_policies"
 _REPACK_MODEL_RETRY_POLICIES = "repack_model_retry_policies"
 _REPACK_MODEL_NAME_BASE = "RepackModel"
 _IGNORED_REPACK_PARAM_LIST = ["entry_point", "source_dir", "hyperparameters", "dependencies"]
@@ -64,9 +66,12 @@ class ModelStep(ConfigurableRetryStep):
                 A list of `Step` or `StepCollection`
                 names or `Step` instances or `StepCollection` that it depends on.
                 If a listed `Step` name does not exist, an error is returned (default: None).
-            retry_policies (List[RetryPolicy]): The list of retry policies for the `ModelStep`
-                (default: None). Note: `SageMakerJobStepRetryPolicy` is not allowed, since
-                create/register model step does not support it.
+            retry_policies (List[RetryPolicy] or Dict[str, List[RetryPolicy]]): The list of
+                retry policies for the `ModelStep` and the repack model step, if one is
+                created (default: None). To configure them separately, pass a dict keyed by
+                ``create_model_retry_policies`` or ``register_model_retry_policies`` and
+                ``repack_model_retry_policies``. Note: `SageMakerJobStepRetryPolicy` is not
+                allowed for the create/register model step, since it does not support it.
 
                 .. code:: python
 
@@ -75,6 +80,14 @@ class ModelStep(ConfigurableRetryStep):
                         retry_policies=[
                             StepRetryPolicy(...),
                         ],
+                    )
+
+                    ModelStep(
+                        ...
+                        retry_policies=dict(
+                            create_model_retry_policies=[StepRetryPolicy(...)],
+                            repack_model_retry_policies=[SageMakerJobStepRetryPolicy(...)],
+                        ),
                     )
 
             display_name (str): The display name of the `ModelStep`.
@@ -131,8 +144,32 @@ class ModelStep(ConfigurableRetryStep):
         else:
             step_type = StepTypeEnum.CREATE_MODEL
 
+        if isinstance(retry_policies, dict):
+            model_retry_policies = retry_policies.get(
+                (
+                    _REGISTER_MODEL_RETRY_POLICIES
+                    if step_type == StepTypeEnum.REGISTER_MODEL
+                    else _CREATE_MODEL_RETRY_POLICIES
+                ),
+                None,
+            )
+            self._repack_model_retry_policies = retry_policies.get(
+                _REPACK_MODEL_RETRY_POLICIES, None
+            )
+        else:
+            model_retry_policies = retry_policies
+            self._repack_model_retry_policies = retry_policies
+
+        # Validate that SageMakerJobStepRetryPolicy is not used for model step
+        for policy in model_retry_policies or []:
+            if isinstance(policy, SageMakerJobStepRetryPolicy):
+                raise ValueError(
+                    "SageMakerJobStepRetryPolicy is not allowed for a create/register"
+                    " model step. Please use StepRetryPolicy instead"
+                )
+
         super(ModelStep, self).__init__(
-            name, step_type, display_name, description, depends_on, retry_policies
+            name, step_type, display_name, description, depends_on, model_retry_policies
         )
 
         self.step_args = step_args
@@ -145,22 +182,6 @@ class ModelStep(ConfigurableRetryStep):
         self._register_model_args = self.step_args.create_model_package_request
         self._need_runtime_repack = self.step_args.need_runtime_repack
         self._runtime_repack_output_prefix = self.step_args.runtime_repack_output_prefix
-        if isinstance(retry_policies, dict):
-            self._repack_model_retry_policies = retry_policies.get(
-                _REPACK_MODEL_RETRY_POLICIES, None
-            )
-        else:
-            self._repack_model_retry_policies = retry_policies
-
-        # Validate that SageMakerJobStepRetryPolicy is not used for model step
-        if retry_policies and not isinstance(retry_policies, dict):
-            for policy in retry_policies:
-                if isinstance(policy, SageMakerJobStepRetryPolicy):
-                    raise ValueError(
-                        "SageMakerJobStepRetryPolicy is not allowed for a create/register"
-                        " model step. Please use StepRetryPolicy instead"
-                    )
-
         # Set up properties based on step type
         if self._register_model_args:
             self._properties = Properties(
