@@ -1,5 +1,3 @@
-"""JSON schema definition for the SageMaker Python SDK configuration file."""
-
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -501,7 +499,10 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 },
                                 "MlflowApp": {
                                     "type": "object",
-                                    "properties": {"role_arn": {"type": "string"}},
+                                    "properties": {
+                                        "role_arn": {"type": "string"},
+                                        "kms_key_id": {"type": "string"},
+                                    },
                                 },
                                 "MlflowTrackingServer": {
                                     "type": "object",
