@@ -846,8 +846,9 @@ def _get_huggingface_alias_test_cases():
             py_ver = ver_cfg[base_fw]["py_versions"][0]
             inst = "ml.p3.2xlarge" if scope == "training" else "ml.c5.xlarge"
             cases.append(
-                pytest.param(scope, alias, resolved, base_fw, py_ver, inst,
-                             id=f"{scope}-{alias}->{resolved}")
+                pytest.param(
+                    scope, alias, resolved, base_fw, py_ver, inst, id=f"{scope}-{alias}->{resolved}"
+                )
             )
     return cases
 
@@ -864,8 +865,7 @@ def _get_huggingface_full_version_test_cases():
             py_ver = ver_cfg[base_fw]["py_versions"][0]
             inst = "ml.p3.2xlarge" if scope == "training" else "ml.c5.xlarge"
             cases.append(
-                pytest.param(scope, full_ver, base_fw, py_ver, inst,
-                             id=f"{scope}-{full_ver}")
+                pytest.param(scope, full_ver, base_fw, py_ver, inst, id=f"{scope}-{full_ver}")
             )
     return cases
 
@@ -887,18 +887,16 @@ def test_huggingface_version_alias_resolves_in_tag(
         base_framework_version=base_fw,
         instance_type=instance_type,
     )
-    assert f"transformers{resolved}-" in uri, (
-        f"Expected resolved version 'transformers{resolved}-' in URI, got: {uri}"
-    )
+    assert (
+        f"transformers{resolved}-" in uri
+    ), f"Expected resolved version 'transformers{resolved}-' in URI, got: {uri}"
 
 
 @pytest.mark.parametrize(
     "scope,full_version,base_fw,py_ver,instance_type",
     _get_huggingface_full_version_test_cases(),
 )
-def test_huggingface_full_version_in_tag(
-    scope, full_version, base_fw, py_ver, instance_type
-):
+def test_huggingface_full_version_in_tag(scope, full_version, base_fw, py_ver, instance_type):
     """Full (non-aliased) versions must appear unchanged in image URI tags."""
     uri = image_uris.retrieve(
         framework="huggingface",
@@ -909,9 +907,9 @@ def test_huggingface_full_version_in_tag(
         base_framework_version=base_fw,
         instance_type=instance_type,
     )
-    assert f"transformers{full_version}-" in uri, (
-        f"Expected full version 'transformers{full_version}-' in URI, got: {uri}"
-    )
+    assert (
+        f"transformers{full_version}-" in uri
+    ), f"Expected full version 'transformers{full_version}-' in URI, got: {uri}"
 
 
 @pytest.mark.parametrize(
