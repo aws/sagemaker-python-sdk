@@ -1,5 +1,78 @@
 # Changelog
 
+## v1.24.0 (2026-10-07)
+
+### New Features
+
+- feat(train): add args field to SourceCode for command-based training (#6356)
+- feat(train): add output_data property to ModelTrainer (#6355)
+- feat(train): allow configurable S3 key prefix for ModelTrainer input uploads (#6354)
+
+### Bug Fixes
+
+- fix(train): fix incorrect model_trainer method call to load hyperparameters from file (#5771)
+- fix(train): handle CRLF line endings (#6088)
+- fix(train): preserve content_type when HyperparameterTuner converts InputData to Channel (#6321)
+- fix(train): allow PipelineVariable keys in HyperparameterTuner hyperparameter_ranges annotation (#6314)
+- fix(train): accept a PipelineVariable for HyperparameterTuner random_seed (#6320)
+- fix(train): apply output KMS key to ModelTrainer source-code S3 uploads (#6339)
+- fix(train): do not apply user ignore_patterns to the sm_drivers driver channel (#6316)
+
+### Tests
+
+- test(train): serialize Nova serverless integ jobs (#6387)
+- test(train): stop MTRL training integ tests churning fixture MPG (#6362)
+- test(train): stop test_sourcecode_args from depending on an ambient HOME (#6383)
+
+
+## v1.23.0 (2026-09-24)
+
+### New Features
+
+- feat(train): finetuningoptions validation telemetry (#6286)
+- feat(train): apply constructor hyperparameters in fine-tuning trainers (#6293)
+
+### Bug Fixes
+
+- fix(train): raise on invalid constructor hyperparameters (#6306)
+
+### Tests
+
+- fix PR check tests (#6272)
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v1.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix(train): enforce S3 ownership on ai_registry default bucket (#6275)
+
+
+## v1.22.0 (2026-09-14)
+
+### New Features
+
+- feat(train): add list_hyperparameters() for pre-trainer hyperparameter discovery (#6149)
+- feat(train): validate raw base model names in SageMaker Hub (#6227)
+- feat(train): add InstancePreferences for multi-instance-type training (#6249)
+
+### Bug Fixes
+
+- fix(train): add PipelineSession support to SFT, DPO, RLAIF, and RLVR trainers (#6213)
+- fix(train): resolve private Hub models and aliased references for ModelTrainer (#6201)
+- fix(train): validate evaluator models against the live supported-model list (#6217)
+- fix(train): complete PipelineSession support for SFT, DPO, RLAIF, and RLVR trainers (#6235)
+- fix(train): preserve training_plan_arn during serverful compute reconstruction (#6258)
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+
+### Tests
+
+- fix(ci,train): stop integ tests from rerunning the shallow suite (#6216)
+- docs(train): add guidance for maintaining shallow integration tests (#6219)
+- fix(train): refresh MTRL attached-job integration fixtures (#6259)
+- fix(train): add training_plan_arn to serverful test fixtures (#6270)
+
 ## v1.21.0 (2026-08-25)
 
 ### New Features

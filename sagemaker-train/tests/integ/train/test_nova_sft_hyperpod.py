@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests for SFT trainer on HyperPod (Nova Micro)"""
+
 from __future__ import absolute_import
 
 import time
@@ -60,16 +61,14 @@ def verified_training_dataset(s3_client, s3_bucket):
     s3_key = f"{S3_PREFIX}/sft-nova/sft_200_samples.jsonl"
     s3_path = f"s3://{s3_bucket}/{s3_key}"
     try:
-        bucket_region = s3_client.get_bucket_location(Bucket=s3_bucket)[
-            "LocationConstraint"
-        ] or "us-east-1"
+        bucket_region = (
+            s3_client.get_bucket_location(Bucket=s3_bucket)["LocationConstraint"] or "us-east-1"
+        )
         s3_regional_client = boto3.client("s3", region_name=bucket_region)
         s3_regional_client.head_object(Bucket=s3_bucket, Key=s3_key)
     except s3_client.exceptions.ClientError as e:
         if e.response["Error"]["Code"] in ("404", "NoSuchKey"):
-            pytest.fail(
-                f"Training file not found in S3: {s3_path}"
-            )
+            pytest.fail(f"Training file not found in S3: {s3_path}")
         else:
             raise
     return s3_path
@@ -136,7 +135,7 @@ def test_sft_trainer_nova_micro_hyperpod_lora(
         logger.info(f"Waiting for manifest... ({elapsed}s elapsed)")
         time.sleep(poll_interval)
 
-    assert checkpoint_path is not None, (
-        f"Job {job_name} did not produce a manifest within {max_wait_time}s"
-    )
+    assert (
+        checkpoint_path is not None
+    ), f"Job {job_name} did not produce a manifest within {max_wait_time}s"
     logger.info(f"Training complete. Checkpoint: {checkpoint_path}")

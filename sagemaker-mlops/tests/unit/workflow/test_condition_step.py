@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow condition_step."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -38,10 +39,7 @@ def mock_step():
 
 def test_condition_step_init(mock_condition, mock_step):
     condition_step = ConditionStep(
-        name="condition-step",
-        conditions=[mock_condition],
-        if_steps=[mock_step],
-        else_steps=[]
+        name="condition-step", conditions=[mock_condition], if_steps=[mock_step], else_steps=[]
     )
     assert condition_step.name == "condition-step"
     assert condition_step.step_type == StepTypeEnum.CONDITION
@@ -51,10 +49,7 @@ def test_condition_step_init(mock_condition, mock_step):
 
 def test_condition_step_arguments(mock_condition, mock_step):
     condition_step = ConditionStep(
-        name="condition-step",
-        conditions=[mock_condition],
-        if_steps=[mock_step],
-        else_steps=[]
+        name="condition-step", conditions=[mock_condition], if_steps=[mock_step], else_steps=[]
     )
     args = condition_step.arguments
     assert "Conditions" in args
@@ -63,8 +58,5 @@ def test_condition_step_arguments(mock_condition, mock_step):
 
 
 def test_condition_step_properties(mock_condition):
-    condition_step = ConditionStep(
-        name="condition-step",
-        conditions=[mock_condition]
-    )
+    condition_step = ConditionStep(name="condition-step", conditions=[mock_condition])
     assert hasattr(condition_step.properties, "Outcome")

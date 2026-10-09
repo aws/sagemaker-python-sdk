@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import datetime
@@ -514,7 +515,6 @@ class _LocalTransformJob(object):
 
         working_dir = self._get_working_directory()
         dataset_dir = data_source.get_root_dir()
-        working_dir_real = os.path.realpath(working_dir)
 
         for fn in data_source.get_file_list():
 
@@ -522,9 +522,7 @@ class _LocalTransformJob(object):
             filename = os.path.basename(fn)
             destination_path = os.path.join(working_dir, relative_path, filename + ".out")
 
-            validate_path_within_directory(
-                destination_path, working_dir, source_description=fn
-            )
+            validate_path_within_directory(destination_path, working_dir, source_description=fn)
 
             copy_directory_structure(working_dir, relative_path)
 

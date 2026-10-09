@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Pipeline parameters and conditions for workflow."""
+
 from __future__ import absolute_import
 
 from enum import Enum
@@ -18,7 +19,6 @@ from typing import List, Optional
 import attr
 
 from sagemaker.core.workflow.entities import Entity, DefaultEnumMeta, RequestType
-
 
 DEFAULT_BACKOFF_RATE = 2.0
 DEFAULT_INTERVAL_SECONDS = 1
@@ -91,7 +91,7 @@ class RetryPolicy(Entity):
 
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
-        if (self.max_attempts is None) == self.expire_after_mins is None:
+        if (self.max_attempts is None) == (self.expire_after_mins is None):
             raise ValueError("Only one of [max_attempts] and [expire_after_mins] can be given.")
 
         request = {

@@ -23,6 +23,7 @@ from sagemaker.core.processing import (
     _processing_output_to_request_dict,
     _get_process_request,
     logs_for_processing_job,
+    _wait_for_processing_job,
 )
 from sagemaker.core.shapes import (
     ProcessingInput,
@@ -1099,6 +1100,7 @@ class TestScriptProcessorRun:
 
         mock_job = Mock()
         mock_job.wait = Mock()
+        mock_job.processing_job_name = "test-processing-job"
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
             f.write("print('test')")
@@ -1110,11 +1112,77 @@ class TestScriptProcessorRun:
                     with patch(
                         "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
                     ):
-                        processor.run(code=temp_file, wait=True, logs=False)
-                        mock_job.wait.assert_called_once()
+                        with patch(
+                            "sagemaker.core.processing._wait_for_processing_job"
+                        ) as mock_wait:
+                            processor.run(code=temp_file, wait=True, logs=False)
+                            # The wait path must go through the session-aware helper
+                            # (which uses the session's region), not latest_job.wait()
+                            # which resolves a default-region client (issue #5796).
+                            mock_job.wait.assert_not_called()
+                            mock_wait.assert_called_once_with(
+                                sagemaker_session=mock_session,
+                                job_name="test-processing-job",
+                            )
         finally:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
+
+    def test_run_with_wait_and_logs_uses_session(self, mock_session):
+        processor = ScriptProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            command=["python3"],
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        mock_job = Mock()
+        mock_job.processing_job_name = "test-processing-job"
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
+            f.write("print('test')")
+            temp_file = f.name
+
+        try:
+            with patch.object(processor, "_start_new", return_value=mock_job):
+                with patch("os.path.isfile", return_value=True):
+                    with patch(
+                        "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
+                    ):
+                        with patch(
+                            "sagemaker.core.processing.logs_for_processing_job"
+                        ) as mock_logs:
+                            processor.run(code=temp_file, wait=True, logs=True)
+                            # logs path must also be session-aware (issue #5796).
+                            mock_logs.assert_called_once_with(
+                                sagemaker_session=mock_session,
+                                job_name="test-processing-job",
+                                wait=True,
+                            )
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    def test_wait_for_processing_job_uses_session_region(self, mock_session):
+        """_wait_for_processing_job describes via the session's region-aware client."""
+        mock_session.sagemaker_client.describe_processing_job = Mock(
+            return_value={"ProcessingJobStatus": "Completed"}
+        )
+        with patch("sagemaker.core.processing._wait_until", side_effect=lambda fn, poll: fn()):
+            _wait_for_processing_job(mock_session, "test-job", poll=1)
+        mock_session.sagemaker_client.describe_processing_job.assert_called_with(
+            ProcessingJobName="test-job"
+        )
+
+    def test_wait_for_processing_job_raises_on_failure(self, mock_session):
+        mock_session.sagemaker_client.describe_processing_job = Mock(
+            return_value={"ProcessingJobStatus": "Failed", "FailureReason": "boom"}
+        )
+        with patch("sagemaker.core.processing._wait_until", side_effect=lambda fn, poll: fn()):
+            with pytest.raises(Exception):
+                _wait_for_processing_job(mock_session, "test-job", poll=1)
 
     def test_run_without_wait(self, mock_session):
         processor = ScriptProcessor(
@@ -1289,6 +1357,59 @@ class TestFrameworkProcessorPackageCode:
             # Trailing slash is stripped in __init__, so same result
             assert result.startswith("s3://my-custom-bucket/my-prefix")
             assert "sourcedir.tar.gz" in result
+
+    def test_package_code_closes_temp_handle_before_unlink(self, mock_session):
+        """Temp tar.gz must be closed before os.unlink (issue #5873).
+
+        On Windows os.unlink raises PermissionError (WinError 32) if any
+        handle to the file is still open. We track every open handle on the
+        temp path and assert none remain open when os.unlink is called.
+        """
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        real_open = open
+        open_handles = {}
+
+        def tracking_open(file, mode="r", *args, **kwargs):
+            handle = real_open(file, mode, *args, **kwargs)
+            if isinstance(file, str) and file.endswith(".tar.gz"):
+                open_handles[handle] = file
+            return handle
+
+        real_unlink = os.unlink
+        observed = {}
+
+        def checking_unlink(path, *args, **kwargs):
+            if isinstance(path, str) and path.endswith(".tar.gz"):
+                observed["still_open"] = [
+                    p for h, p in open_handles.items() if p == path and not h.closed
+                ]
+            return real_unlink(path, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with real_open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            with patch("builtins.open", side_effect=tracking_open):
+                with patch("sagemaker.core.processing.os.unlink", side_effect=checking_unlink):
+                    processor._package_code(
+                        entry_point=entry_point,
+                        source_dir=tmpdir,
+                        requirements=None,
+                        job_name="test-job",
+                        kms_key=None,
+                    )
+
+        assert (
+            observed.get("still_open") == []
+        ), "temp tar.gz handle was still open when os.unlink was called"
 
 
 class TestFrameworkProcessorRun:
@@ -2035,3 +2156,309 @@ class TestFrameworkProcessorS3SourceDir:
                     wait=False,
                 )
                 assert processor.latest_job == mock_job
+
+
+class TestProcessorInstancePreferences:
+    """Instance Preferences (multi-instance-type) support on Processor."""
+
+    def test_uniform_count_mode_emits_preferences_and_shared_count(self, mock_session):
+        """Uniform mode: top-level instance_count applies to whichever type wins."""
+        preferences = [
+            {"InstanceType": "ml.m5.4xlarge"},
+            {"InstanceType": "ml.m5.2xlarge"},
+        ]
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_count=2,
+            instance_preferences=preferences,
+            volume_size_in_gb=100,
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "job-name"
+        args = processor._get_process_args([], [], None)
+        cluster_config = args["resources"]["ClusterConfig"]
+        assert cluster_config["InstancePreferences"] == preferences
+        assert cluster_config["InstanceCount"] == 2
+        assert cluster_config["VolumeSizeInGB"] == 100
+        # the classic single-type key is not emitted in instance-preferences mode
+        assert "InstanceType" not in cluster_config
+
+    def test_per_preference_count_mode_omits_top_level_count(self, mock_session):
+        """Per-preference mode: every element carries its count; top-level unset."""
+        preferences = [
+            {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+            {"InstanceType": "ml.m5.2xlarge", "InstanceCount": 4},
+        ]
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_preferences=preferences,
+            volume_size_in_gb=100,
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "job-name"
+        args = processor._get_process_args([], [], None)
+        cluster_config = args["resources"]["ClusterConfig"]
+        assert cluster_config["InstancePreferences"] == preferences
+        assert "InstanceCount" not in cluster_config
+        assert "InstanceType" not in cluster_config
+
+    def test_get_process_args_classic_single_type_unchanged(self, mock_session):
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_type="ml.m5.xlarge",
+            instance_count=2,
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "job-name"
+        args = processor._get_process_args([], [], None)
+        cluster_config = args["resources"]["ClusterConfig"]
+        assert cluster_config["InstanceType"] == "ml.m5.xlarge"
+        assert cluster_config["InstanceCount"] == 2
+        assert "InstancePreferences" not in cluster_config
+
+    def test_instance_preferences_mutually_exclusive_with_instance_type(self, mock_session):
+        with pytest.raises(ValueError, match="mutually exclusive with instance_type"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_type="ml.m5.xlarge",
+                instance_count=1,
+                instance_preferences=[{"InstanceType": "ml.m5.4xlarge", "InstanceCount": 1}],
+                sagemaker_session=mock_session,
+            )
+
+    def test_uniform_count_rejected_with_per_preference_counts(self, mock_session):
+        """V4: reject when both the uniform and any per-preference count are set."""
+        with pytest.raises(ValueError, match="top-level instance_count and per-preference"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_count=2,
+                instance_preferences=[
+                    {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+                    {"InstanceType": "ml.m5.2xlarge"},
+                ],
+                sagemaker_session=mock_session,
+            )
+
+    def test_partial_per_preference_counts_rejected(self, mock_session):
+        """V4: without a uniform count, EVERY element must set InstanceCount."""
+        with pytest.raises(ValueError, match="every element"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_preferences=[
+                    {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+                    {"InstanceType": "ml.m5.2xlarge"},
+                ],
+                sagemaker_session=mock_session,
+            )
+
+    def test_no_count_at_all_rejected(self, mock_session):
+        """V4: neither a uniform count nor per-preference counts is invalid."""
+        with pytest.raises(ValueError, match="every element"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_preferences=[
+                    {"InstanceType": "ml.m5.4xlarge"},
+                    {"InstanceType": "ml.m5.2xlarge"},
+                ],
+                sagemaker_session=mock_session,
+            )
+
+    def test_duplicate_instance_types_rejected(self, mock_session):
+        with pytest.raises(ValueError, match="duplicate instance types"):
+            Processor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                instance_count=1,
+                instance_preferences=[
+                    {"InstanceType": "ml.m5.4xlarge"},
+                    {"InstanceType": "ml.m5.4xlarge"},
+                ],
+                sagemaker_session=mock_session,
+            )
+
+
+class TestScriptAndSparkProcessorInstancePreferences:
+    """instance_preferences plumbs through the ScriptProcessor/Spark subclass chain."""
+
+    _PREFS = [
+        {"InstanceType": "ml.m5.xlarge", "InstanceCount": 1},
+        {"InstanceType": "ml.m4.xlarge", "InstanceCount": 2},
+    ]
+
+    def test_script_processor_forwards_instance_preferences(self, mock_session):
+        from sagemaker.core.processing import ScriptProcessor
+
+        processor = ScriptProcessor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            command=["python3"],
+            instance_preferences=self._PREFS,
+            sagemaker_session=mock_session,
+        )
+        assert processor.instance_preferences == self._PREFS
+        assert processor.instance_type is None
+
+    def test_script_processor_validation_applies(self, mock_session):
+        from sagemaker.core.processing import ScriptProcessor
+
+        with pytest.raises(ValueError, match="mutually exclusive with instance_type"):
+            ScriptProcessor(
+                role="arn:aws:iam::123456789012:role/role",
+                image_uri="image-uri",
+                command=["python3"],
+                instance_type="ml.m5.xlarge",
+                instance_count=1,
+                instance_preferences=self._PREFS,
+                sagemaker_session=mock_session,
+            )
+
+    def test_pyspark_processor_forwards_instance_preferences(self, mock_session):
+        from sagemaker.core.spark.processing import PySparkProcessor
+
+        mock_session.boto_region_name = "us-west-2"
+        processor = PySparkProcessor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_preferences=self._PREFS,
+            sagemaker_session=mock_session,
+        )
+        assert processor.instance_preferences == self._PREFS
+        assert processor.instance_type is None
+
+    def test_pyspark_image_resolution_requires_candidate_agreement(self, mock_session):
+        from sagemaker.core.spark import processing as spark_processing
+
+        mock_session.boto_region_name = "us-west-2"
+        # Agreement: every candidate resolves to the same image -> used.
+        with patch.object(
+            spark_processing.image_uris, "retrieve", return_value="resolved-uri"
+        ) as mock_retrieve:
+            processor = spark_processing.PySparkProcessor(
+                role="arn:aws:iam::123456789012:role/role",
+                framework_version="3.5",
+                instance_preferences=self._PREFS,
+                sagemaker_session=mock_session,
+            )
+        assert processor.image_uri == "resolved-uri"
+        called_types = {c.kwargs["instance_type"] for c in mock_retrieve.call_args_list}
+        assert called_types == {"ml.m5.xlarge", "ml.m4.xlarge"}
+
+    def test_pyspark_image_resolution_rejects_divergent_candidates(self, mock_session):
+        from sagemaker.core.spark import processing as spark_processing
+
+        mock_session.boto_region_name = "us-west-2"
+        # Divergence: candidates resolve to different images -> explicit image_uri required.
+        with patch.object(
+            spark_processing.image_uris, "retrieve", side_effect=["cpu-uri", "gpu-uri"]
+        ):
+            with pytest.raises(ValueError, match="pass image_uri explicitly"):
+                spark_processing.PySparkProcessor(
+                    role="arn:aws:iam::123456789012:role/role",
+                    framework_version="3.5",
+                    instance_preferences=self._PREFS,
+                    sagemaker_session=mock_session,
+                )
+
+    def test_pyspark_unresolvable_candidate_names_it(self, mock_session):
+        from sagemaker.core.spark import processing as spark_processing
+
+        mock_session.boto_region_name = "us-west-2"
+        # Real behavior: Spark has no GPU image, so retrieve raises for GPU
+        # candidates; the error must name the candidate and the remedy.
+        with patch.object(
+            spark_processing.image_uris,
+            "retrieve",
+            side_effect=["cpu-uri", ValueError("Unsupported processor: gpu")],
+        ):
+            with pytest.raises(
+                ValueError, match=r"candidate ml\.m4\.xlarge.*pass image_uri explicitly"
+            ):
+                spark_processing.PySparkProcessor(
+                    role="arn:aws:iam::123456789012:role/role",
+                    framework_version="3.5",
+                    instance_preferences=self._PREFS,
+                    sagemaker_session=mock_session,
+                )
+
+    def test_pyspark_degenerate_preferences_reach_base_validation(self, mock_session):
+        from sagemaker.core.spark import processing as spark_processing
+
+        mock_session.boto_region_name = "us-west-2"
+        # No InstanceType on any element: must NOT crash in image resolution;
+        # the base Processor validation owns the reject.
+        with patch.object(spark_processing.image_uris, "retrieve", return_value="uri"):
+            with pytest.raises(ValueError):
+                spark_processing.PySparkProcessor(
+                    role="arn:aws:iam::123456789012:role/role",
+                    framework_version="3.5",
+                    instance_preferences=[{}],
+                    sagemaker_session=mock_session,
+                )
+
+    def test_sparkjar_processor_forwards_instance_preferences(self, mock_session):
+        from sagemaker.core.spark.processing import SparkJarProcessor
+
+        mock_session.boto_region_name = "us-west-2"
+        processor = SparkJarProcessor(
+            role="arn:aws:iam::123456789012:role/role",
+            image_uri="image-uri",
+            instance_preferences=self._PREFS,
+            sagemaker_session=mock_session,
+        )
+        assert processor.instance_preferences == self._PREFS
+
+
+class TestProcessorLocalModeRole:
+    def test_role_not_required_for_local_instance(self, mock_session):
+        """A role is optional when instance_type is local (role is unused locally)."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local",
+            sagemaker_session=mock_session,
+        )
+        assert processor.role is None
+        assert processor.instance_type == "local"
+
+    def test_role_not_required_for_local_gpu_instance(self, mock_session):
+        """A role is optional when instance_type is local_gpu."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local_gpu",
+            sagemaker_session=mock_session,
+        )
+        assert processor.role is None
+
+    def test_role_still_required_for_managed_instance(self, mock_session):
+        """A missing role still raises for non-local instance types."""
+        with pytest.raises(
+            ValueError, match="An AWS IAM role is required to create a Processing job."
+        ):
+            Processor(
+                image_uri="test-image:latest",
+                instance_count=1,
+                instance_type="ml.m5.xlarge",
+                sagemaker_session=mock_session,
+            )
+
+    def test_request_args_skip_role_expansion_when_no_role(self, mock_session):
+        """Building the create request must not call expand_role(None) in local mode."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "local-job"
+        processor._normalize_args = lambda *a, **k: None
+        request = processor._get_process_args(inputs=[], outputs=[], experiment_config=None)
+        assert request["role_arn"] is None
+        mock_session.expand_role.assert_not_called()

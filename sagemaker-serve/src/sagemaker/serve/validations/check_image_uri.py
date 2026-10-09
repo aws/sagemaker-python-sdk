@@ -4,6 +4,9 @@ from __future__ import absolute_import
 
 import logging
 import re
+from typing import Optional
+
+from sagemaker.core.helper.pipeline_variable import StrPipeVar
 
 logger = logging.getLogger(__name__)
 
@@ -318,8 +321,15 @@ all_accounts = {
 }
 
 
-def is_1p_image_uri(image_uri: str) -> bool:
-    """Shows if the given image_uri is owned by a 1st party account"""
+def is_1p_image_uri(image_uri: Optional[StrPipeVar]) -> bool:
+    """Shows if the given image_uri is owned by a 1st party account.
+
+    A pipeline variable (e.g. ``ParameterString``) is only resolved at pipeline
+    execution time, so its account cannot be inspected at build time. Such values,
+    and any other non-string value, are treated as not 1st party.
+    """
+    if not isinstance(image_uri, str):
+        return False
     image_uri_account = image_uri[0:12]
     return image_uri_account in all_accounts
 

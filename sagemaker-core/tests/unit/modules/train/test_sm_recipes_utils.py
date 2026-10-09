@@ -13,7 +13,7 @@
 
 import pytest
 import tempfile
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from omegaconf import OmegaConf
 from sagemaker.core.modules.train.sm_recipes.utils import (
     _try_resolve_recipe,

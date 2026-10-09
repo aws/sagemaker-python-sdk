@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """CloudWatch log streaming utility for SageMaker training and evaluation jobs."""
+
 from __future__ import annotations
 
 import logging
@@ -310,11 +311,13 @@ class LogStreamer:
         paginator = self._logs_client.get_paginator("describe_log_streams")
         for page in paginator.paginate(**kwargs):
             for stream in page.get("logStreams", []):
-                handlers.append({
-                    "stream_name": stream["logStreamName"],
-                    "next_token": None,
-                    "started": False,
-                })
+                handlers.append(
+                    {
+                        "stream_name": stream["logStreamName"],
+                        "next_token": None,
+                        "started": False,
+                    }
+                )
         return handlers
 
     def _get_events_for_stream(self, handler: dict) -> list[tuple[int, str]]:

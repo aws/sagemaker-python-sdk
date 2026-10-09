@@ -3,14 +3,16 @@
 from __future__ import absolute_import
 import os
 import io
-import cloudpickle
 import shutil
 import platform
+import logging
 from pathlib import Path
 from functools import partial
+
+import cloudpickle
+
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.validations.check_integrity import perform_integrity_check
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +82,7 @@ def input_fn(input_data, content_type, context=None):
 
         return deserialized_data
     except Exception as e:
-        logger.error("Encountered error: %s in deserialize_response." % e)
+        logger.error("Encountered error: %s in deserialize_response.", e)
         raise Exception("Encountered error in deserialize_request.") from e
 
 
@@ -98,10 +100,9 @@ def output_fn(predictions, accept_type, context=None):
                 predictions = postprocessed
         if hasattr(schema_builder, "custom_output_translator"):
             return schema_builder.custom_output_translator.serialize(predictions, accept_type)
-        else:
-            return schema_builder.output_serializer.serialize(predictions)
+        return schema_builder.output_serializer.serialize(predictions)
     except Exception as e:
-        logger.error("Encountered error: %s in serialize_response." % e)
+        logger.error("Encountered error: %s in serialize_response.", e)
         raise Exception("Encountered error in serialize_response.") from e
 
 

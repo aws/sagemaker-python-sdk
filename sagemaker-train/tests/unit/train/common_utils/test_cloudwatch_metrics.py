@@ -19,11 +19,19 @@ from sagemaker.train.common_utils.cloudwatch_metrics import (
 )
 from sagemaker.train.common_utils.constants import AUTH_ERROR_CODES
 
-
 FAKE_SFT_LOGS = [
-    {"message": "Training epoch 0, iteration 0/9 | lr: 6.25e-07 | global_batch_size: 32 | global_step: 1 | reduced_train_loss: 9.240 | ..."},
-    {"message": "Training epoch 0, iteration 1/9 | lr: 1.25e-06 | global_batch_size: 32 | global_step: 2 | reduced_train_loss: 7.750 | ..."},
-    {"message": "Training epoch 0, iteration 2/9 | lr: 1.87e-06 | global_batch_size: 32 | global_step: 3 | reduced_train_loss: 6.615 | ..."},
+    {
+        "message": "Training epoch 0, iteration 0/9 | lr: 6.25e-07 | global_batch_size: 32 | "
+        "global_step: 1 | reduced_train_loss: 9.240 | ..."
+    },
+    {
+        "message": "Training epoch 0, iteration 1/9 | lr: 1.25e-06 | global_batch_size: 32 | "
+        "global_step: 2 | reduced_train_loss: 7.750 | ..."
+    },
+    {
+        "message": "Training epoch 0, iteration 2/9 | lr: 1.87e-06 | global_batch_size: 32 | "
+        "global_step: 3 | reduced_train_loss: 6.615 | ..."
+    },
     {"message": "Some other log line without any metrics"},
 ]
 
@@ -105,7 +113,10 @@ class TestFetchLogs:
             "logStreams": [{"logStreamName": "my-job/algo-1"}]
         }
         mock_client.get_log_events.side_effect = [
-            {"events": [{"message": "global_step=1 reduced_train_loss=5.0"}], "nextBackwardToken": "t1"},
+            {
+                "events": [{"message": "global_step=1 reduced_train_loss=5.0"}],
+                "nextBackwardToken": "t1",
+            },
             {"events": [], "nextBackwardToken": "t1"},
         ]
 
@@ -183,9 +194,7 @@ class TestFetchLogsAuthErrors:
     @pytest.mark.parametrize("error_code", sorted(AUTH_ERROR_CODES))
     def test_smhp_filter_events_auth_error_raises(self, error_code):
         mock_client = MagicMock()
-        mock_client.filter_log_events.side_effect = _client_error(
-            error_code, "FilterLogEvents"
-        )
+        mock_client.filter_log_events.side_effect = _client_error(error_code, "FilterLogEvents")
 
         with pytest.raises(PermissionError, match="credentials"):
             _fetch_smhp_logs("hp-job-123", mock_client, "/aws/sagemaker/Clusters/c/id")
@@ -213,8 +222,10 @@ class TestFetchAndPlotMetrics:
         mock_fetch.return_value = FAKE_SFT_LOGS
 
         df = fetch_and_plot_metrics(
-            "my-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
-            "SFT", self._session(),
+            "my-job",
+            Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+            "SFT",
+            self._session(),
         )
 
         assert len(df) == 3
@@ -229,8 +240,10 @@ class TestFetchAndPlotMetrics:
         mock_fetch.return_value = FAKE_RLVR_SMHP_LOGS
 
         df = fetch_and_plot_metrics(
-            "hp-job", HyperPodCompute(cluster_name="c", instance_type="ml.p5.48xlarge", node_count=1),
-            "RLVR", self._session(),
+            "hp-job",
+            HyperPodCompute(cluster_name="c", instance_type="ml.p5.48xlarge", node_count=1),
+            "RLVR",
+            self._session(),
         )
 
         assert len(df) == 2
@@ -239,8 +252,10 @@ class TestFetchAndPlotMetrics:
     def test_invalid_technique_raises_before_fetching(self):
         with pytest.raises(ValueError, match="not a supported training technique"):
             fetch_and_plot_metrics(
-                "job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
-                "RFT", self._session(),
+                "job",
+                Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                "RFT",
+                self._session(),
             )
 
     @patch("sagemaker.train.common_utils.cloudwatch_metrics._fetch_smtj_logs")
@@ -249,8 +264,10 @@ class TestFetchAndPlotMetrics:
 
         with pytest.raises(ValueError, match="No CloudWatch logs found"):
             fetch_and_plot_metrics(
-                "missing-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
-                "SFT", self._session(),
+                "missing-job",
+                Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                "SFT",
+                self._session(),
             )
 
     def test_job_without_logs_yet_still_raises_no_logs_found(self):
@@ -262,21 +279,25 @@ class TestFetchAndPlotMetrics:
 
         with pytest.raises(ValueError, match="No CloudWatch logs found"):
             fetch_and_plot_metrics(
-                "just-started-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
-                "SFT", session,
+                "just-started-job",
+                Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                "SFT",
+                session,
             )
 
     def test_expired_credentials_raises_instead_of_no_logs_found(self):
         """Expired credentials must not be reported as a job with no logs."""
         session = self._session()
-        session.boto_session.client.return_value.describe_log_streams.side_effect = (
-            _client_error("ExpiredTokenException", "DescribeLogStreams")
+        session.boto_session.client.return_value.describe_log_streams.side_effect = _client_error(
+            "ExpiredTokenException", "DescribeLogStreams"
         )
 
         with pytest.raises(PermissionError, match="credentials"):
             fetch_and_plot_metrics(
-                "my-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
-                "SFT", session,
+                "my-job",
+                Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                "SFT",
+                session,
             )
 
     @patch("sagemaker.train.common_utils.cloudwatch_metrics.plot_metrics")
@@ -289,17 +310,22 @@ class TestFetchAndPlotMetrics:
         ]
 
         df = fetch_and_plot_metrics(
-            "job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
-            "SFT", self._session(), metrics=["training_loss"],
+            "job",
+            Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+            "SFT",
+            self._session(),
+            metrics=["training_loss"],
         )
 
         assert df["global_step"].tolist() == [1, 5]
+
 
 class TestStreamLogs:
     """Tests for BaseTrainer.stream_logs() dispatch and behavior."""
 
     def _make_trainer(self, compute=None, latest_job=None):
         """Create a minimal trainer stub for stream_logs testing."""
+
         class _StubTrainer(BaseTrainer):
             _customization_technique = "SFT"
 
@@ -341,9 +367,7 @@ class TestStreamLogs:
 
         # Simulate KeyboardInterrupt on first sleep to stop the loop
         with patch("time.sleep", side_effect=KeyboardInterrupt):
-            trainer.stream_logs(
-                start_time=datetime(2026, 7, 8, 14, 0, 0, tzinfo=timezone.utc)
-            )
+            trainer.stream_logs(start_time=datetime(2026, 7, 8, 14, 0, 0, tzinfo=timezone.utc))
 
         # Verify filter_log_events was called with the user-provided startTime
         call_kwargs = mock_logs_client.filter_log_events.call_args[1]
@@ -369,14 +393,15 @@ class TestStreamLogs:
 
         mock_stream_loop.assert_called_once()
 
-
     def test_show_metrics_oss_without_mlflow_raises(self):
         """show_metrics() raises ValueError for non-Nova models without MLflow configured."""
-        trainer = self._make_trainer(latest_job=MagicMock(
-            training_job_name="some-job",
-            mlflow_config=None,
-            mlflow_details=None,
-        ))
+        trainer = self._make_trainer(
+            latest_job=MagicMock(
+                training_job_name="some-job",
+                mlflow_config=None,
+                mlflow_details=None,
+            )
+        )
         trainer._model_name = "test-oss-model"
 
         with pytest.raises(ValueError, match="requires MLflow to be configured"):
@@ -387,7 +412,9 @@ class TestStreamLogs:
         """show_metrics() for OSS models with MLflow configured calls plot_training_metrics."""
         mock_job = MagicMock()
         mock_job.training_job_name = "oss-sft-job"
-        mock_job.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-east-1:012345678910:mlflow-app/app-123"
+        mock_job.mlflow_config.mlflow_resource_arn = (
+            "arn:aws:sagemaker:us-east-1:012345678910:mlflow-app/app-123"
+        )
         mock_job.mlflow_details.mlflow_run_id = "run-abc123"
 
         trainer = self._make_trainer(latest_job=mock_job)

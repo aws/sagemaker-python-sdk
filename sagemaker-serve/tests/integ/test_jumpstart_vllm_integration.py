@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import uuid
-import pytest
 import logging
 
 from sagemaker.serve.model_builder import ModelBuilder
@@ -27,7 +26,6 @@ INSTANCE_TYPE = "ml.g6.12xlarge"
 MODEL_NAME_PREFIX = "js-vllm-test-model"
 
 
-@pytest.mark.slow_test
 def test_jumpstart_vllm_build():
     """Integration test for JumpStart model using vLLM container image.
 

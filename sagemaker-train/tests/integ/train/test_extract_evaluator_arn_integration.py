@@ -90,4 +90,3 @@ def test_extract_evaluator_arn_with_evaluator_string(sagemaker_session, evaluato
 
     # Should return the ARN string unchanged
     assert result == evaluator.arn
-

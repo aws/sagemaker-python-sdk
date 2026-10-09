@@ -81,7 +81,9 @@ def generate_feature_group_name():
     return f"test-lf-fg-{uuid.uuid4().hex[:8]}"
 
 
-def create_test_feature_group(name: str, s3_uri: str, role_arn: str, region: str) -> FeatureGroupManager:
+def create_test_feature_group(
+    name: str, s3_uri: str, role_arn: str, region: str
+) -> FeatureGroupManager:
     """Create a FeatureGroupManager with offline store for testing."""
 
     offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
@@ -174,7 +176,7 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
         assert result["hybrid_access_mode_enabled"] is False
 
     finally:
-        print('done')
+        print("done")
         # Cleanup
         if fg:
             cleanup_feature_group(fg)
@@ -204,7 +206,7 @@ def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
         offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
         lake_formation_config = LakeFormationConfig(
             enabled=True,
-            hybrid_access_mode_enabled = False,
+            hybrid_access_mode_enabled=False,
             acknowledge_risk=True,
             use_service_linked_role=False,
             registration_role_arn=role,
@@ -297,7 +299,9 @@ def test_create_feature_group_with_lake_formation_fails_without_offline_store(ro
     """
     fg_name = generate_feature_group_name()
 
-    lake_formation_config = LakeFormationConfig(hybrid_access_mode_enabled=False, acknowledge_risk=True)
+    lake_formation_config = LakeFormationConfig(
+        hybrid_access_mode_enabled=False, acknowledge_risk=True
+    )
     lake_formation_config.enabled = True
 
     # Attempt to create without offline store but with Lake Formation enabled
@@ -312,8 +316,9 @@ def test_create_feature_group_with_lake_formation_fails_without_offline_store(ro
         )
 
     # Verify error message mentions offline_store_config requirement
-    assert "lake_formation_config with enabled=True requires offline_store_config to be configured" in str(
-        exc_info.value
+    assert (
+        "lake_formation_config with enabled=True requires offline_store_config to be configured"
+        in str(exc_info.value)
     )
 
 
@@ -327,7 +332,9 @@ def test_create_feature_group_with_lake_formation_fails_without_role(s3_uri, reg
     fg_name = generate_feature_group_name()
 
     offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
-    lake_formation_config = LakeFormationConfig(hybrid_access_mode_enabled=False, acknowledge_risk=True)
+    lake_formation_config = LakeFormationConfig(
+        hybrid_access_mode_enabled=False, acknowledge_risk=True
+    )
     lake_formation_config.enabled = True
 
     # Attempt to create without role_arn but with Lake Formation enabled
@@ -342,7 +349,9 @@ def test_create_feature_group_with_lake_formation_fails_without_role(s3_uri, reg
         )
 
     # Verify error message mentions role_arn requirement
-    assert "lake_formation_config with enabled=True requires role_arn to be specified" in str(exc_info.value)
+    assert "lake_formation_config with enabled=True requires role_arn to be specified" in str(
+        exc_info.value
+    )
 
 
 def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region):
@@ -533,7 +542,9 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance
-        with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
+        with caplog.at_level(
+            logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"
+        ):
             result = fg.enable_lake_formation(
                 hybrid_access_mode_enabled=False,
                 acknowledge_risk=True,
@@ -581,7 +592,9 @@ def test_enable_lake_formation_default_logs_recommended_policy(s3_uri, role, reg
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance with hybrid_access_mode_enabled=False
-        with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
+        with caplog.at_level(
+            logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"
+        ):
             result = fg.enable_lake_formation(
                 hybrid_access_mode_enabled=False,
                 acknowledge_risk=True,
@@ -626,7 +639,9 @@ def test_enable_lake_formation_with_custom_role_logs_policy(s3_uri, role, region
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation with custom registration role
-        with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
+        with caplog.at_level(
+            logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"
+        ):
             result = fg.enable_lake_formation(
                 use_service_linked_role=False,
                 registration_role_arn=role,
@@ -646,4 +661,3 @@ def test_enable_lake_formation_with_custom_role_logs_policy(s3_uri, role, region
         # Cleanup
         if fg:
             cleanup_feature_group(fg)
-

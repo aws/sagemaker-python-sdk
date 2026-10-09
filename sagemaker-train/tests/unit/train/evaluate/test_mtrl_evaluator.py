@@ -11,15 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for MultiTurnRLEvaluator — pipeline search and model resolution."""
+
 from __future__ import absolute_import
 
-import json
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 
 from sagemaker.train.evaluate.multi_turn_rl_evaluator import MultiTurnRLEvaluator
 from sagemaker.train.evaluate.constants import EvalType, _get_pipeline_name_prefix
-
 
 # --- Constants ---
 REGION = "us-west-2"
@@ -41,7 +40,9 @@ class TestStartMtrlExecution:
         """Create a mock evaluator with the real _start_mtrl_execution method bound."""
         evaluator = MagicMock()
         evaluator.s3_output_path = OUTPUT
-        evaluator._start_mtrl_execution = MultiTurnRLEvaluator._start_mtrl_execution.__get__(evaluator)
+        evaluator._start_mtrl_execution = MultiTurnRLEvaluator._start_mtrl_execution.__get__(
+            evaluator
+        )
         return evaluator
 
     @patch("sagemaker.core.resources.PipelineExecution")
@@ -82,7 +83,7 @@ class TestStartMtrlExecution:
             "PipelineExecutionArn": f"arn:aws:sagemaker:us-west-2:123:pipeline/{PIPELINE_PREFIX}/execution/exec-2"
         }
 
-        result = evaluator._start_mtrl_execution(
+        evaluator._start_mtrl_execution(
             pipeline_definition='{"Steps": []}',
             name="test-eval",
             role_arn=ROLE,
@@ -109,7 +110,7 @@ class TestStartMtrlExecution:
         }
 
         evaluator._start_mtrl_execution(
-            pipeline_definition='{}',
+            pipeline_definition="{}",
             name="test",
             role_arn=ROLE,
             region=REGION,
@@ -132,7 +133,7 @@ class TestStartMtrlExecution:
         }
 
         result = evaluator._start_mtrl_execution(
-            pipeline_definition='{}',
+            pipeline_definition="{}",
             name="test",
             role_arn=ROLE,
             region=REGION,
@@ -271,13 +272,13 @@ class TestModelResolutionWithLatestJob:
 
         resolver = _ModelResolver()
 
-        with patch.object(resolver, '_resolve_model_package_arn') as mock_resolve:
+        with patch.object(resolver, "_resolve_model_package_arn") as mock_resolve:
             mock_resolve.return_value = MagicMock(
                 base_model_name=BASE_MODEL,
                 base_model_arn="arn:aws:sagemaker:us-west-2:aws:hub-content/test",
                 source_model_package_arn=SOURCE_MP_ARN,
             )
-            result = resolver.resolve_model_info(mock_trainer)
+            resolver.resolve_model_info(mock_trainer)
 
             mock_resolve.assert_called_once_with(SOURCE_MP_ARN)
 
@@ -309,12 +310,12 @@ class TestModelResolutionWithLatestJob:
 
         resolver = _ModelResolver()
 
-        with patch.object(resolver, '_resolve_model_package_arn') as mock_resolve:
+        with patch.object(resolver, "_resolve_model_package_arn") as mock_resolve:
             mock_resolve.return_value = MagicMock(
                 base_model_name=BASE_MODEL,
                 base_model_arn="arn:aws:sagemaker:us-west-2:aws:hub-content/test",
                 source_model_package_arn=SOURCE_MP_ARN,
             )
-            result = resolver.resolve_model_info(mock_trainer)
+            resolver.resolve_model_info(mock_trainer)
 
             mock_resolve.assert_called_once_with(SOURCE_MP_ARN)

@@ -1,5 +1,92 @@
 # Changelog
 
+## v2.24.0 (2026-10-07)
+
+### New Features
+
+- feat(core): add image_uris list_frameworks/list_versions/list_py_versions helpers (#6357)
+- feat(core): advertise Python 3.13 support (#6348)
+- feat(core): add shared pipeline capture for CreateJob producers (#6292)
+
+### Bug Fixes
+
+- fix(core): fall back to ARN in ModelPackage.refresh for versioned packages (#6378)
+- fix(core): allow Constraints.set_monitoring to disable monitoring for non-string features (#6312)
+- fix(core): respect session region when waiting for processing jobs (#6369)
+- fix(core): reject unsupported container_version instead of returning a bad URI (#6376)
+- fix(core): SageMakerClient honors the passed boto3 session and config (#6273)
+- fix(core): close temp tarball before reading it (#6319)
+- fix(core): make all pipeline Parameters hashable (#6351)
+- fix(core): stop LineIterator hanging when the stream ends without a trailing newline (#6279)
+- fix(core): stop mutating global logging state on import (#6341)
+- fix(core): freeze credentials before signing bearer token (#6360)
+- fix(core): make DataCaptureConfigSummary.kms_key_id optional (#6346)
+- fix(core): lazily initialize DEFAULT_JUMPSTART_SAGEMAKER_SESSION (#6330)
+- fix(core): add PyTorch 2.6 graviton (arm64) inference image (#6342)
+
+### Tests
+
+- test(image_uris): derive pytorch-amzn2023 versions from config (#6385)
+
+### Other
+
+- change: update image_uri_configs (#6374)
+- docs: fix typo in shapes.py docstring (#5545)
+
+
+## v2.23.0 (2026-09-24)
+
+### Bug Fixes
+
+- fix(core): recognize new duplicate-name wording; actionable train() errors (#6256)
+- fix(core): keep environment variable names intact when parsing private hub model documents (#6204)
+- fix: migrate llama-cpp-arm64 to cpu processor schema and align image_uri unit tests (#6290)
+
+### Other
+
+- change: update image_uri_configs 09-23-2026 (#6308)
+- change: update image_uri_configs 09-22-2026 (#6304)
+- add: metadata for huggingface vllm v0.29 (#6300)
+
+### Tests
+
+- fix: codestyle-doc-tests pass in all four submodules (#6294)
+
+
+## v2.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix(jumpstart): name JumpStart in the content bucket error (#6243)
+- fix(core): send NextToken when Hub.list_models pages through hub contents (#6263)
+
+### Other
+
+- add: metadata for hf-vllm 0.22.1, 0.25.1, 0.26, 0.27.1 and 0.28 (#6060)
+- add sklearn 1.9-0 image URI config (#6037)
+
+
+## v2.22.0 (2026-09-14)
+
+### New Features
+
+- feat(core): add InstancePreferences for multi-instance-type training and processing (#6249)
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+- fix(core): resolve default training role from sagemaker config (#6228)
+
+### Other
+
+- change(core): add image URI configs for DLC serving frameworks and Amazon Linux 2023 PyTorch (#6220)
+- change(core): add image URI configs for vLLM and SGLang (#6218)
+- ci(core): add botocore-sync workflows (#6226)
+- change(core): add TensorFlow inference 2.20 and training 2.21 image URI configs (#6230)
+- change(core): add Ray/llama-cpp CPU images and device-selectable DLC serving configs (#6229)
+- change(core): refresh generated image URI configs (55c2a9bd)
+
 ## v2.21.0 (2026-08-25)
 
 ### Bug Fixes

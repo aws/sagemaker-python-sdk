@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 import subprocess
 import sys
 
@@ -24,8 +24,6 @@ from sagemaker.core.remote_function.runtime_environment.runtime_environment_mana
     _run_and_get_output_shell_cmd,
     _run_pre_execution_command_script,
     _run_shell_cmd,
-    _log_output,
-    _log_error,
     _python_executable,
 )
 
@@ -258,7 +256,7 @@ class TestRuntimeEnvironmentManager:
         "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager.os.path.isfile"
     )
     @patch(
-        "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"
+        "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"  # noqa: E501
     )
     def test_run_pre_exec_script_exists(self, mock_run_script, mock_isfile):
         """Test run_pre_exec_script when script exists"""
@@ -274,7 +272,7 @@ class TestRuntimeEnvironmentManager:
         "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager.os.path.isfile"
     )
     @patch(
-        "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"
+        "sagemaker.core.remote_function.runtime_environment.runtime_environment_manager._run_pre_execution_command_script"  # noqa: E501
     )
     def test_run_pre_exec_script_fails(self, mock_run_script, mock_isfile):
         """Test run_pre_exec_script when script fails"""
@@ -495,9 +493,9 @@ class TestHelperFunctions:
         mock_process.wait.return_value = 0
         mock_popen.return_value = mock_process
         mock_log_error.return_value = ""
-        
+
         _run_shell_cmd(["echo", "test"])
-        
+
         mock_popen.assert_called_once()
 
     @patch(

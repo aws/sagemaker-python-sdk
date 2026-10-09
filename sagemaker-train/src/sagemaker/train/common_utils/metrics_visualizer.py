@@ -3,7 +3,7 @@
 import io
 import base64
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from sagemaker.core.resources import TrainingJob
 
@@ -13,12 +13,14 @@ logger = logging.getLogger(__name__)
 def _is_in_studio() -> bool:
     """Check if running inside SageMaker Studio."""
     from sagemaker.train.common_utils.finetune_utils import _read_domain_id_from_metadata
+
     return _read_domain_id_from_metadata() is not None
 
 
 def _get_studio_base_url(region: str) -> str:
     """Get Studio base URL, or empty string if domain not resolvable."""
     from sagemaker.train.common_utils.finetune_utils import _read_domain_id_from_metadata
+
     domain_id = _read_domain_id_from_metadata()
     if not domain_id or not region:
         return ""
@@ -28,16 +30,17 @@ def _get_studio_base_url(region: str) -> str:
 def _parse_job_arn(job_arn: str):
     """Parse a SageMaker job ARN into (region, resource) or None."""
     import re
-    m = re.match(r'arn:aws(?:-[a-z]+)?:sagemaker:([a-z0-9-]+):\d+:(\S+)', job_arn)
+
+    m = re.match(r"arn:aws(?:-[a-z]+)?:sagemaker:([a-z0-9-]+):\d+:(\S+)", job_arn)
     return (m.group(1), m.group(2)) if m else None
 
 
 def get_console_job_url(job_arn: str) -> str:
     """Get AWS Console URL for a SageMaker job ARN.
-    
+
     Args:
         job_arn: Full ARN like arn:aws:sagemaker:us-east-1:123:training-job/my-job
-        
+
     Returns:
         Console URL or empty string.
     """
@@ -59,7 +62,7 @@ def get_console_job_url(job_arn: str) -> str:
 
 def get_cloudwatch_logs_url(job_arn: str) -> str:
     """Get CloudWatch Logs console URL for a SageMaker job ARN.
-    
+
     Returns:
         CloudWatch console URL or empty string.
     """
@@ -86,14 +89,14 @@ def get_cloudwatch_logs_url(job_arn: str) -> str:
 
 def get_studio_url(training_job, domain_id: str = None) -> str:
     """Get SageMaker Studio URL for training job logs.
-    
+
     Args:
         training_job: SageMaker TrainingJob object, job name string, or job ARN string
         domain_id: Studio domain ID (e.g., 'd-xxxxxxxxxxxx'). If not provided, attempts to auto-detect
-        
+
     Returns:
         Studio URL pointing to the training job details, or empty string if not resolvable
-        
+
     Example:
         >>> from sagemaker.train import get_studio_url
         >>> url = get_studio_url('my-training-job')
@@ -103,7 +106,7 @@ def get_studio_url(training_job, domain_id: str = None) -> str:
 
     if isinstance(training_job, str):
         arn_match = re.match(
-            r'arn:aws(?:-[a-z]+)?:sagemaker:([a-z0-9-]+):\d+:training-job/(.+)',
+            r"arn:aws(?:-[a-z]+)?:sagemaker:([a-z0-9-]+):\d+:training-job/(.+)",
             training_job,
         )
         if arn_match:
@@ -113,13 +116,15 @@ def get_studio_url(training_job, domain_id: str = None) -> str:
             # Plain job name — use session region
             training_job = TrainingJob.get(training_job_name=training_job)
             from sagemaker.core.utils.utils import SageMakerClient
+
             region = SageMakerClient().region_name
             job_name = training_job.training_job_name
     else:
         from sagemaker.core.utils.utils import SageMakerClient
+
         region = SageMakerClient().region_name
         job_name = training_job.training_job_name
-    
+
     base = _get_studio_base_url(region)
     if not base:
         return ""
@@ -146,14 +151,14 @@ def display_job_links_html(rows: list, as_html: bool = False):
 
     html_rows = ""
     for row in rows:
-        escaped_arn = html_mod.escape(row['arn'])
-        escaped_label = html_mod.escape(row['label'])
+        escaped_arn = html_mod.escape(row["arn"])
+        escaped_label = html_mod.escape(row["label"])
 
-        url = row.get('url')
+        url = row.get("url")
         if url is None:
-            url = get_studio_url(row['arn'])
-        url_text = row.get('url_text', '🔗 link')
-        url_hint = row.get('url_hint', '(please sign in to Studio first)')
+            url = get_studio_url(row["arn"])
+        url_text = row.get("url_text", "🔗 link")
+        url_hint = row.get("url_hint", "(please sign in to Studio first)")
 
         link_html = ""
         if url:
@@ -164,22 +169,23 @@ def display_job_links_html(rows: list, as_html: bool = False):
             )
 
         copy_btn = (
-            f'<button onclick="navigator.clipboard.writeText(\'{escaped_arn}\')'
-            f'.then(()=>{{this.textContent=\'✓\';setTimeout(()=>this.textContent=\'📋\',1500)}})"'
+            f"<button onclick=\"navigator.clipboard.writeText('{escaped_arn}')"
+            f".then(()=>{{this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)}})\""
             f' style="border:1px solid var(--jp-border-color1,#555);'
-            f'background:var(--jp-layout-color2,#333);color:var(--jp-ui-font-color0,white);'
+            f"background:var(--jp-layout-color2,#333);color:var(--jp-ui-font-color0,white);"
             f'border-radius:3px;cursor:pointer;font-size:11px;padding:1px 5px;"'
             f' title="Copy">📋</button>'
         )
 
         html_rows += (
-            f'<tr>'
-            f'<td style="padding:4px 8px;text-align:left;font-weight:bold;color:var(--jp-brand-color1,#4fc3f7);">{escaped_label}</td>'
+            f"<tr>"
+            f'<td style="padding:4px 8px;text-align:left;font-weight:bold;'
+            f'color:var(--jp-brand-color1,#4fc3f7);">{escaped_label}</td>'
             f'<td style="padding:4px 8px;text-align:left;">{link_html}</td>'
             f'<td style="padding:4px 8px;text-align:left;">'
             f'<code style="font-size:12px;word-break:break-all;">{escaped_arn}</code>'
-            f' {copy_btn}</td>'
-            f'</tr>'
+            f" {copy_btn}</td>"
+            f"</tr>"
         )
 
     result = HTML(
@@ -188,7 +194,7 @@ def display_job_links_html(rows: list, as_html: bool = False):
         f'<th style="padding:4px 8px;text-align:left;color:var(--jp-brand-color2,#ce93d8);">Step</th>'
         f'<th style="padding:4px 8px;text-align:left;color:var(--jp-brand-color2,#ce93d8);">Job Link</th>'
         f'<th style="padding:4px 8px;text-align:left;color:var(--jp-brand-color2,#ce93d8);">Job ARN</th>'
-        f'</tr>{html_rows}</table>'
+        f"</tr>{html_rows}</table>"
     )
 
     if as_html:
@@ -197,12 +203,10 @@ def display_job_links_html(rows: list, as_html: bool = False):
 
 
 def plot_training_metrics(
-    training_job: TrainingJob,
-    metrics: Optional[List[str]] = None,
-    figsize: tuple = (12, 6)
+    training_job: TrainingJob, metrics: Optional[List[str]] = None, figsize: tuple = (12, 6)
 ) -> None:
     """Plot training metrics from MLflow for a completed training job.
-    
+
     Args:
         training_job: SageMaker TrainingJob object or job name string
         metrics: List of metric names to plot. If None, plots all available metrics.
@@ -212,21 +216,21 @@ def plot_training_metrics(
     import mlflow
     from mlflow.tracking import MlflowClient
     from IPython.display import display
-    
-    logging.getLogger('botocore.credentials').setLevel(logging.WARNING)
-    
+
+    logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
+
     if isinstance(training_job, str):
         training_job = TrainingJob.get(training_job_name=training_job)
-    
+
     run_id = training_job.mlflow_details.mlflow_run_id
-    
+
     mlflow.set_tracking_uri(training_job.mlflow_config.mlflow_resource_arn)
     client = MlflowClient()
-    
+
     run = mlflow.get_run(run_id)
     available_metrics = list(run.data.metrics.keys())
     metrics_to_plot = metrics if metrics else available_metrics
-    
+
     # Fetch metric histories
     metric_data = {}
     for metric_name in metrics_to_plot:
@@ -251,18 +255,19 @@ def plot_training_metrics(
     for idx, (metric_name, history) in enumerate(metric_data.items()):
         steps = [h.step for h in history]
         values = [h.value for h in history]
-        axes[idx].plot(steps, values, linewidth=2, marker='o', markersize=4)
-        axes[idx].set_xlabel('Step')
-        axes[idx].set_ylabel('Value')
-        axes[idx].set_title(metric_name, fontweight='bold')
+        axes[idx].plot(steps, values, linewidth=2, marker="o", markersize=4)
+        axes[idx].set_xlabel("Step")
+        axes[idx].set_ylabel("Value")
+        axes[idx].set_title(metric_name, fontweight="bold")
         axes[idx].grid(True, alpha=0.3)
 
     for idx in range(num_metrics, len(axes)):
         axes[idx].set_visible(False)
 
     fig.suptitle(
-        f'Training Metrics: {training_job.training_job_name}',
-        fontweight='bold', fontsize=14,
+        f"Training Metrics: {training_job.training_job_name}",
+        fontweight="bold",
+        fontsize=14,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.98])
 
@@ -275,20 +280,23 @@ def plot_training_metrics(
     # Embed as a scrollable HTML image in the notebook
     b64 = base64.b64encode(buf.getvalue()).decode()
     from IPython.display import HTML
-    display(HTML(
-        f'<div style="max-height:800px; overflow-y:scroll; border:1px solid #ccc; '
-        f'border-radius:4px; padding:4px;">'
-        f'<img src="data:image/png;base64,{b64}" style="width:100%;" />'
-        f'</div>'
-    ))
+
+    display(
+        HTML(
+            f'<div style="max-height:800px; overflow-y:scroll; border:1px solid #ccc; '
+            f'border-radius:4px; padding:4px;">'
+            f'<img src="data:image/png;base64,{b64}" style="width:100%;" />'
+            f"</div>"
+        )
+    )
 
 
 def get_available_metrics(training_job: TrainingJob) -> List[str]:
     """Get list of available metrics for a training job.
-    
+
     Args:
         training_job: SageMaker TrainingJob object or job name string
-        
+
     Returns:
         List of metric names
     """
@@ -297,19 +305,19 @@ def get_available_metrics(training_job: TrainingJob) -> List[str]:
     except ImportError:
         logger.error("mlflow package not installed")
         return []
-    
+
     # Handle string input
     if isinstance(training_job, str):
         training_job = TrainingJob.get(training_job_name=training_job)
-    
-    if not hasattr(training_job, 'mlflow_config') or not training_job.mlflow_config:
+
+    if not hasattr(training_job, "mlflow_config") or not training_job.mlflow_config:
         return []
-    
+
     mlflow_details = training_job.mlflow_details
     if not mlflow_details or not mlflow_details.mlflow_run_id:
         return []
-    
+
     mlflow.set_tracking_uri(training_job.mlflow_config.mlflow_resource_arn)
     run = mlflow.get_run(mlflow_details.mlflow_run_id)
-    
+
     return list(run.data.metrics.keys())

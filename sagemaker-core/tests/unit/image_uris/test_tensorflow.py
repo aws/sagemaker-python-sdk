@@ -77,10 +77,23 @@ def test_tensorflow_latest_version_is_registered(load_config, scope):
 @pytest.mark.parametrize("scope", ["inference", "training"])
 @pytest.mark.parametrize("load_config", ["tensorflow.json"], indirect=True)
 def test_tensorflow_latest_version_registries_match_previous_release(load_config, scope):
-    """The newest version ships in the same regions and accounts as the previous release."""
+    """The newest version ships in at least the same regions and accounts as the previous
+    release. It may additionally carry a newly launched region that is still inside the
+    image-copy window and therefore not yet backfilled onto the previous release, so this
+    checks the reference registries are a subset (superset regressions are still caught)."""
     version, _ = LATEST[scope]
     versions = load_config[scope]["versions"]
-    assert versions[version]["registries"] == versions[REGISTRY_REFERENCE_VERSION]["registries"]
+    latest_registries = versions[version]["registries"]
+    reference_registries = versions[REGISTRY_REFERENCE_VERSION]["registries"]
+    missing = {
+        region: account
+        for region, account in reference_registries.items()
+        if latest_registries.get(region) != account
+    }
+    assert not missing, (
+        f"latest {scope} version {version} is missing regions/accounts present in the "
+        f"previous release {REGISTRY_REFERENCE_VERSION}: {missing}"
+    )
 
 
 @pytest.mark.parametrize("scope", ["inference", "training"])

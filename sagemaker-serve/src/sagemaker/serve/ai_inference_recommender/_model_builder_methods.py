@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Internal helpers backing the public start_benchmark function and ModelBuilder.generate_deployment_recommendations."""
+
 from __future__ import absolute_import
 
 import time
@@ -166,9 +167,7 @@ def start_benchmark(
             inference_components=components,
         )
     )
-    network_config = (
-        AIBenchmarkNetworkConfig(vpc_config=vpc_config) if vpc_config else None
-    )
+    network_config = AIBenchmarkNetworkConfig(vpc_config=vpc_config) if vpc_config else None
 
     suffix = uuid.uuid4().hex[:8]
     job_name = name or f"sm-bench-{int(time.time())}-{suffix}"
@@ -252,9 +251,7 @@ def run_recommendation_job(
         or getattr(builder, "role_arn", None)
         or get_execution_role(sagemaker_session=sagemaker_session)
     )
-    output_location = output_path or _default_output_path(
-        sagemaker_session, "recommendations"
-    )
+    output_location = output_path or _default_output_path(sagemaker_session, "recommendations")
 
     s3_uri = _resolve_model_s3_uri(builder)
     if not s3_uri:

@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Dataset Builder for FeatureStore."""
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
@@ -25,23 +26,33 @@ _DEFAULT_CATALOG = "AwsDataCatalog"
 _DEFAULT_DATABASE = "sagemaker_featurestore"
 
 _DTYPE_TO_FEATURE_TYPE = {
-    "object": "String", "string": "String",
-    "int64": "Integral", "int32": "Integral",
-    "float64": "Fractional", "float32": "Fractional",
+    "object": "String",
+    "string": "String",
+    "int64": "Integral",
+    "int32": "Integral",
+    "float64": "Fractional",
+    "float32": "Fractional",
 }
 
 _DTYPE_TO_ATHENA_TYPE = {
-    "object": "STRING", "int64": "INT", "float64": "DOUBLE",
-    "bool": "BOOLEAN", "datetime64[ns]": "TIMESTAMP",
+    "object": "STRING",
+    "int64": "INT",
+    "float64": "DOUBLE",
+    "bool": "BOOLEAN",
+    "datetime64[ns]": "TIMESTAMP",
 }
 
 
 class TableType(Enum):
+    """Kind of table a dataset builder can read from."""
+
     FEATURE_GROUP = "FeatureGroup"
     DATA_FRAME = "DataFrame"
 
 
 class JoinTypeEnum(Enum):
+    """SQL join types supported when joining feature groups."""
+
     INNER_JOIN = "JOIN"
     LEFT_JOIN = "LEFT JOIN"
     RIGHT_JOIN = "RIGHT JOIN"
@@ -50,6 +61,8 @@ class JoinTypeEnum(Enum):
 
 
 class JoinComparatorEnum(Enum):
+    """SQL comparison operators supported in join conditions."""
+
     EQUALS = "="
     GREATER_THAN = ">"
     GREATER_THAN_OR_EQUAL_TO = ">="
@@ -93,6 +106,7 @@ class FeatureGroupToBeMerged:
         join_type (JoinTypeEnum): A JoinTypeEnum representing the type of join between
             the base and target feature groups. (default: JoinTypeEnum.INNER_JOIN).
     """
+
     features: List[str]
     included_feature_names: List[str]
     projected_feature_names: List[str]
@@ -154,7 +168,7 @@ def construct_feature_group_to_be_merged(
     event_time_name = fg.event_time_feature_name
     event_time_type = next(
         (fd.feature_type for fd in fg.feature_definitions if fd.feature_name == event_time_name),
-        None
+        None,
     )
 
     if feature_name_in_target and feature_name_in_target not in features:
@@ -260,7 +274,9 @@ class DatasetBuilder:
     _write_time_ending_timestamp: datetime.datetime = field(default=None, init=False)
     _event_time_starting_timestamp: datetime.datetime = field(default=None, init=False)
     _event_time_ending_timestamp: datetime.datetime = field(default=None, init=False)
-    _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = field(default_factory=list, init=False)
+    _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = field(
+        default_factory=list, init=False
+    )
     _register_as_dataset: bool = False
     _source_feature_groups: List = field(default_factory=list)
 
@@ -339,8 +355,12 @@ class DatasetBuilder:
         """
         self._feature_groups_to_be_merged.append(
             construct_feature_group_to_be_merged(
-                feature_group, included_feature_names, target_feature_name_in_base,
-                feature_name_in_target, join_comparator, join_type,
+                feature_group,
+                included_feature_names,
+                target_feature_name_in_base,
+                feature_name_in_target,
+                join_comparator,
+                join_type,
             )
         )
         self._source_feature_groups.append(feature_group)
@@ -439,7 +459,7 @@ class DatasetBuilder:
             tuple: A tuple containing:
                 - str: The S3 path of the .csv file
                 - str: The query string executed
-        
+
         Note:
             This method returns a tuple (csv_path, query_string).
             To get just the CSV path: csv_path, _ = builder.to_csv_file()
@@ -458,7 +478,7 @@ class DatasetBuilder:
             tuple: A tuple containing:
                 - pd.DataFrame: The pandas DataFrame object
                 - str: The query string executed
-        
+
         Note:
             This method returns a tuple (dataframe, query_string).
             To get just the DataFrame: df, _ = builder.to_dataframe()
@@ -468,7 +488,6 @@ class DatasetBuilder:
         if "row_recent" in df.columns:
             df = df.drop("row_recent", axis="columns")
         return df, query_string
-
 
     def _to_csv_from_dataframe(self) -> tuple[str, str]:
         s3_folder, temp_table_name = upload_dataframe_to_s3(
@@ -505,8 +524,12 @@ class DatasetBuilder:
     def _to_csv_from_feature_group(self) -> tuple[str, str]:
         base_fg = construct_feature_group_to_be_merged(self._base, self._included_feature_names)
         self._record_identifier_feature_name = base_fg.record_identifier_feature_name
-        self._event_time_identifier_feature_name = base_fg.event_time_identifier_feature.feature_name
-        self._event_time_identifier_feature_type = base_fg.event_time_identifier_feature.feature_type
+        self._event_time_identifier_feature_name = (
+            base_fg.event_time_identifier_feature.feature_name
+        )
+        self._event_time_identifier_feature_type = (
+            base_fg.event_time_identifier_feature.feature_type
+        )
 
         query_string = self._construct_query_string(base_fg)
         result = self._run_query(query_string, base_fg.catalog, base_fg.database)
@@ -548,7 +571,6 @@ class DatasetBuilder:
         )
         self._run_query(query, _DEFAULT_CATALOG, _DEFAULT_DATABASE)
 
-
     def _construct_query_string(self, base: FeatureGroupToBeMerged) -> str:
         base_query = self._construct_table_query(base, "base")
         query = f"WITH fg_base AS ({base_query})"
@@ -562,11 +584,9 @@ class DatasetBuilder:
 
         for i, fg in enumerate(self._feature_groups_to_be_merged):
             selected += ", " + ", ".join(
-                f'fg_{i}."{f}" as "{f}.{i+1}"' for f in fg.projected_feature_names
+                f'fg_{i}."{f}" as "{f}.{i + 1}"' for f in fg.projected_feature_names
             )
-            selected_final += ", " + ", ".join(
-                f'"{f}.{i+1}"' for f in fg.projected_feature_names
-            )
+            selected_final += ", " + ", ".join(f'"{f}.{i + 1}"' for f in fg.projected_feature_names)
 
         query += (
             f"\nSELECT {selected_final}\nFROM (\n"
@@ -608,7 +628,9 @@ class DatasetBuilder:
             return (
                 f"SELECT {included}\n"
                 f'FROM "{fg.database}"."{fg.table_name}" table_{suffix}\n'
-                + self._construct_where_query_string(suffix, fg.event_time_identifier_feature, ["NOT is_deleted"])
+                + self._construct_where_query_string(
+                    suffix, fg.event_time_identifier_feature, ["NOT is_deleted"]
+                )
             )
 
         if fg.table_type is TableType.FEATURE_GROUP and self._include_deleted_records:
@@ -620,7 +642,9 @@ class DatasetBuilder:
                 f"{rank}) AS row_{suffix}\n"
                 f'FROM "{fg.database}"."{fg.table_name}" origin_{suffix}\n'
                 f"WHERE NOT is_deleted) AS table_{suffix}\n"
-                + self._construct_where_query_string(suffix, fg.event_time_identifier_feature, [f"row_{suffix} = 1"])
+                + self._construct_where_query_string(
+                    suffix, fg.event_time_identifier_feature, [f"row_{suffix} = 1"]
+                )
             )
 
         if fg.table_type is TableType.FEATURE_GROUP:
@@ -640,7 +664,7 @@ class DatasetBuilder:
                     f"SELECT {included}\nFROM (\n"
                     f"SELECT {included_with_write}\n"
                     f'FROM "{fg.database}"."{fg.table_name}" table_{suffix}\n'
-                    f"LEFT JOIN deleted_{suffix} ON table_{suffix}.\"{record_id}\" = deleted_{suffix}.\"{record_id}\"\n"
+                    f'LEFT JOIN deleted_{suffix} ON table_{suffix}."{record_id}" = deleted_{suffix}."{record_id}"\n'
                     f'WHERE deleted_{suffix}."{record_id}" IS NULL\n'
                     f"UNION ALL\n"
                     f"SELECT {included_with_write}\nFROM deleted_{suffix}\n"
@@ -648,18 +672,20 @@ class DatasetBuilder:
                     f'ON table_{suffix}."{record_id}" = deleted_{suffix}."{record_id}"\n'
                     f'AND (table_{suffix}."{event_time}" > deleted_{suffix}."{event_time}"\n{rank_cond})\n'
                     f") AS table_{suffix}\n"
-                    + self._construct_where_query_string(suffix, fg.event_time_identifier_feature, [])
+                    + self._construct_where_query_string(
+                        suffix, fg.event_time_identifier_feature, []
+                    )
                 )
 
             return (
                 f"WITH {dedup},\n{deleted}\n"
                 f"SELECT {included}\nFROM (\n"
                 f"SELECT {included_with_write}\nFROM table_{suffix}\n"
-                f"LEFT JOIN deleted_{suffix} ON table_{suffix}.\"{record_id}\" = deleted_{suffix}.\"{record_id}\"\n"
+                f'LEFT JOIN deleted_{suffix} ON table_{suffix}."{record_id}" = deleted_{suffix}."{record_id}"\n'
                 f'WHERE deleted_{suffix}."{record_id}" IS NULL\n'
                 f"UNION ALL\n"
                 f"SELECT {included_with_write}\nFROM deleted_{suffix}\n"
-                f"JOIN table_{suffix} ON table_{suffix}.\"{record_id}\" = deleted_{suffix}.\"{record_id}\"\n"
+                f'JOIN table_{suffix} ON table_{suffix}."{record_id}" = deleted_{suffix}."{record_id}"\n'
                 f'AND (table_{suffix}."{event_time}" > deleted_{suffix}."{event_time}"\n{rank_cond})\n'
                 f") AS table_{suffix}\n"
                 + self._construct_where_query_string(suffix, fg.event_time_identifier_feature, [])
@@ -686,7 +712,11 @@ class DatasetBuilder:
         where_conds = []
         if is_fg and self._write_time_ending_timestamp:
             where_conds.append(self._construct_write_time_condition(f"origin_{suffix}"))
-        where_conds.extend(self._construct_event_time_conditions(f"origin_{suffix}", fg.event_time_identifier_feature))
+        where_conds.extend(
+            self._construct_event_time_conditions(
+                f"origin_{suffix}", fg.event_time_identifier_feature
+            )
+        )
         where_str = f"WHERE {' AND '.join(where_conds)}\n" if where_conds else ""
 
         dedup_where = f"WHERE dedup_row_{suffix} = 1\n" if is_fg else ""
@@ -707,7 +737,9 @@ class DatasetBuilder:
         rank = f'ORDER BY origin_{suffix}."{event_time}" DESC'
 
         if fg.table_type is TableType.FEATURE_GROUP:
-            rank += f', origin_{suffix}."api_invocation_time" DESC, origin_{suffix}."write_time" DESC\n'
+            rank += (
+                f', origin_{suffix}."api_invocation_time" DESC, origin_{suffix}."write_time" DESC\n'
+            )
 
         write_cond = ""
         if fg.table_type is TableType.FEATURE_GROUP and self._write_time_ending_timestamp:
@@ -715,7 +747,9 @@ class DatasetBuilder:
 
         event_conds = ""
         if self._event_time_starting_timestamp and self._event_time_ending_timestamp:
-            conds = self._construct_event_time_conditions(f"origin_{suffix}", fg.event_time_identifier_feature)
+            conds = self._construct_event_time_conditions(
+                f"origin_{suffix}", fg.event_time_identifier_feature
+            )
             event_conds = "".join(f"AND {c}\n" for c in conds)
 
         return (
@@ -737,7 +771,9 @@ class DatasetBuilder:
         if isinstance(self._base, FeatureGroup) and self._write_time_ending_timestamp:
             conditions.append(self._construct_write_time_condition(f"table_{suffix}"))
 
-        conditions.extend(self._construct_event_time_conditions(f"table_{suffix}", event_time_feature))
+        conditions.extend(
+            self._construct_event_time_conditions(f"table_{suffix}", event_time_feature)
+        )
         return f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
     def _validate_options(self):
@@ -750,16 +786,26 @@ class DatasetBuilder:
             raise ValueError("number_of_records must be non-negative.")
         if is_df_base and no_joins:
             if self._include_deleted_records:
-                raise ValueError("include_deleted_records() only works for FeatureGroup if no join.")
+                raise ValueError(
+                    "include_deleted_records() only works for FeatureGroup if no join."
+                )
             if self._include_duplicated_records:
-                raise ValueError("include_duplicated_records() only works for FeatureGroup if no join.")
+                raise ValueError(
+                    "include_duplicated_records() only works for FeatureGroup if no join."
+                )
             if self._write_time_ending_timestamp:
                 raise ValueError("as_of() only works for FeatureGroup if no join.")
         if self._point_in_time_accurate_join and no_joins:
             raise ValueError("point_in_time_accurate_join() requires at least one join.")
 
-    def _construct_event_time_conditions(self, table: str, event_time_feature: FeatureDefinition) -> List[str]:
-        cast_fn = "from_iso8601_timestamp" if event_time_feature.feature_type == FeatureTypeEnum.STRING else "from_unixtime"
+    def _construct_event_time_conditions(
+        self, table: str, event_time_feature: FeatureDefinition
+    ) -> List[str]:
+        cast_fn = (
+            "from_iso8601_timestamp"
+            if event_time_feature.feature_type == FeatureTypeEnum.STRING
+            else "from_unixtime"
+        )
         conditions = []
         if self._event_time_starting_timestamp:
             conditions.append(
@@ -775,7 +821,7 @@ class DatasetBuilder:
 
     def _construct_write_time_condition(self, table: str) -> str:
         ts = self._write_time_ending_timestamp.replace(microsecond=0)
-        return f'{table}."write_time" <= to_timestamp(\'{ts}\', \'yyyy-mm-dd hh24:mi:ss\')'
+        return f"{table}.\"write_time\" <= to_timestamp('{ts}', 'yyyy-mm-dd hh24:mi:ss')"
 
     def _construct_join_condition(self, fg: FeatureGroupToBeMerged, suffix: str) -> str:
         target_feature = fg.feature_name_in_target or fg.record_identifier_feature_name
@@ -785,8 +831,16 @@ class DatasetBuilder:
         )
 
         if self._point_in_time_accurate_join:
-            base_cast = "from_iso8601_timestamp" if self._event_time_identifier_feature_type == FeatureTypeEnum.STRING else "from_unixtime"
-            fg_cast = "from_iso8601_timestamp" if fg.event_time_identifier_feature.feature_type == FeatureTypeEnum.STRING else "from_unixtime"
+            base_cast = (
+                "from_iso8601_timestamp"
+                if self._event_time_identifier_feature_type == FeatureTypeEnum.STRING
+                else "from_unixtime"
+            )
+            fg_cast = (
+                "from_iso8601_timestamp"
+                if fg.event_time_identifier_feature.feature_type == FeatureTypeEnum.STRING
+                else "from_unixtime"
+            )
             join += (
                 f'\nAND {base_cast}(fg_base."{self._event_time_identifier_feature_name}") >= '
                 f'{fg_cast}(fg_{suffix}."{fg.event_time_identifier_feature.feature_name}")'

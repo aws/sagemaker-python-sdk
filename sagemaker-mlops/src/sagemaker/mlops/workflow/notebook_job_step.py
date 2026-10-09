@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The notebook job step definitions for workflow."""
+
 from __future__ import absolute_import
 
 import re
@@ -45,7 +46,13 @@ from sagemaker.core.helper.session_helper import get_execution_role, expand_role
 
 from sagemaker.core.s3 import s3_path_join
 from sagemaker.core.s3 import S3Uploader
-from sagemaker.core.common_utils import _tmpdir, name_from_base, resolve_value_from_config, format_tags, Tags
+from sagemaker.core.common_utils import (
+    _tmpdir,
+    name_from_base,
+    resolve_value_from_config,
+    format_tags,
+    Tags,
+)
 from sagemaker.core import network as vpc_utils
 
 from sagemaker.core.config.config_schema import (

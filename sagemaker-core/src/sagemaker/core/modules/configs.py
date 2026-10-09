@@ -74,7 +74,7 @@ __all__ = [
     "MetricDefinition",
 ]
 
-from sagemaker.core.modules.utils import convert_unassigned_to_none
+from sagemaker.core.modules.utils import convert_unassigned_to_none, validate_instance_preferences
 
 
 class BaseConfig(BaseModel):
@@ -104,6 +104,13 @@ class SourceCode(BaseConfig):
         command (Optional[str]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        args (Optional[List[Union[str, int, float]]]):
+            A list of arguments to append to ``command`` when it is executed in the training job
+            container. Example: ``["--epochs", 25, "--learning_rate", 0.001]``. Each argument is
+            shell-quoted before being appended, so values may contain spaces or special characters.
+            Only applicable when ``command`` is provided; top-level ``hyperparameters`` are not
+            passed as CLI arguments in ``command`` mode -- they are available inside the container
+            via the ``SM_HPS`` environment variable.
         ignore_patterns: (Optional[List[str]]) :
             The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
             default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
@@ -113,6 +120,7 @@ class SourceCode(BaseConfig):
     requirements: Optional[str] = None
     entry_script: Optional[str] = None
     command: Optional[str] = None
+    args: Optional[List[Union[str, int, float]]] = None
     ignore_patterns: Optional[List[str]] = [
         ".env",
         ".git",
@@ -147,6 +155,11 @@ class Compute(shapes.ResourceConfig):
             subsequent training jobs.
         instance_groups (Optional[List[InstanceGroup]]):
             A list of instance groups for heterogeneous clusters to be used in the training job.
+        instance_preferences (Optional[List[InstancePreference]]):
+            An ordered list of candidate instance types (maximum 5). When set, the platform tries
+            each candidate in list order and launches the job on the first type with available
+            capacity. Mutually exclusive with ``instance_type``, ``instance_groups``, and
+            ``instance_placement_config``.
         enable_managed_spot_training (Optional[bool]):
             To train models using managed spot training, choose True. Managed spot training
             provides a fully managed and scalable infrastructure for training machine learning
@@ -159,8 +172,10 @@ class Compute(shapes.ResourceConfig):
 
     @model_validator(mode="after")
     def _model_validator(self) -> "Compute":
-        """Convert Unassigned values to None."""
-        return convert_unassigned_to_none(self)
+        """Convert Unassigned values to None and validate instance_preferences."""
+        converted = convert_unassigned_to_none(self)
+        validate_instance_preferences(converted)
+        return converted
 
     def _to_resource_config(self) -> shapes.ResourceConfig:
         """Convert to a sagemaker_core.shapes.ResourceConfig object."""
@@ -169,6 +184,11 @@ class Compute(shapes.ResourceConfig):
         filtered_dict = {
             k: v for k, v in compute_config_dict.items() if k in resource_config_fields
         }
+        # Preserve the nested InstancePreference model objects instead of the
+        # dumped dicts, so pydantic does not re-validate their optional scalar
+        # fields (e.g. an unset per-preference instance_count) as Unassigned().
+        if self.instance_preferences:
+            filtered_dict["instance_preferences"] = self.instance_preferences
         return shapes.ResourceConfig(**filtered_dict)
 
 
