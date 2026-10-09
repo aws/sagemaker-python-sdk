@@ -137,7 +137,15 @@ class Evaluator(AIRHubEntity):
             updated_time: Last update timestamp
             sagemaker_session: Optional SageMaker session.
         """
-        super().__init__(name, version, arn, status, created_time, updated_time, sagemaker_session)
+        super().__init__(
+            name,
+            version,
+            arn,
+            status,
+            created_time,
+            updated_time,
+            sagemaker_session=sagemaker_session,
+        )
         self.method = method
         self.type = type
         self.reference = reference
