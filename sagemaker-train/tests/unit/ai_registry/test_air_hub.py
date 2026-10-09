@@ -11,6 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+import os
+import subprocess
+import sys
 from unittest.mock import patch, MagicMock
 
 from sagemaker.ai_registry.air_constants import AIR_DEFAULT_PAGE_SIZE
@@ -225,3 +228,39 @@ class TestAIRHub:
         assert (
             AIRHub.hubName.isalnum()
         ), f"Hub name should only contain alphanumeric characters: {AIRHub.hubName}"
+
+    def test_import_does_not_require_aws_region(self, tmp_path):
+        """Importing AIRHub must not create boto3 clients (fails without a region)."""
+        env = {
+            k: v
+            for k, v in os.environ.items()
+            if k not in ("AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE")
+        }
+        env["AWS_CONFIG_FILE"] = str(tmp_path / "config")
+        env["AWS_SHARED_CREDENTIALS_FILE"] = str(tmp_path / "credentials")
+
+        result = subprocess.run(
+            [sys.executable, "-c", "import sagemaker.ai_registry.air_hub"],
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, result.stderr
+
+    @patch("sagemaker.ai_registry.air_hub.boto3")
+    def test_clients_created_lazily_and_cached(self, mock_boto3):
+        AIRHub._sagemaker_client = None
+        AIRHub._s3_client = None
+        try:
+            sm_client = AIRHub._get_sagemaker_client()
+            s3_client = AIRHub._get_s3_client()
+
+            assert AIRHub._get_sagemaker_client() is sm_client
+            assert AIRHub._get_s3_client() is s3_client
+            mock_boto3.client.assert_any_call("sagemaker")
+            mock_boto3.client.assert_any_call("s3")
+            assert mock_boto3.client.call_count == 2
+        finally:
+            AIRHub._sagemaker_client = None
+            AIRHub._s3_client = None
