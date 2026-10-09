@@ -386,7 +386,13 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
             SchemaOptional("accept_type"): And(
                 str,
                 Use(str.lower),
-                lambda s: s in ("text/csv", "application/jsonlines", "application/json", "application/x-parquet"),
+                lambda s: s
+                in (
+                    "text/csv",
+                    "application/jsonlines",
+                    "application/json",
+                    "application/x-parquet",
+                ),
             ),
             SchemaOptional("label"): Or(str, int),
             SchemaOptional("probability"): Or(str, int),
@@ -1164,7 +1170,12 @@ class ModelConfig:
                 )
             self.predictor_config["endpoint_name_prefix"] = endpoint_name_prefix
         if accept_type is not None:
-            if accept_type not in ["text/csv", "application/jsonlines", "application/json", "application/x-parquet"]:
+            if accept_type not in [
+                "text/csv",
+                "application/jsonlines",
+                "application/json",
+                "application/x-parquet",
+            ]:
                 raise ValueError(
                     f"Invalid accept_type {accept_type}."
                     f" Please choose text/csv, application/jsonlines, application/json, or application/x-parquet."
@@ -1186,8 +1197,7 @@ class ModelConfig:
                 "application/x-parquet",
             ]:
                 raise ValueError(
-                    f"Invalid content_type {content_type}."
-                    f" Please choose a valid content_type."
+                    f"Invalid content_type {content_type}." f" Please choose a valid content_type."
                 )
             if content_type == "application/jsonlines":
                 if content_template is None:
