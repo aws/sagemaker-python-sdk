@@ -401,6 +401,8 @@ class JumpStartModel(Model):
             sagemaker_session=self.sagemaker_session,
             model_type=self.model_type,
             hub_arn=self.hub_arn,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
         )
 
     def log_subscription_warning(self) -> None:

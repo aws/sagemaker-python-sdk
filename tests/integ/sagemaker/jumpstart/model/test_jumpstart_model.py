@@ -34,6 +34,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     download_inference_assets,
     get_sm_session,
     get_tabular_data,
+    x_fail_if_ice,
 )
 
 INF2_SUPPORTED_REGIONS = {
@@ -106,6 +107,7 @@ def test_prepacked_jumpstart_model(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() not in GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS,
     reason=f"JumpStart model package inference models unavailable in {tests.integ.test_region()}.",
@@ -165,6 +167,7 @@ def test_jumpstart_gated_model_neuron(setup):
     assert response is not None
 
 
+@x_fail_if_ice
 def test_jumpstart_gated_model(setup):
 
     model_id = "meta-textgeneration-llama-2-7b"
@@ -192,6 +195,8 @@ def test_jumpstart_gated_model(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
+@x_fail_if_ice
 def test_jumpstart_gated_model_inference_component_enabled(setup):
 
     model_id = "meta-textgeneration-llama-2-7b"

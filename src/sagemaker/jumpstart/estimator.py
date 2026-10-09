@@ -1206,6 +1206,8 @@ class JumpStartEstimator(Estimator):
             region=self.region,
             scope=JumpStartScriptScope.TRAINING,
             sagemaker_session=self.sagemaker_session,
+            tolerate_vulnerable_model=self.tolerate_vulnerable_model,
+            tolerate_deprecated_model=self.tolerate_deprecated_model,
         )
         return list(configs_dict.values())
 

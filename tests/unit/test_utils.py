@@ -18,6 +18,7 @@ import copy
 import logging
 import shutil
 import tarfile
+import tempfile
 from datetime import datetime
 import os
 import re
@@ -60,6 +61,8 @@ from sagemaker.utils import (
     tag_exists,
     _validate_new_tags,
     remove_tag_with_key,
+    _download_files_under_prefix,
+    validate_path_within_directory,
 )
 from src.sagemaker.config.config_utils import _log_sagemaker_config_single_substitution
 from tests.unit.sagemaker.workflow.helpers import CustomStep
@@ -2417,3 +2420,102 @@ class TestCreateOrUpdateCodeDir(TestCase):
                     sagemaker_session=None,
                     tmp="/tmp",
                 )
+
+
+class TestValidatePathWithinDirectory(TestCase):
+    """Test validate_path_within_directory blocks path traversal."""
+
+    def test_raises_on_path_outside_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            outside = os.path.join(tmpdir, "..", "..", "etc", "passwd")
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                validate_path_within_directory(outside, tmpdir, source_description="key")
+
+    def test_allows_path_within_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            inside = os.path.join(tmpdir, "subdir", "file.txt")
+            # should not raise
+            validate_path_within_directory(inside, tmpdir)
+
+    def test_allows_target_directory_itself(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # should not raise
+            validate_path_within_directory(tmpdir, tmpdir)
+
+
+class TestDownloadFilesUnderPrefixPathTraversal(TestCase):
+    """Test _download_files_under_prefix blocks path traversal attacks."""
+
+    def test_path_traversal_via_dotdot_in_key(self):
+        """Test that S3 keys with '..' traversal sequences are blocked."""
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/../../../../etc/passwd"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_not_called()
+
+    def test_path_traversal_via_relative_escape(self):
+        """Test that keys resolving outside target via relpath are blocked."""
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "prefix/../../../etc/cron.d/backdoor"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                _download_files_under_prefix("bucket", "prefix/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_not_called()
+
+    def test_safe_keys_are_allowed(self):
+        """Test that normal S3 keys within the target directory are allowed."""
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/subdir/file.txt"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_called_once()
+
+    def test_folder_objects_are_skipped(self):
+        """Test that S3 folder objects (keys ending with /) are skipped."""
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/subdir/"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_s3.Object.assert_not_called()

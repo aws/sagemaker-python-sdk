@@ -333,6 +333,16 @@ def test_sagemaker_config_cross_context_injection(
             endpoint_config_1.pop(key)
             endpoint_config_2.pop(key)
 
+        # Service-side defaults that the SDK and the sagemaker_config never set, and that the
+        # service has changed over time: MetricsConfig is now returned by default, and the
+        # default VolumeSizeInGB depends on the instance type. Comparing them would make this
+        # test fail whenever the service changes a default, without testing config injection.
+        for description in [endpoint_1, endpoint_2, endpoint_config_1, endpoint_config_2]:
+            description.pop("MetricsConfig", None)
+        for description in [endpoint_config_1, endpoint_config_2]:
+            for variant in description["ProductionVariants"]:
+                variant.pop("VolumeSizeInGB", None)
+
         for key in ["ResponseMetadata"]:
             model_tags.pop(key)
             endpoint_1_tags.pop(key)
@@ -385,7 +395,6 @@ def test_sagemaker_config_cross_context_injection(
                     "InitialInstanceCount": 1,
                     "InstanceType": alternative_cpu_instance_type,
                     "InitialVariantWeight": 1.0,
-                    "VolumeSizeInGB": 4,
                 }
             ],
             "DataCaptureConfig": {
@@ -413,7 +422,6 @@ def test_sagemaker_config_cross_context_injection(
                     "InitialInstanceCount": 1,
                     "InstanceType": cpu_instance_type,
                     "InitialVariantWeight": 1.0,
-                    "VolumeSizeInGB": 16,
                 }
             ],
             "EnableNetworkIsolation": False,

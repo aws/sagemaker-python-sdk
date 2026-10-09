@@ -20,6 +20,7 @@ from typing import Optional, Union, List, Any, Dict
 from botocore.exceptions import ClientError
 from boto3.session import Session as boto3_Session
 from six.moves.urllib.parse import urlparse
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.session import Session
 
 from sagemaker.model_card.schema_constraints import (
@@ -1433,6 +1434,10 @@ class ModelCard(object):
             sagemaker_session (Session, optional): A SageMaker Session object, used for SageMaker interactions (default: None). If not specified, a SageMaker Session is created using the default AWS configuration chain.
             model_package_details (ModelPackage, optional): Model package version metadata information (default: None).
         """  # noqa E501 # pylint: disable=line-too-long
+        warn_v2_deprecation(
+            feature="ModelCard",
+            v3_replacement="the model card resources under sagemaker.core",
+        )
         self.sagemaker_session = sagemaker_session or Session()
         self.name = name
         self.arn = arn

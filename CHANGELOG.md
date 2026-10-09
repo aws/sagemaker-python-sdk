@@ -1,5 +1,75 @@
 # Changelog
 
+## v2.257.7 (2026-10-07)
+
+### Enhancements
+* Add support for describe_endpoint_config to session (#5193)
+* Update SDK to use latest LMI v29 image for sdk v2.x (#6302)
+
+### Bug Fixes
+* Reject unsupported container_version in image_uris instead of returning a bad URI (#6377)
+* Honor base_job_name for model monitor job definition names (#6373)
+* Allow directory paths in Spark submit_deps (#6368)
+* Clean up temp CSV in AthenaQuery.as_dataframe (#6345)
+* Default AsyncPredictor upload prefix to endpoint name (#6337)
+* Keep AsyncPredictor serializers in sync with wrapped predictor (#6334)
+* Convert ParallelismConfiguration to a dict before passing to boto (#6329)
+* Do not apply user ignore_patterns to the SDK-owned sm_drivers channel (#6328)
+* Allow PipelineVariable keys in HyperparameterTuner hyperparameter_ranges annotation (#6327)
+* Write repack launcher with LF endings so pipelines built on Windows work (#6326)
+* Allow Constraints.set_monitoring to disable monitoring for non-string features (#6325)
+* Shorten local pipeline execution_id (#5283)
+* Send NextToken when JumpStart Hub.list_models pages through hub contents (#6262)
+* Add eusc-de-east-1 JumpStart buckets and name JumpStart in the bucket error (#6242)
+* Preserve instance-variant environment variable names on the JumpStart hub path (#6205)
+
+### Other Changes
+* Remove Bedrock step types and align inference and lineage pipeline steps with v3 (#6223)
+* Stop slow CI Health V2 suite from timing out (#6391)
+* Fix broken and flaky CI Health V2 integ tests (#6386)
+* Replace deprecated ml.t2.medium in integ fixtures (#6284)
+
+
+## v2.257.6 (2026-08-10)
+
+### Enhancements
+* Add Zimmer deployment and lineage pipeline step types (v2 backport) (#6153)
+* Update SDK to use latest LMI v27 image for sdk v2.x (#5977)
+
+### Bug Fixes
+* Forward tolerance flags from get_jumpstart_configs (#6136)
+
+### Documentation Changes
+* Show V2 deprecation note on every documentation page (#6172)
+
+
+## v2.257.5 (2026-07-14)
+
+### Bug Fixes
+* Read the Docs build failure (#6023)
+
+
+## v2.257.4 (2026-07-09)
+
+### Enhancements
+* Add v2 -> v3 runtime migration warnings (#5978)
+* Update SDK to use latest LMIv26 image for sdk v2.x (#5955)
+
+### Bug Fixes
+* Harden S3 download path handling (#5984)
+
+### Documentation Changes
+* Add noindex and canonical tags to deprecated V2 docs (#6001)
+* Add deprecation banner to V2 docs (#5991)
+* Add v2 -> v3 version lifecycle table to README (#5979)
+
+### Other Changes
+* Mark capacity-flaky GPU integ tests as slow_test (#5998)
+* Disable HF Xet/hf_transfer in serve integ tests (#5992)
+* Fix slow tests in v2 (#5944)
+* Fix canaries-v2 (#5932)
+
+
 ## v2.257.3 (2026-05-04)
 
 ### Bug Fixes

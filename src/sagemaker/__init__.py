@@ -76,5 +76,11 @@ from sagemaker.automl.automlv2 import (  # noqa: F401
 
 from sagemaker.debugger import ProfilerConfig, Profiler  # noqa: F401
 from sagemaker.partner_app.auth_provider import PartnerAppAuthProvider  # noqa: F401
+from sagemaker.deprecations import warn_v2_deprecation  # noqa: F401
 
 __version__ = importlib_metadata.version("sagemaker")
+
+# This guarantees every v2 user sees the v2 -> v3 notice regardless of which API
+# they use. It fires once per process and is suppressible via the
+# SAGEMAKER_SUPPRESS_V2_WARNING environment variable (see sagemaker.deprecations).
+warn_v2_deprecation()

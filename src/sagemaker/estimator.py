@@ -53,7 +53,12 @@ from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     get_rule_container_image_uri,
     RuleBase,
 )
-from sagemaker.deprecations import removed_function, removed_kwargs, renamed_kwargs
+from sagemaker.deprecations import (
+    removed_function,
+    removed_kwargs,
+    renamed_kwargs,
+    warn_v2_deprecation,
+)
 from sagemaker.fw_utils import (
     UploadedCode,
     _region_supports_debugger,
@@ -577,6 +582,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                     }
 
         """
+        # Reports the concrete subclass name (Estimator, PyTorch, TensorFlow,
+        # HuggingFace, SKLearn, XGBoost, AlgorithmEstimator, JumpStartEstimator, ...)
+        # since every estimator routes through EstimatorBase.__init__.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="ModelTrainer",
+            v3_import="from sagemaker.train import ModelTrainer",
+        )
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
         )

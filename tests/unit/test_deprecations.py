@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 
+import sagemaker.deprecations as deprecations
 from sagemaker.deprecations import (
     deprecated_class,
     deprecated_deserialize,
@@ -25,7 +26,19 @@ from sagemaker.deprecations import (
     renamed_kwargs,
     deprecation_warning,
     deprecated,
+    warn_v2_deprecation,
+    SageMakerV2DeprecationWarning,
+    SUPPRESS_V2_WARNING_ENV_VAR,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_v2_warning_state(monkeypatch):
+    """Reset the once-per-process dedup set and env var around each test."""
+    monkeypatch.delenv(SUPPRESS_V2_WARNING_ENV_VAR, raising=False)
+    deprecations._v2_deprecation_warned.clear()
+    yield
+    deprecations._v2_deprecation_warned.clear()
 
 
 def test_renamed_kwargs():
@@ -224,3 +237,85 @@ def test_deprecated_class():
     B = deprecated_class(A, "foo")
     with pytest.warns(DeprecationWarning):
         B()
+
+
+def test_warn_v2_deprecation_package_level():
+    with pytest.warns(SageMakerV2DeprecationWarning) as w:
+        warn_v2_deprecation()
+    msg = str(w[-1].message)
+    assert "SageMaker Python SDK v2" in msg
+    assert "deprecation" in msg
+    assert "migration.md" in msg
+    assert SUPPRESS_V2_WARNING_ENV_VAR in msg
+
+
+def test_warn_v2_deprecation_is_future_warning():
+    # FutureWarning is shown by default; DeprecationWarning is not. Subclassing
+    # FutureWarning is what makes the nudge visible to end users.
+    assert issubclass(SageMakerV2DeprecationWarning, FutureWarning)
+
+
+def test_warn_v2_deprecation_feature_with_replacement():
+    with pytest.warns(SageMakerV2DeprecationWarning) as w:
+        warn_v2_deprecation(feature="Estimator", v3_replacement="ModelTrainer")
+    msg = str(w[-1].message)
+    assert "Estimator" in msg
+    assert "ModelTrainer" in msg
+
+
+def test_warn_v2_deprecation_once_per_feature():
+    import warnings
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        warn_v2_deprecation(feature="Estimator")
+        warn_v2_deprecation(feature="Estimator")
+        warn_v2_deprecation(feature="Model")
+    # Estimator fires once despite two calls; Model fires once -> 2 total.
+    categories = [x for x in w if issubclass(x.category, SageMakerV2DeprecationWarning)]
+    assert len(categories) == 2
+
+
+def test_warn_v2_deprecation_suppressed_by_env_var(monkeypatch):
+    import warnings
+
+    monkeypatch.setenv(SUPPRESS_V2_WARNING_ENV_VAR, "1")
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        warn_v2_deprecation()
+        warn_v2_deprecation(feature="Estimator")
+    assert len(w) == 0
+
+
+def test_warn_v2_deprecation_reports_subclass_name():
+    # Base-class __init__ sites pass feature=type(self).__name__ so the warning
+    # names the concrete subclass (e.g. PyTorch) rather than the base.
+    with pytest.warns(SageMakerV2DeprecationWarning) as w:
+        warn_v2_deprecation(feature="PyTorch", v3_replacement="ModelTrainer")
+    assert "PyTorch" in str(w[-1].message)
+
+
+def test_warn_v2_deprecation_quotes_exact_import():
+    # When a v3_import is supplied, the exact import statement is quoted verbatim
+    # so users can copy-paste it.
+    with pytest.warns(SageMakerV2DeprecationWarning) as w:
+        warn_v2_deprecation(
+            feature="Estimator",
+            v3_replacement="ModelTrainer",
+            v3_import="from sagemaker.train import ModelTrainer",
+        )
+    msg = str(w[-1].message)
+    assert "`ModelTrainer`" in msg
+    assert "from sagemaker.train import ModelTrainer" in msg
+
+
+def test_warn_v2_deprecation_without_import_still_names_symbol():
+    # Surfaces with no published import path still name the v3 symbol/namespace
+    # and omit the import parenthetical.
+    with pytest.warns(SageMakerV2DeprecationWarning) as w:
+        warn_v2_deprecation(
+            feature="Transformer", v3_replacement="sagemaker.core.shapes.TransformJob"
+        )
+    msg = str(w[-1].message)
+    assert "sagemaker.core.shapes.TransformJob" in msg
+    assert "import" not in msg.split("\n")[0]  # no import parenthetical on the first line

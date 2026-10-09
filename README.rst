@@ -39,9 +39,45 @@ If you have **your own algorithms** built into SageMaker compatible Docker conta
 
 For detailed documentation, including the API reference, see `Read the Docs <https://sagemaker.readthedocs.io>`_.
 
+Version Lifecycle
+-----------------
+
+The SageMaker Python SDK follows the `AWS SDKs and Tools maintenance policy
+<https://docs.aws.amazon.com/sdkref/latest/guide/maint-policy.html>`_.
+Version 3 became generally available on 2025-11-19 and is the actively
+developed major version. Version 2 is in maintenance mode: it receives
+critical bug fixes and security updates only, and will not receive new
+features, API updates, or new region support.
+
+We recommend all users migrate to v3. See the `migration guide
+<https://github.com/aws/sagemaker-python-sdk/blob/master/migration.md>`_.
+
+The following table shows the lifecycle phases for **version 2** of the
+SageMaker Python SDK:
+
+=========================  =============  =============
+Phase                      Start Date     End Date
+=========================  =============  =============
+General Availability       2020-08-04     N/A
+Maintenance mode           2026-07-06     2027-07-05
+End-of-Support             2027-07-06     N/A
+=========================  =============  =============
+
+- **General Availability** -- the SDK is fully supported, with regular
+  releases for new services, API updates, and bug and security fixes.
+- **Maintenance mode** -- AWS limits releases to critical bug fixes and
+  security issues only. No new APIs, features, or region support.
+- **End-of-Support** -- the SDK no longer receives updates or releases.
+  Previously published versions remain available on PyPI and the source
+  remains on GitHub.
+
+To pin to v2 during migration: ``pip install "sagemaker<3"``.
+To upgrade to v3: ``pip install --upgrade sagemaker``.
+
 Table of Contents
 -----------------
 
+#. `Version Lifecycle <#version-lifecycle>`__
 #. `Installing SageMaker Python SDK <#installing-the-sagemaker-python-sdk>`__
 #. `Using the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html>`__
 #. `Using MXNet <https://sagemaker.readthedocs.io/en/stable/using_mxnet.html>`__

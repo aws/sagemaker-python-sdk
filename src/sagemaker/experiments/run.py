@@ -24,6 +24,7 @@ import dateutil
 from numpy import array
 
 from sagemaker.apiutils import _utils
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.experiments import _api_types
 from sagemaker.experiments._api_types import (
     TrialComponentArtifact,
@@ -168,6 +169,10 @@ class Run(object):
             artifact_prefix (str): The S3 key prefix used to generate the S3 path
                 to upload the artifact to (default: "trial-component-artifacts").
         """
+        warn_v2_deprecation(
+            feature="Run",
+            v3_replacement="the experiment tracking resources under sagemaker.core.experiments",
+        )
         # TODO: we should revert the lower casting once backend fix reaches prod
         self.experiment_name = experiment_name.lower()
         sagemaker_session = sagemaker_session or _utils.default_session()

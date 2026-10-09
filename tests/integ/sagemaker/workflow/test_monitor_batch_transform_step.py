@@ -205,7 +205,7 @@ def step_model_create(
 
     xgb_model_data_s3 = pipeline_session.upload_data(
         path=os.path.join(os.path.join(DATA_DIR, "xgboost_abalone"), "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix="integ-test-data/xgboost_abalone/model",
     )
 
     xgb_model = XGBoostModel(

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The `Step` definitions for SageMaker Pipelines Workflows."""
+
 from __future__ import absolute_import
 
 import abc
@@ -71,6 +72,10 @@ class StepTypeEnum(Enum):
     EMR = "EMR"
     FAIL = "Fail"
     AUTOML = "AutoML"
+    ENDPOINT_CONFIG = "EndpointConfig"
+    ENDPOINT = "Endpoint"
+    INFERENCE_COMPONENT = "InferenceComponent"
+    LINEAGE = "Lineage"
 
 
 class Step(Entity):

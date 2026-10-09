@@ -2301,6 +2301,37 @@ class EstimatorTest(unittest.TestCase):
 
         mock_estimator_fit.assert_called_once_with(wait=True, job_name="pt-ic-mobilenet-v2-8675309")
 
+    @mock.patch("sagemaker.jumpstart.estimator.get_jumpstart_configs")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.Session")
+    @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    @mock.patch("sagemaker.jumpstart.estimator.Estimator.__init__")
+    @mock.patch("sagemaker.jumpstart.factory.estimator.JUMPSTART_DEFAULT_REGION_NAME", region)
+    def test_estimator_list_training_configs_forwards_tolerance(
+        self,
+        mock_estimator_init: mock.Mock,
+        mock_get_model_specs: mock.Mock,
+        mock_session: mock.Mock,
+        mock_get_manifest: mock.Mock,
+        mock_get_jumpstart_configs: mock.Mock,
+    ):
+        mock_get_model_specs.side_effect = get_prototype_spec_with_configs
+        mock_get_manifest.side_effect = (
+            lambda region, model_type, *args, **kwargs: get_prototype_manifest(region, model_type)
+        )
+        mock_get_jumpstart_configs.return_value = {}
+        mock_session.return_value = sagemaker_session
+
+        estimator = JumpStartEstimator(
+            model_id="pytorch-ic-mobilenet-v2",
+            tolerate_vulnerable_model=True,
+            tolerate_deprecated_model=True,
+        )
+
+        assert estimator.list_training_configs() == []
+        assert mock_get_jumpstart_configs.call_args.kwargs["tolerate_vulnerable_model"] is True
+        assert mock_get_jumpstart_configs.call_args.kwargs["tolerate_deprecated_model"] is True
+
     @mock.patch("sagemaker.utils.sagemaker_timestamp")
     @mock.patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     @mock.patch("sagemaker.jumpstart.factory.estimator.Session")

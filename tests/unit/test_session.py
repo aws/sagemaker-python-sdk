@@ -18,6 +18,7 @@ import io
 import json
 import logging
 import os
+import tempfile
 
 import pytest
 import six
@@ -7050,6 +7051,68 @@ def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
         Filename="./foo/bar/mode.tar.gz",
         ExtraArgs=None,
     )
+
+
+def test_download_data_path_traversal_in_file_key(sagemaker_session):
+    """Test that S3 keys with '..' traversal sequences are blocked."""
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/../../../../etc/passwd", "Size": 100},
+            ]
+        }
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            sagemaker_session.download_data(
+                path=tmpdir, bucket="foo-bucket", key_prefix="data/"
+            )
+
+    sagemaker_session.s3_client.download_file.assert_not_called()
+
+
+def test_download_data_path_traversal_overwrite_credentials(sagemaker_session):
+    """Test the exact attack scenario from the vulnerability report."""
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/../../../../Users/alice/.aws/credentials", "Size": 200},
+            ]
+        }
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            sagemaker_session.download_data(
+                path=tmpdir, bucket="shared-bucket", key_prefix="data/"
+            )
+
+    sagemaker_session.s3_client.download_file.assert_not_called()
+
+
+@patch("os.makedirs")
+def test_download_data_safe_keys_are_allowed(makedirs, sagemaker_session):
+    """Test that normal S3 keys within the target directory are allowed."""
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/train.csv", "Size": 100},
+                {"Key": "data/models/model.pkl", "Size": 500},
+            ]
+        }
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = sagemaker_session.download_data(
+            path=tmpdir, bucket="foo-bucket", key_prefix="data/"
+        )
+
+    assert len(result) == 2
+    assert sagemaker_session.s3_client.download_file.call_count == 2
 
 
 def test_create_hub(sagemaker_session):

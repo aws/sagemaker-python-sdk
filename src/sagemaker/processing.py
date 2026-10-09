@@ -42,6 +42,7 @@ from sagemaker.config import (
     PROCESSING_JOB_VOLUME_KMS_KEY_ID_PATH,
 )
 from sagemaker.dataset_definition.inputs import DatasetDefinition, S3Input
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.network import NetworkConfig
@@ -131,6 +132,14 @@ class Processor(object):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
+        # Reports the concrete subclass name (Processor, ScriptProcessor,
+        # PySparkProcessor, FrameworkProcessor, SKLearnProcessor, ...) since they
+        # route through Processor.__init__.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="DataProcessor",
+            v3_import="from sagemaker.mlops.processing import DataProcessor",
+        )
         self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type

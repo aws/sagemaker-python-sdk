@@ -26,6 +26,7 @@ from sagemaker.deprecations import (
     removed_kwargs,
     renamed_kwargs,
     renamed_warning,
+    warn_v2_deprecation,
 )
 from sagemaker.deserializers import (  # noqa: F401 # pylint: disable=unused-import
     BytesDeserializer,
@@ -131,6 +132,15 @@ class Predictor(PredictorBase):
             component_name (str): Name of the Amazon SageMaker inference component
                 corresponding the predictor.
         """
+        # Reports the concrete subclass name since predictors route through
+        # Predictor.__init__.
+        # The migration guide maps Predictor to the Endpoint resource in
+        # sagemaker-core but does not publish an exact import path, so we name
+        # the symbol and defer to the guide rather than quoting an import.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="sagemaker.core.resources.Endpoint",
+        )
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)
         endpoint_name = renamed_kwargs("endpoint", "endpoint_name", endpoint_name, kwargs)

@@ -149,6 +149,9 @@ class AthenaQuery:
     def as_dataframe(self, **kwargs) -> DataFrame:
         """Download the result of the current query and load it into a DataFrame.
 
+        The query result is downloaded to a temporary local CSV file, which is removed
+        after it has been loaded (or if downloading/loading fails).
+
         Args:
             **kwargs (object): key arguments used for the method pandas.read_csv to be able to
                     have a better tuning on data. For more info read:
@@ -168,15 +171,27 @@ class AthenaQuery:
         output_filename = os.path.join(
             tempfile.gettempdir(), f"{self._current_query_execution_id}.csv"
         )
-        self.sagemaker_session.download_athena_query_result(
-            bucket=self._result_bucket,
-            prefix=self._result_file_prefix,
-            query_execution_id=self._current_query_execution_id,
-            filename=output_filename,
-        )
+        try:
+            self.sagemaker_session.download_athena_query_result(
+                bucket=self._result_bucket,
+                prefix=self._result_file_prefix,
+                query_execution_id=self._current_query_execution_id,
+                filename=output_filename,
+            )
 
-        kwargs.pop("delimiter", None)
-        return pd.read_csv(filepath_or_buffer=output_filename, delimiter=",", **kwargs)
+            kwargs.pop("delimiter", None)
+            return pd.read_csv(filepath_or_buffer=output_filename, delimiter=",", **kwargs)
+        finally:
+            _remove_temp_file(output_filename)
+
+
+def _remove_temp_file(path: str) -> None:
+    """Best-effort removal of a temporary file; never raises."""
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError as e:
+        logger.warning("Failed to remove temporary query result file %s: %s", path, e)
 
 
 @attr.s

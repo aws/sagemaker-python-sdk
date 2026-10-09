@@ -1272,12 +1272,14 @@ class TestJumpStartBuilder(unittest.TestCase):
 
         mock_js_speculative_decoding.assert_called_once()
 
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
     @patch("sagemaker.serve.builder.jumpstart_builder._capture_telemetry", side_effect=None)
     @patch.object(ModelBuilder, "_get_serve_setting", autospec=True)
     def test_optimize_quantize_and_compile_for_jumpstart(
         self,
         mock_serve_settings,
         mock_telemetry,
+        mock_js_model,
     ):
         mock_sagemaker_session = Mock()
         mock_metadata_config = Mock()
@@ -1318,6 +1320,10 @@ class TestJumpStartBuilder(unittest.TestCase):
         )
 
         model_builder.pysdk_model = mock_pysdk_model
+
+        # Avoid a real JumpStartModel construction (which would hit S3 for the
+        # JumpStart manifest); return a deterministic env for neuron lookup.
+        mock_js_model.return_value.env = {"SAGEMAKER_ENV": "1"}
 
         out_put = model_builder._optimize_for_jumpstart(
             accept_eula=True,

@@ -485,7 +485,7 @@ class PipelineModel(object):
             **model_pkg_args
         )
 
-        if model_package is not None and "ModelPackageArn" in model_package:
+        if isinstance(model_package, dict) and "ModelPackageArn" in model_package:
             return ModelPackage(
                 role=self.role,
                 model_package_arn=model_package.get("ModelPackageArn"),

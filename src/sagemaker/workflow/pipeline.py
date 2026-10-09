@@ -26,6 +26,7 @@ from botocore.exceptions import ClientError, WaiterError
 
 from sagemaker import s3, LocalSession
 from sagemaker._studio import _append_project_tags
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.config import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
 from sagemaker.remote_function.core.serialization import deserialize_obj_from_s3
 from sagemaker.remote_function.core.stored_function import RESULTS_FOLDER
@@ -115,6 +116,11 @@ class Pipeline:
                 the workflow customizes the pipeline definition using the configurations
                 specified. By default, custom job-prefixing is turned off.
         """
+        warn_v2_deprecation(
+            feature="Pipeline",
+            v3_replacement="Pipeline",
+            v3_import="from sagemaker.mlops.pipeline import Pipeline",
+        )
         self.name = name
         self.parameters = parameters if parameters else []
         self.pipeline_experiment_config = pipeline_experiment_config
@@ -232,7 +238,10 @@ class Pipeline:
             }
 
         update_args(
-            kwargs, PipelineDescription=description, ParallelismConfiguration=parallelism_config
+            kwargs,
+            PipelineDescription=description,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
         )
         return kwargs
 
@@ -397,7 +406,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             kwargs,
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
-            ParallelismConfiguration=parallelism_config,
+            # boto expects a dict, not a ParallelismConfiguration object (see issue #5354).
+            ParallelismConfiguration=_resolve_parallelism_config(parallelism_config),
             SelectiveExecutionConfig=selective_execution_config,
             PipelineVersionId=pipeline_version_id,
         )
@@ -854,6 +864,20 @@ def _map_lambda_outputs(steps: List[Step]):
                     lambda_output_map[output.output_name] = step.name
 
     return lambda_output_map
+
+
+def _resolve_parallelism_config(parallelism_config):
+    """Normalize a parallelism_config into the request dict boto expects.
+
+    boto's create/update/start pipeline APIs expect ``ParallelismConfiguration`` as a dict
+    (``{"MaxParallelExecutionSteps": int}``), not a ``ParallelismConfiguration`` object
+    (issue #5354). This converts the object via ``to_request()``. A dict is passed through
+    unchanged so callers who adopted the pre-fix ``.to_request()`` workaround keep working,
+    and ``None`` is returned as-is so ``update_args`` can drop the key.
+    """
+    if isinstance(parallelism_config, ParallelismConfiguration):
+        return parallelism_config.to_request()
+    return parallelism_config
 
 
 def update_args(args: Dict[str, Any], **kwargs):

@@ -174,6 +174,102 @@ def test_pipeline_create_and_start_with_parallelism_config(sagemaker_session_moc
     )
 
 
+def test_pipeline_create_converts_parallelism_config_object_to_dict(
+    sagemaker_session_mock, role_arn
+):
+    """Regression for #5354.
+
+    create() (via _create_args) must convert a ParallelismConfiguration object to its request
+    dict, because boto rejects the object with a ParamValidationError.
+    """
+    from sagemaker.workflow.parallelism_config import ParallelismConfiguration
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    pipeline.create(
+        role_arn=role_arn,
+        parallelism_config=ParallelismConfiguration(max_parallel_execution_steps=5),
+    )
+    call_kwargs = sagemaker_session_mock.sagemaker_client.create_pipeline.call_args[1]
+    assert call_kwargs["ParallelismConfiguration"] == {"MaxParallelExecutionSteps": 5}
+    assert isinstance(call_kwargs["ParallelismConfiguration"], dict)
+
+
+def test_pipeline_start_converts_parallelism_config_object_to_dict(
+    sagemaker_session_mock, role_arn
+):
+    """Regression for #5354: start() must pass a dict to boto, not a ParallelismConfiguration."""
+    from sagemaker.workflow.parallelism_config import ParallelismConfiguration
+
+    sagemaker_session_mock.sagemaker_client.start_pipeline_execution.return_value = dict(
+        PipelineExecutionArn="pipeline-execution-arn"
+    )
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[],
+        steps=[],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    pipeline.start(parallelism_config=ParallelismConfiguration(max_parallel_execution_steps=7))
+    call_kwargs = sagemaker_session_mock.sagemaker_client.start_pipeline_execution.call_args[1]
+    assert call_kwargs["ParallelismConfiguration"] == {"MaxParallelExecutionSteps": 7}
+    assert isinstance(call_kwargs["ParallelismConfiguration"], dict)
+
+
+def test_resolve_parallelism_config_output_passes_real_boto_param_validation():
+    """End-to-end proof for #5354 against the real SageMaker service model (offline).
+
+    boto3's client-side ParamValidator (no network, no credentials) is exactly what raised the
+    reported ParamValidationError. This asserts the raw ParallelismConfiguration object is
+    rejected by that validator, while the value produced by ``_resolve_parallelism_config`` is
+    accepted -- reproducing the bug and proving the fix at the boto layer, not just via mocks.
+    """
+    import boto3
+    from botocore import validate
+
+    from sagemaker.workflow.parallelism_config import ParallelismConfiguration
+    from sagemaker.workflow.pipeline import _resolve_parallelism_config
+
+    shape = (
+        boto3.client("sagemaker", region_name="us-west-2")
+        .meta.service_model.operation_model("CreatePipeline")
+        .input_shape
+    )
+    validator = validate.ParamValidator()
+    base = {
+        "PipelineName": "p",
+        "RoleArn": "arn:aws:iam::111111111111:role/x",
+        "PipelineDefinition": "{}",
+        "ClientRequestToken": "x" * 32,
+    }
+    cfg = ParallelismConfiguration(max_parallel_execution_steps=5)
+
+    # The raw object is what the old code passed -- boto rejects it.
+    raw_report = validator.validate({**base, "ParallelismConfiguration": cfg}, shape)
+    assert raw_report.has_errors()
+
+    # The converted value the fix passes -- boto accepts it.
+    fixed_report = validator.validate(
+        {**base, "ParallelismConfiguration": _resolve_parallelism_config(cfg)}, shape
+    )
+    assert not fixed_report.has_errors()
+
+
+def test_resolve_parallelism_config_passes_through_dict_and_none():
+    """Backwards compat for #5354: a dict (pre-fix workaround) is forwarded unchanged and
+    None is returned as-is so update_args drops the key."""
+    from sagemaker.workflow.pipeline import _resolve_parallelism_config
+
+    assert _resolve_parallelism_config({"MaxParallelExecutionSteps": 3}) == {
+        "MaxParallelExecutionSteps": 3
+    }
+    assert _resolve_parallelism_config(None) is None
+
+
 @patch("sagemaker.s3.S3Uploader.upload_string_as_file_body")
 def test_large_pipeline_create(sagemaker_session_mock, role_arn):
     sagemaker_session_mock.sagemaker_config = {}

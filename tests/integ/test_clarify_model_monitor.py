@@ -85,9 +85,12 @@ TEST_TAGS = [{"Key": "integration", "Value": "test"}]
 @pytest.yield_fixture(scope="module")
 def endpoint_name(sagemaker_session):
     endpoint_name = unique_name_from_base("clarify-xgb-integ")
+    # Upload under a key unique to this run. Clarify re-downloads the model artifact when it
+    # creates its shadow endpoint for every monitoring execution, long after this upload, so
+    # a shared key can by then hold a different model written by a concurrently running test.
     xgb_model_data = sagemaker_session.upload_data(
         path=os.path.join(XGBOOST_DATA_PATH, "xgb_model.tar.gz"),
-        key_prefix="integ-test-data/xgboost/model",
+        key_prefix=f"integ-test-data/xgboost/model/{endpoint_name}",
     )
 
     xgb_image = image_uris.retrieve(
@@ -360,7 +363,9 @@ def test_bias_monitor(sagemaker_session, scheduled_bias_monitor, endpoint_name, 
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
-@pytest.mark.flaky(reruns=5, reruns_delay=2)
+# Each attempt waits for the next hourly scheduled execution, so every rerun costs up to an
+# hour of build time; more than one rerun can push the slow suite past its build timeout.
+@pytest.mark.flaky(reruns=1, reruns_delay=2)
 def test_run_bias_monitor(
     scheduled_bias_monitor, sagemaker_session, endpoint_name, ground_truth_input, upload_actual_data
 ):
@@ -470,7 +475,8 @@ def test_explainability_monitor(sagemaker_session, scheduled_explainability_moni
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
-@pytest.mark.flaky(reruns=5, reruns_delay=2)
+# See test_run_bias_monitor: each rerun waits for another hourly execution.
+@pytest.mark.flaky(reruns=1, reruns_delay=2)
 def test_run_explainability_monitor(
     scheduled_explainability_monitor,
     sagemaker_session,

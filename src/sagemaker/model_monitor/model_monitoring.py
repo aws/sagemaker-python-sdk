@@ -44,6 +44,7 @@ from sagemaker.config.config_schema import (
     MONITORING_JOB_OUTPUT_KMS_KEY_ID_PATH,
     MONITORING_JOB_ROLE_ARN_PATH,
 )
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
 from sagemaker.model_monitor.monitoring_alert import (
@@ -170,6 +171,12 @@ class ModelMonitor(object):
                 inter-container traffic, security group IDs, and subnets.
 
         """
+        # Reports the concrete subclass name (ModelMonitor, DefaultModelMonitor,
+        # ModelQualityMonitor, ...) since they route through ModelMonitor.__init__.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="sagemaker.core.shapes.MonitoringSchedule",
+        )
         self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type
@@ -1173,6 +1180,22 @@ class ModelMonitor(object):
 
         return name_from_base(base=base_name)
 
+    def _generate_job_definition_name(self):
+        """Generate the monitoring job definition name.
+
+        Uses the base name given to the constructor when provided, so a
+        user-supplied ``base_job_name`` is reflected in the job definition
+        name (and the monitoring resources derived from it) rather than being
+        silently ignored (see #4783); otherwise falls back to the monitor
+        type's default base name (``JOB_DEFINITION_BASE_NAME``).
+
+        Returns:
+            str: The generated job definition name.
+
+        """
+        base_name = self.base_job_name or self.JOB_DEFINITION_BASE_NAME
+        return name_from_base(base=base_name)
+
     @staticmethod
     def _generate_env_map(
         env,
@@ -2016,7 +2039,7 @@ class DefaultModelMonitor(ModelMonitor):
         monitor_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_data_quality_job_definition_request(
             monitoring_schedule_name=monitor_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -2386,7 +2409,7 @@ class DefaultModelMonitor(ModelMonitor):
         job_desc = self.sagemaker_session.sagemaker_client.describe_data_quality_job_definition(
             JobDefinitionName=self.job_definition_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_data_quality_job_definition_request(
             monitoring_schedule_name=self.monitoring_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -3140,7 +3163,7 @@ class ModelQualityMonitor(ModelMonitor):
         monitor_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_model_quality_job_definition_request(
             monitoring_schedule_name=monitor_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -3296,7 +3319,7 @@ class ModelQualityMonitor(ModelMonitor):
         job_desc = self.sagemaker_session.sagemaker_client.describe_model_quality_job_definition(
             JobDefinitionName=self.job_definition_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_model_quality_job_definition_request(
             monitoring_schedule_name=self.monitoring_schedule_name,
             job_definition_name=new_job_definition_name,
