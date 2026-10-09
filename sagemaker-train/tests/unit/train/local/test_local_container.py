@@ -10,13 +10,14 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import pytest
 import subprocess
 
 from sagemaker.train.local.local_container import _rmtree, _LocalContainer
 from sagemaker.core.shapes import DataSource, S3DataSource
 from sagemaker.core.shapes import Channel
+from sagemaker.core.helper.session_helper import Session
 
 IMAGE = "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.1-cpu-py310"
 
@@ -223,3 +224,35 @@ class TestGetComposeCmdPrefix:
         mock_which.return_value = "/usr/local/bin/docker-compose"
         result = container._get_compose_cmd_prefix()
         assert result == ["docker-compose"]
+
+
+class TestEcrLoginIfNeeded:
+    """Test cases for _LocalContainer._ecr_login_if_needed."""
+
+    @patch("sagemaker.train.local.local_container.subprocess.Popen")
+    @patch("sagemaker.train.local.local_container._check_output")
+    def test_ecr_login_removes_only_aws_prefix_from_token(
+        self, mock_check_output, mock_popen, _basic_channel
+    ):
+        """Only the 'AWS:' prefix is removed, not trailing A/W/S/: characters."""
+        mock_session = Mock(spec=Session)
+        mock_session.boto_session = Mock()
+        container = _make_container(_basic_channel)
+        container.image = IMAGE
+        container.sagemaker_session = mock_session
+        mock_check_output.return_value = ""
+        ecr_client = Mock()
+        ecr_client.get_authorization_token.return_value = {
+            "authorizationData": [
+                {
+                    # base64 encoded "AWS:abcWAS": the password ends in characters of "AWS:"
+                    "authorizationToken": "QVdTOmFiY1dBUw==",
+                    "proxyEndpoint": "https://123456789012.dkr.ecr.us-west-2.amazonaws.com",
+                }
+            ]
+        }
+        mock_session.boto_session.client.return_value = ecr_client
+
+        container._ecr_login_if_needed()
+
+        mock_popen.return_value.communicate.assert_called_once_with(input=b"abcWAS")
