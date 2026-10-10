@@ -442,13 +442,11 @@ class Transformer(object):
             )
             if not model:
                 return None
-            model_desc = model.__dict__
-
-            primary_container = getattr(model_desc, "primary_container", None)
+            primary_container = getattr(model, "primary_container", None)
             if primary_container:
                 return getattr(primary_container, "image", None)
 
-            containers = getattr(model_desc, "containers", None)
+            containers = getattr(model, "containers", None)
             if containers:
                 return getattr(containers[0], "image", None)
 
