@@ -259,3 +259,25 @@ class TestEvaluator:
 
         with pytest.raises(RuntimeError, match="Failed to create new version: Error"):
             evaluator.create_version("arn:aws:lambda:us-west-2:123456789012:function:new")
+
+
+class TestEvaluatorRefreshVersion:
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.evaluator.AIRHub")
+    def test_refresh_describes_own_version(self, mock_air_hub, mock_entity_air_hub):
+        mock_air_hub.describe_hub_content.return_value = {
+            "HubContentName": "test-eval",
+            "HubContentArn": "test-arn",
+            "HubContentVersion": "1.0.0",
+            "HubContentStatus": "Available",
+            "HubContentDocument": json.dumps(
+                {"SubType": "AWS/Evaluator", "JsonContent": json.dumps({"Reference": "ref"})}
+            ),
+            "HubContentSearchKeywords": ["method:lambda"],
+        }
+        evaluator = Evaluator(name="test-eval", version="1.0.0", arn="test-arn")
+
+        evaluator.refresh()
+
+        assert mock_air_hub.describe_hub_content.call_args.kwargs["hub_content_version"] == "1.0.0"
+        assert evaluator.version == "1.0.0"
