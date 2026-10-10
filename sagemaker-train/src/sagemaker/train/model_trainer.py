@@ -884,6 +884,13 @@ class ModelTrainer(BaseModel):
                 training_request.pop("training_job_name", None)
             # Convert snake_case to PascalCase for AWS API
             pipeline_request = {to_pascal_case(k): v for k, v in training_request.items()}
+            # serialize() leaves plain dict keys as-is, so turn the snake_case tag dicts
+            # back into Tag objects to get the API's Key/Value casing.
+            if pipeline_request.get("Tags"):
+                pipeline_request["Tags"] = [
+                    Tag(key=tag["key"], value=tag["value"]) if "key" in tag else tag
+                    for tag in pipeline_request["Tags"]
+                ]
             serialized_request = serialize(pipeline_request)
             return serialized_request
 
