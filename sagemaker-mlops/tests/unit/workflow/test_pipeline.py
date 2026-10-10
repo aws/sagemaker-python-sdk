@@ -518,6 +518,33 @@ def test_pipeline_execution_wait(mock_session):
         mock_waiter.return_value.wait.assert_called_once()
 
 
+@pytest.mark.parametrize("status", ["Failed", "Stopped"])
+def test_pipeline_execution_wait_stops_on_terminal_failure(mock_session, status):
+    import boto3
+    from botocore.exceptions import WaiterError
+    from botocore.stub import Stubber
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
+
+    client = boto3.client(
+        "sagemaker",
+        region_name="us-west-2",
+        aws_access_key_id="testing",
+        aws_secret_access_key="testing",
+    )
+    mock_session.sagemaker_client = client
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
+
+    with Stubber(client) as stubber:
+        stubber.add_response(
+            "describe_pipeline_execution",
+            {"PipelineExecutionStatus": status},
+            {"PipelineExecutionArn": "arn"},
+        )
+        with pytest.raises(WaiterError, match="terminal failure state"):
+            execution.wait(delay=0, max_attempts=3)
+        stubber.assert_no_pending_responses()
+
+
 def test_get_function_step_result_invalid_step(mock_session):
     from sagemaker.mlops.workflow.pipeline import get_function_step_result
 
