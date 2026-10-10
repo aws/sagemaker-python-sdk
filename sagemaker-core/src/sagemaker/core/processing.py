@@ -361,7 +361,9 @@ class Processor(object):
 
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
-            if wait:
+            # Local processing jobs run to completion inside _start_new and only exist
+            # locally, so there is nothing to poll or stream from CloudWatch.
+            if wait and not isinstance(self.sagemaker_session, LocalSession):
                 if logs:
                     logs_for_processing_job(
                         sagemaker_session=self.sagemaker_session,
@@ -940,7 +942,9 @@ class ScriptProcessor(Processor):
 
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
-            if wait:
+            # Local processing jobs run to completion inside _start_new and only exist
+            # locally, so there is nothing to poll or stream from CloudWatch.
+            if wait and not isinstance(self.sagemaker_session, LocalSession):
                 if logs:
                     logs_for_processing_job(
                         sagemaker_session=self.sagemaker_session,
