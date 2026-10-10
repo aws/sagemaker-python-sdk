@@ -124,7 +124,7 @@ from sagemaker.train.defaults import TrainDefaults, JumpStartTrainDefaults
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.core.helper.pipeline_variable import StrPipeVar
 
-from sagemaker.train.local.local_container import _LocalContainer
+from sagemaker.train.local.local_container import _LocalContainer, _rmtree
 
 
 class Mode(Enum):
@@ -1057,6 +1057,11 @@ class ModelTrainer(BaseModel):
                 model_artifact_path=model_artifact_path,
                 output_artifact_path=output_artifact_path,
             )
+            if self._temp_code_dir is not None:
+                # The code dir is mounted into the container, which can leave root-owned
+                # files (e.g. __pycache__) behind that TemporaryDirectory.cleanup() cannot
+                # remove, so use the same root-aware removal as the container root.
+                _rmtree(self._temp_code_dir.name, local_container.image, local_container.is_studio)
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
         if self.training_mode == Mode.LOCAL_CONTAINER and self._latest_local_training_result:
