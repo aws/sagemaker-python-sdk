@@ -663,6 +663,46 @@ def test_create_training_job_args_input_s3_key_prefix(
     assert f"/{DEFAULT_BASE_NAME}/input" not in uris["sm_drivers"]
 
 
+def test_create_training_job_args_omits_empty_input_data_config():
+    """ModelTrainer with no input channels omits input_data_config to avoid ValidationException (issue #6156)."""
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+    args = trainer._create_training_job_args()
+    assert "input_data_config" not in args
+
+
+def test_create_training_job_args_includes_provided_input_data_config():
+    """ModelTrainer with input channels includes input_data_config in training args."""
+    channel = Channel(
+        channel_name="train",
+        data_source=DataSource(
+            s3_data_source=S3DataSource(
+                s3_data_type="S3Prefix",
+                s3_uri=f"s3://{DEFAULT_BUCKET}/data",
+                s3_data_distribution_type="FullyReplicated",
+            )
+        ),
+    )
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        input_data_config=[channel],
+    )
+    args = trainer._create_training_job_args()
+    assert "input_data_config" in args
+    assert len(args["input_data_config"]) == 1
+    assert args["input_data_config"][0].channel_name == "train"
+
+
+
 HETEROGENEOUS_INSTANCE_GROUPS = [
     InstanceGroup(
         instance_type="ml.t3.large", instance_count=1, instance_group_name="head-instance-group"

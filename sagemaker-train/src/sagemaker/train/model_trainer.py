@@ -851,7 +851,6 @@ class ModelTrainer(BaseModel):
             "training_job_name": current_training_job_name,
             "algorithm_specification": algorithm_specification,
             "hyper_parameters": string_hyper_parameters,
-            "input_data_config": final_input_data_config,
             "resource_config": resource_config,
             "vpc_config": vpc_config,
             "role_arn": self.role,
@@ -875,6 +874,9 @@ class ModelTrainer(BaseModel):
             "infra_check_config": self._infra_check_config,
             "session_chaining_config": self._session_chaining_config,
         }
+
+        if final_input_data_config:
+            training_request["input_data_config"] = final_input_data_config
 
         if self.model_package_config:
             training_request["model_package_config"] = self.model_package_config
@@ -995,7 +997,7 @@ class ModelTrainer(BaseModel):
                     "algorithm_specification"
                 ].container_entrypoint,
                 container_arguments=training_request["algorithm_specification"].container_arguments,
-                input_data_config=training_request["input_data_config"],
+                input_data_config=training_request.get("input_data_config"),
                 hyper_parameters=training_request["hyper_parameters"],
                 environment=training_request["environment"],
             )
