@@ -626,6 +626,32 @@ def test_create_input_data_channel_custom_input_s3_key_prefix(
     assert f"{DEFAULT_BASE_NAME}/input/code" not in mock_upload_data.call_args.kwargs["key_prefix"]
 
 
+@patch("sagemaker.train.model_trainer._rmtree")
+@patch("sagemaker.train.model_trainer._LocalContainer")
+def test_local_container_train_removes_temp_code_dir_with_root_owned_files(
+    mock_local_container, mock_rmtree, tmp_path
+):
+    """The sm_drivers temp dir is mounted into the container, which can leave root-owned
+    files (e.g. __pycache__) in it, so it must be removed with the root-aware _rmtree."""
+    mock_local_container.return_value.image = DEFAULT_IMAGE
+    mock_local_container.return_value.is_studio = False
+
+    trainer = ModelTrainer(
+        training_mode=Mode.LOCAL_CONTAINER,
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=Compute(instance_type="local", instance_count=1),
+        local_container_root=str(tmp_path),
+    )
+
+    trainer.train(wait=True)
+
+    temp_code_dir = trainer._temp_code_dir.name
+    mock_local_container.return_value.train.assert_called_once_with(True)
+    mock_rmtree.assert_called_once_with(temp_code_dir, DEFAULT_IMAGE, False)
+
+
 @patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
 @patch("sagemaker.train.model_trainer.Session.upload_data")
 @patch("sagemaker.train.model_trainer.Session.default_bucket")
