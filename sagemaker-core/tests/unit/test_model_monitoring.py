@@ -363,6 +363,31 @@ class TestModelMonitor:
             )
             assert monitor.network_config is not None
 
+    def test_normalize_processing_output_from_local_path(self, mock_session, test_role):
+        """A string output is the container path; the S3 destination is generated."""
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+        ):
+            monitor = ModelMonitor(
+                role=test_role, image_uri="test-image", sagemaker_session=mock_session
+            )
+        monitor.latest_baselining_job_name = "baseline-job"
+
+        output = monitor._normalize_processing_output(output="/opt/ml/processing/output")
+
+        assert isinstance(output, ProcessingOutput)
+        assert output.output_name == "monitoring_output"
+        assert output.s3_output.local_path == "/opt/ml/processing/output"
+        assert output.s3_output.s3_uri == "s3://test-bucket/test-prefix/baseline-job/output"
+        assert output.s3_output.s3_upload_mode == "EndOfJob"
+
     def test_generate_baselining_job_name_with_custom_name(self, mock_session, test_role):
         with (
             patch(
