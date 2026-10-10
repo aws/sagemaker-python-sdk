@@ -108,7 +108,7 @@ class ByteIterator(BaseIterator):
                 # handle API response errors and force terminate.
                 handle_stream_errors(chunk)
                 # print and move on to next response byte
-                print("Unknown event type:" + chunk)
+                print("Unknown event type:", chunk)
                 continue
             return chunk["PayloadPart"]["Bytes"]
 
@@ -190,7 +190,7 @@ class LineIterator(BaseIterator):
                 # handle API response errors and force terminate.
                 handle_stream_errors(chunk)
                 # print and move on to next response byte
-                print("Unknown event type:" + chunk)
+                print("Unknown event type:", chunk)
                 continue
 
             # Check buffer size before writing to prevent unbounded memory consumption
