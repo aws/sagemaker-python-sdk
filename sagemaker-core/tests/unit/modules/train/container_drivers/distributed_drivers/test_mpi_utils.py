@@ -11,13 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.modules.train.container_drivers.distributed_drivers.mpi_utils module."""
+
 from __future__ import absolute_import
 
 import pytest
 import os
 import subprocess
 import paramiko
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch, MagicMock
 
 from sagemaker.core.modules.train.container_drivers.distributed_drivers.mpi_utils import (
     _write_file_to_host,
@@ -34,9 +35,6 @@ from sagemaker.core.modules.train.container_drivers.distributed_drivers.mpi_util
     validate_smddpmprun,
     write_env_vars_to_file,
     get_mpirun_command,
-    FINISHED_STATUS_FILE,
-    READY_FILE,
-    DEFAULT_SSH_PORT,
 )
 
 

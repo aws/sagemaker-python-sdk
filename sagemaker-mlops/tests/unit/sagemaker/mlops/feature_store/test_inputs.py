@@ -1,7 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for inputs.py (enums)."""
-import pytest
 
 from sagemaker.mlops.feature_store.inputs import (
     TargetStoreEnum,
@@ -31,6 +30,9 @@ class TestOnlineStoreStorageTypeEnum:
 
     def test_in_memory(self):
         assert OnlineStoreStorageTypeEnum.IN_MEMORY.value == "InMemory"
+
+    def test_standard_v2(self):
+        assert OnlineStoreStorageTypeEnum.STANDARD_V2.value == "Standard_V2"
 
 
 class TestTableFormatEnum:

@@ -27,6 +27,7 @@ Example:
         serializer_cls, deserializer_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
         serializer, deserializer = serializer_cls(), deserializer_cls()
 """
+
 from __future__ import absolute_import, annotations
 
 # Standard library imports
@@ -50,7 +51,6 @@ from sagemaker.core.serializers import (
     TorchTensorSerializer,
 )
 
-
 # ========================================
 # Mode and Server Constants
 # ========================================
@@ -72,34 +72,40 @@ SUPPORTED_MODEL_SERVERS: Set[ModelServer] = {
     ModelServer.LLAMACPP,
 }
 
-# HuggingFace pipeline tags that should route to the vLLM-omni (multimodal) server.
-# Note: visual-question-answering is folded into image-text-to-text as of transformers v5.
-OMNI_TASKS: Set[str] = {
+# HuggingFace pipeline tags for models that generate text and should prefer vLLM.
+VLLM_TASKS: Set[str] = {
+    "text-generation",
     "image-text-to-text",
-    "any-to-any",
     "audio-text-to-text",
+}
+
+# HuggingFace pipeline tags for models that can generate multiple output modalities.
+OMNI_TASKS: Set[str] = {
+    "any-to-any",
 }
 
 # ========================================
 # Framework Enum
 # ========================================
 
+
 class Framework(Enum):
     """Enumeration of supported ML frameworks for ModelBuilder.
-    
+
     This enum provides standardized framework identifiers used throughout
     the ModelBuilder ecosystem for:
     - Framework detection from container images
     - Serializer/deserializer selection
     - Model server compatibility
-    
+
     Example:
         Using framework enum::
-        
+
             if detected_framework == Framework.PYTORCH:
                 ser_cls, deser_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
                 serializer, deserializer = ser_cls(), deser_cls()
     """
+
     XGBOOST = "XGBoost"
     LDA = "LDA"
     PYTORCH = "PyTorch"
@@ -132,4 +138,3 @@ DEFAULT_SERIALIZERS_BY_FRAMEWORK: Dict[Framework, Tuple[Callable, Callable]] = {
     Framework.NTM: (RecordSerializer, JSONDeserializer),
     Framework.SMD: (JSONSerializer, JSONDeserializer),
 }
-

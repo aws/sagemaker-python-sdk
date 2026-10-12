@@ -11,10 +11,11 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.inference_recommender.inference_recommender_mixin module."""
+
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 from sagemaker.core.inference_recommender.inference_recommender_mixin import (
     Phase,
     ModelLatencyThreshold,

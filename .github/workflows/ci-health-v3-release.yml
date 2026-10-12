@@ -8,9 +8,17 @@ on:
 permissions:
     id-token: write # This is required for requesting the JWT
 
+# Credentials are requested for 6h (the GithubActionsRole max session duration)
+# so the aws-codebuild-run-build step can keep polling for the whole build. The
+# canary CodeBuild timeout is set just under this (5.5h in CDK) so a hung build
+# is recorded by CodeBuild as TIMED_OUT (counted in FailedBuilds) instead of the
+# GitHub job being cancelled first.
 jobs:
+  # Per-submodule integ canaries against the published PyPI release. These also
+  # cover the us-west-2 gpu_intensive tests (train, serve).
   canaries-v3-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -21,7 +29,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
           aws-region: us-west-2
-          role-duration-seconds: 10800
+          role-duration-seconds: 21600
       - name: Run Canaries V3 release for ${{ matrix.submodule }}
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
@@ -31,24 +39,9 @@ jobs:
             SUBMODULE
         env:
           SUBMODULE: ${{ matrix.submodule }}
-  # GPU integ tests against the published PyPI release. Two region jobs trigger
-  # the same CodeBuild project name (deployed in both regions); only the
-  # region/creds and the region-override buildspec differ. Their results are
-  # AND-ed in report-result into a single per-run pass/fail metric.
-  gpu-integ-tests-release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
-          aws-region: us-west-2
-          role-duration-seconds: 10800
-      - name: Run GPU Integ Tests (release)
-        uses: aws-actions/aws-codebuild-run-build@v1
-        with:
-          project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests-release
-          source-version: refs/heads/master
+  # us_east_1-marked GPU integ tests against the published PyPI release. These
+  # run in the separate us-east-1 (Nova) account, so they cannot be part of the
+  # us-west-2 canaries. Their result is reported to us-west-2 by report-result.
   gpu-integ-tests-release-us-east-1:
     runs-on: ubuntu-latest
     steps:
@@ -57,20 +50,21 @@ jobs:
         with:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_US_EAST_1_ARN }}
           aws-region: us-east-1
-          role-duration-seconds: 10800
+          role-duration-seconds: 21600
       - name: Run GPU Integ Tests (release, us-east-1)
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests-release
           source-version: refs/heads/master
-  # Run-level result: the release GPU run is successful only if both region jobs
-  # succeeded. Emits GpuIntegReleaseRunFailure = 1 (failed) / 0 (succeeded) to
-  # CloudWatch in us-west-2. The CDK alarm (GpuIntegReleaseRunAlarm) sums this
-  # over a UTC day; it is folded into CIHealthCompositeAlarm-V3, which owns
-  # ticketing. Only scheduled runs emit the metric (manual workflow_dispatch runs
-  # are excluded).
+  # Run-level result for the us-east-1 GPU job. Its CodeBuild FailedBuilds metric
+  # lives in the us-east-1 account, which the us-west-2 CIHealthCompositeAlarm-V3
+  # cannot see, so the result is re-emitted to us-west-2 as
+  # GpuIntegReleaseRunFailure = 1 (failed) / 0 (succeeded). The CDK alarm
+  # (GpuIntegReleaseRunAlarm) sums this over a UTC day; it is folded into
+  # CIHealthCompositeAlarm-V3, which owns ticketing. Only scheduled runs emit the
+  # metric (manual workflow_dispatch runs are excluded).
   report-result:
-    needs: [gpu-integ-tests-release, gpu-integ-tests-release-us-east-1]
+    needs: [gpu-integ-tests-release-us-east-1]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -88,13 +82,12 @@ jobs:
             echo "Not a scheduled run (${{ github.event_name }}); skipping metric emission."
             exit 0
           fi
-          if [ "${{ needs.gpu-integ-tests-release.result }}" == "success" ] && \
-             [ "${{ needs.gpu-integ-tests-release-us-east-1.result }}" == "success" ]; then
+          if [ "${{ needs.gpu-integ-tests-release-us-east-1.result }}" == "success" ]; then
             value=0
-            echo "All release GPU jobs succeeded; emitting GpuIntegReleaseRunFailure=0"
+            echo "us-east-1 release GPU job succeeded; emitting GpuIntegReleaseRunFailure=0"
           else
             value=1
-            echo "At least one release GPU job did not succeed; emitting GpuIntegReleaseRunFailure=1"
+            echo "us-east-1 release GPU job did not succeed; emitting GpuIntegReleaseRunFailure=1"
           fi
           aws cloudwatch put-metric-data \
             --namespace GpuIntegRunMetrics \

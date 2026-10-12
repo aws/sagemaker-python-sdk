@@ -3,18 +3,20 @@
 from __future__ import absolute_import
 import os
 import io
-import cloudpickle
 import shutil
 import platform
 import importlib
+import logging
 from pathlib import Path
 from functools import partial
+
+import cloudpickle
+
 from sagemaker.serve.validations.check_integrity import perform_integrity_check
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.detector.image_detector import _detect_framework_and_version, _get_model_base
 from sagemaker.serve.detector.pickler import load_xgboost_from_json
 from sagemaker.serve.constants import Framework
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +43,7 @@ def model_fn(model_dir):
             schema_builder = obj
             loaded_model = _load_mlflow_model(deployment_flavor=mlflow_flavor, model_dir=model_dir)
             return loaded_model if callable(loaded_model) else loaded_model.predict
-        elif isinstance(obj[0], InferenceSpec):
+        if isinstance(obj[0], InferenceSpec):
             inference_spec, schema_builder = obj
         elif isinstance(obj[0], Framework) and obj[0] == Framework.XGBOOST:
             model_class_name = os.getenv("MODEL_CLASS_NAME")
@@ -66,7 +68,7 @@ def model_fn(model_dir):
         if framework == "pytorch":
             native_model.eval()
         return native_model if callable(native_model) else native_model.predict
-    elif inference_spec:
+    if inference_spec:
         return partial(inference_spec.invoke, model=inference_spec.load(model_dir))
         # loaded_model = inference_spec.load(model_dir)
         # return lambda input_data: inference_spec.invoke(input_data, loaded_model)
@@ -129,10 +131,9 @@ def output_fn(predictions, accept_type):
                 predictions = postprocessed
         if hasattr(schema_builder, "custom_output_translator"):
             return schema_builder.custom_output_translator.serialize(predictions, accept_type)
-        else:
-            return schema_builder.output_serializer.serialize(predictions)
+        return schema_builder.output_serializer.serialize(predictions)
     except Exception as e:
-        logger.error("Encountered error: %s in serialize_response." % e)
+        logger.error("Encountered error: %s in serialize_response.", e)
         raise Exception("Encountered error in serialize_response.") from e
 
 

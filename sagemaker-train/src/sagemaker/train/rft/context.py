@@ -9,12 +9,8 @@ from __future__ import annotations
 from contextvars import ContextVar
 from typing import Any
 
-_rollout_metadata: ContextVar[dict[str, Any] | None] = ContextVar(
-    "rollout_metadata", default=None
-)
-_inference_params: ContextVar[dict[str, Any] | None] = ContextVar(
-    "inference_params", default=None
-)
+_rollout_metadata: ContextVar[dict[str, Any] | None] = ContextVar("rollout_metadata", default=None)
+_inference_params: ContextVar[dict[str, Any] | None] = ContextVar("inference_params", default=None)
 
 
 def set_rollout_context(

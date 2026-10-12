@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from unittest.mock import patch, call, Mock
+from unittest.mock import patch
 import pytest
 import subprocess
 
@@ -39,7 +39,18 @@ class TestRmtree:
         _rmtree("/tmp/test", IMAGE)
 
         mock_run.assert_called_once_with(
-            ["docker", "run", "--rm", "-v", "/tmp/test:/delete", IMAGE, "chmod", "-R", "777", "/delete"],
+            [
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                "/tmp/test:/delete",
+                IMAGE,
+                "chmod",
+                "-R",
+                "777",
+                "/delete",
+            ],
             check=True,
             capture_output=True,
         )
@@ -55,10 +66,18 @@ class TestRmtree:
 
         mock_run.assert_called_once_with(
             [
-                "docker", "run", "--rm",
-                "--network", "sagemaker",
-                "-v", "/tmp/test:/delete", IMAGE,
-                "chmod", "-R", "777", "/delete",
+                "docker",
+                "run",
+                "--rm",
+                "--network",
+                "sagemaker",
+                "-v",
+                "/tmp/test:/delete",
+                IMAGE,
+                "chmod",
+                "-R",
+                "777",
+                "/delete",
             ],
             check=True,
             capture_output=True,
@@ -125,6 +144,19 @@ class TestGetComposeCmdPrefix:
         """Docker Compose v2 should be accepted."""
         container = _make_container(_basic_channel)
         mock_check_output.return_value = "Docker Compose version v2.20.0"
+        result = container._get_compose_cmd_prefix()
+        assert result == ["docker", "compose"]
+
+    @patch("sagemaker.train.local.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_with_docker_compose_v2_no_v_prefix(
+        self, mock_check_output, _basic_channel
+    ):
+        """Brew-installed Docker Compose reports the version without a 'v' prefix.
+
+        Regression test for https://github.com/aws/sagemaker-python-sdk/issues/4137.
+        """
+        container = _make_container(_basic_channel)
+        mock_check_output.return_value = "Docker Compose version 2.22.0"
         result = container._get_compose_cmd_prefix()
         assert result == ["docker", "compose"]
 

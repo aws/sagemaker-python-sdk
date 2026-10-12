@@ -33,6 +33,7 @@ Run with:
     export AWS_DEFAULT_REGION=us-east-1
     pytest tests/integ/train/test_inspect_ai_evaluator.py -v -s
 """
+
 from __future__ import absolute_import
 
 import logging
@@ -58,6 +59,30 @@ BENCHMARKS_DATA_DIR = os.path.join(DATA_DIR, "inspectai", "boolq")
 
 EVALUATION_TIMEOUT_SECONDS = 7200  # 2 hours
 POLL_INTERVAL_SECONDS = 30
+
+# SageMaker's message when UpdatePipeline loses an optimistic-concurrency race.
+_PIPELINE_CONFLICT_MESSAGE = "has been modified since your last read"
+
+
+def _evaluate_or_skip_on_pipeline_conflict(evaluator):
+    """Start an evaluation, skipping if a concurrent evaluation won the pipeline race.
+
+    All evaluations of one eval type share a single SageMaker pipeline, so two
+    evaluations starting at the same time both call UpdatePipeline and SageMaker
+    rejects the loser with a conflict. ``evaluate()`` reports that as a Failed
+    execution with no ARN. The tests in this module run on separate xdist workers
+    and can overlap, so hitting it says nothing about the code under test --
+    give up on this pipeline update and move on rather than failing.
+    """
+    execution = evaluator.evaluate()
+
+    failure_reason = getattr(execution.status, "failure_reason", None) or ""
+    if execution.arn is None and _PIPELINE_CONFLICT_MESSAGE in failure_reason:
+        pytest.skip(
+            f"A concurrent evaluation modified the shared evaluation pipeline: " f"{failure_reason}"
+        )
+
+    return execution
 
 
 def _prefix_has_content(s3_client, bucket_name: str, prefix: str) -> bool:
@@ -113,9 +138,7 @@ def inspect_ai_resources(sagemaker_session_us_east_1):
 class TestInspectAIEvaluatorIntegration:
     """Integration tests for InspectAI evaluation with Bedrock inference."""
 
-    def test_inspect_ai_bedrock_evaluation(
-        self, sagemaker_session_us_east_1, inspect_ai_resources
-    ):
+    def test_inspect_ai_bedrock_evaluation(self, sagemaker_session_us_east_1, inspect_ai_resources):
         """Test InspectAI evaluation with Bedrock inference mode.
 
         Runs a BoolQ benchmark with Nova Lite via Bedrock inference.
@@ -136,7 +159,7 @@ class TestInspectAIEvaluatorIntegration:
         )
 
         logger.info("Starting InspectAI evaluation with Bedrock inference...")
-        execution = evaluator.evaluate()
+        execution = _evaluate_or_skip_on_pipeline_conflict(evaluator)
 
         assert execution is not None
         assert execution.arn is not None
@@ -161,9 +184,7 @@ class TestInspectAIEvaluatorIntegration:
         execution.show_results()
         logger.info("InspectAI Bedrock evaluation completed successfully.")
 
-    def test_inspect_ai_upload_benchmarks(
-        self, sagemaker_session_us_east_1, inspect_ai_resources
-    ):
+    def test_inspect_ai_upload_benchmarks(self, sagemaker_session_us_east_1, inspect_ai_resources):
         """Test uploading benchmarks to S3 via upload_benchmarks().
 
         Validates that local benchmark files are successfully uploaded and
@@ -200,7 +221,7 @@ class TestInspectAIEvaluatorIntegration:
         )
 
         logger.info("Starting evaluation with pre-existing benchmarks...")
-        execution = evaluator2.evaluate()
+        execution = _evaluate_or_skip_on_pipeline_conflict(evaluator2)
 
         assert execution is not None
         assert execution.arn is not None

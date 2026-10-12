@@ -11,13 +11,17 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow retry."""
+
 from __future__ import absolute_import
 
 import pytest
 
 from sagemaker.mlops.workflow.retry import (
-    RetryPolicy, StepRetryPolicy, SageMakerJobStepRetryPolicy,
-    StepExceptionTypeEnum, SageMakerJobExceptionTypeEnum
+    RetryPolicy,
+    StepRetryPolicy,
+    SageMakerJobStepRetryPolicy,
+    StepExceptionTypeEnum,
+    SageMakerJobExceptionTypeEnum,
 )
 
 
@@ -41,10 +45,7 @@ def test_retry_policy_validation():
 
 
 def test_step_retry_policy():
-    policy = StepRetryPolicy(
-        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT],
-        max_attempts=3
-    )
+    policy = StepRetryPolicy(exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=3)
     request = policy.to_request()
     assert request["MaxAttempts"] == 3
     assert "Step.SERVICE_FAULT" in request["ExceptionType"]
@@ -52,8 +53,7 @@ def test_step_retry_policy():
 
 def test_sagemaker_job_retry_policy():
     policy = SageMakerJobStepRetryPolicy(
-        exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR],
-        max_attempts=5
+        exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR], max_attempts=5
     )
     request = policy.to_request()
     assert request["MaxAttempts"] == 5

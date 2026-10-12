@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The `ModelStep` definition for SageMaker Pipelines Workflows"""
+
 from __future__ import absolute_import
 
 import logging
@@ -63,8 +64,8 @@ class ModelStep(ConfigurableRetryStep):
                 A list of `Step` or `StepCollection`
                 names or `Step` instances or `StepCollection` that it depends on.
                 If a listed `Step` name does not exist, an error is returned (default: None).
-            retry_policies (List[RetryPolicy]): The list of retry policies for the `ModelStep` 
-                (default: None). Note: `SageMakerJobStepRetryPolicy` is not allowed, since 
+            retry_policies (List[RetryPolicy]): The list of retry policies for the `ModelStep`
+                (default: None). Note: `SageMakerJobStepRetryPolicy` is not allowed, since
                 create/register model step does not support it.
 
                 .. code:: python
@@ -106,7 +107,7 @@ class ModelStep(ConfigurableRetryStep):
                     self.need_runtime_repack = set()
                     self.runtime_repack_output_prefix = None
                     self.model = None  # ModelBuilder instance not available in dict case
-            
+
             step_args = DictStepArgs(step_args)
         else:
             # step_args is _ModelStepArguments from Model.create()
@@ -129,11 +130,11 @@ class ModelStep(ConfigurableRetryStep):
             step_type = StepTypeEnum.REGISTER_MODEL
         else:
             step_type = StepTypeEnum.CREATE_MODEL
-            
+
         super(ModelStep, self).__init__(
             name, step_type, display_name, description, depends_on, retry_policies
         )
-        
+
         self.step_args = step_args
         self.steps: List[Step] = []
         self._repack_model_step_settings = (
@@ -150,7 +151,7 @@ class ModelStep(ConfigurableRetryStep):
             )
         else:
             self._repack_model_retry_policies = retry_policies
-            
+
         # Validate that SageMakerJobStepRetryPolicy is not used for model step
         if retry_policies and not isinstance(retry_policies, dict):
             for policy in retry_policies:
@@ -159,7 +160,7 @@ class ModelStep(ConfigurableRetryStep):
                         "SageMakerJobStepRetryPolicy is not allowed for a create/register"
                         " model step. Please use StepRetryPolicy instead"
                     )
-        
+
         # Set up properties based on step type
         if self._register_model_args:
             self._properties = Properties(
@@ -182,7 +183,7 @@ class ModelStep(ConfigurableRetryStep):
     def arguments(self) -> RequestType:
         """The arguments dict that are used to call the appropriate SageMaker API."""
         from sagemaker.core.workflow.utilities import _pipeline_config
-        
+
         if self._register_model_args:
             request_dict = self._register_model_args
             # these are not available in the workflow service and will cause rejection
@@ -202,9 +203,9 @@ class ModelStep(ConfigurableRetryStep):
             request_dict = self._create_model_args
             # Continue to pop job name if not explicitly opted-in via config
             request_dict = trim_request_dict(request_dict, "ModelName", _pipeline_config)
-            
+
         return request_dict
-    
+
     @property
     def properties(self):
         """A Properties object representing the appropriate SageMaker response data model."""

@@ -1,3 +1,6 @@
+"""Run Athena queries against Feature Store offline data and load the results."""
+
+import logging
 import os
 import tempfile
 from dataclasses import dataclass, field
@@ -15,6 +18,9 @@ from sagemaker.mlops.feature_store.feature_utils import (
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry import Feature, _telemetry_emitter
+
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class AthenaQuery:
@@ -88,6 +94,9 @@ class AthenaQuery:
     def as_dataframe(self, **kwargs) -> DataFrame:
         """Download the result of the current query and load it into a DataFrame.
 
+        The query result is downloaded to a temporary local CSV file, which is removed
+        after it has been loaded (or if downloading/loading fails).
+
         Args:
             **kwargs (object): key arguments used for the method pandas.read_csv to be able to
                     have a better tuning on data. For more info read:
@@ -103,13 +112,24 @@ class AthenaQuery:
             raise RuntimeError(f"Query {self._current_query_execution_id} failed.")
 
         output_file = os.path.join(tempfile.gettempdir(), f"{self._current_query_execution_id}.csv")
-        download_athena_query_result(
-            session=self.sagemaker_session,
-            bucket=self._result_bucket,
-            prefix=self._result_file_prefix,
-            query_execution_id=self._current_query_execution_id,
-            filename=output_file,
-        )
-        kwargs.pop("delimiter", None)
-        return pd.read_csv(output_file, delimiter=",", **kwargs)
+        try:
+            download_athena_query_result(
+                session=self.sagemaker_session,
+                bucket=self._result_bucket,
+                prefix=self._result_file_prefix,
+                query_execution_id=self._current_query_execution_id,
+                filename=output_file,
+            )
+            kwargs.pop("delimiter", None)
+            return pd.read_csv(output_file, delimiter=",", **kwargs)
+        finally:
+            _remove_temp_file(output_file)
 
+
+def _remove_temp_file(path: str) -> None:
+    """Best-effort removal of a temporary file; never raises."""
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError as e:
+        logger.warning("Failed to remove temporary query result file %s: %s", path, e)

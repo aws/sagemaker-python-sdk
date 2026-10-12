@@ -12,20 +12,16 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock, call
-import json
+from unittest.mock import Mock, patch
 
 from sagemaker.core.model_monitor.clarify_model_monitoring import (
     ClarifyModelMonitor,
     ModelBiasMonitor,
     ClarifyMonitoringExecution,
-    ClarifyBaseliningJob,
     ClarifyBaseliningConfig,
     BiasAnalysisConfig,
 )
-from sagemaker.core.model_monitor.model_monitoring import EndpointInput
 from sagemaker.core.clarify import BiasConfig, DataConfig, ModelConfig, ModelPredictedLabelConfig
-from sagemaker.core.exceptions import UnexpectedStatusException
 
 
 @pytest.fixture

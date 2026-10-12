@@ -15,10 +15,10 @@
 These tests reuse existing completed MTRLTrainer jobs and feed them into
 the MultiTurnRLEvaluator to validate the end-to-end evaluation flow.
 """
+
 from __future__ import absolute_import
 
 import json
-import os
 import pytest
 import logging
 
@@ -42,15 +42,18 @@ def _get_test_config():
     account_id = boto_session.client("sts").get_caller_identity()["Account"]
     from sagemaker.core.helper.session_helper import Session
     from sagemaker.train.defaults import TrainDefaults
+
     sagemaker_session = Session(boto_session=boto_session)
     role_arn = TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
     return {
         "base_model": "mock-oss-test",
-        "agent_arn": f"arn:aws:bedrock-agentcore:{_REGION}:{account_id}:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
+        "agent_arn": f"arn:aws:bedrock-agentcore:{_REGION}:{account_id}:runtime/"
+        f"sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/output-artifacts/",
         "mlflow_resource_arn": f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
-        "model_package_group": f"arn:aws:sagemaker:{_REGION}:{account_id}:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
+        "model_package_group": f"arn:aws:sagemaker:{_REGION}:{account_id}:model-package-group/"
+        f"openai-reasoning-gpt-oss-20b-mtrl-mpg",
         "role": role_arn,
         "region": _REGION,
         "account_id": account_id,
@@ -146,7 +149,10 @@ def mtrl_trainer(sagemaker_session_mtrl, test_config):
 
     trainer = object.__new__(MultiTurnRLTrainer)
     trainer._model_name = test_config["base_model"]
-    trainer._model_arn = f"arn:aws:sagemaker:{_REGION}:{test_config['account_id']}:hub-content/sdktest/Model/{test_config['base_model']}/0.0.1"
+    trainer._model_arn = (
+        f"arn:aws:sagemaker:{_REGION}:{test_config['account_id']}:hub-content/sdktest/Model/"
+        f"{test_config['base_model']}/0.0.1"
+    )
     trainer.agent_env = test_config["agent_arn"]
     trainer.bedrock_agentcore_qualifier = "DEFAULT"
     trainer.output_model_package_group = test_config["model_package_group"]
@@ -185,7 +191,11 @@ class TestMTRLEvaluatorJobConfigDocument:
         evaluator._resolve_agent_arn()
 
         ctx = evaluator._build_template_context(
-            aws_context={"region": test_config["region"], "account_id": test_config["account_id"], "role_arn": test_config["role"]},
+            aws_context={
+                "region": test_config["region"],
+                "account_id": test_config["account_id"],
+                "role_arn": test_config["role"],
+            },
             artifacts={},
             model_package_group_arn=test_config["model_package_group"],
         )
@@ -218,7 +228,11 @@ class TestMTRLEvaluatorJobConfigDocument:
         evaluator._resolve_agent_arn()
 
         ctx = evaluator._build_template_context(
-            aws_context={"region": test_config["region"], "account_id": test_config["account_id"], "role_arn": test_config["role"]},
+            aws_context={
+                "region": test_config["region"],
+                "account_id": test_config["account_id"],
+                "role_arn": test_config["role"],
+            },
             artifacts={},
             model_package_group_arn=test_config["model_package_group"],
         )
@@ -247,7 +261,11 @@ class TestMTRLEvaluatorJobConfigDocument:
         evaluator._resolve_agent_arn()
 
         ctx = evaluator._build_template_context(
-            aws_context={"region": test_config["region"], "account_id": test_config["account_id"], "role_arn": test_config["role"]},
+            aws_context={
+                "region": test_config["region"],
+                "account_id": test_config["account_id"],
+                "role_arn": test_config["role"],
+            },
             artifacts={},
             model_package_group_arn=test_config["model_package_group"],
         )
@@ -325,9 +343,7 @@ class TestMTRLEvaluatorIntegration:
     def test_evaluator_infers_lambda_agent_config_from_trainer(self, mtrl_trainer, test_config):
         """Test that agent_config is inferred from trainer's nested CustomAgentLambdaConfig dict."""
         lambda_arn = "arn:aws:lambda:us-west-2:123456789012:function:my-agent"
-        mtrl_trainer.agent_config = {
-            "CustomAgentLambdaConfig": {"LambdaArn": lambda_arn}
-        }
+        mtrl_trainer.agent_config = {"CustomAgentLambdaConfig": {"LambdaArn": lambda_arn}}
 
         evaluator = MultiTurnRLEvaluator(
             model=mtrl_trainer,
@@ -346,7 +362,7 @@ class TestMTRLEvaluatorIntegration:
         """Test listing all MTRL evaluation executions."""
         all_execs = MultiTurnRLEvaluator.get_all(region=test_config["region"])
 
-        if hasattr(all_execs, '__iter__'):
+        if hasattr(all_execs, "__iter__"):
             all_execs = list(all_execs)
 
         assert all_execs is not None

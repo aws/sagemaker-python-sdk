@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Base entity class for AI Registry Hub content."""
+
 from __future__ import annotations
 
 import time
@@ -18,7 +19,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from rich.console import Group
-from rich.live import Live  
+from rich.live import Live
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.status import Status
@@ -37,6 +38,7 @@ from sagemaker.ai_registry.air_constants import (
 from sagemaker.ai_registry.air_hub import AIRHub
 from sagemaker.core.helper.session_helper import Session
 
+
 class AIRHubEntity(ABC):
     """Base entity for AI Registry Hub content."""
 
@@ -52,7 +54,7 @@ class AIRHubEntity(ABC):
         sagemaker_session: Optional[Session] = None,
     ) -> None:
         """Initialize AIR Hub Entity.
-        
+
         Args:
             name: Name of the hub content
             version: Version of the hub content
@@ -78,48 +80,51 @@ class AIRHubEntity(ABC):
     @abstractmethod
     def hub_content_type(self) -> str:
         """Return the hub content type for this entity."""
-        pass
 
     @classmethod
     @abstractmethod
     def _get_hub_content_type_for_list(cls) -> str:
         """Return the hub content type for list operation."""
-        pass
 
     @classmethod
     def list(cls, max_results: Optional[int] = None, next_token: Optional[str] = None) -> List:
         """List all entities of this type.
-        
+
         Args:
             max_results: Maximum number of results to return
             next_token: Token for pagination
-            
+
         Returns:
             List of hub content entities
         """
-        return AIRHub.list_hub_content(cls._get_hub_content_type_for_list(), max_results, next_token)
+        return AIRHub.list_hub_content(
+            cls._get_hub_content_type_for_list(), max_results, next_token
+        )
 
     def get_versions(self) -> List:
         """List all versions of this entity.
-        
+
         Returns:
             List of version information dictionaries
         """
         versions = AIRHub.list_hub_content_versions(self.hub_content_type, self.name)
-        return [{
-            "version": v.get(RESPONSE_KEY_HUB_CONTENT_VERSION),
-            "name": v.get(RESPONSE_KEY_HUB_CONTENT_NAME),
-            "arn": v.get(RESPONSE_KEY_HUB_CONTENT_ARN),
-            "status": v.get(RESPONSE_KEY_HUB_CONTENT_STATUS),
-            "created_time": v.get(RESPONSE_KEY_CREATION_TIME)
-        } for v in versions]
+        return [
+            {
+                "version": v.get(RESPONSE_KEY_HUB_CONTENT_VERSION),
+                "name": v.get(RESPONSE_KEY_HUB_CONTENT_NAME),
+                "arn": v.get(RESPONSE_KEY_HUB_CONTENT_ARN),
+                "status": v.get(RESPONSE_KEY_HUB_CONTENT_STATUS),
+                "created_time": v.get(RESPONSE_KEY_CREATION_TIME),
+            }
+            for v in versions
+        ]
 
     def delete(self, version: Optional[str] = None) -> bool:
         """Delete this entity instance.
-        
+
         Args:
             version: Specific version to delete. If None, deletes all versions.
-            
+
         Returns:
             True if deletion was successful, False otherwise
         """
@@ -128,7 +133,9 @@ class AIRHubEntity(ABC):
                 # If a version is not provided, delete all versions
                 versions = AIRHub.list_hub_content_versions(self.hub_content_type, self.name)
                 for v in versions:
-                    AIRHub.delete_hub_content(self.hub_content_type, self.name, v[RESPONSE_KEY_HUB_CONTENT_VERSION])
+                    AIRHub.delete_hub_content(
+                        self.hub_content_type, self.name, v[RESPONSE_KEY_HUB_CONTENT_VERSION]
+                    )
             else:
                 AIRHub.delete_hub_content(self.hub_content_type, self.name, version)
             return True
@@ -138,20 +145,26 @@ class AIRHubEntity(ABC):
     @classmethod
     def delete_by_name(cls, name: str, version: Optional[str] = None) -> bool:
         """Delete entity by name and version.
-        
+
         Args:
             name: Name of the entity to delete
             version: Specific version to delete. If None, deletes all versions.
-            
+
         Returns:
             True if deletion was successful, False otherwise
         """
         try:
             if version is None:
                 # If a version is not provided, delete all versions
-                versions = AIRHub.list_hub_content_versions(cls._get_hub_content_type_for_list(), name)
+                versions = AIRHub.list_hub_content_versions(
+                    cls._get_hub_content_type_for_list(), name
+                )
                 for v in versions:
-                    AIRHub.delete_hub_content(cls._get_hub_content_type_for_list(), name, v[RESPONSE_KEY_HUB_CONTENT_VERSION])
+                    AIRHub.delete_hub_content(
+                        cls._get_hub_content_type_for_list(),
+                        name,
+                        v[RESPONSE_KEY_HUB_CONTENT_VERSION],
+                    )
             else:
                 AIRHub.delete_hub_content(cls._get_hub_content_type_for_list(), name, version)
             return True
@@ -205,14 +218,12 @@ class AIRHubEntity(ABC):
                             resource_type="AIRHubEntity",
                             status=str(current_status),
                             reason=f"AI Registry hub entity '{self.name}' (version {self.version}) failed to import. "
-                                   f"Check CloudWatch logs or contact AWS support for assistance."
+                            f"Check CloudWatch logs or contact AWS support for assistance.",
                         )
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(
-                        resource_type="AIRHubEntity", status=current_status
-                    )
+                    raise TimeoutExceededError(resource_type="AIRHubEntity", status=current_status)
                 time.sleep(poll)
 
     def refresh(self) -> None:

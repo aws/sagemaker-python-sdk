@@ -7,7 +7,7 @@ Task: 5.4
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 import pytest
 
 from sagemaker.serve.model_builder import ModelBuilder

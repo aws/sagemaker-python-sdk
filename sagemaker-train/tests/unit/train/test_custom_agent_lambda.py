@@ -1,4 +1,5 @@
 """Unit tests for CustomAgentLambda."""
+
 import os
 import tempfile
 from unittest.mock import MagicMock, patch
@@ -6,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from sagemaker.train.custom_agent_lambda import CustomAgentLambda
-
 
 MOCK_ROLE = "arn:aws:iam::123:role/test"
 MOCK_ARN = "arn:aws:lambda:us-west-2:123:function:my-fn"

@@ -70,7 +70,7 @@ class _RFTModelWrapper:
             setattr(self._inner, name, value)
 
     def stream(self, *args: Any, **kwargs: Any) -> Any:
-        """Intercept stream() to inject RFT headers via client_args default_headers.
+        """Inject RFT headers via client_args default_headers when streaming.
 
         The OpenAI client supports ``default_headers`` in its constructor,
         which are sent with every request. We inject the RFT headers there since
@@ -89,8 +89,16 @@ class _RFTModelWrapper:
         inference_params = get_inference_params()
         if inference_params:
             params_update = {}
-            for camel, snake in [("temperature", "temperature"), ("maxTokens", "max_tokens"), ("topP", "top_p")]:
-                val = inference_params.get(snake) if inference_params.get(snake) is not None else inference_params.get(camel)
+            for camel, snake in [
+                ("temperature", "temperature"),
+                ("maxTokens", "max_tokens"),
+                ("topP", "top_p"),
+            ]:
+                val = (
+                    inference_params.get(snake)
+                    if inference_params.get(snake) is not None
+                    else inference_params.get(camel)
+                )
                 if val is not None:
                     params_update[snake] = val
             if params_update:

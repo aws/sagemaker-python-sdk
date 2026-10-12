@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """SageMaker remote function data serializer/deserializer."""
+
 from __future__ import absolute_import
 
 import dataclasses
@@ -20,7 +21,6 @@ import base64
 import io
 
 import sys
-import hmac
 import hashlib
 import pickle
 
@@ -302,9 +302,7 @@ def json_serialize_obj_to_s3(
     )
 
 
-def deserialize_obj_from_s3(
-    sagemaker_session: Session, s3_uri: str, verification_key=None
-) -> Any:
+def deserialize_obj_from_s3(sagemaker_session: Session, s3_uri: str, verification_key=None) -> Any:
     """Downloads from S3 and then deserializes data objects.
 
     Called from both job (verifying client-uploaded args) and client (verifying
@@ -427,7 +425,6 @@ def _upload_payload_and_metadata_to_s3_hashed(
         s3_kms_key,
         sagemaker_session,
     )
-
 
 
 def deserialize_exception_from_s3(sagemaker_session: Session, s3_uri: str) -> Any:

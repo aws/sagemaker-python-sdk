@@ -95,7 +95,7 @@ class TestTorchServeInference(unittest.TestCase):
         inference_spec = Mock()
         inference_spec.postprocess = Mock(return_value={"postprocessed": True})
 
-        result = output_fn([0.1, 0.9], "application/json", schema_builder, inference_spec)
+        output_fn([0.1, 0.9], "application/json", schema_builder, inference_spec)
 
         inference_spec.postprocess.assert_called_once_with([0.1, 0.9])
         schema_builder.custom_output_translator.serialize.assert_called_once_with(
@@ -134,7 +134,7 @@ class TestTorchServeInference(unittest.TestCase):
         mock_module.load_model = Mock(return_value=Mock())
         mock_import.return_value = mock_module
 
-        result = _load_mlflow_model("tensorflow", "/model/dir")
+        _load_mlflow_model("tensorflow", "/model/dir")
 
         mock_import.assert_called_once_with("mlflow.tensorflow")
 

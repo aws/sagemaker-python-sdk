@@ -18,6 +18,7 @@ and hook configuration. Use the Debugger objects for parameters when constructin
 a SageMaker estimator to initiate a training job.
 
 """
+
 from __future__ import absolute_import
 
 from abc import ABC
@@ -292,12 +293,10 @@ class Rule(RuleBase):
         merged_rule_params = {}
 
         if rule_parameters is not None and rule_parameters.get("rule_to_invoke") is not None:
-            raise RuntimeError(
-                """You cannot provide a 'rule_to_invoke' for SageMaker rules.
+            raise RuntimeError("""You cannot provide a 'rule_to_invoke' for SageMaker rules.
                 Either remove the rule_to_invoke or use a custom rule.
 
-                """
-            )
+                """)
 
         if actions is not None and not rule_configs.is_valid_action_object(actions):
             raise RuntimeError("""`actions` must be of type `Action` or `ActionList`!""")

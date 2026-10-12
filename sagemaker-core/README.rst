@@ -19,7 +19,7 @@ SageMaker Core
 Introduction
 ------------
 
-Welcome to the sagemaker-core Python SDK, an SDK designed to provide an object-oriented interface for interacting with Amazon SageMaker resources. It offers full parity with SageMaker APIs, allowing developers to leverage all SageMaker capabilities directly through the SDK. sagemaker-core introduces features such as dedicated resource classes, resource chaining, auto code completion, comprehensive documentation and type hints to enhance the developer experience as well as productivity. 
+Welcome to the sagemaker-core Python SDK, an SDK designed to provide an object-oriented interface for interacting with Amazon SageMaker resources. It offers full parity with SageMaker APIs, allowing developers to leverage all SageMaker capabilities directly through the SDK. sagemaker-core introduces features such as dedicated resource classes, resource chaining, auto code completion, comprehensive documentation and type hints to enhance the developer experience as well as productivity.
 
 
 Key Features

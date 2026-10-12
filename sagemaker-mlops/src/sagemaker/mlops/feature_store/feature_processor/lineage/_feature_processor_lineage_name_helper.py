@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains class to handle lineage resource name generation."""
+
 from __future__ import absolute_import
 
 FEATURE_PROCESSOR_CREATED_PREFIX = "sm-fs-fe"

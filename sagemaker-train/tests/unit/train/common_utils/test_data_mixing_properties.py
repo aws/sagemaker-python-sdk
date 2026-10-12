@@ -96,12 +96,15 @@ def test_category_extraction_round_trip(categories):
         }
     }
 
-    with patch(
-        "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata",
-        return_value=hub_metadata,
-    ), patch(
-        "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name",
-        return_value="SageMakerPublicHub",
+    with (
+        patch(
+            "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata",
+            return_value=hub_metadata,
+        ),
+        patch(
+            "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name",
+            return_value="SageMakerPublicHub",
+        ),
     ):
         ctx = resolve_hyperpod_datamix_context(
             model_name="nova-pro",
@@ -141,11 +144,7 @@ def test_missing_uri_error_contains_field_and_recipe(recipe_name, uri_field):
     # Make recipe name contain the datamix keyword for matching
     recipe["Name"] = f"{recipe_name}_text_with_datamix"
 
-    hub_metadata = {
-        "hub_content_document": {
-            "RecipeCollection": [recipe]
-        }
-    }
+    hub_metadata = {"hub_content_document": {"RecipeCollection": [recipe]}}
 
     session = MagicMock()
     session.boto_session.region_name = "us-west-2"
@@ -170,12 +169,15 @@ def test_missing_uri_error_contains_field_and_recipe(recipe_name, uri_field):
         template_body.read.return_value = b"template content"
         s3_client.get_object.return_value = {"Body": template_body}
 
-    with patch(
-        "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata",
-        return_value=hub_metadata,
-    ), patch(
-        "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name",
-        return_value="SageMakerPublicHub",
+    with (
+        patch(
+            "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata",
+            return_value=hub_metadata,
+        ),
+        patch(
+            "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name",
+            return_value="SageMakerPublicHub",
+        ),
     ):
         with pytest.raises(ValueError) as exc_info:
             resolve_hyperpod_datamix_context(
@@ -187,13 +189,13 @@ def test_missing_uri_error_contains_field_and_recipe(recipe_name, uri_field):
             )
 
     error_message = str(exc_info.value)
-    assert uri_field in error_message, (
-        f"Error message should contain '{uri_field}', got: {error_message}"
-    )
+    assert (
+        uri_field in error_message
+    ), f"Error message should contain '{uri_field}', got: {error_message}"
     full_recipe_name = f"{recipe_name}_text_with_datamix"
-    assert full_recipe_name in error_message, (
-        f"Error message should contain recipe name '{full_recipe_name}', got: {error_message}"
-    )
+    assert (
+        full_recipe_name in error_message
+    ), f"Error message should contain recipe name '{full_recipe_name}', got: {error_message}"
 
 
 @pytest.mark.parametrize(
@@ -210,11 +212,7 @@ def test_missing_uri_error_contains_field_and_recipe(recipe_name, uri_field):
 def test_unmatched_recipe_error_contains_all_identifiers(
     model_name, keyword, technique, training_type
 ):
-    hub_metadata = {
-        "hub_content_document": {
-            "RecipeCollection": []
-        }
-    }
+    hub_metadata = {"hub_content_document": {"RecipeCollection": []}}
 
     is_multimodal = keyword == "mm_with_datamix"
 
@@ -231,12 +229,15 @@ def test_unmatched_recipe_error_contains_all_identifiers(
 
     session.boto_session.client.side_effect = client_factory
 
-    with patch(
-        "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata",
-        return_value=hub_metadata,
-    ), patch(
-        "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name",
-        return_value="SageMakerPublicHub",
+    with (
+        patch(
+            "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata",
+            return_value=hub_metadata,
+        ),
+        patch(
+            "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name",
+            return_value="SageMakerPublicHub",
+        ),
     ):
         with pytest.raises(ValueError) as exc_info:
             resolve_hyperpod_datamix_context(
@@ -248,18 +249,18 @@ def test_unmatched_recipe_error_contains_all_identifiers(
             )
 
     error_message = str(exc_info.value)
-    assert model_name in error_message, (
-        f"Error message should contain model_name '{model_name}', got: {error_message}"
-    )
-    assert keyword in error_message, (
-        f"Error message should contain keyword '{keyword}', got: {error_message}"
-    )
-    assert technique in error_message, (
-        f"Error message should contain technique '{technique}', got: {error_message}"
-    )
-    assert training_type in error_message, (
-        f"Error message should contain training_type '{training_type}', got: {error_message}"
-    )
+    assert (
+        model_name in error_message
+    ), f"Error message should contain model_name '{model_name}', got: {error_message}"
+    assert (
+        keyword in error_message
+    ), f"Error message should contain keyword '{keyword}', got: {error_message}"
+    assert (
+        technique in error_message
+    ), f"Error message should contain technique '{technique}', got: {error_message}"
+    assert (
+        training_type in error_message
+    ), f"Error message should contain training_type '{training_type}', got: {error_message}"
 
 
 @pytest.mark.parametrize(
@@ -277,9 +278,7 @@ def test_unmatched_recipe_error_contains_all_identifiers(
 )
 def test_data_mixing_values_injected_faithfully(customer_percent, nova_percents):
     all_cats = list(nova_percents.keys())
-    nova_data_yaml_lines = "\n".join(
-        f"          {cat}: '{{{{{cat}}}}}'" for cat in all_cats
-    )
+    nova_data_yaml_lines = "\n".join(f"          {cat}: '{{{{{cat}}}}}'" for cat in all_cats)
 
     helm_template = (
         "---\n"
@@ -355,9 +354,9 @@ def test_data_mixing_values_injected_faithfully(customer_percent, nova_percents)
 
     for cat, expected_val in nova_percents.items():
         expected = int(expected_val) if expected_val == int(expected_val) else expected_val
-        assert sources["nova_data"][cat] == expected, (
-            f"nova_data['{cat}'] should be {expected}, got {sources['nova_data'][cat]}"
-        )
+        assert (
+            sources["nova_data"][cat] == expected
+        ), f"nova_data['{cat}'] should be {expected}, got {sources['nova_data'][cat]}"
 
 
 @pytest.mark.parametrize(
@@ -435,14 +434,14 @@ def test_unsupported_categories_named_in_error(unsupported_cats, template_cats):
     error_message = str(exc_info.value)
 
     for cat in sorted(unsupported_cats):
-        assert cat in error_message, (
-            f"Error message should contain unsupported category '{cat}', got: {error_message}"
-        )
+        assert (
+            cat in error_message
+        ), f"Error message should contain unsupported category '{cat}', got: {error_message}"
 
     for cat in sorted(template_cats):
-        assert cat in error_message, (
-            f"Error message should contain valid category '{cat}', got: {error_message}"
-        )
+        assert (
+            cat in error_message
+        ), f"Error message should contain valid category '{cat}', got: {error_message}"
 
 
 @pytest.mark.parametrize(
@@ -534,12 +533,15 @@ def test_datamix_keyword_selection(is_multimodal, expected_keyword, recipe_name)
         }
     }
 
-    with patch(
-        "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata",
-        return_value=hub_metadata,
-    ), patch(
-        "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name",
-        return_value="SageMakerPublicHub",
+    with (
+        patch(
+            "sagemaker.train.common_utils.data_mixing_utils._get_hub_content_metadata",
+            return_value=hub_metadata,
+        ),
+        patch(
+            "sagemaker.train.common_utils.data_mixing_utils.get_sagemaker_hub_name",
+            return_value="SageMakerPublicHub",
+        ),
     ):
         ctx = resolve_hyperpod_datamix_context(
             model_name="nova-pro",

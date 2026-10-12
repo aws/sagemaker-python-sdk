@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utility methods used by framework classes."""
+
 from __future__ import absolute_import
 
 import json
@@ -465,9 +466,7 @@ def tar_and_upload_dir(
 
     try:
         source_files = _list_files_to_compress(script, directory) + dependencies
-        tar_file = utils.create_tar_file(
-            source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME)
-        )
+        tar_file = utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
         if kms_key:
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
@@ -676,11 +675,9 @@ def profiler_config_deprecation_warning(
         )
         framework_profile = version.parse(framework_version)
         if framework_profile >= framework_profile_thresh:
-            deprecation_warn_base(
-                f"Framework profiling is deprecated from\
+            deprecation_warn_base(f"Framework profiling is deprecated from\
                  {framework_name} version {framework_version}.\
-                 No framework metrics will be collected"
-            )
+                 No framework metrics will be collected")
 
 
 def validate_smdistributed(
@@ -1219,7 +1216,7 @@ def create_image_uri(
         the image uri
     """
     from sagemaker.core import image_uris
-    
+
     renamed_warning("The method create_image_uri")
     return image_uris.retrieve(
         framework=framework,

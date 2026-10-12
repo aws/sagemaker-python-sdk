@@ -46,9 +46,7 @@ def extract_solution(solution_str, method="strict"):
     return final_answer
 
 
-def compute_gsm8k_score(
-    solution_str, ground_truth, method="strict", format_score=0.0, score=1.0
-):
+def compute_gsm8k_score(solution_str, ground_truth, method="strict", format_score=0.0, score=1.0):
     """The scoring function for GSM8k.
 
     Reference: Trung, Luong, et al. "Reft: Reasoning with reinforced fine-tuning."
@@ -141,9 +139,7 @@ def _score_and_metrics(sample: Dict[str, Any]) -> Dict[str, Any]:
         extracted_answer = extract_solution(solution_text, method=method)
 
         # Add detailed metrics
-        metrics_list.append(
-            {"name": "gsm8k_score", "value": float(gsm8k_score), "type": "Reward"}
-        )
+        metrics_list.append({"name": "gsm8k_score", "value": float(gsm8k_score), "type": "Reward"})
         metrics_list.append(
             {
                 "name": "extracted_answer",
@@ -151,21 +147,15 @@ def _score_and_metrics(sample: Dict[str, Any]) -> Dict[str, Any]:
                 "type": "Metric",
             }
         )
-        metrics_list.append(
-            {"name": "ground_truth", "value": gt, "type": "Metric"}
-        )
-        metrics_list.append(
-            {"name": "extraction_method", "value": method, "type": "Metric"}
-        )
+        metrics_list.append({"name": "ground_truth", "value": gt, "type": "Metric"})
+        metrics_list.append({"name": "extraction_method", "value": method, "type": "Metric"})
 
         # The aggregate reward score is the GSM8k score
         aggregate_score = gsm8k_score
     else:
         # No solution text or ground truth - default to 0
         aggregate_score = 0.0
-        metrics_list.append(
-            {"name": "default_zero", "value": 0.0, "type": "Reward"}
-        )
+        metrics_list.append({"name": "default_zero", "value": 0.0, "type": "Reward"})
 
     print(
         "detected score",
@@ -218,9 +208,7 @@ def lambda_handler(event, context):
         samples = body
     else:
         return _ok(
-            {
-                "error": "Send a sample object, or {'batch':[...]} , or a top-level list of samples."
-            },
+            {"error": "Send a sample object, or {'batch':[...]} , or a top-level list of samples."},
             400,
         )
 

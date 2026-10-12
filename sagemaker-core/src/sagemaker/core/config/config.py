@@ -16,6 +16,7 @@ It supports loading config files from the local file system and Amazon S3.
 The schema of the config file is dictated in config_schema.py in the same module.
 
 """
+
 from __future__ import absolute_import, annotations
 
 import pathlib

@@ -11,13 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.utils.intelligent_defaults_helper module."""
+
 from __future__ import absolute_import
 
 import pytest
 import os
-import tempfile
-import yaml
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 
 from sagemaker.core.utils.intelligent_defaults_helper import (
     load_default_configs,
@@ -29,7 +28,6 @@ from sagemaker.core.utils.intelligent_defaults_helper import (
     get_config_value,
 )
 from sagemaker.core.utils.exceptions import (
-    LocalConfigNotFoundError,
     S3ConfigNotFoundError,
     ConfigSchemaValidationError,
 )

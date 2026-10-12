@@ -15,6 +15,7 @@
 Covers deploying a fine-tuned Nova model to SageMaker endpoints (via
 ModelBuilder) and to Amazon Bedrock custom models (via BedrockModelBuilder).
 """
+
 from __future__ import absolute_import
 
 import boto3
@@ -26,11 +27,13 @@ import time
 import pytest
 import random
 from sagemaker.serve import ModelBuilder
-from sagemaker.core.resources import TrainingJob
+from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
+from sagemaker.serve.model_reuse import MODEL_SOURCE_TAG_KEY
+from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.resources import TrainingJob, Endpoint, ModelPackage
+from sagemaker.train import SFTTrainer, RLVRTrainer
 
 logger = logging.getLogger(__name__)
-
-from sagemaker.core.helper.session_helper import Session
 
 # This test relies on resources in a specific region
 AWS_REGION = "us-east-1"
@@ -40,7 +43,12 @@ os.environ.setdefault("AWS_DEFAULT_REGION", AWS_REGION)
 MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
 
 NOVA_MODEL_ID = "nova-textgeneration-lite-v2"
-NOVA_INSTANCE_TYPE = "ml.g6.48xlarge"
+NOVA_INSTANCE_TYPE = "ml.p5.48xlarge"
+
+# A Bedrock custom model cannot be deleted while a deployment still references
+# it, and deployment deletion is asynchronous, so teardown waits for it.
+BEDROCK_DEPLOYMENT_DELETE_TIMEOUT = 600
+BEDROCK_DEPLOYMENT_DELETE_POLL = 15
 
 
 def _deploy_or_skip_on_capacity(model_builder, **deploy_kwargs):
@@ -80,6 +88,84 @@ def _latest_model_package_arn(region=AWS_REGION):
         if summary.get("ModelPackageStatus") == "Completed":
             return summary["ModelPackageArn"]
     return None
+
+
+def _find_bedrock_custom_model_arn(bedrock_client, model_name):
+    """Return the ARN of the Bedrock custom model named exactly model_name, or None."""
+    kwargs = {"nameContains": model_name}
+    while True:
+        response = bedrock_client.list_custom_models(**kwargs)
+        for summary in response.get("modelSummaries", []):
+            if summary.get("modelName") == model_name:
+                return summary.get("modelArn")
+        if not response.get("nextToken"):
+            return None
+        kwargs["nextToken"] = response["nextToken"]
+
+
+def _find_bedrock_deployment_arn(bedrock_client, deployment_name):
+    """Return the ARN of the Bedrock custom model deployment named exactly
+    deployment_name, or None.
+    """
+    kwargs = {"nameContains": deployment_name}
+    while True:
+        response = bedrock_client.list_custom_model_deployments(**kwargs)
+        for summary in response.get("modelDeploymentSummaries", []):
+            if summary.get("customModelDeploymentName") == deployment_name:
+                return summary.get("customModelDeploymentArn")
+        if not response.get("nextToken"):
+            return None
+        kwargs["nextToken"] = response["nextToken"]
+
+
+def _bedrock_source_tag_value(bedrock_client, resource_arn):
+    """Return the model-source tag value on a Bedrock resource, or None."""
+    tags = bedrock_client.list_tags_for_resource(resourceARN=resource_arn).get("tags", [])
+    for tag in tags:
+        if tag.get("key") == MODEL_SOURCE_TAG_KEY:
+            return tag.get("value")
+    return None
+
+
+def _cleanup_bedrock_nova_resources(bedrock_client, model_name, deployment_name):
+    """Delete the Bedrock deployment and custom model created under these names.
+
+    Resources are looked up by their unique names instead of by ARNs returned
+    from deploy(). A deploy() that fails part-way (for example, the custom model
+    is created but create_custom_model_deployment hits the deployment quota)
+    returns no ARNs, and the custom model would otherwise leak. Only resources
+    with the given names are touched, so resources owned by other runs (including
+    a model reused via reuse_resources=True) are never deleted.
+
+    Cleanup is best-effort: failures are logged, never raised.
+    """
+    try:
+        deployment_arn = _find_bedrock_deployment_arn(bedrock_client, deployment_name)
+        if deployment_arn:
+            bedrock_client.delete_custom_model_deployment(
+                customModelDeploymentIdentifier=deployment_arn
+            )
+            logger.info("Deleting custom model deployment: %s", deployment_arn)
+            deadline = time.time() + BEDROCK_DEPLOYMENT_DELETE_TIMEOUT
+            while _find_bedrock_deployment_arn(bedrock_client, deployment_name):
+                if time.time() > deadline:
+                    logger.warning(
+                        "Deployment %s still present after %ss; deleting the model anyway",
+                        deployment_arn,
+                        BEDROCK_DEPLOYMENT_DELETE_TIMEOUT,
+                    )
+                    break
+                time.sleep(BEDROCK_DEPLOYMENT_DELETE_POLL)
+    except Exception as e:
+        logger.warning("Failed to delete deployment %s: %s", deployment_name, e)
+
+    try:
+        model_arn = _find_bedrock_custom_model_arn(bedrock_client, model_name)
+        if model_arn:
+            bedrock_client.delete_custom_model(modelIdentifier=model_arn)
+            logger.info("Deleted custom model: %s", model_arn)
+    except Exception as e:
+        logger.warning("Failed to delete custom model %s: %s", model_name, e)
 
 
 @pytest.fixture(scope="module")
@@ -171,7 +257,6 @@ def cleanup_endpoints():
 
     for ep_name in endpoints_to_cleanup:
         try:
-            from sagemaker.core.resources import Endpoint
             endpoint = Endpoint.get(endpoint_name=ep_name, region=AWS_REGION)
             endpoint.delete()
         except Exception:
@@ -201,8 +286,16 @@ class TestModelCustomizationFromTrainingJob:
         assert model_builder.image_uri is not None
         assert model_builder.instance_type is not None
 
-    def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
-        """Test deploying a Nova model from a training job and invoking it."""
+    def test_deploy_from_training_job(
+        self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session
+    ):
+        """Test deploying a Nova model from a training job, invoking it, and reusing it.
+
+        For Nova models, this verifies:
+        1. Endpoint is created InService with model-source tag.
+        2. Endpoint is invokable.
+        3. deploy(reuse_resources=True) from a new ModelBuilder returns the same endpoint.
+        """
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(
             model=training_job,
@@ -226,14 +319,23 @@ class TestModelCustomizationFromTrainingJob:
         assert endpoint.endpoint_arn is not None
         assert endpoint.endpoint_status == "InService"
 
+        # The endpoint should carry the model-source tag that powers resource reuse.
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {
+            t["Key"] for t in endpoint_tags
+        }, f"Endpoint {endpoint.endpoint_arn} missing model-source tag for reuse"
+
         time.sleep(10)  # brief buffer for inference component readiness
 
         invoke_response = endpoint.invoke(
-            body=json.dumps({
-                "messages": [
-                    {"role": "user", "content": [{"type": "text", "text": "What is 7+7?"}]}
-                ]
-            }),
+            body=json.dumps(
+                {
+                    "messages": [
+                        {"role": "user", "content": [{"type": "text", "text": "What is 7+7?"}]}
+                    ]
+                }
+            ),
             content_type="application/json",
             accept="application/json",
         )
@@ -243,6 +345,28 @@ class TestModelCustomizationFromTrainingJob:
         assert response_body is not None, f"Empty response from invoke on {endpoint_name}"
         assert isinstance(response_body, dict)
 
+        # Verify reuse: a new ModelBuilder with reuse_resources=True should
+        # find and return a tagged endpoint (may be the one just created or
+        # one from a prior test run with the same source tag).
+        builder2 = ModelBuilder(
+            model=training_job,
+            instance_type=NOVA_INSTANCE_TYPE,
+            sagemaker_session=sagemaker_session,
+        )
+        builder2.accept_eula = True
+        builder2.build(region=AWS_REGION, reuse_resources=True)
+
+        endpoint2 = builder2.deploy(reuse_resources=True)
+
+        assert endpoint2 is not None
+        assert endpoint2.endpoint_arn is not None
+        # Verify the reused endpoint has the model-source tag
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        endpoint2_tags = sm_client.list_tags(ResourceArn=endpoint2.endpoint_arn).get("Tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {
+            t["Key"] for t in endpoint2_tags
+        }, f"Reused endpoint {endpoint2.endpoint_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
+
     def test_fetch_endpoint_names_for_base_model(self, training_job_name, sagemaker_session):
         """Test fetching endpoint names for base model."""
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
@@ -250,6 +374,36 @@ class TestModelCustomizationFromTrainingJob:
         endpoint_names = model_builder.fetch_endpoint_names_for_base_model()
 
         assert isinstance(endpoint_names, set)
+
+    def test_build_reuse_skips_model_creation(self, training_job_name, sagemaker_session):
+        """build(reuse_resources=True) reuses an existing tagged Model.
+
+        Verifies that the reuse lookup finds a model with the correct
+        model-source tag. Because prior test runs may have left behind a
+        model with the same tag, we accept any model carrying the tag as
+        a valid reuse hit (not only the one created in *this* test run).
+        """
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+
+        # Build with reuse — this should find any existing model tagged
+        # with this training job's source ID.
+        builder = ModelBuilder(
+            model=training_job,
+            instance_type=NOVA_INSTANCE_TYPE,
+            sagemaker_session=sagemaker_session,
+        )
+        builder.accept_eula = True
+        model = builder.build(region=AWS_REGION, reuse_resources=True)
+
+        assert model is not None
+        assert model.model_arn is not None
+
+        # Verify the model-source tag is actually present on the reused model
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        tags = sm_client.list_tags(ResourceArn=model.model_arn).get("Tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {
+            t["Key"] for t in tags
+        }, f"Reused model {model.model_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
 
 
 @pytest.mark.us_east_1
@@ -275,7 +429,9 @@ class TestModelCustomizationFromModelPackage:
         assert model.model_arn is not None
         assert model_builder._fetch_model_package_arn() is not None
 
-    def test_deploy_from_model_package(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
+    def test_deploy_from_model_package(
+        self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session
+    ):
         """Deploy a Nova model via the training-job path and validate the endpoint."""
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(
@@ -325,7 +481,6 @@ class TestModelCustomizationDetection:
 
     def test_is_model_customization_model_package(self, model_package_arn, sagemaker_session):
         """Test detection from a Nova model package."""
-        from sagemaker.core.resources import ModelPackage
 
         model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
         model_builder = ModelBuilder(model=model_package, sagemaker_session=sagemaker_session)
@@ -352,11 +507,8 @@ class TestTrainerIntegration:
 
     def test_sft_trainer_build(self, training_job_name, sagemaker_session):
         """Test building a model from a Nova SFTTrainer object."""
-        from sagemaker.train.sft_trainer import SFTTrainer
 
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
         trainer = SFTTrainer(
             model=NOVA_MODEL_ID,
@@ -379,11 +531,8 @@ class TestTrainerIntegration:
 
     def test_rlvr_trainer_build(self, training_job_name, sagemaker_session):
         """Test building a model from a Nova RLVRTrainer object."""
-        from sagemaker.train.rlvr_trainer import RLVRTrainer
 
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
         trainer = RLVRTrainer(
             model=NOVA_MODEL_ID,
@@ -405,14 +554,19 @@ class TestTrainerIntegration:
         assert model.model_arn is not None
 
 
+# serial: CI runs the parallel suite with plain `-n auto` (no `--dist loadgroup`),
+# so an xdist_group mark is ignored and every worker builds its own class-scoped
+# deployed_nova_model fixture, creating one Bedrock custom model per worker.
+# The account quotas are small (100 custom models, 10 deployments), so the class
+# runs in the serial suite where the fixture is created exactly once.
 @pytest.mark.us_east_1
+@pytest.mark.serial
 class TestNovaBedrockDeployment:
     """Test deploying a fine-tuned Nova model to Amazon Bedrock as a custom model."""
 
     @pytest.fixture(scope="class")
     def role_arn(self):
         """Execution role ARN with Bedrock permissions."""
-        from sagemaker.core.helper.session_helper import get_execution_role
         return get_execution_role()
 
     @pytest.fixture(scope="class")
@@ -424,6 +578,7 @@ class TestNovaBedrockDeployment:
     def bedrock_runtime(self):
         """Bedrock runtime client with retries for not-yet-ready custom models."""
         from botocore.config import Config
+
         config = Config(retries={"total_max_attempts": 10, "mode": "standard"})
         return boto3.client("bedrock-runtime", region_name=AWS_REGION, config=config)
 
@@ -432,8 +587,6 @@ class TestNovaBedrockDeployment:
         """Deploy a Nova model to Bedrock from its TrainingJob and yield the
         deployment details, cleaning up the custom model and deployment after.
         """
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 
         unique = f"{int(time.time())}-{random.randint(1000, 9999)}"
         custom_model_name = f"nova-integ-{unique}"
@@ -442,8 +595,6 @@ class TestNovaBedrockDeployment:
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         bedrock_builder = BedrockModelBuilder(model=training_job)
 
-        deployment_arn = None
-        model_arn = None
         try:
             response = bedrock_builder.deploy(
                 custom_model_name=custom_model_name,
@@ -468,20 +619,38 @@ class TestNovaBedrockDeployment:
         except Exception as e:
             pytest.fail(f"Nova Bedrock deployment failed: {e}")
         finally:
-            if deployment_arn:
-                try:
-                    bedrock_client.delete_custom_model_deployment(
-                        customModelDeploymentIdentifier=deployment_arn
-                    )
-                    logger.info("Deleted custom model deployment: %s", deployment_arn)
-                except Exception as e:
-                    logger.warning("Failed to delete deployment %s: %s", deployment_arn, e)
-            if model_arn:
-                try:
-                    bedrock_client.delete_custom_model(modelIdentifier=model_arn)
-                    logger.info("Deleted custom model: %s", model_arn)
-                except Exception as e:
-                    logger.warning("Failed to delete custom model %s: %s", model_arn, e)
+            # Clean up by name, not by ARN: if deploy() created the custom model
+            # but failed to create the deployment, no ARN was ever returned.
+            _cleanup_bedrock_nova_resources(bedrock_client, custom_model_name, deployment_name)
+
+    @staticmethod
+    def _deploy_with_reuse(training_job_name, role_arn, bedrock_client):
+        """Run deploy(reuse_resources=True); return (model ARN, whether a new model was created).
+
+        Anything this call creates under its own unique names (a new deployment on
+        the reused model, or a new model if reuse missed) is deleted before
+        returning, so reuse tests never leak Bedrock resources.
+        """
+        unique = f"{int(time.time())}-{random.randint(1000, 9999)}"
+        new_model_name = f"nova-reuse-integ-{unique}"
+        new_deployment_name = f"{new_model_name}-dep"
+
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        builder = BedrockModelBuilder(model=training_job)
+        try:
+            response = builder.deploy(
+                custom_model_name=new_model_name,
+                deployment_name=new_deployment_name,
+                role_arn=role_arn,
+                reuse_resources=True,
+            )
+            reused_model_arn = response.get("modelArn") or response.get("importedModelArn")
+            created_new_model = (
+                _find_bedrock_custom_model_arn(bedrock_client, new_model_name) is not None
+            )
+            return reused_model_arn, created_new_model
+        finally:
+            _cleanup_bedrock_nova_resources(bedrock_client, new_model_name, new_deployment_name)
 
     def test_nova_bedrock_deployment_active(self, deployed_nova_model, bedrock_client):
         """The Nova custom model deployment should be Active after deploy()."""
@@ -491,6 +660,17 @@ class TestNovaBedrockDeployment:
         )
         assert deployment.get("status") == "Active"
 
+    def test_nova_bedrock_custom_model_tagged_for_reuse(self, deployed_nova_model, bedrock_client):
+        """The Nova custom model should carry the model-source tag that powers reuse.
+
+        Reuse lookup itself is covered by test_nova_bedrock_reuse_returns_existing_model.
+        """
+
+        model_arn = deployed_nova_model["model_arn"]
+        assert (
+            _bedrock_source_tag_value(bedrock_client, model_arn) is not None
+        ), f"Custom model {model_arn} missing model-source tag for reuse"
+
     @pytest.mark.slow
     def test_nova_bedrock_invoke(self, deployed_nova_model, bedrock_runtime):
         """Invoke the deployed Nova model on Bedrock end-to-end."""
@@ -498,13 +678,13 @@ class TestNovaBedrockDeployment:
 
         response = bedrock_runtime.invoke_model(
             modelId=deployment_arn,
-            body=json.dumps({
-                "schemaVersion": "messages-v1",
-                "messages": [
-                    {"role": "user", "content": [{"text": "What is 7+7?"}]}
-                ],
-                "inferenceConfig": {"maxTokens": 100, "temperature": 0.0, "topP": 0.9},
-            }),
+            body=json.dumps(
+                {
+                    "schemaVersion": "messages-v1",
+                    "messages": [{"role": "user", "content": [{"text": "What is 7+7?"}]}],
+                    "inferenceConfig": {"maxTokens": 100, "temperature": 0.0, "topP": 0.9},
+                }
+            ),
             contentType="application/json",
             accept="application/json",
         )
@@ -515,3 +695,33 @@ class TestNovaBedrockDeployment:
         assert isinstance(result, dict)
         text = result["output"]["message"]["content"][0]["text"]
         assert isinstance(text, str) and len(text) > 0
+
+    @pytest.mark.slow
+    def test_nova_bedrock_reuse_returns_existing_model(
+        self, deployed_nova_model, training_job_name, role_arn, bedrock_client
+    ):
+        """deploy(reuse_resources=True) finds an existing custom model instead of creating new.
+
+        The deployed_nova_model fixture guarantees at least one Active model tagged
+        with this training job's model-source. Reuse returns the first tagged model
+        Bedrock lists, which may belong to another run against the same training
+        job (for example, a concurrent CI run), so the check is that reuse returns
+        a model with the same model-source tag and creates no new model, not that
+        it returns the fixture's exact ARN.
+        """
+
+        expected_tag_value = _bedrock_source_tag_value(
+            bedrock_client, deployed_nova_model["model_arn"]
+        )
+        assert expected_tag_value is not None, "Fixture model missing model-source tag"
+
+        reused_model_arn, created_new_model = self._deploy_with_reuse(
+            training_job_name, role_arn, bedrock_client
+        )
+
+        assert not created_new_model, "reuse_resources=True created a new custom model"
+        assert reused_model_arn, "deploy(reuse_resources=True) returned no model ARN"
+        assert _bedrock_source_tag_value(bedrock_client, reused_model_arn) == expected_tag_value, (
+            f"Reused model {reused_model_arn} does not carry model-source tag "
+            f"{expected_tag_value}"
+        )

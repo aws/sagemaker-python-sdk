@@ -12,22 +12,17 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List, Optional
-from packaging.version import Version
+from unittest.mock import Mock, patch
 
 import sagemaker
 from sagemaker.core.jumpstart import utils, enums, constants
 from sagemaker.core.jumpstart.types import (
     JumpStartVersionedModelId,
-    JumpStartModelHeader,
     JumpStartModelSpecs,
-    JumpStartBenchmarkStat,
     DeploymentConfigMetadata,
 )
 from sagemaker.core.jumpstart.exceptions import VulnerableJumpStartModelError
 from sagemaker.core.jumpstart.models import HubContentDocument
-from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
 
 class TestIsPipelineVariable:
@@ -391,7 +386,7 @@ class TestHasInstanceRateStat:
         assert utils.has_instance_rate_stat([]) is False
 
 
-class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
+class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresentPart1:
     """Test cases for remove_env_var_from_estimator_kwargs_if_accept_eula_present function"""
 
     def test_remove_env_var_accept_eula_none(self):
@@ -491,7 +486,7 @@ class TestGetJumpstartContentBucket:
     def test_get_jumpstart_content_bucket_invalid_region(self):
         """Test with invalid region"""
         with patch.object(constants, "JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT", {}):
-            with pytest.raises(ValueError, match="Unable to get content bucket for Neo"):
+            with pytest.raises(ValueError, match="Unable to get content bucket for JumpStart"):
                 utils.get_jumpstart_content_bucket("invalid-region")
 
 
@@ -672,7 +667,7 @@ class TestAddJumpstartUriTags:
         """Test warning when URI is pipeline variable"""
         mock_is_pipeline.return_value = True
         with patch("logging.warning") as mock_warning:
-            result = utils.add_jumpstart_uri_tags(tags=None, inference_model_uri="pipeline_var")
+            utils.add_jumpstart_uri_tags(tags=None, inference_model_uri="pipeline_var")
             mock_warning.assert_called()
 
     @patch("sagemaker.core.jumpstart.utils.is_pipeline_variable")
@@ -1572,7 +1567,9 @@ class TestAddInstanceRateStatsToBenchmarkMetrics:
         result = utils.add_instance_rate_stats_to_benchmark_metrics("us-west-2", None)
         assert result is None
 
-    @pytest.mark.skip(reason="Requires AWS Pricing API permissions which are not available in CI environment")
+    @pytest.mark.skip(
+        reason="Requires AWS Pricing API permissions which are not available in CI environment"
+    )
     @patch("sagemaker.core.common_utils.get_instance_rate_per_hour")
     def test_add_instance_rate_stats_success(self, mock_get_rate):
         """Test successfully adding instance rate stats"""
@@ -1678,6 +1675,53 @@ class TestGetMetricsFromDeploymentConfigs:
         result = utils.get_metrics_from_deployment_configs([mock_config])
         assert "Instance Type" in result
         assert "Config Name" in result
+
+    def test_get_metrics_ragged_pricing_stays_equal_length_and_aligned(self):
+        """One instance with a pricing overlay, one without: columns stay equal
+        length and the rate stays aligned to its instance (None for the other)."""
+
+        def _stat(name, unit, value, concurrency):
+            stat = Mock()
+            stat.name = name
+            stat.unit = unit
+            stat.value = value
+            stat.concurrency = concurrency
+            return stat
+
+        mock_args = Mock()
+        mock_args.default_instance_type = "ml.g5.xlarge"
+        mock_args.instance_type = "ml.g5.xlarge"
+
+        mock_config = Mock(spec=DeploymentConfigMetadata)
+        mock_config.deployment_args = mock_args
+        mock_config.deployment_config_name = "config1"
+        # priced instance carries an "Instance Rate" stat; the other does not.
+        mock_config.benchmark_metrics = {
+            "ml.g5.xlarge": [
+                _stat("Latency", "ms", 100, "1"),
+                _stat("Instance Rate", "USD/Hr", 1.23, "1"),
+            ],
+            "ml.g5.2xlarge": [
+                _stat("Latency", "ms", 90, "1"),
+            ],
+        }
+
+        result = utils.get_metrics_from_deployment_configs([mock_config])
+
+        # Equal-length columns -> pd.DataFrame(result) will not raise.
+        lengths = {column: len(values) for column, values in result.items()}
+        assert len(set(lengths.values())) == 1, lengths
+
+        # Rate value stays on the priced row, None on the other (not shifted).
+        rate_cols = [c for c in result if "Instance Rate" in c]
+        assert rate_cols, result.keys()
+        rate_col = rate_cols[0]
+        by_instance = dict(zip(result["Instance Type"], result[rate_col]))
+        assert by_instance["ml.g5.xlarge (Default)"] == 1.23
+        assert by_instance["ml.g5.2xlarge"] is None
+
+        # Rate column stays last, after the metric columns (layout unchanged).
+        assert list(result).index(rate_col) == len(result) - 1
 
 
 class TestNormalizeBenchmarkMetricColumnName:
@@ -1846,7 +1890,7 @@ class TestGetDraftModelContentBucket:
         assert result == "neo-bucket"
 
 
-class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
+class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresentPart2:
     """Test cases for remove_env_var_from_estimator_kwargs_if_accept_eula_present function"""
 
     def test_remove_env_var_accept_eula_true(self):

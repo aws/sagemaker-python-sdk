@@ -11,8 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-import sys
-import time
 from typing import Union
 
 
@@ -21,12 +19,9 @@ import os
 import logging
 import random
 import string
-import pandas as pd
 import subprocess
 import shlex
 from sagemaker.core.remote_function import CheckpointLocation
-from sagemaker.core.experiments.trial_component import _TrialComponent
-from sagemaker.core.experiments._api_types import _TrialComponentStatusType
 
 from sagemaker.core.remote_function import remote
 from sagemaker.core.remote_function.spark_config import SparkConfig
@@ -34,15 +29,9 @@ from sagemaker.core.remote_function.custom_file_filter import CustomFileFilter
 from sagemaker.core.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentError,
 )
-from sagemaker.core.remote_function.errors import (
-    DeserializationError,
-    SerializationError,
-)
-from sagemaker.core.common_utils import unique_name_from_base
 from tests.integ.s3_utils import assert_s3_files_exist
 
 from tests.integ.integ_test_kms_helpers import get_or_create_kms_key
-import os
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 
@@ -579,7 +568,9 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
 #     reason="SageMaker Spark image only available for Python 3.9 and 3.12",
 # )
 @pytest.mark.spark_py312
-def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type, spark_pre_execution_commands):
+def test_decorator_with_spark_job(
+    sagemaker_session, cpu_instance_type, spark_pre_execution_commands
+):
     @remote(
         role=ROLE,
         instance_type=cpu_instance_type,
@@ -605,9 +596,7 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type, spark_pr
         # deserialization to fail in the Spark container (no pytest installed).
         app_name = spark.conf.get("spark.app.name")
         if app_name != "remote-spark-test":
-            raise RuntimeError(
-                f"Expected spark.app.name='remote-spark-test', got '{app_name}'"
-            )
+            raise RuntimeError(f"Expected spark.app.name='remote-spark-test', got '{app_name}'")
 
     test_spark_transform()
 

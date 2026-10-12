@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Repack model script for training jobs to inject entry points"""
+
 from __future__ import absolute_import
 
 import argparse
@@ -131,7 +132,7 @@ def repack(inference_script, model_archive, source_dir=None):  # pragma: no cove
         inference_script (str): The path to the custom entry point.
         model_archive (str): The name or path (e.g. s3 uri) of the model TAR archive.
         source_dir (str): The path to a custom source directory.
-    
+
     Note:
         Requirements.txt dependencies are automatically installed by ModelTrainer
         before this script runs, so no manual pip installation is needed.
@@ -173,7 +174,7 @@ def repack(inference_script, model_archive, source_dir=None):  # pragma: no cove
             # Try ModelTrainer structure first, then fallback
             entry_point_paths = [
                 os.path.join("/opt/ml/input/data/code", inference_script),
-                os.path.join("/opt/ml/code", inference_script)
+                os.path.join("/opt/ml/code", inference_script),
             ]
             entry_point = None
             for path in entry_point_paths:

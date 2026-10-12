@@ -12,10 +12,10 @@
 # language governing permissions and limitations under the License.
 
 """Integration tests for AIRHub."""
+
 import os
 import tempfile
 
-import pytest
 from sagemaker.ai_registry.air_hub import AIRHub
 from sagemaker.ai_registry.air_constants import DATASET_HUB_CONTENT_TYPE
 
@@ -33,8 +33,8 @@ class TestAIRHubIntegration:
     def test_hub_name_initialization(self):
         """Test hub name is properly initialized."""
         AIRHub._ensure_hub_name_initialized()
-        assert hasattr(AIRHub, 'hubName')
-        assert hasattr(AIRHub, 'hubDisplayName')
+        assert hasattr(AIRHub, "hubName")
+        assert hasattr(AIRHub, "hubDisplayName")
 
     def test_import_hub_content(self, unique_name, sample_hub_content_document):
         """Test importing hub content."""
@@ -45,7 +45,7 @@ class TestAIRHubIntegration:
             hub_content_document=sample_hub_content_document,
         )
         assert response is not None
-        assert 'HubContentArn' in response
+        assert "HubContentArn" in response
 
     def test_describe_hub_content(self, unique_name, sample_hub_content_document):
         """Test describing hub content."""
@@ -56,15 +56,15 @@ class TestAIRHubIntegration:
             hub_content_document=sample_hub_content_document,
         )
         response = AIRHub.describe_hub_content(DATASET_HUB_CONTENT_TYPE, unique_name)
-        assert response['HubContentName'] == unique_name
-        assert 'HubContentArn' in response
-        assert 'HubContentVersion' in response
+        assert response["HubContentName"] == unique_name
+        assert "HubContentArn" in response
+        assert "HubContentVersion" in response
 
     def test_list_hub_content(self):
         """Test listing hub content."""
         result = AIRHub.list_hub_content(DATASET_HUB_CONTENT_TYPE, max_results=5)
-        assert 'items' in result
-        assert isinstance(result['items'], list)
+        assert "items" in result
+        assert isinstance(result["items"], list)
 
     def test_list_hub_content_versions(self, unique_name, sample_hub_content_document):
         """Test listing hub content versions."""
@@ -80,13 +80,15 @@ class TestAIRHubIntegration:
 
     def test_delete_hub_content(self, unique_name, sample_hub_content_document):
         """Test deleting hub content."""
-        response = AIRHub.import_hub_content(
+        AIRHub.import_hub_content(
             hub_content_type=DATASET_HUB_CONTENT_TYPE,
             hub_content_name=unique_name,
             document_schema_version="2.0.0",
             hub_content_document=sample_hub_content_document,
         )
-        version = AIRHub.describe_hub_content(DATASET_HUB_CONTENT_TYPE, unique_name)['HubContentVersion']
+        version = AIRHub.describe_hub_content(DATASET_HUB_CONTENT_TYPE, unique_name)[
+            "HubContentVersion"
+        ]
         AIRHub.delete_hub_content(DATASET_HUB_CONTENT_TYPE, unique_name, version)
 
     def test_upload_to_s3(self, sample_jsonl_file, test_bucket):

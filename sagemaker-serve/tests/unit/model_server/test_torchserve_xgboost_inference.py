@@ -4,7 +4,7 @@ Simple tests that don't require module import.
 """
 
 import unittest
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, patch
 import os
 
 
@@ -70,7 +70,7 @@ class TestXGBoostInferenceSimple(unittest.TestCase):
         mock_module.load_model = Mock(return_value=Mock())
         mock_import.return_value = mock_module
 
-        result = _load_mlflow_model("sklearn", "/model/dir")
+        _load_mlflow_model("sklearn", "/model/dir")
 
         mock_import.assert_called_once_with("mlflow.sklearn")
 

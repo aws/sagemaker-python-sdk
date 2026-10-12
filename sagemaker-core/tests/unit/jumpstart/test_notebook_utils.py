@@ -13,14 +13,11 @@
 
 """Unit tests for sagemaker.core.jumpstart.notebook_utils module"""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from packaging.version import Version
+from unittest.mock import Mock, patch
 
 from sagemaker.core.jumpstart import notebook_utils
 from sagemaker.core.jumpstart.enums import JumpStartScriptScope, JumpStartModelType
 from sagemaker.core.jumpstart.filters import And, BooleanValues, Constant, ModelFilter, Operator
-from sagemaker.core.jumpstart.types import JumpStartModelHeader
 
 
 class TestCompareModelVersionTuples:

@@ -1,0 +1,38 @@
+name: SageMaker Core - Daily Sync with Botocore
+
+# Scheduled trigger that kicks off the CodeBuild project which fetches the
+# latest service-2.json models from boto3/botocore, regenerates the
+# sagemaker-core resource/shape classes, and opens a "Daily Sync with Botocore"
+# PR as the sagemaker-bot user.
+#
+# NOTE: The CodeBuild project `sagemaker-core-botocore-sync` is provisioned
+# separately (deferred account-side setup). It reuses the repo's existing
+# `CI_AWS_ROLE_ARN` OIDC role (same role every other CI workflow uses); that
+# role must be granted codebuild:StartBuild on this project. Until the project
+# exists, this workflow will fail on the Run CodeBuild step.
+
+on:
+  schedule:
+    # Every Monday to Friday at 10:00 UTC (3:00 PDT)
+    - cron: "00 10 * * 1-5"
+  # Allow manual runs for testing once CodeBuild is wired up.
+  workflow_dispatch:
+
+permissions:
+  id-token: write # Required for requesting the OIDC JWT
+
+jobs:
+  sync-with-botocore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          role-duration-seconds: 10800
+          aws-region: us-west-2
+
+      - name: Run CodeBuild
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-core-botocore-sync

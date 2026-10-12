@@ -23,10 +23,8 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
     logger.info("Autodetecting image since image_uri was not provided in ModelBuilder()")
 
     if not instance_type:
-        raise ValueError(
-            "Instance type is not specified.\
-                Unable to detect if the container needs to be GPU or CPU."
-        )
+        raise ValueError("Instance type is not specified.\
+                Unable to detect if the container needs to be GPU or CPU.")
 
     logger.warning(
         "Auto detection is only supported for single models DLCs with a framework backend."
@@ -51,7 +49,7 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
                 py_version_to_use = "py3"  # SKLearn only supports py3
             else:
                 py_version_to_use = f"py{py_tuple[0]}{py_tuple[1]}"
-                
+
             dlc = image_uris.retrieve(
                 framework=fw,
                 region=region,
@@ -63,19 +61,19 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
             break
         except ValueError:
             pass
-    
+
     # If no compatible version found, try latest available version as fallback
     if not dlc and fw_version:
         try:
             config = image_uris._config_for_framework_and_scope(fw, "inference", None)
             latest_version = sorted(config["versions"].keys())[-1]  # Get latest version
-            
+
             # Framework-specific Python version handling
             if fw == "sklearn":
                 py_version_to_use = "py3"
             else:
                 py_version_to_use = f"py{py_tuple[0]}{py_tuple[1]}"
-                
+
             dlc = image_uris.retrieve(
                 framework=fw,
                 region=region,
@@ -86,7 +84,9 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
             )
             logger.warning(
                 "Using latest available version %s for framework %s (requested version %s not available)",
-                latest_version, fw, fw_version
+                latest_version,
+                fw,
+                fw_version,
             )
         except ValueError:
             pass
@@ -255,16 +255,14 @@ def _detect_framework_and_version(model_base: str) -> Tuple[str, str]:
         fw = "sklearn"
         try:
             import sklearn
+
             vs = sklearn.__version__
         except ImportError:
             logger.warning(_VERSION_DETECTION_ERROR, fw)
-        
+
     else:
-        raise Exception(
-            "Unable to determine required container for model base %s.\
-                Please specify container in model builder"
-            % model_base
-        )
+        raise Exception("Unable to determine required container for model base %s.\
+                Please specify container in model builder" % model_base)
 
     return (fw, vs)
 
@@ -275,7 +273,7 @@ def _get_model_base(model: object) -> type:
     module_name = model.__class__.__module__
     if module_name and "xgboost" in module_name:
         return model.__class__
-    
+
     model_base = model.__class__.__base__
 
     # for cases such as xgb.Booster where there is no inherited base class

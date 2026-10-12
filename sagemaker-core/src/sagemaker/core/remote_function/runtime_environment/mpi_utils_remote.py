@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """An utils function for runtime environment. This must be kept independent of SageMaker PySDK"""
+
 from __future__ import absolute_import
 
 import argparse

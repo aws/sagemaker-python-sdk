@@ -1,10 +1,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Conftest for feature_store tests."""
+
 import pytest
 from unittest.mock import Mock, MagicMock
 import pandas as pd
-import numpy as np
 
 
 @pytest.fixture
@@ -22,26 +22,27 @@ def mock_session():
 @pytest.fixture
 def sample_dataframe():
     """Create a sample DataFrame for testing."""
-    return pd.DataFrame({
-        "id": pd.Series([1, 2, 3, 4, 5], dtype="int64"),
-        "value": pd.Series([1.1, 2.2, 3.3, 4.4, 5.5], dtype="float64"),
-        "name": pd.Series(["a", "b", "c", "d", "e"], dtype="string"),
-        "event_time": pd.Series(
-            ["2024-01-01T00:00:00Z"] * 5,
-            dtype="string"
-        ),
-    })
+    return pd.DataFrame(
+        {
+            "id": pd.Series([1, 2, 3, 4, 5], dtype="int64"),
+            "value": pd.Series([1.1, 2.2, 3.3, 4.4, 5.5], dtype="float64"),
+            "name": pd.Series(["a", "b", "c", "d", "e"], dtype="string"),
+            "event_time": pd.Series(["2024-01-01T00:00:00Z"] * 5, dtype="string"),
+        }
+    )
 
 
 @pytest.fixture
 def dataframe_with_collections():
     """Create a DataFrame with collection type columns."""
-    return pd.DataFrame({
-        "id": pd.Series([1, 2, 3], dtype="int64"),
-        "tags": pd.Series([["a", "b"], ["c"], ["d", "e", "f"]], dtype="object"),
-        "scores": pd.Series([[1.0, 2.0], [3.0], [4.0, 5.0]], dtype="object"),
-        "event_time": pd.Series(["2024-01-01"] * 3, dtype="string"),
-    })
+    return pd.DataFrame(
+        {
+            "id": pd.Series([1, 2, 3], dtype="int64"),
+            "tags": pd.Series([["a", "b"], ["c"], ["d", "e", "f"]], dtype="object"),
+            "scores": pd.Series([[1.0, 2.0], [3.0], [4.0, 5.0]], dtype="object"),
+            "event_time": pd.Series(["2024-01-01"] * 3, dtype="string"),
+        }
+    )
 
 
 @pytest.fixture

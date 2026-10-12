@@ -15,6 +15,7 @@
 Codes are used for configuring serverless inference endpoint. Use it when deploying
 the model to the endpoints.
 """
+
 from __future__ import print_function, absolute_import
 from typing import Optional
 

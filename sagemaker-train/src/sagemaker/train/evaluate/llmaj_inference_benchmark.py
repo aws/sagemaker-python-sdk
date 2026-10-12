@@ -10,7 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
+"""Generate the InspectAI benchmark file and supporting configuration for LLMAJ evaluation.
+
 This module generates the InspectAI benchmark Python file and supporting
 configuration that runs inside the InspectAI container to produce inference
 responses for LLM-as-Judge evaluation. It also handles dataset format
@@ -132,8 +133,7 @@ def convert_dataset_to_inspectai_format(dataset_content: str) -> str:
             prompt_text = record["query"]
         else:
             raise ValueError(
-                f"Line {line_number} has neither 'prompt' nor 'query' field: "
-                f"{line.strip()!r}"
+                f"Line {line_number} has neither 'prompt' nor 'query' field: " f"{line.strip()!r}"
             )
         converted_lines.append(json.dumps({"input": prompt_text, "target": ""}))
     return "\n".join(converted_lines) + "\n"

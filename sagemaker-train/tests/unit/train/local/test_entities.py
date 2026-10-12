@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for local entities module."""
+
 from __future__ import absolute_import
 
 import datetime
@@ -27,7 +28,7 @@ class TestLocalTrainingJob:
         """Test initialization."""
         mock_container = MagicMock()
         job = _LocalTrainingJob(mock_container)
-        
+
         assert job.container is mock_container
         assert job.model_artifacts is None
         assert job.state == "created"
@@ -41,9 +42,9 @@ class TestLocalTrainingJob:
         """Test start with S3 data source."""
         mock_container = MagicMock()
         mock_container.train.return_value = "s3://bucket/model.tar.gz"
-        
+
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -59,9 +60,9 @@ class TestLocalTrainingJob:
         hyperparameters = {"epochs": "10"}
         environment = {"ENV_VAR": "value"}
         job_name = "test-job"
-        
+
         job.start(input_data_config, output_data_config, hyperparameters, environment, job_name)
-        
+
         assert job.state == job._COMPLETED
         assert job.model_artifacts == "s3://bucket/model.tar.gz"
         assert job.training_job_name == job_name
@@ -71,7 +72,7 @@ class TestLocalTrainingJob:
         assert job.end_time is not None
         assert isinstance(job.start_time, datetime.datetime)
         assert isinstance(job.end_time, datetime.datetime)
-        
+
         mock_container.train.assert_called_once_with(
             input_data_config, output_data_config, hyperparameters, environment, job_name
         )
@@ -80,9 +81,9 @@ class TestLocalTrainingJob:
         """Test start with file data source."""
         mock_container = MagicMock()
         mock_container.train.return_value = "file:///tmp/model.tar.gz"
-        
+
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -98,9 +99,9 @@ class TestLocalTrainingJob:
         hyperparameters = {}
         environment = {}
         job_name = "test-job"
-        
+
         job.start(input_data_config, output_data_config, hyperparameters, environment, job_name)
-        
+
         assert job.state == job._COMPLETED
         assert input_data_config[0]["DataUri"] == "file:///data"
 
@@ -108,9 +109,9 @@ class TestLocalTrainingJob:
         """Test start with default data distribution."""
         mock_container = MagicMock()
         mock_container.train.return_value = "s3://bucket/model.tar.gz"
-        
+
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -126,17 +127,17 @@ class TestLocalTrainingJob:
         hyperparameters = {}
         environment = {}
         job_name = "test-job"
-        
+
         # Should not raise error
         job.start(input_data_config, output_data_config, hyperparameters, environment, job_name)
-        
+
         assert job.state == job._COMPLETED
 
     def test_start_raises_error_for_invalid_data_source(self):
         """Test start raises error for invalid data source."""
         mock_container = MagicMock()
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -147,7 +148,7 @@ class TestLocalTrainingJob:
         hyperparameters = {}
         environment = {}
         job_name = "test-job"
-        
+
         with pytest.raises(ValueError, match="Need channel\\['DataSource'\\]"):
             job.start(input_data_config, output_data_config, hyperparameters, environment, job_name)
 
@@ -155,7 +156,7 @@ class TestLocalTrainingJob:
         """Test start raises error for unsupported distribution type."""
         mock_container = MagicMock()
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -171,7 +172,7 @@ class TestLocalTrainingJob:
         hyperparameters = {}
         environment = {}
         job_name = "test-job"
-        
+
         with pytest.raises(RuntimeError, match="Invalid DataDistribution"):
             job.start(input_data_config, output_data_config, hyperparameters, environment, job_name)
 
@@ -181,9 +182,9 @@ class TestLocalTrainingJob:
         mock_container.instance_count = 1
         mock_container.container_entrypoint = ["python", "train.py"]
         mock_container.train.return_value = "s3://bucket/model.tar.gz"
-        
+
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -198,11 +199,11 @@ class TestLocalTrainingJob:
         hyperparameters = {"epochs": "10"}
         environment = {"ENV_VAR": "value"}
         job_name = "test-job"
-        
+
         job.start(input_data_config, output_data_config, hyperparameters, environment, job_name)
-        
+
         response = job.describe()
-        
+
         assert response["TrainingJobName"] == job_name
         assert response["TrainingJobArn"] == "unused-arn"
         assert response["ResourceConfig"]["InstanceCount"] == 1
@@ -219,11 +220,11 @@ class TestLocalTrainingJob:
         mock_container = MagicMock()
         mock_container.instance_count = 1
         mock_container.container_entrypoint = None
-        
+
         job = _LocalTrainingJob(mock_container)
-        
+
         response = job.describe()
-        
+
         assert response["TrainingJobName"] == ""
         assert response["TrainingJobStatus"] == "created"
         assert response["TrainingStartTime"] is None
@@ -241,9 +242,9 @@ class TestLocalTrainingJob:
         """Test start with multiple input channels."""
         mock_container = MagicMock()
         mock_container.train.return_value = "s3://bucket/model.tar.gz"
-        
+
         job = _LocalTrainingJob(mock_container)
-        
+
         input_data_config = [
             {
                 "ChannelName": "training",
@@ -266,9 +267,9 @@ class TestLocalTrainingJob:
         hyperparameters = {}
         environment = {}
         job_name = "test-job"
-        
+
         job.start(input_data_config, output_data_config, hyperparameters, environment, job_name)
-        
+
         assert job.state == job._COMPLETED
         assert input_data_config[0]["DataUri"] == "s3://bucket/train"
         assert input_data_config[1]["DataUri"] == "s3://bucket/val"

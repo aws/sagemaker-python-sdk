@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Dataset validation utilities for AI Registry."""
+
 from __future__ import annotations
 
 import json
@@ -18,16 +19,17 @@ from typing import Any, Dict, Iterable, List, Optional
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 
+
 # -------------- IO ---------------
 def load_jsonl(path: str) -> List[Dict[str, Any]]:
     """Load JSONL file and return list of dictionaries.
-    
+
     Args:
         path: Path to JSONL file
-        
+
     Returns:
         List of parsed JSON objects
-        
+
     Raises:
         ValueError: If JSON parsing fails
     """
@@ -47,10 +49,10 @@ def load_jsonl(path: str) -> List[Dict[str, Any]]:
 # -------------- SFT --------------
 def _normalize_sft(record: Dict[str, Any]) -> None:
     """Normalize and validate SFT record format.
-    
+
     Args:
         record: Dictionary containing SFT data
-        
+
     Raises:
         ValueError: If record format is invalid
     """
@@ -65,13 +67,15 @@ def _normalize_sft(record: Dict[str, Any]) -> None:
     raise ValueError("missing SFT fields: need input/output or prompt/completion")
 
 
-@_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.validate_sft")
+@_telemetry_emitter(
+    feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.validate_sft"
+)
 def validate_sft(rows: Iterable[Dict[str, Any]]) -> None:
     """Validate SFT dataset format.
-    
+
     Args:
         rows: Iterable of SFT records
-        
+
     Raises:
         ValueError: If any record is invalid
     """
@@ -83,13 +87,15 @@ def validate_sft(rows: Iterable[Dict[str, Any]]) -> None:
 
 
 # -------------- DPO --------------
-@_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.validate_dpo")
+@_telemetry_emitter(
+    feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.validate_dpo"
+)
 def validate_dpo(rows: Iterable[Dict[str, Any]]) -> None:
     """Validate DPO dataset format.
-    
+
     Args:
         rows: Iterable of DPO records
-        
+
     Raises:
         ValueError: If any record is invalid
     """
@@ -102,13 +108,15 @@ def validate_dpo(rows: Iterable[Dict[str, Any]]) -> None:
 
 
 # -------------- RLVR --------------
-@_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.validate_rlvr")
+@_telemetry_emitter(
+    feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.validate_rlvr"
+)
 def validate_rlvr(rows: Iterable[Dict[str, Any]]) -> None:
     """Validate RLVR dataset format.
-    
+
     Args:
         rows: Iterable of RLVR records
-        
+
     Raises:
         ValueError: If any record is invalid
     """
@@ -123,27 +131,33 @@ def validate_rlvr(rows: Iterable[Dict[str, Any]]) -> None:
             if not isinstance(sample.get("score"), (int, float)):
                 raise ValueError(f"RLVR row {i} sample {j}: score must be number")
 
-@_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.normalize_rlvr_row")
+
+@_telemetry_emitter(
+    feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.normalize_rlvr_row"
+)
 def normalize_rlvr_row(record: Dict[str, Any]) -> Dict[str, Any]:
     """Converts a row into the standard RLVR format.
-    
+
     Converts formats like GSM8K example into the standard RLVR format:
     - prompt -> string (join list of {'content'} entries)
     - samples -> list of one sample with completion and score
-    
+
     Args:
         record: Input record to normalize
-        
+
     Returns:
         Normalized RLVR record
     """
     # flatten prompt list to string
     prompt_data = record.get("prompt")
     if isinstance(prompt_data, list):
-        prompt_text = "\n".join([
-            item.get("content", "") for item in prompt_data 
-            if isinstance(item, dict) and "content" in item
-        ])
+        prompt_text = "\n".join(
+            [
+                item.get("content", "")
+                for item in prompt_data
+                if isinstance(item, dict) and "content" in item
+            ]
+        )
     elif isinstance(prompt_data, str):
         prompt_text = prompt_data
     else:
@@ -159,47 +173,52 @@ def normalize_rlvr_row(record: Dict[str, Any]) -> Dict[str, Any]:
     # simple scoring heuristic
     score = 1.0 if completion else 0.0
 
-    return {
-        "prompt": prompt_text,
-        "samples": [
-            {"completion": completion, "score": score}
-        ]
-    }
+    return {"prompt": prompt_text, "samples": [{"completion": completion, "score": score}]}
 
 
 # -------------- auto detect --------------
-@_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.detect_dataset_type")
+@_telemetry_emitter(
+    feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.detect_dataset_type"
+)
 def detect_dataset_type(record: Dict[str, Any]) -> Optional[str]:
     """Auto-detect dataset type from record format.
-    
+
     Args:
         record: Sample record to analyze
-        
+
     Returns:
         Detected type ('rlvr', 'dpo', 'sft') or None if unknown
     """
-    if "samples" in record and isinstance(record["samples"], list) and isinstance(record.get("prompt"), str):
+    if (
+        "samples" in record
+        and isinstance(record["samples"], list)
+        and isinstance(record.get("prompt"), str)
+    ):
         return "rlvr"
     if all(k in record for k in ("prompt", "chosen", "rejected")):
         return "dpo"
-    if ("input" in record and "output" in record) or ("prompt" in record and "completion" in record):
+    if ("input" in record and "output" in record) or (
+        "prompt" in record and "completion" in record
+    ):
         return "sft"
     return None
 
 
-@_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.validate_dataset")
+@_telemetry_emitter(
+    feature=Feature.MODEL_CUSTOMIZATION, func_name="dataset_validation.validate_dataset"
+)
 def validate_dataset(path: str, technique: str) -> None:
     """Validate dataset file against specified technique format.
-    
+
     Args:
         path: Path to JSONL dataset file
         technique: Validation technique ('sft', 'dpo', 'rlvr', 'auto')
-        
+
     Raises:
         ValueError: If dataset format is invalid or technique is unsupported
     """
     rows = load_jsonl(path)
-    
+
     if not rows:
         raise ValueError(f"Dataset file is empty: {path}")
 

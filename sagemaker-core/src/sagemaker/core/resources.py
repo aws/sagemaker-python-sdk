@@ -14,7 +14,7 @@ import botocore
 import datetime
 import time
 import functools
-from pydantic import validate_call
+from pydantic import PrivateAttr, validate_call
 from typing import Dict, List, Literal, Optional, Union, Any
 from boto3.session import Session
 from rich.console import Group
@@ -46,7 +46,6 @@ from typing import ClassVar
 from sagemaker.core.serializers.base import BaseSerializer
 from sagemaker.core.deserializers.base import BaseDeserializer
 
-
 logger = get_textual_rich_logger(__name__)
 
 
@@ -58,11 +57,33 @@ class Base(BaseModel):
         arbitrary_types_allowed=True,
     )
     config_manager: ClassVar[SageMakerConfig] = SageMakerConfig()
+    # Session and region the resource was created or loaded with. Object methods
+    # (refresh, wait, update, delete, stop, ...) reuse them so a resource obtained
+    # with an explicit session keeps talking to the same account and region.
+    _session: Optional[Session] = PrivateAttr(default=None)
+    _region: Optional[str] = PrivateAttr(default=None)
 
     @classmethod
     def get_sagemaker_client(cls, session=None, region_name=None, service_name="sagemaker"):
         return SageMakerClient(session=session, region_name=region_name).get_client(
             service_name=service_name
+        )
+
+    def _set_client_context(self, session: Optional[Session] = None, region: Optional[str] = None):
+        self._session = session
+        self._region = region
+        return self
+
+    def _get_client(
+        self,
+        service_name: str = "sagemaker",
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ):
+        return Base.get_sagemaker_client(
+            session=session or self._session,
+            region_name=region or self._region,
+            service_name=service_name,
         )
 
     @staticmethod
@@ -347,6 +368,7 @@ class AIBenchmarkJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAIBenchmarkJobResponse")
         ai_benchmark_job = cls(**transformed_response)
+        ai_benchmark_job._set_client_context(session=session, region=region)
         return ai_benchmark_job
 
     @Base.add_validate_call
@@ -379,7 +401,7 @@ class AIBenchmarkJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_ai_benchmark_job(**operation_input_args)
 
         # deserialize response and update self
@@ -406,7 +428,7 @@ class AIBenchmarkJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "AIBenchmarkJobName": self.ai_benchmark_job_name,
@@ -437,7 +459,7 @@ class AIBenchmarkJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "AIBenchmarkJobName": self.ai_benchmark_job_name,
@@ -575,6 +597,8 @@ class AIBenchmarkJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_ai_benchmark_jobs",
             summaries_key="AIBenchmarkJobs",
             summary_name="AIBenchmarkJobSummary",
@@ -799,6 +823,7 @@ class AIRecommendationJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAIRecommendationJobResponse")
         ai_recommendation_job = cls(**transformed_response)
+        ai_recommendation_job._set_client_context(session=session, region=region)
         return ai_recommendation_job
 
     @Base.add_validate_call
@@ -831,7 +856,7 @@ class AIRecommendationJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_ai_recommendation_job(**operation_input_args)
 
         # deserialize response and update self
@@ -858,7 +883,7 @@ class AIRecommendationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "AIRecommendationJobName": self.ai_recommendation_job_name,
@@ -889,7 +914,7 @@ class AIRecommendationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "AIRecommendationJobName": self.ai_recommendation_job_name,
@@ -1027,6 +1052,8 @@ class AIRecommendationJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_ai_recommendation_jobs",
             summaries_key="AIRecommendationJobs",
             summary_name="AIRecommendationJobSummary",
@@ -1192,6 +1219,7 @@ class AIWorkloadConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAIWorkloadConfigResponse")
         ai_workload_config = cls(**transformed_response)
+        ai_workload_config._set_client_context(session=session, region=region)
         return ai_workload_config
 
     @Base.add_validate_call
@@ -1224,7 +1252,7 @@ class AIWorkloadConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_ai_workload_config(**operation_input_args)
 
         # deserialize response and update self
@@ -1252,7 +1280,7 @@ class AIWorkloadConfig(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "AIWorkloadConfigName": self.ai_workload_config_name,
@@ -1324,6 +1352,8 @@ class AIWorkloadConfig(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_ai_workload_configs",
             summaries_key="AIWorkloadConfigs",
             summary_name="AIWorkloadConfigSummary",
@@ -1512,6 +1542,7 @@ class Action(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeActionResponse")
         action = cls(**transformed_response)
+        action._set_client_context(session=session, region=region)
         return action
 
     @Base.add_validate_call
@@ -1544,7 +1575,7 @@ class Action(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_action(**operation_input_args)
 
         # deserialize response and update self
@@ -1583,7 +1614,7 @@ class Action(Base):
         """
 
         logger.info("Updating action resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ActionName": self.action_name,
@@ -1624,7 +1655,7 @@ class Action(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ActionName": self.action_name,
@@ -1700,6 +1731,8 @@ class Action(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_actions",
             summaries_key="ActionSummaries",
             summary_name="ActionSummary",
@@ -1901,6 +1934,7 @@ class Algorithm(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAlgorithmOutput")
         algorithm = cls(**transformed_response)
+        algorithm._set_client_context(session=session, region=region)
         return algorithm
 
     @Base.add_validate_call
@@ -1932,7 +1966,7 @@ class Algorithm(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_algorithm(**operation_input_args)
 
         # deserialize response and update self
@@ -1959,7 +1993,7 @@ class Algorithm(Base):
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "AlgorithmName": self.algorithm_name,
@@ -2148,6 +2182,8 @@ class Algorithm(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_algorithms",
             summaries_key="AlgorithmSummaryList",
             summary_name="AlgorithmSummary",
@@ -2359,6 +2395,7 @@ class App(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAppResponse")
         app = cls(**transformed_response)
+        app._set_client_context(session=session, region=region)
         return app
 
     @Base.add_validate_call
@@ -2395,7 +2432,7 @@ class App(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_app(**operation_input_args)
 
         # deserialize response and update self
@@ -2423,7 +2460,7 @@ class App(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -2620,6 +2657,8 @@ class App(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_apps",
             summaries_key="Apps",
             summary_name="AppDetails",
@@ -2787,6 +2826,7 @@ class AppImageConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAppImageConfigResponse")
         app_image_config = cls(**transformed_response)
+        app_image_config._set_client_context(session=session, region=region)
         return app_image_config
 
     @Base.add_validate_call
@@ -2819,7 +2859,7 @@ class AppImageConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_app_image_config(**operation_input_args)
 
         # deserialize response and update self
@@ -2853,7 +2893,7 @@ class AppImageConfig(Base):
         """
 
         logger.info("Updating app_image_config resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "AppImageConfigName": self.app_image_config_name,
@@ -2893,7 +2933,7 @@ class AppImageConfig(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "AppImageConfigName": self.app_image_config_name,
@@ -2971,6 +3011,8 @@ class AppImageConfig(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_app_image_configs",
             summaries_key="AppImageConfigs",
             summary_name="AppImageConfigDetails",
@@ -3149,6 +3191,7 @@ class Artifact(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeArtifactResponse")
         artifact = cls(**transformed_response)
+        artifact._set_client_context(session=session, region=region)
         return artifact
 
     @Base.add_validate_call
@@ -3181,7 +3224,7 @@ class Artifact(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_artifact(**operation_input_args)
 
         # deserialize response and update self
@@ -3219,7 +3262,7 @@ class Artifact(Base):
         """
 
         logger.info("Updating artifact resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ArtifactArn": self.artifact_arn,
@@ -3259,7 +3302,7 @@ class Artifact(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ArtifactArn": self.artifact_arn,
@@ -3336,6 +3379,8 @@ class Artifact(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_artifacts",
             summaries_key="ArtifactSummaries",
             summary_name="ArtifactSummary",
@@ -3407,7 +3452,7 @@ class Association(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "SourceArn": self.source_arn,
@@ -3493,6 +3538,8 @@ class Association(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_associations",
             summaries_key="AssociationSummaries",
             summary_name="AssociationSummary",
@@ -3787,6 +3834,7 @@ class AutoMLJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAutoMLJobResponse")
         auto_ml_job = cls(**transformed_response)
+        auto_ml_job._set_client_context(session=session, region=region)
         return auto_ml_job
 
     @Base.add_validate_call
@@ -3819,7 +3867,7 @@ class AutoMLJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_auto_ml_job(**operation_input_args)
 
         # deserialize response and update self
@@ -3844,7 +3892,7 @@ class AutoMLJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "AutoMLJobName": self.auto_ml_job_name,
@@ -3988,6 +4036,8 @@ class AutoMLJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_auto_ml_jobs",
             summaries_key="AutoMLJobSummaries",
             summary_name="AutoMLJobSummary",
@@ -4045,12 +4095,12 @@ class AutoMLJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_candidates_for_auto_ml_job",
             summaries_key="Candidates",
             summary_name="AutoMLCandidate",
@@ -4305,6 +4355,7 @@ class AutoMLJobV2(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAutoMLJobV2Response")
         auto_ml_job_v2 = cls(**transformed_response)
+        auto_ml_job_v2._set_client_context(session=session, region=region)
         return auto_ml_job_v2
 
     @Base.add_validate_call
@@ -4337,7 +4388,7 @@ class AutoMLJobV2(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_auto_ml_job_v2(**operation_input_args)
 
         # deserialize response and update self
@@ -4631,6 +4682,7 @@ class Cluster(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeClusterResponse")
         cluster = cls(**transformed_response)
+        cluster._set_client_context(session=session, region=region)
         return cluster
 
     @Base.add_validate_call
@@ -4663,7 +4715,7 @@ class Cluster(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_cluster(**operation_input_args)
 
         # deserialize response and update self
@@ -4714,7 +4766,7 @@ class Cluster(Base):
         """
 
         logger.info("Updating cluster resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ClusterName": self.cluster_name,
@@ -4762,7 +4814,7 @@ class Cluster(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ClusterName": self.cluster_name,
@@ -4962,6 +5014,8 @@ class Cluster(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_clusters",
             summaries_key="ClusterSummaries",
             summary_name="ClusterSummary",
@@ -5011,9 +5065,7 @@ class Cluster(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling describe_cluster_node API")
         response = client.describe_cluster_node(**operation_input_args)
@@ -5078,12 +5130,12 @@ class Cluster(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_cluster_nodes",
             summaries_key="ClusterNodeSummaries",
             summary_name="ClusterNodeSummary",
@@ -5132,9 +5184,7 @@ class Cluster(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling update_cluster_software API")
         response = client.update_cluster_software(**operation_input_args)
@@ -5182,9 +5232,7 @@ class Cluster(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling batch_delete_cluster_nodes API")
         response = client.batch_delete_cluster_nodes(**operation_input_args)
@@ -5382,6 +5430,7 @@ class ClusterSchedulerConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeClusterSchedulerConfigResponse")
         cluster_scheduler_config = cls(**transformed_response)
+        cluster_scheduler_config._set_client_context(session=session, region=region)
         return cluster_scheduler_config
 
     @Base.add_validate_call
@@ -5415,7 +5464,7 @@ class ClusterSchedulerConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_cluster_scheduler_config(**operation_input_args)
 
         # deserialize response and update self
@@ -5454,7 +5503,7 @@ class ClusterSchedulerConfig(Base):
         """
 
         logger.info("Updating cluster_scheduler_config resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ClusterSchedulerConfigId": self.cluster_scheduler_config_id,
@@ -5494,7 +5543,7 @@ class ClusterSchedulerConfig(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ClusterSchedulerConfigId": self.cluster_scheduler_config_id,
@@ -5714,6 +5763,8 @@ class ClusterSchedulerConfig(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_cluster_scheduler_configs",
             summaries_key="ClusterSchedulerConfigSummaries",
             summary_name="ClusterSchedulerConfigSummary",
@@ -5869,6 +5920,7 @@ class CodeRepository(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeCodeRepositoryOutput")
         code_repository = cls(**transformed_response)
+        code_repository._set_client_context(session=session, region=region)
         return code_repository
 
     @Base.add_validate_call
@@ -5900,7 +5952,7 @@ class CodeRepository(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_code_repository(**operation_input_args)
 
         # deserialize response and update self
@@ -5932,7 +5984,7 @@ class CodeRepository(Base):
         """
 
         logger.info("Updating code_repository resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "CodeRepositoryName": self.code_repository_name,
@@ -5969,7 +6021,7 @@ class CodeRepository(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "CodeRepositoryName": self.code_repository_name,
@@ -6046,6 +6098,8 @@ class CodeRepository(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_code_repositories",
             summaries_key="CodeRepositorySummaryList",
             summary_name="CodeRepositorySummary",
@@ -6271,6 +6325,7 @@ class CompilationJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeCompilationJobResponse")
         compilation_job = cls(**transformed_response)
+        compilation_job._set_client_context(session=session, region=region)
         return compilation_job
 
     @Base.add_validate_call
@@ -6303,7 +6358,7 @@ class CompilationJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_compilation_job(**operation_input_args)
 
         # deserialize response and update self
@@ -6330,7 +6385,7 @@ class CompilationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "CompilationJobName": self.compilation_job_name,
@@ -6361,7 +6416,7 @@ class CompilationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "CompilationJobName": self.compilation_job_name,
@@ -6505,6 +6560,8 @@ class CompilationJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_compilation_jobs",
             summaries_key="CompilationJobSummaries",
             summary_name="CompilationJobSummary",
@@ -6698,6 +6755,7 @@ class ComputeQuota(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeComputeQuotaResponse")
         compute_quota = cls(**transformed_response)
+        compute_quota._set_client_context(session=session, region=region)
         return compute_quota
 
     @Base.add_validate_call
@@ -6731,7 +6789,7 @@ class ComputeQuota(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_compute_quota(**operation_input_args)
 
         # deserialize response and update self
@@ -6772,7 +6830,7 @@ class ComputeQuota(Base):
         """
 
         logger.info("Updating compute_quota resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ComputeQuotaId": self.compute_quota_id,
@@ -6814,7 +6872,7 @@ class ComputeQuota(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ComputeQuotaId": self.compute_quota_id,
@@ -7030,6 +7088,8 @@ class ComputeQuota(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_compute_quotas",
             summaries_key="ComputeQuotaSummaries",
             summary_name="ComputeQuotaSummary",
@@ -7208,6 +7268,7 @@ class Context(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeContextResponse")
         context = cls(**transformed_response)
+        context._set_client_context(session=session, region=region)
         return context
 
     @Base.add_validate_call
@@ -7240,7 +7301,7 @@ class Context(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_context(**operation_input_args)
 
         # deserialize response and update self
@@ -7278,7 +7339,7 @@ class Context(Base):
         """
 
         logger.info("Updating context resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ContextName": self.context_name,
@@ -7318,7 +7379,7 @@ class Context(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ContextName": self.context_name,
@@ -7394,6 +7455,8 @@ class Context(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_contexts",
             summaries_key="ContextSummaries",
             summary_name="ContextSummary",
@@ -7624,6 +7687,7 @@ class DataQualityJobDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeDataQualityJobDefinitionResponse")
         data_quality_job_definition = cls(**transformed_response)
+        data_quality_job_definition._set_client_context(session=session, region=region)
         return data_quality_job_definition
 
     @Base.add_validate_call
@@ -7656,7 +7720,7 @@ class DataQualityJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_data_quality_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -7683,7 +7747,7 @@ class DataQualityJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -7761,6 +7825,8 @@ class DataQualityJobDefinition(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_data_quality_job_definitions",
             summaries_key="JobDefinitionSummaries",
             summary_name="MonitoringJobDefinitionSummary",
@@ -7872,6 +7938,7 @@ class Device(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeDeviceResponse")
         device = cls(**transformed_response)
+        device._set_client_context(session=session, region=region)
         return device
 
     @Base.add_validate_call
@@ -7906,7 +7973,7 @@ class Device(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_device(**operation_input_args)
 
         # deserialize response and update self
@@ -7966,6 +8033,8 @@ class Device(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_devices",
             summaries_key="DeviceSummaries",
             summary_name="DeviceSummary",
@@ -8160,6 +8229,7 @@ class DeviceFleet(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeDeviceFleetResponse")
         device_fleet = cls(**transformed_response)
+        device_fleet._set_client_context(session=session, region=region)
         return device_fleet
 
     @Base.add_validate_call
@@ -8192,7 +8262,7 @@ class DeviceFleet(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_device_fleet(**operation_input_args)
 
         # deserialize response and update self
@@ -8231,7 +8301,7 @@ class DeviceFleet(Base):
         """
 
         logger.info("Updating device_fleet resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DeviceFleetName": self.device_fleet_name,
@@ -8272,7 +8342,7 @@ class DeviceFleet(Base):
             ResourceInUse: Resource being accessed is in use.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DeviceFleetName": self.device_fleet_name,
@@ -8350,6 +8420,8 @@ class DeviceFleet(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_device_fleets",
             summaries_key="DeviceFleetSummaries",
             summary_name="DeviceFleetSummary",
@@ -8392,9 +8464,7 @@ class DeviceFleet(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling deregister_devices API")
         response = client.deregister_devices(**operation_input_args)
@@ -8435,9 +8505,7 @@ class DeviceFleet(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling get_device_fleet_report API")
         response = client.get_device_fleet_report(**operation_input_args)
@@ -8485,9 +8553,7 @@ class DeviceFleet(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling register_devices API")
         response = client.register_devices(**operation_input_args)
@@ -8528,9 +8594,7 @@ class DeviceFleet(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling update_devices API")
         response = client.update_devices(**operation_input_args)
@@ -8827,6 +8891,7 @@ class Domain(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeDomainResponse")
         domain = cls(**transformed_response)
+        domain._set_client_context(session=session, region=region)
         return domain
 
     @Base.add_validate_call
@@ -8859,7 +8924,7 @@ class Domain(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_domain(**operation_input_args)
 
         # deserialize response and update self
@@ -8905,7 +8970,7 @@ class Domain(Base):
         """
 
         logger.info("Updating domain resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -8953,7 +9018,7 @@ class Domain(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -9124,6 +9189,8 @@ class Domain(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_domains",
             summaries_key="Domains",
             summary_name="DomainDetails",
@@ -9306,6 +9373,7 @@ class EdgeDeploymentPlan(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEdgeDeploymentPlanResponse")
         edge_deployment_plan = cls(**transformed_response)
+        edge_deployment_plan._set_client_context(session=session, region=region)
         return edge_deployment_plan
 
     @Base.add_validate_call
@@ -9341,7 +9409,7 @@ class EdgeDeploymentPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_edge_deployment_plan(**operation_input_args)
 
         # deserialize response and update self
@@ -9368,7 +9436,7 @@ class EdgeDeploymentPlan(Base):
             ResourceInUse: Resource being accessed is in use.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "EdgeDeploymentPlanName": self.edge_deployment_plan_name,
@@ -9449,6 +9517,8 @@ class EdgeDeploymentPlan(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_edge_deployment_plans",
             summaries_key="EdgeDeploymentPlanSummaries",
             summary_name="EdgeDeploymentPlanSummary",
@@ -9490,9 +9560,7 @@ class EdgeDeploymentPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling create_edge_deployment_stage API")
         response = client.create_edge_deployment_stage(**operation_input_args)
@@ -9534,9 +9602,7 @@ class EdgeDeploymentPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling delete_edge_deployment_stage API")
         response = client.delete_edge_deployment_stage(**operation_input_args)
@@ -9577,9 +9643,7 @@ class EdgeDeploymentPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling start_edge_deployment_stage API")
         response = client.start_edge_deployment_stage(**operation_input_args)
@@ -9620,9 +9684,7 @@ class EdgeDeploymentPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling stop_edge_deployment_stage API")
         response = client.stop_edge_deployment_stage(**operation_input_args)
@@ -9670,12 +9732,12 @@ class EdgeDeploymentPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_stage_devices",
             summaries_key="DeviceDeploymentSummaries",
             summary_name="DeviceDeploymentSummary",
@@ -9890,6 +9952,7 @@ class EdgePackagingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEdgePackagingJobResponse")
         edge_packaging_job = cls(**transformed_response)
+        edge_packaging_job._set_client_context(session=session, region=region)
         return edge_packaging_job
 
     @Base.add_validate_call
@@ -9922,7 +9985,7 @@ class EdgePackagingJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_edge_packaging_job(**operation_input_args)
 
         # deserialize response and update self
@@ -9946,7 +10009,7 @@ class EdgePackagingJob(Base):
                 ```
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "EdgePackagingJobName": self.edge_packaging_job_name,
@@ -10093,6 +10156,8 @@ class EdgePackagingJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_edge_packaging_jobs",
             summaries_key="EdgePackagingJobSummaries",
             summary_name="EdgePackagingJobSummary",
@@ -10300,6 +10365,7 @@ class Endpoint(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEndpointOutput")
         endpoint = cls(**transformed_response)
+        endpoint._set_client_context(session=session, region=region)
         return endpoint
 
     @Base.add_validate_call
@@ -10331,7 +10397,7 @@ class Endpoint(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_endpoint(**operation_input_args)
 
         # deserialize response and update self
@@ -10373,7 +10439,7 @@ class Endpoint(Base):
         """
 
         logger.info("Updating endpoint resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "EndpointName": self.endpoint_name,
@@ -10414,7 +10480,7 @@ class Endpoint(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "EndpointName": self.endpoint_name,
@@ -10622,6 +10688,8 @@ class Endpoint(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_endpoints",
             summaries_key="Endpoints",
             summary_name="EndpointSummary",
@@ -10665,9 +10733,7 @@ class Endpoint(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling update_endpoint_weights_and_capacities API")
         response = client.update_endpoint_weights_and_capacities(**operation_input_args)
@@ -10758,9 +10824,7 @@ class Endpoint(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-runtime"
-        )
+        client = self._get_client(service_name="sagemaker-runtime", session=session, region=region)
 
         logger.debug(f"Calling invoke_endpoint API")
         response = client.invoke_endpoint(**operation_input_args)
@@ -10835,9 +10899,7 @@ class Endpoint(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-runtime"
-        )
+        client = self._get_client(service_name="sagemaker-runtime", session=session, region=region)
 
         logger.debug(f"Calling invoke_endpoint_async API")
         response = client.invoke_endpoint_async(**operation_input_args)
@@ -10914,9 +10976,7 @@ class Endpoint(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-runtime"
-        )
+        client = self._get_client(service_name="sagemaker-runtime", session=session, region=region)
 
         logger.debug(f"Calling invoke_endpoint_with_response_stream API")
         response = client.invoke_endpoint_with_response_stream(**operation_input_args)
@@ -11149,6 +11209,7 @@ class EndpointConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEndpointConfigOutput")
         endpoint_config = cls(**transformed_response)
+        endpoint_config._set_client_context(session=session, region=region)
         return endpoint_config
 
     @Base.add_validate_call
@@ -11180,7 +11241,7 @@ class EndpointConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_endpoint_config(**operation_input_args)
 
         # deserialize response and update self
@@ -11206,7 +11267,7 @@ class EndpointConfig(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "EndpointConfigName": self.endpoint_config_name,
@@ -11278,6 +11339,8 @@ class EndpointConfig(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_endpoint_configs",
             summaries_key="EndpointConfigs",
             summary_name="EndpointConfigSummary",
@@ -11446,6 +11509,7 @@ class Experiment(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeExperimentResponse")
         experiment = cls(**transformed_response)
+        experiment._set_client_context(session=session, region=region)
         return experiment
 
     @Base.add_validate_call
@@ -11478,7 +11542,7 @@ class Experiment(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_experiment(**operation_input_args)
 
         # deserialize response and update self
@@ -11512,7 +11576,7 @@ class Experiment(Base):
         """
 
         logger.info("Updating experiment resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ExperimentName": self.experiment_name,
@@ -11551,7 +11615,7 @@ class Experiment(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ExperimentName": self.experiment_name,
@@ -11620,6 +11684,8 @@ class Experiment(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_experiments",
             summaries_key="ExperimentSummaries",
             summary_name="ExperimentSummary",
@@ -11852,6 +11918,7 @@ class FeatureGroup(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeFeatureGroupResponse")
         feature_group = cls(**transformed_response)
+        feature_group._set_client_context(session=session, region=region)
         return feature_group
 
     @Base.add_validate_call
@@ -11885,7 +11952,7 @@ class FeatureGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_feature_group(**operation_input_args)
 
         # deserialize response and update self
@@ -11924,7 +11991,7 @@ class FeatureGroup(Base):
         """
 
         logger.info("Updating feature_group resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "FeatureGroupName": self.feature_group_name,
@@ -11964,7 +12031,7 @@ class FeatureGroup(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "FeatureGroupName": self.feature_group_name,
@@ -12163,6 +12230,8 @@ class FeatureGroup(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_feature_groups",
             summaries_key="FeatureGroupSummaries",
             summary_name="FeatureGroupSummary",
@@ -12219,8 +12288,8 @@ class FeatureGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        client = self._get_client(
+            service_name="sagemaker-featurestore-runtime", session=session, region=region
         )
 
         logger.debug(f"Calling get_record API")
@@ -12275,12 +12344,70 @@ class FeatureGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        client = self._get_client(
+            service_name="sagemaker-featurestore-runtime", session=session, region=region
         )
 
         logger.debug(f"Calling put_record API")
         response = client.put_record(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+    @Base.add_validate_call
+    def update_record(
+        self,
+        record_identifier_value_as_string: StrPipeVar,
+        features: List[FeatureValue],
+        target_stores: Optional[List[StrPipeVar]] = Unassigned(),
+        ttl_duration: Optional[TtlDuration] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ) -> None:
+        """
+        The UpdateRecord API performs a feature-level write to a Record in a feature group whose OnlineStoreConfig StorageType is Standard_V2 or InMemory. Only the supplied Features are written; features not included are preserved. The record must already exist in the online store.
+
+        Parameters:
+            record_identifier_value_as_string: The value for the RecordIdentifier that uniquely identifies the record to update, in string format.
+            features: The list of FeatureValues to update. Only the features included here are written; features that are not listed are preserved. Pass EventTime as a feature in this list. A maximum of 100 features can be updated in a single request.
+            target_stores: A list of stores to which the update is applied. By default, Feature Store applies the update to all of the stores that you're using for the FeatureGroup. A value that resolves to the OfflineStore only is rejected.
+            ttl_duration: Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. Specifying TtlDuration requires EventTime to be present in Features.
+            session: Boto3 session.
+            region: Region name.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            AccessForbidden: You do not have permission to perform an action.
+            ConflictException: There was a conflict when you attempted to modify a record; the supplied EventTime was not greater than the record's current EventTime.
+            InternalFailure: An internal failure occurred. Try your request again. If the problem persists, contact Amazon Web Services customer support.
+            ResourceNotFound: A resource that is required to perform an action was not found.
+            ServiceUnavailable: The service is currently unavailable.
+            ValidationError: There was an error validating your request.
+        """
+
+        operation_input_args = {
+            "FeatureGroupName": self.feature_group_name,
+            "RecordIdentifierValueAsString": record_identifier_value_as_string,
+            "Features": features,
+            "TargetStores": target_stores,
+            "TtlDuration": ttl_duration,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = self._get_client(
+            service_name="sagemaker-featurestore-runtime", session=session, region=region
+        )
+
+        logger.debug(f"Calling update_record API")
+        response = client.update_record(**operation_input_args)
         logger.debug(f"Response: {response}")
 
     @Base.add_validate_call
@@ -12331,8 +12458,8 @@ class FeatureGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        client = self._get_client(
+            service_name="sagemaker-featurestore-runtime", session=session, region=region
         )
 
         logger.debug(f"Calling delete_record API")
@@ -12383,8 +12510,8 @@ class FeatureGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        client = self._get_client(
+            service_name="sagemaker-featurestore-runtime", session=session, region=region
         )
 
         logger.debug(f"Calling batch_get_record API")
@@ -12439,8 +12566,8 @@ class FeatureGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        client = self._get_client(
+            service_name="sagemaker-featurestore-runtime", session=session, region=region
         )
 
         logger.debug(f"Calling batch_write_record API")
@@ -12499,8 +12626,8 @@ class FeatureGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        client = self._get_client(
+            service_name="sagemaker-featurestore-runtime", session=session, region=region
         )
 
         logger.debug(f"Calling list_records API")
@@ -12604,6 +12731,7 @@ class FeatureMetadata(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeFeatureMetadataResponse")
         feature_metadata = cls(**transformed_response)
+        feature_metadata._set_client_context(session=session, region=region)
         return feature_metadata
 
     @Base.add_validate_call
@@ -12637,7 +12765,7 @@ class FeatureMetadata(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_feature_metadata(**operation_input_args)
 
         # deserialize response and update self
@@ -12675,7 +12803,7 @@ class FeatureMetadata(Base):
         """
 
         logger.info("Updating feature_metadata resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "FeatureGroupName": self.feature_group_name,
@@ -12889,6 +13017,7 @@ class FlowDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeFlowDefinitionResponse")
         flow_definition = cls(**transformed_response)
+        flow_definition._set_client_context(session=session, region=region)
         return flow_definition
 
     @Base.add_validate_call
@@ -12921,7 +13050,7 @@ class FlowDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_flow_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -12949,7 +13078,7 @@ class FlowDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "FlowDefinitionName": self.flow_definition_name,
@@ -13138,6 +13267,8 @@ class FlowDefinition(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_flow_definitions",
             summaries_key="FlowDefinitionSummaries",
             summary_name="FlowDefinitionSummary",
@@ -13331,6 +13462,7 @@ class Hub(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeHubResponse")
         hub = cls(**transformed_response)
+        hub._set_client_context(session=session, region=region)
         return hub
 
     @Base.add_validate_call
@@ -13363,7 +13495,7 @@ class Hub(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_hub(**operation_input_args)
 
         # deserialize response and update self
@@ -13398,7 +13530,7 @@ class Hub(Base):
         """
 
         logger.info("Updating hub resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -13439,7 +13571,7 @@ class Hub(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -13642,6 +13774,8 @@ class Hub(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_hubs",
             summaries_key="HubSummaries",
             summary_name="HubInfo",
@@ -13774,6 +13908,7 @@ class HubContent(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeHubContentResponse")
         hub_content = cls(**transformed_response)
+        hub_content._set_client_context(session=session, region=region)
         return hub_content
 
     @Base.add_validate_call
@@ -13809,7 +13944,7 @@ class HubContent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_hub_content(**operation_input_args)
 
         # deserialize response and update self
@@ -13848,7 +13983,7 @@ class HubContent(Base):
         """
 
         logger.info("Updating hub_content resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -13894,7 +14029,7 @@ class HubContent(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -14112,12 +14247,12 @@ class HubContent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_hub_content_versions",
             summaries_key="HubContentSummaries",
             summary_name="HubContentInfo",
@@ -14374,7 +14509,7 @@ class HubContentReference(Base):
         """
 
         logger.info("Updating hub_content_reference resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -14415,7 +14550,7 @@ class HubContentReference(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -14581,6 +14716,7 @@ class HumanTaskUi(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeHumanTaskUiResponse")
         human_task_ui = cls(**transformed_response)
+        human_task_ui._set_client_context(session=session, region=region)
         return human_task_ui
 
     @Base.add_validate_call
@@ -14613,7 +14749,7 @@ class HumanTaskUi(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_human_task_ui(**operation_input_args)
 
         # deserialize response and update self
@@ -14640,7 +14776,7 @@ class HumanTaskUi(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "HumanTaskUiName": self.human_task_ui_name,
@@ -14820,6 +14956,8 @@ class HumanTaskUi(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_human_task_uis",
             summaries_key="HumanTaskUiSummaries",
             summary_name="HumanTaskUiSummary",
@@ -15053,6 +15191,7 @@ class HyperParameterTuningJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeHyperParameterTuningJobResponse")
         hyper_parameter_tuning_job = cls(**transformed_response)
+        hyper_parameter_tuning_job._set_client_context(session=session, region=region)
         return hyper_parameter_tuning_job
 
     @Base.add_validate_call
@@ -15085,7 +15224,7 @@ class HyperParameterTuningJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_hyper_parameter_tuning_job(**operation_input_args)
 
         # deserialize response and update self
@@ -15111,7 +15250,7 @@ class HyperParameterTuningJob(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "HyperParameterTuningJobName": self.hyper_parameter_tuning_job_name,
@@ -15142,7 +15281,7 @@ class HyperParameterTuningJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "HyperParameterTuningJobName": self.hyper_parameter_tuning_job_name,
@@ -15349,6 +15488,8 @@ class HyperParameterTuningJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_hyper_parameter_tuning_jobs",
             summaries_key="HyperParameterTuningJobSummaries",
             summary_name="HyperParameterTuningJobSummary",
@@ -15403,12 +15544,12 @@ class HyperParameterTuningJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_training_jobs_for_hyper_parameter_tuning_job",
             summaries_key="TrainingJobSummaries",
             summary_name="HyperParameterTrainingJobSummary",
@@ -15595,6 +15736,7 @@ class Image(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeImageResponse")
         image = cls(**transformed_response)
+        image._set_client_context(session=session, region=region)
         return image
 
     @Base.add_validate_call
@@ -15627,7 +15769,7 @@ class Image(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_image(**operation_input_args)
 
         # deserialize response and update self
@@ -15667,7 +15809,7 @@ class Image(Base):
         """
 
         logger.info("Updating image resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DeleteProperties": delete_properties,
@@ -15709,7 +15851,7 @@ class Image(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ImageName": self.image_name,
@@ -15920,6 +16062,8 @@ class Image(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_images",
             summaries_key="Images",
             summary_name="Image",
@@ -15971,12 +16115,12 @@ class Image(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_aliases",
             summaries_key="SageMakerImageVersionAliases",
             summary_name="SageMakerImageVersionAlias",
@@ -16189,6 +16333,7 @@ class ImageVersion(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeImageVersionResponse")
         image_version = cls(**transformed_response)
+        image_version._set_client_context(session=session, region=region)
         return image_version
 
     @Base.add_validate_call
@@ -16224,7 +16369,7 @@ class ImageVersion(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_image_version(**operation_input_args)
 
         # deserialize response and update self
@@ -16272,7 +16417,7 @@ class ImageVersion(Base):
         """
 
         logger.info("Updating image_version resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ImageName": self.image_name,
@@ -16322,7 +16467,7 @@ class ImageVersion(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ImageName": self.image_name,
@@ -16645,6 +16790,7 @@ class InferenceComponent(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeInferenceComponentOutput")
         inference_component = cls(**transformed_response)
+        inference_component._set_client_context(session=session, region=region)
         return inference_component
 
     @Base.add_validate_call
@@ -16676,7 +16822,7 @@ class InferenceComponent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_inference_component(**operation_input_args)
 
         # deserialize response and update self
@@ -16714,7 +16860,7 @@ class InferenceComponent(Base):
         """
 
         logger.info("Updating inference_component resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "InferenceComponentName": self.inference_component_name,
@@ -16754,7 +16900,7 @@ class InferenceComponent(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "InferenceComponentName": self.inference_component_name,
@@ -16966,6 +17112,8 @@ class InferenceComponent(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_inference_components",
             summaries_key="InferenceComponents",
             summary_name="InferenceComponentSummary",
@@ -17009,9 +17157,7 @@ class InferenceComponent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling update_inference_component_runtime_config API")
         response = client.update_inference_component_runtime_config(**operation_input_args)
@@ -17232,6 +17378,7 @@ class InferenceExperiment(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeInferenceExperimentResponse")
         inference_experiment = cls(**transformed_response)
+        inference_experiment._set_client_context(session=session, region=region)
         return inference_experiment
 
     @Base.add_validate_call
@@ -17264,7 +17411,7 @@ class InferenceExperiment(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_inference_experiment(**operation_input_args)
 
         # deserialize response and update self
@@ -17302,7 +17449,7 @@ class InferenceExperiment(Base):
         """
 
         logger.info("Updating inference_experiment resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "Name": self.name,
@@ -17345,7 +17492,7 @@ class InferenceExperiment(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "Name": self.name,
@@ -17392,9 +17539,7 @@ class InferenceExperiment(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling start_inference_experiment API")
         response = client.start_inference_experiment(**operation_input_args)
@@ -17419,7 +17564,7 @@ class InferenceExperiment(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "Name": self.name,
@@ -17571,6 +17716,8 @@ class InferenceExperiment(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_inference_experiments",
             summaries_key="InferenceExperiments",
             summary_name="InferenceExperimentSummary",
@@ -17785,6 +17932,7 @@ class InferenceRecommendationsJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeInferenceRecommendationsJobResponse")
         inference_recommendations_job = cls(**transformed_response)
+        inference_recommendations_job._set_client_context(session=session, region=region)
         return inference_recommendations_job
 
     @Base.add_validate_call
@@ -17817,7 +17965,7 @@ class InferenceRecommendationsJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_inference_recommendations_job(**operation_input_args)
 
         # deserialize response and update self
@@ -17842,7 +17990,7 @@ class InferenceRecommendationsJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "JobName": self.job_name,
@@ -18059,6 +18207,8 @@ class InferenceRecommendationsJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_inference_recommendations_jobs",
             summaries_key="InferenceRecommendationsJobs",
             summary_name="InferenceRecommendationsJob",
@@ -18108,12 +18258,12 @@ class InferenceRecommendationsJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_inference_recommendations_job_steps",
             summaries_key="Steps",
             summary_name="InferenceRecommendationsJobStep",
@@ -18317,6 +18467,7 @@ class Job(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeJobResponse")
         job = cls(**transformed_response)
+        job._set_client_context(session=session, region=region)
         return job
 
     @Base.add_validate_call
@@ -18350,7 +18501,7 @@ class Job(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_job(**operation_input_args)
 
         # deserialize response and update self
@@ -18378,7 +18529,7 @@ class Job(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "JobName": self.job_name,
@@ -18410,7 +18561,7 @@ class Job(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "JobName": self.job_name,
@@ -18617,6 +18768,8 @@ class Job(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_jobs",
             summaries_key="JobSummaries",
             summary_name="JobSummary",
@@ -18857,6 +19010,7 @@ class LabelingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeLabelingJobResponse")
         labeling_job = cls(**transformed_response)
+        labeling_job._set_client_context(session=session, region=region)
         return labeling_job
 
     @Base.add_validate_call
@@ -18889,7 +19043,7 @@ class LabelingJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_labeling_job(**operation_input_args)
 
         # deserialize response and update self
@@ -18914,7 +19068,7 @@ class LabelingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "LabelingJobName": self.labeling_job_name,
@@ -19058,6 +19212,8 @@ class LabelingJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_labeling_jobs",
             summaries_key="LabelingJobSummaryList",
             summary_name="LabelingJobSummary",
@@ -19156,6 +19312,7 @@ class LineageGroup(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeLineageGroupResponse")
         lineage_group = cls(**transformed_response)
+        lineage_group._set_client_context(session=session, region=region)
         return lineage_group
 
     @Base.add_validate_call
@@ -19188,7 +19345,7 @@ class LineageGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_lineage_group(**operation_input_args)
 
         # deserialize response and update self
@@ -19251,6 +19408,8 @@ class LineageGroup(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_lineage_groups",
             summaries_key="LineageGroupSummaries",
             summary_name="LineageGroupSummary",
@@ -19294,9 +19453,7 @@ class LineageGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling get_lineage_group_policy API")
         response = client.get_lineage_group_policy(**operation_input_args)
@@ -19504,6 +19661,7 @@ class MlflowApp(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeMlflowAppResponse")
         mlflow_app = cls(**transformed_response)
+        mlflow_app._set_client_context(session=session, region=region)
         return mlflow_app
 
     @Base.add_validate_call
@@ -19536,7 +19694,7 @@ class MlflowApp(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_mlflow_app(**operation_input_args)
 
         # deserialize response and update self
@@ -19575,7 +19733,7 @@ class MlflowApp(Base):
         """
 
         logger.info("Updating mlflow_app resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "Arn": self.arn,
@@ -19618,7 +19776,7 @@ class MlflowApp(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "Arn": self.arn,
@@ -19830,6 +19988,8 @@ class MlflowApp(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_mlflow_apps",
             summaries_key="Summaries",
             summary_name="MlflowAppSummary",
@@ -20052,6 +20212,7 @@ class MlflowTrackingServer(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeMlflowTrackingServerResponse")
         mlflow_tracking_server = cls(**transformed_response)
+        mlflow_tracking_server._set_client_context(session=session, region=region)
         return mlflow_tracking_server
 
     @Base.add_validate_call
@@ -20084,7 +20245,7 @@ class MlflowTrackingServer(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_mlflow_tracking_server(**operation_input_args)
 
         # deserialize response and update self
@@ -20124,7 +20285,7 @@ class MlflowTrackingServer(Base):
         """
 
         logger.info("Updating mlflow_tracking_server resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "TrackingServerName": self.tracking_server_name,
@@ -20167,7 +20328,7 @@ class MlflowTrackingServer(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "TrackingServerName": self.tracking_server_name,
@@ -20214,9 +20375,7 @@ class MlflowTrackingServer(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling start_mlflow_tracking_server API")
         response = client.start_mlflow_tracking_server(**operation_input_args)
@@ -20241,7 +20400,7 @@ class MlflowTrackingServer(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "TrackingServerName": self.tracking_server_name,
@@ -20459,6 +20618,8 @@ class MlflowTrackingServer(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_mlflow_tracking_servers",
             summaries_key="TrackingServerSummaries",
             summary_name="TrackingServerSummary",
@@ -20669,6 +20830,7 @@ class Model(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelOutput")
         model = cls(**transformed_response)
+        model._set_client_context(session=session, region=region)
         return model
 
     @Base.add_validate_call
@@ -20700,7 +20862,7 @@ class Model(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_model(**operation_input_args)
 
         # deserialize response and update self
@@ -20726,7 +20888,7 @@ class Model(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ModelName": self.model_name,
@@ -20798,6 +20960,8 @@ class Model(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_models",
             summaries_key="Models",
             summary_name="ModelSummary",
@@ -20844,12 +21008,12 @@ class Model(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_model_metadata",
             summaries_key="ModelMetadataSummaries",
             summary_name="ModelMetadataSummary",
@@ -21080,6 +21244,7 @@ class ModelBiasJobDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelBiasJobDefinitionResponse")
         model_bias_job_definition = cls(**transformed_response)
+        model_bias_job_definition._set_client_context(session=session, region=region)
         return model_bias_job_definition
 
     @Base.add_validate_call
@@ -21112,7 +21277,7 @@ class ModelBiasJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_model_bias_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -21139,7 +21304,7 @@ class ModelBiasJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -21217,6 +21382,8 @@ class ModelBiasJobDefinition(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_model_bias_job_definitions",
             summaries_key="JobDefinitionSummaries",
             summary_name="MonitoringJobDefinitionSummary",
@@ -21411,6 +21578,7 @@ class ModelCard(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelCardResponse")
         model_card = cls(**transformed_response)
+        model_card._set_client_context(session=session, region=region)
         return model_card
 
     @Base.add_validate_call
@@ -21444,7 +21612,7 @@ class ModelCard(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_model_card(**operation_input_args)
 
         # deserialize response and update self
@@ -21480,7 +21648,7 @@ class ModelCard(Base):
         """
 
         logger.info("Updating model_card resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ModelCardName": self.model_card_name,
@@ -21520,7 +21688,7 @@ class ModelCard(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ModelCardName": self.model_card_name,
@@ -21646,6 +21814,8 @@ class ModelCard(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_model_cards",
             summaries_key="ModelCardSummaries",
             summary_name="ModelCardSummary",
@@ -21704,12 +21874,12 @@ class ModelCard(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_model_card_versions",
             summaries_key="ModelCardVersionSummaryList",
             summary_name="ModelCardVersionSummary",
@@ -21903,6 +22073,7 @@ class ModelCardExportJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelCardExportJobResponse")
         model_card_export_job = cls(**transformed_response)
+        model_card_export_job._set_client_context(session=session, region=region)
         return model_card_export_job
 
     @Base.add_validate_call
@@ -21935,7 +22106,7 @@ class ModelCardExportJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_model_card_export_job(**operation_input_args)
 
         # deserialize response and update self
@@ -22073,6 +22244,8 @@ class ModelCardExportJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_model_card_export_jobs",
             summaries_key="ModelCardExportJobSummaries",
             summary_name="ModelCardExportJobSummary",
@@ -22309,6 +22482,7 @@ class ModelExplainabilityJobDefinition(Base):
             response, "DescribeModelExplainabilityJobDefinitionResponse"
         )
         model_explainability_job_definition = cls(**transformed_response)
+        model_explainability_job_definition._set_client_context(session=session, region=region)
         return model_explainability_job_definition
 
     @Base.add_validate_call
@@ -22341,7 +22515,7 @@ class ModelExplainabilityJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_model_explainability_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -22368,7 +22542,7 @@ class ModelExplainabilityJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -22446,6 +22620,8 @@ class ModelExplainabilityJobDefinition(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_model_explainability_job_definitions",
             summaries_key="JobDefinitionSummaries",
             summary_name="MonitoringJobDefinitionSummary",
@@ -22782,6 +22958,7 @@ class ModelPackage(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelPackageOutput")
         model_package = cls(**transformed_response)
+        model_package._set_client_context(session=session, region=region)
         return model_package
 
     @Base.add_validate_call
@@ -22807,13 +22984,17 @@ class ModelPackage(Base):
         """
 
         operation_input_args = {
-            "ModelPackageName": self.model_package_name,
+            "ModelPackageName": (
+                self.model_package_name
+                if not isinstance(self.model_package_name, Unassigned)
+                else self.model_package_arn
+            ),
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_model_package(**operation_input_args)
 
         # deserialize response and update self
@@ -22863,7 +23044,7 @@ class ModelPackage(Base):
         """
 
         logger.info("Updating model_package resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ModelPackageArn": self.model_package_arn,
@@ -22911,7 +23092,7 @@ class ModelPackage(Base):
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ModelPackageName": self.model_package_name,
@@ -23111,6 +23292,8 @@ class ModelPackage(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_model_packages",
             summaries_key="ModelPackageSummaryList",
             summary_name="ModelPackageSummary",
@@ -23155,9 +23338,7 @@ class ModelPackage(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling batch_describe_model_package API")
         response = client.batch_describe_model_package(**operation_input_args)
@@ -23324,6 +23505,7 @@ class ModelPackageGroup(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelPackageGroupOutput")
         model_package_group = cls(**transformed_response)
+        model_package_group._set_client_context(session=session, region=region)
         return model_package_group
 
     @Base.add_validate_call
@@ -23355,7 +23537,7 @@ class ModelPackageGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_model_package_group(**operation_input_args)
 
         # deserialize response and update self
@@ -23382,7 +23564,7 @@ class ModelPackageGroup(Base):
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ModelPackageGroupName": self.model_package_group_name,
@@ -23580,6 +23762,8 @@ class ModelPackageGroup(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_model_package_groups",
             summaries_key="ModelPackageGroupSummaryList",
             summary_name="ModelPackageGroupSummary",
@@ -23622,9 +23806,7 @@ class ModelPackageGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling get_model_package_group_policy API")
         response = client.get_model_package_group_policy(**operation_input_args)
@@ -23664,9 +23846,7 @@ class ModelPackageGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling delete_model_package_group_policy API")
         response = client.delete_model_package_group_policy(**operation_input_args)
@@ -23708,9 +23888,7 @@ class ModelPackageGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling put_model_package_group_policy API")
         response = client.put_model_package_group_policy(**operation_input_args)
@@ -23939,6 +24117,7 @@ class ModelQualityJobDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelQualityJobDefinitionResponse")
         model_quality_job_definition = cls(**transformed_response)
+        model_quality_job_definition._set_client_context(session=session, region=region)
         return model_quality_job_definition
 
     @Base.add_validate_call
@@ -23971,7 +24150,7 @@ class ModelQualityJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_model_quality_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -23998,7 +24177,7 @@ class ModelQualityJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -24076,6 +24255,8 @@ class ModelQualityJobDefinition(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_model_quality_job_definitions",
             summaries_key="JobDefinitionSummaries",
             summary_name="MonitoringJobDefinitionSummary",
@@ -24155,7 +24336,7 @@ class MonitoringAlert(Base):
         """
 
         logger.info("Updating monitoring_alert resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "MonitoringScheduleName": monitoring_schedule_name,
@@ -24223,6 +24404,8 @@ class MonitoringAlert(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_monitoring_alerts",
             summaries_key="MonitoringAlertSummaries",
             summary_name="MonitoringAlertSummary",
@@ -24290,9 +24473,7 @@ class MonitoringAlert(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling list_monitoring_alert_history API")
         response = client.list_monitoring_alert_history(**operation_input_args)
@@ -24430,6 +24611,8 @@ class MonitoringExecution(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_monitoring_executions",
             summaries_key="MonitoringExecutionSummaries",
             summary_name="MonitoringExecutionSummary",
@@ -24637,6 +24820,7 @@ class MonitoringSchedule(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeMonitoringScheduleResponse")
         monitoring_schedule = cls(**transformed_response)
+        monitoring_schedule._set_client_context(session=session, region=region)
         return monitoring_schedule
 
     @Base.add_validate_call
@@ -24669,7 +24853,7 @@ class MonitoringSchedule(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_monitoring_schedule(**operation_input_args)
 
         # deserialize response and update self
@@ -24703,7 +24887,7 @@ class MonitoringSchedule(Base):
         """
 
         logger.info("Updating monitoring_schedule resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "MonitoringScheduleName": self.monitoring_schedule_name,
@@ -24741,7 +24925,7 @@ class MonitoringSchedule(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "MonitoringScheduleName": self.monitoring_schedule_name,
@@ -24787,9 +24971,7 @@ class MonitoringSchedule(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling start_monitoring_schedule API")
         response = client.start_monitoring_schedule(**operation_input_args)
@@ -24813,7 +24995,7 @@ class MonitoringSchedule(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "MonitoringScheduleName": self.monitoring_schedule_name,
@@ -24965,6 +25147,8 @@ class MonitoringSchedule(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_monitoring_schedules",
             summaries_key="MonitoringScheduleSummaries",
             summary_name="MonitoringScheduleSummary",
@@ -25224,6 +25408,7 @@ class NotebookInstance(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeNotebookInstanceOutput")
         notebook_instance = cls(**transformed_response)
+        notebook_instance._set_client_context(session=session, region=region)
         return notebook_instance
 
     @Base.add_validate_call
@@ -25255,7 +25440,7 @@ class NotebookInstance(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_notebook_instance(**operation_input_args)
 
         # deserialize response and update self
@@ -25311,7 +25496,7 @@ class NotebookInstance(Base):
         """
 
         logger.info("Updating notebook_instance resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "NotebookInstanceName": self.notebook_instance_name,
@@ -25362,7 +25547,7 @@ class NotebookInstance(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "NotebookInstanceName": self.notebook_instance_name,
@@ -25408,9 +25593,7 @@ class NotebookInstance(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling start_notebook_instance API")
         response = client.start_notebook_instance(**operation_input_args)
@@ -25433,7 +25616,7 @@ class NotebookInstance(Base):
                 ```
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "NotebookInstanceName": self.notebook_instance_name,
@@ -25648,6 +25831,8 @@ class NotebookInstance(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_notebook_instances",
             summaries_key="NotebookInstances",
             summary_name="NotebookInstanceSummary",
@@ -25814,6 +25999,7 @@ class NotebookInstanceLifecycleConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeNotebookInstanceLifecycleConfigOutput")
         notebook_instance_lifecycle_config = cls(**transformed_response)
+        notebook_instance_lifecycle_config._set_client_context(session=session, region=region)
         return notebook_instance_lifecycle_config
 
     @Base.add_validate_call
@@ -25845,7 +26031,7 @@ class NotebookInstanceLifecycleConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_notebook_instance_lifecycle_config(**operation_input_args)
 
         # deserialize response and update self
@@ -25878,7 +26064,7 @@ class NotebookInstanceLifecycleConfig(Base):
         """
 
         logger.info("Updating notebook_instance_lifecycle_config resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "NotebookInstanceLifecycleConfigName": self.notebook_instance_lifecycle_config_name,
@@ -25916,7 +26102,7 @@ class NotebookInstanceLifecycleConfig(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "NotebookInstanceLifecycleConfigName": self.notebook_instance_lifecycle_config_name,
@@ -25994,6 +26180,8 @@ class NotebookInstanceLifecycleConfig(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_notebook_instance_lifecycle_configs",
             summaries_key="NotebookInstanceLifecycleConfigs",
             summary_name="NotebookInstanceLifecycleConfigSummary",
@@ -26227,6 +26415,7 @@ class OptimizationJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeOptimizationJobResponse")
         optimization_job = cls(**transformed_response)
+        optimization_job._set_client_context(session=session, region=region)
         return optimization_job
 
     @Base.add_validate_call
@@ -26259,7 +26448,7 @@ class OptimizationJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_optimization_job(**operation_input_args)
 
         # deserialize response and update self
@@ -26286,7 +26475,7 @@ class OptimizationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "OptimizationJobName": self.optimization_job_name,
@@ -26317,7 +26506,7 @@ class OptimizationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "OptimizationJobName": self.optimization_job_name,
@@ -26464,6 +26653,8 @@ class OptimizationJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_optimization_jobs",
             summaries_key="OptimizationJobSummaries",
             summary_name="OptimizationJobSummary",
@@ -26697,6 +26888,7 @@ class PartnerApp(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribePartnerAppResponse")
         partner_app = cls(**transformed_response)
+        partner_app._set_client_context(session=session, region=region)
         return partner_app
 
     @Base.add_validate_call
@@ -26731,7 +26923,7 @@ class PartnerApp(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_partner_app(**operation_input_args)
 
         # deserialize response and update self
@@ -26777,7 +26969,7 @@ class PartnerApp(Base):
         """
 
         logger.info("Updating partner_app resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "Arn": self.arn,
@@ -26824,7 +27016,7 @@ class PartnerApp(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "Arn": self.arn,
@@ -26987,6 +27179,8 @@ class PartnerApp(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_partner_apps",
             summaries_key="Summaries",
             summary_name="PartnerAppSummary",
@@ -27293,6 +27487,7 @@ class Pipeline(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribePipelineResponse")
         pipeline = cls(**transformed_response)
+        pipeline._set_client_context(session=session, region=region)
         return pipeline
 
     @Base.add_validate_call
@@ -27327,7 +27522,7 @@ class Pipeline(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_pipeline(**operation_input_args)
 
         # deserialize response and update self
@@ -27369,7 +27564,7 @@ class Pipeline(Base):
         """
 
         logger.info("Updating pipeline resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "PipelineName": self.pipeline_name,
@@ -27414,7 +27609,7 @@ class Pipeline(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "PipelineName": self.pipeline_name,
@@ -27599,6 +27794,8 @@ class Pipeline(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_pipelines",
             summaries_key="PipelineSummaries",
             summary_name="PipelineSummary",
@@ -27711,6 +27908,7 @@ class PipelineExecution(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribePipelineExecutionResponse")
         pipeline_execution = cls(**transformed_response)
+        pipeline_execution._set_client_context(session=session, region=region)
         return pipeline_execution
 
     @Base.add_validate_call
@@ -27743,7 +27941,7 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_pipeline_execution(**operation_input_args)
 
         # deserialize response and update self
@@ -27778,7 +27976,7 @@ class PipelineExecution(Base):
         """
 
         logger.info("Updating pipeline_execution resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "PipelineExecutionArn": self.pipeline_execution_arn,
@@ -27845,9 +28043,7 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling start_pipeline_execution API")
         response = client.start_pipeline_execution(**operation_input_args)
@@ -27872,7 +28068,7 @@ class PipelineExecution(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "PipelineExecutionArn": self.pipeline_execution_arn,
@@ -28006,6 +28202,8 @@ class PipelineExecution(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_pipeline_executions",
             summaries_key="PipelineExecutionSummaries",
             summary_name="PipelineExecutionSummary",
@@ -28049,9 +28247,7 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling describe_pipeline_definition_for_execution API")
         response = client.describe_pipeline_definition_for_execution(**operation_input_args)
@@ -28101,12 +28297,12 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_pipeline_execution_steps",
             summaries_key="PipelineExecutionSteps",
             summary_name="PipelineExecutionStep",
@@ -28152,12 +28348,12 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_pipeline_parameters_for_execution",
             summaries_key="PipelineParameters",
             summary_name="Parameter",
@@ -28204,9 +28400,7 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling retry_pipeline_execution API")
         response = client.retry_pipeline_execution(**operation_input_args)
@@ -28253,9 +28447,7 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling send_pipeline_execution_step_failure API")
         response = client.send_pipeline_execution_step_failure(**operation_input_args)
@@ -28304,9 +28496,7 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling send_pipeline_execution_step_success API")
         response = client.send_pipeline_execution_step_success(**operation_input_args)
@@ -28927,6 +29117,7 @@ class ProcessingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeProcessingJobResponse")
         processing_job = cls(**transformed_response)
+        processing_job._set_client_context(session=session, region=region)
         return processing_job
 
     @Base.add_validate_call
@@ -28959,7 +29150,7 @@ class ProcessingJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_processing_job(**operation_input_args)
 
         # deserialize response and update self
@@ -28987,7 +29178,7 @@ class ProcessingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ProcessingJobName": self.processing_job_name,
@@ -29018,7 +29209,7 @@ class ProcessingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "ProcessingJobName": self.processing_job_name,
@@ -29184,6 +29375,8 @@ class ProcessingJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_processing_jobs",
             summaries_key="ProcessingJobSummaries",
             summary_name="ProcessingJobSummary",
@@ -29364,6 +29557,7 @@ class Project(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeProjectOutput")
         project = cls(**transformed_response)
+        project._set_client_context(session=session, region=region)
         return project
 
     @Base.add_validate_call
@@ -29395,7 +29589,7 @@ class Project(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_project(**operation_input_args)
 
         # deserialize response and update self
@@ -29437,7 +29631,7 @@ class Project(Base):
         """
 
         logger.info("Updating project resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ProjectName": self.project_name,
@@ -29478,7 +29672,7 @@ class Project(Base):
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "ProjectName": self.project_name,
@@ -29617,6 +29811,8 @@ class Project(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_projects",
             summaries_key="ProjectSummaryList",
             summary_name="ProjectSummary",
@@ -29717,6 +29913,8 @@ class ResourceCatalog(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_resource_catalogs",
             summaries_key="ResourceCatalogs",
             summary_name="ResourceCatalog",
@@ -30017,6 +30215,7 @@ class Space(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeSpaceResponse")
         space = cls(**transformed_response)
+        space._set_client_context(session=session, region=region)
         return space
 
     @Base.add_validate_call
@@ -30050,7 +30249,7 @@ class Space(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_space(**operation_input_args)
 
         # deserialize response and update self
@@ -30085,7 +30284,7 @@ class Space(Base):
         """
 
         logger.info("Updating space resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -30126,7 +30325,7 @@ class Space(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -30329,6 +30528,8 @@ class Space(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_spaces",
             summaries_key="Spaces",
             summary_name="SpaceDetails",
@@ -30495,6 +30696,7 @@ class StudioLifecycleConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeStudioLifecycleConfigResponse")
         studio_lifecycle_config = cls(**transformed_response)
+        studio_lifecycle_config._set_client_context(session=session, region=region)
         return studio_lifecycle_config
 
     @Base.add_validate_call
@@ -30527,7 +30729,7 @@ class StudioLifecycleConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_studio_lifecycle_config(**operation_input_args)
 
         # deserialize response and update self
@@ -30555,7 +30757,7 @@ class StudioLifecycleConfig(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "StudioLifecycleConfigName": self.studio_lifecycle_config_name,
@@ -30637,6 +30839,8 @@ class StudioLifecycleConfig(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_studio_lifecycle_configs",
             summaries_key="StudioLifecycleConfigs",
             summary_name="StudioLifecycleConfigDetails",
@@ -30721,6 +30925,7 @@ class SubscribedWorkteam(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeSubscribedWorkteamResponse")
         subscribed_workteam = cls(**transformed_response)
+        subscribed_workteam._set_client_context(session=session, region=region)
         return subscribed_workteam
 
     @Base.add_validate_call
@@ -30752,7 +30957,7 @@ class SubscribedWorkteam(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_subscribed_workteam(**operation_input_args)
 
         # deserialize response and update self
@@ -30806,6 +31011,8 @@ class SubscribedWorkteam(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_subscribed_workteams",
             summaries_key="SubscribedWorkteams",
             summary_name="SubscribedWorkteam",
@@ -30890,6 +31097,8 @@ class Tag(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_tags",
             summaries_key="Tags",
             summary_name="Tag",
@@ -31336,6 +31545,7 @@ class TrainingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrainingJobResponse")
         training_job = cls(**transformed_response)
+        training_job._set_client_context(session=session, region=region)
 
         # Post-processing: synthesize model_artifacts for completed jobs where
         # the API does not return ModelArtifacts (e.g., serverful Nova training jobs).
@@ -31387,7 +31597,7 @@ class TrainingJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_training_job(**operation_input_args)
 
         # deserialize response and update self
@@ -31424,7 +31634,7 @@ class TrainingJob(Base):
         """
 
         logger.info("Updating training_job resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -31466,7 +31676,7 @@ class TrainingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -31497,7 +31707,7 @@ class TrainingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -31744,6 +31954,8 @@ class TrainingJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_training_jobs",
             summaries_key="TrainingJobSummaries",
             summary_name="TrainingJobSummary",
@@ -31932,6 +32144,7 @@ class TrainingPlan(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrainingPlanResponse")
         training_plan = cls(**transformed_response)
+        training_plan._set_client_context(session=session, region=region)
         return training_plan
 
     @Base.add_validate_call
@@ -31964,7 +32177,7 @@ class TrainingPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_training_plan(**operation_input_args)
 
         # deserialize response and update self
@@ -32088,6 +32301,8 @@ class TrainingPlan(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_training_plans",
             summaries_key="TrainingPlanSummaries",
             summary_name="TrainingPlanSummary",
@@ -32344,6 +32559,7 @@ class TransformJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTransformJobResponse")
         transform_job = cls(**transformed_response)
+        transform_job._set_client_context(session=session, region=region)
         return transform_job
 
     @Base.add_validate_call
@@ -32376,7 +32592,7 @@ class TransformJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_transform_job(**operation_input_args)
 
         # deserialize response and update self
@@ -32401,7 +32617,7 @@ class TransformJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = self._get_client()
 
         operation_input_args = {
             "TransformJobName": self.transform_job_name,
@@ -32567,6 +32783,8 @@ class TransformJob(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_transform_jobs",
             summaries_key="TransformJobSummaries",
             summary_name="TransformJobSummary",
@@ -32741,6 +32959,7 @@ class Trial(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrialResponse")
         trial = cls(**transformed_response)
+        trial._set_client_context(session=session, region=region)
         return trial
 
     @Base.add_validate_call
@@ -32773,7 +32992,7 @@ class Trial(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_trial(**operation_input_args)
 
         # deserialize response and update self
@@ -32806,7 +33025,7 @@ class Trial(Base):
         """
 
         logger.info("Updating trial resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "TrialName": self.trial_name,
@@ -32844,7 +33063,7 @@ class Trial(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "TrialName": self.trial_name,
@@ -32920,6 +33139,8 @@ class Trial(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_trials",
             summaries_key="TrialSummaries",
             summary_name="TrialSummary",
@@ -33124,6 +33345,7 @@ class TrialComponent(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrialComponentResponse")
         trial_component = cls(**transformed_response)
+        trial_component._set_client_context(session=session, region=region)
         return trial_component
 
     @Base.add_validate_call
@@ -33156,7 +33378,7 @@ class TrialComponent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_trial_component(**operation_input_args)
 
         # deserialize response and update self
@@ -33203,7 +33425,7 @@ class TrialComponent(Base):
         """
 
         logger.info("Updating trial_component resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "TrialComponentName": self.trial_component_name,
@@ -33250,7 +33472,7 @@ class TrialComponent(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "TrialComponentName": self.trial_component_name,
@@ -33387,6 +33609,8 @@ class TrialComponent(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_trial_components",
             summaries_key="TrialComponentSummaries",
             summary_name="TrialComponentSummary",
@@ -33431,9 +33655,7 @@ class TrialComponent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling associate_trial_component API")
         response = client.associate_trial_component(**operation_input_args)
@@ -33475,9 +33697,7 @@ class TrialComponent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         logger.debug(f"Calling disassociate_trial_component API")
         response = client.disassociate_trial_component(**operation_input_args)
@@ -33518,9 +33738,7 @@ class TrialComponent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker-metrics"
-        )
+        client = self._get_client(service_name="sagemaker-metrics", session=session, region=region)
 
         logger.debug(f"Calling batch_put_metrics API")
         response = client.batch_put_metrics(**operation_input_args)
@@ -33799,6 +34017,7 @@ class UserProfile(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeUserProfileResponse")
         user_profile = cls(**transformed_response)
+        user_profile._set_client_context(session=session, region=region)
         return user_profile
 
     @Base.add_validate_call
@@ -33833,7 +34052,7 @@ class UserProfile(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_user_profile(**operation_input_args)
 
         # deserialize response and update self
@@ -33868,7 +34087,7 @@ class UserProfile(Base):
         """
 
         logger.info("Updating user_profile resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -33908,7 +34127,7 @@ class UserProfile(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -34115,6 +34334,8 @@ class UserProfile(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_user_profiles",
             summaries_key="UserProfiles",
             summary_name="UserProfileDetails",
@@ -34296,6 +34517,7 @@ class Workforce(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeWorkforceResponse")
         workforce = cls(**transformed_response)
+        workforce._set_client_context(session=session, region=region)
         return workforce
 
     @Base.add_validate_call
@@ -34327,7 +34549,7 @@ class Workforce(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_workforce(**operation_input_args)
 
         # deserialize response and update self
@@ -34369,7 +34591,7 @@ class Workforce(Base):
         """
 
         logger.info("Updating workforce resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "WorkforceName": self.workforce_name,
@@ -34409,7 +34631,7 @@ class Workforce(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "WorkforceName": self.workforce_name,
@@ -34592,6 +34814,8 @@ class Workforce(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_workforces",
             summaries_key="Workforces",
             summary_name="Workforce",
@@ -34754,6 +34978,7 @@ class Workteam(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeWorkteamResponse")
         workteam = cls(**transformed_response)
+        workteam._set_client_context(session=session, region=region)
         return workteam
 
     @Base.add_validate_call
@@ -34785,7 +35010,7 @@ class Workteam(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
         response = client.describe_workteam(**operation_input_args)
 
         # deserialize response and update self
@@ -34826,7 +35051,7 @@ class Workteam(Base):
         """
 
         logger.info("Updating workteam resource.")
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "WorkteamName": self.workteam_name,
@@ -34867,7 +35092,7 @@ class Workteam(Base):
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
         """
 
-        client = Base.get_sagemaker_client()
+        client = self._get_client()
 
         operation_input_args = {
             "WorkteamName": self.workteam_name,
@@ -34933,6 +35158,8 @@ class Workteam(Base):
 
         return ResourceIterator(
             client=client,
+            session=session,
+            region=region,
             list_method="list_workteams",
             summaries_key="Workteams",
             summary_name="Workteam",
@@ -34995,12 +35222,12 @@ class Workteam(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
+        client = self._get_client(service_name="sagemaker", session=session, region=region)
 
         return ResourceIterator(
             client=client,
+            session=session or self._session,
+            region=region or self._region,
             list_method="list_labeling_jobs_for_workteam",
             summaries_key="LabelingJobSummaryList",
             summary_name="LabelingJobForWorkteamSummary",

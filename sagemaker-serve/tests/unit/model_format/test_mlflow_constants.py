@@ -2,7 +2,7 @@ import unittest
 from sagemaker.serve.model_format.mlflow.constants import (
     DEFAULT_FW_USED_FOR_DEFAULT_IMAGE,
     DEFAULT_PYTORCH_VERSION,
-    MLFLOW_FLAVOR_TO_PYTHON_PACKAGE_MAP
+    MLFLOW_FLAVOR_TO_PYTHON_PACKAGE_MAP,
 )
 
 

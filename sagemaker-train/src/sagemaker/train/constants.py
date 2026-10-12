@@ -10,12 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
-DEPRECATED: This module has been moved to sagemaker.core.training.constants
+"""DEPRECATED: This module has been moved to sagemaker.core.training.constants
 
 This is a backward compatibility shim. Please update your imports to:
     from sagemaker.core.training.constants import ...
 """
+
 from __future__ import absolute_import
 
 import os
@@ -40,6 +40,7 @@ DEFAULT_CONTAINER_ARGUMENTS = [
     + f"&& {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT}",
 ]
 
+
 def get_sagemaker_hub_name() -> str:
     """Return the SageMaker Hub name, honoring SAGEMAKER_HUB_NAME env var override.
 
@@ -48,6 +49,7 @@ def get_sagemaker_hub_name() -> str:
     """
     return os.environ.get("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
 
+
 # Allowed reward model IDs for RLAIF trainer with region restrictions
 _ALLOWED_REWARD_MODEL_IDS = {
     "openai.gpt-oss-120b-1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
@@ -55,28 +57,17 @@ _ALLOWED_REWARD_MODEL_IDS = {
     "qwen.qwen3-32b-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
     "qwen.qwen3-coder-30b-a3b-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
     "qwen.qwen3-coder-480b-a35b-v1:0": ["us-west-2", "ap-northeast-1"],
-    "qwen.qwen3-235b-a22b-2507-v1:0": ["us-west-2", "ap-northeast-1"]
+    "qwen.qwen3-235b-a22b-2507-v1:0": ["us-west-2", "ap-northeast-1"],
 }
 
-# Allowed evaluator models for LLM as Judge evaluator with region restrictions.
-#
-# Source of truth: the Bedrock Console judge-model regional
-# allowlist.cross-checked against
-# https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation-judge.html#evaluation-judge-supported
-_ALLOWED_EVALUATOR_MODELS = {
-    "mistral.mistral-large-2402-v1:0": ["us-west-2", "us-east-1", "eu-west-1"],
-    "meta.llama3-1-70b-instruct-v1:0": ["us-west-2", "us-east-1"],
-    "anthropic.claude-3-haiku-20240307-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "anthropic.claude-haiku-4-5-20251001-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "anthropic.claude-sonnet-4-5-20250929-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "anthropic.claude-opus-4-5-20251101-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "amazon.nova-pro-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "amazon.nova-2-lite-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "amazon.nova-micro-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "amazon.nova-premier-v1:0": ["us-west-2", "us-east-1"],
-    "anthropic.claude-3-5-sonnet-20240620-v1:0": ["ap-northeast-1"],
-    "anthropic.claude-3-5-sonnet-20241022-v2:0": ["ap-northeast-1"],
-}
+# NOTE: The former hardcoded ``_ALLOWED_EVALUATOR_MODELS`` allowlist for the
+# LLM-as-Judge evaluator has been removed. evaluator_model is now validated in two
+# steps (see ``sagemaker.train.evaluate.llm_as_judge_evaluator``): at construction
+# against the service-maintained supported-judge-models list at
+# ``s3://jumpstart-cache-prod-<region>/fmhMetadata/supported-llmaj-judge-models.json``
+# (is it a judge-capable model), and at evaluate() time against Bedrock
+# ``GetFoundationModel`` (is it still in service / not past end of life). So the SDK
+# no longer needs a hand-maintained model→region map.
 
 SM_RECIPE = "recipe"
 SM_RECIPE_YAML = "recipe.yaml"

@@ -11,12 +11,22 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Templates module."""
+
 from __future__ import absolute_import
 
+# The command is carried in through a quoted heredoc ('SAGEMAKER_BASE_COMMAND_EOF'), which
+# performs no expansion at all, so the shell quoting applied by
+# ModelTrainer._prepare_train_script survives into CMD verbatim. Assigning with
+# CMD="{base_command}" instead would expand $VAR, $(...) and backticks at assignment time and
+# let an embedded double quote terminate the string early, which defeats that quoting and
+# corrupts SourceCode.args. `eval "$CMD"` then parses the command exactly once.
 EXECUTE_BASE_COMMANDS = """
-CMD="{base_command}"
+CMD=$(cat <<'SAGEMAKER_BASE_COMMAND_EOF'
+{base_command}
+SAGEMAKER_BASE_COMMAND_EOF
+)
 echo "Executing command: $CMD"
-eval $CMD
+eval "$CMD"
 """
 
 EXECUTE_BASIC_SCRIPT_DRIVER = """

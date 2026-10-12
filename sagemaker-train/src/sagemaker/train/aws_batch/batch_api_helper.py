@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The module provides helper function for Batch Submit/Describe/Terminal job APIs."""
+
 from __future__ import absolute_import
 
 import json

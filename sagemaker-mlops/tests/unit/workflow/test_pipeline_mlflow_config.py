@@ -212,7 +212,6 @@ def test_convert_mlflow_config_to_request_with_minimal_config():
 
 def test_convert_mlflow_config_to_request_with_unassigned_values():
     """Test _convert_mlflow_config_to_request handles Unassigned values properly."""
-    from sagemaker.core.utils.utils import Unassigned
 
     mlflow_config = MlflowConfig(
         mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test",

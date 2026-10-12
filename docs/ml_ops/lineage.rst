@@ -59,19 +59,6 @@ Use Case 1: Session Setup
 
 Initialize a SageMaker session and set up common variables.
 
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   import boto3
-   import sagemaker
-
-   region = boto3.Session().region_name
-   sagemaker_session = sagemaker.session.Session()
-   default_bucket = sagemaker_session.default_bucket()
-
-**V3:**
-
 .. code-block:: python
 
    import boto3
@@ -86,25 +73,6 @@ Use Case 2: Creating a Lineage Context
 ---------------------------------------
 
 Contexts provide a method to logically group other lineage entities. Each context name must be unique across all other contexts.
-
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   from datetime import datetime
-   from sagemaker.lineage.context import Context
-
-   unique_id = str(int(datetime.now().replace(microsecond=0).timestamp()))
-   context_name = f"machine-learning-workflow-{unique_id}"
-
-   ml_workflow_context = Context.create(
-       context_name=context_name,
-       context_type="MLWorkflow",
-       source_uri=unique_id,
-       properties={"example": "true"},
-   )
-
-**V3:**
 
 .. code-block:: python
 
@@ -127,18 +95,6 @@ Use Case 3: Listing Contexts
 
 Enumerate existing contexts sorted by creation time.
 
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   from sagemaker.lineage.context import Context
-
-   contexts = Context.list(sort_by="CreationTime", sort_order="Descending")
-   for ctx in contexts:
-       print(ctx.context_name)
-
-**V3:**
-
 .. code-block:: python
 
    from sagemaker.core.lineage.context import Context
@@ -152,21 +108,6 @@ Use Case 4: Creating an Action
 -------------------------------
 
 Actions represent computational steps such as model builds, transformations, or training jobs.
-
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   from sagemaker.lineage.action import Action
-
-   model_build_action = Action.create(
-       action_name=f"model-build-step-{unique_id}",
-       action_type="ModelBuild",
-       source_uri=unique_id,
-       properties={"Example": "Metadata"},
-   )
-
-**V3:**
 
 .. code-block:: python
 
@@ -185,20 +126,6 @@ Use Case 5: Creating Associations
 
 Associations are directed edges in the lineage graph. The ``association_type`` can be ``Produced``, ``DerivedFrom``, ``AssociatedWith``, or ``ContributedTo``.
 
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   from sagemaker.lineage.association import Association
-
-   context_action_association = Association.create(
-       source_arn=ml_workflow_context.context_arn,
-       destination_arn=model_build_action.action_arn,
-       association_type="AssociatedWith",
-   )
-
-**V3:**
-
 .. code-block:: python
 
    from sagemaker.core.lineage.association import Association
@@ -215,24 +142,6 @@ Use Case 6: Traversing Associations
 -------------------------------------
 
 Query incoming and outgoing associations to understand how entities are related in the lineage graph.
-
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   from sagemaker.lineage.association import Association
-
-   # List incoming associations to an action
-   incoming = Association.list(destination_arn=model_build_action.action_arn)
-   for association in incoming:
-       print(f"{model_build_action.action_name} has incoming association from {association.source_name}")
-
-   # List outgoing associations from a context
-   outgoing = Association.list(source_arn=ml_workflow_context.context_arn)
-   for association in outgoing:
-       print(f"{ml_workflow_context.context_name} has outgoing association to {association.destination_name}")
-
-**V3:**
 
 .. code-block:: python
 
@@ -253,35 +162,6 @@ Use Case 7: Creating Artifacts
 -------------------------------
 
 Artifacts represent URI-addressable objects or data, such as datasets, labels, or trained models.
-
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   from sagemaker.lineage.artifact import Artifact
-
-   input_test_images = Artifact.create(
-       artifact_name="mnist-test-images",
-       artifact_type="TestData",
-       source_types=[{"SourceIdType": "Custom", "Value": unique_id}],
-       source_uri=f"https://sagemaker-example-files-prod-{region}.s3.amazonaws.com/datasets/image/MNIST/t10k-images-idx3-ubyte.gz",
-   )
-
-   input_test_labels = Artifact.create(
-       artifact_name="mnist-test-labels",
-       artifact_type="TestLabels",
-       source_types=[{"SourceIdType": "Custom", "Value": unique_id}],
-       source_uri=f"https://sagemaker-example-files-prod-{region}.s3.amazonaws.com/datasets/image/MNIST/t10k-labels-idx1-ubyte.gz",
-   )
-
-   output_model = Artifact.create(
-       artifact_name="mnist-model",
-       artifact_type="Model",
-       source_types=[{"SourceIdType": "Custom", "Value": unique_id}],
-       source_uri=f"https://sagemaker-example-files-prod-{region}.s3.amazonaws.com/datasets/image/MNIST/model/tensorflow-training-2020-11-20-23-57-13-077/model.tar.gz",
-   )
-
-**V3:**
 
 .. code-block:: python
 
@@ -314,30 +194,6 @@ Use Case 8: Linking Artifacts to Actions
 
 Associate data artifacts as inputs to an action, and the action's output to a model artifact, forming a complete lineage chain.
 
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   from sagemaker.lineage.association import Association
-
-   # Link input data to the model build action
-   Association.create(
-       source_arn=input_test_images.artifact_arn,
-       destination_arn=model_build_action.action_arn,
-   )
-   Association.create(
-       source_arn=input_test_labels.artifact_arn,
-       destination_arn=model_build_action.action_arn,
-   )
-
-   # Link the action output to the model artifact
-   Association.create(
-       source_arn=model_build_action.action_arn,
-       destination_arn=output_model.artifact_arn,
-   )
-
-**V3:**
-
 .. code-block:: python
 
    from sagemaker.core.lineage.association import Association
@@ -363,49 +219,6 @@ Use Case 9: Cleaning Up Lineage Data
 --------------------------------------
 
 Delete associations first, then delete the entities themselves. Associations must be removed before their source or destination entities can be deleted.
-
-**V2 (Legacy):**
-
-.. code-block:: python
-
-   import sagemaker
-   from sagemaker.lineage.association import Association
-   from sagemaker.lineage.context import Context
-   from sagemaker.lineage.action import Action
-   from sagemaker.lineage.artifact import Artifact
-
-   sagemaker_session = sagemaker.session.Session()
-
-   def delete_associations(arn):
-       for summary in Association.list(destination_arn=arn):
-           assct = Association(
-               source_arn=summary.source_arn,
-               destination_arn=summary.destination_arn,
-               sagemaker_session=sagemaker_session,
-           )
-           assct.delete()
-       for summary in Association.list(source_arn=arn):
-           assct = Association(
-               source_arn=summary.source_arn,
-               destination_arn=summary.destination_arn,
-               sagemaker_session=sagemaker_session,
-           )
-           assct.delete()
-
-   # Delete context
-   delete_associations(ml_workflow_context.context_arn)
-   Context(context_name=ml_workflow_context.context_name, sagemaker_session=sagemaker_session).delete()
-
-   # Delete action
-   delete_associations(model_build_action.action_arn)
-   Action(action_name=model_build_action.action_name, sagemaker_session=sagemaker_session).delete()
-
-   # Delete artifacts
-   for artifact in [input_test_images, input_test_labels, output_model]:
-       delete_associations(artifact.artifact_arn)
-       Artifact(artifact_arn=artifact.artifact_arn, sagemaker_session=sagemaker_session).delete()
-
-**V3:**
 
 .. code-block:: python
 

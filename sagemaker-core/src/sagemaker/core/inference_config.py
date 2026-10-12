@@ -15,6 +15,7 @@
 This module provides configuration classes for different types of SageMaker
 inference endpoints including async, serverless, and resource requirements.
 """
+
 from __future__ import print_function, absolute_import
 from typing import Optional
 

@@ -13,7 +13,7 @@
 """Unit tests for training_queue module"""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.train.aws_batch.training_queue import TrainingQueue
 from sagemaker.train.model_trainer import ModelTrainer, Mode
@@ -21,10 +21,8 @@ from .conftest import (
     JOB_NAME,
     JOB_QUEUE,
     JOB_ARN,
-    JOB_ID,
     SCHEDULING_PRIORITY,
     SHARE_IDENTIFIER,
-    QUOTA_SHARE_NAME,
     TIMEOUT_CONFIG,
     BATCH_TAGS,
     DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
@@ -190,7 +188,6 @@ class TestTrainingQueueSubmit:
                 None,
             )
 
-
     @patch("sagemaker.train.aws_batch.training_queue._submit_service_job")
     def test_submit_with_quota_share_name(self, mock_submit_service_job):
         """Test submit with quota_share_name"""
@@ -345,6 +342,7 @@ class TestTrainingQueueMap:
         for call_args in mock_submit_service_job.call_args_list:
             assert call_args[0][8] == QUOTA_SHARE_NAME
 
+
 class TestTrainingQueueList:
     """Tests for TrainingQueue.list_jobs method"""
 
@@ -365,7 +363,7 @@ class TestTrainingQueueList:
         mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_RESP_WITH_JOBS])
 
         queue = TrainingQueue(JOB_QUEUE)
-        jobs = queue.list_jobs(job_name=JOB_NAME)
+        queue.list_jobs(job_name=JOB_NAME)
 
         # Verify list_service_job was called
         mock_list_service_job.assert_called_once()
@@ -427,7 +425,7 @@ class TestTrainingQueueListByShare:
         mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS])
 
         queue = TrainingQueue(JOB_QUEUE)
-        jobs = queue.list_jobs_by_share(share_identifier=SHARE_IDENTIFIER)
+        queue.list_jobs_by_share(share_identifier=SHARE_IDENTIFIER)
 
         # Verify list_service_job was called
         mock_list_service_job.assert_called_once()

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
+
 from __future__ import absolute_import
 
 import os
@@ -23,7 +24,6 @@ import errno
 
 from sagemaker.core import s3
 from six.moves.urllib.parse import urlparse
-
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +136,9 @@ def get_child_process_ids(pid):
     """
     if not str(pid).isdigit():
         raise ValueError("Invalid PID")
-    
+
     cmd = ["pgrep", "-P", str(pid)]
-    
+
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, err = process.communicate()
     if err:

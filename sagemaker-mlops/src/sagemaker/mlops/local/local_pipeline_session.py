@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Local Pipeline Session - extends LocalSession with pipeline execution capabilities."""
+
 from __future__ import absolute_import
 
 import logging
@@ -27,29 +28,30 @@ logger = logging.getLogger(__name__)
 
 class LocalPipelineSession(LocalSession):
     """Extends LocalSession with pipeline execution capabilities.
-    
+
     This class provides local pipeline execution functionality that was previously
     in LocalSession. It's now in the MLOps package since pipeline orchestration
     is an MLOps concern.
-    
+
     Usage:
         from sagemaker.mlops.local import LocalPipelineSession
         from sagemaker.mlops.workflow import Pipeline
-        
+
         session = LocalPipelineSession()
         session.create_pipeline(pipeline, "My pipeline")
     """
-    
+
     def __init__(self, *args, **kwargs):
         """Initialize LocalPipelineSession.
-        
+
         Accepts the same arguments as LocalSession.
         """
         super().__init__(*args, **kwargs)
-        # Add pipeline storage to the sagemaker_client
-        if not hasattr(self.sagemaker_client, '_pipelines'):
-            self.sagemaker_client._pipelines = {}
-    
+        # Own the local pipeline registry on the session rather than mutating the
+        # sagemaker_client. Attaching state to the client leaks across sessions that
+        # share a client and risks colliding with real client attributes.
+        self._local_pipelines = {}
+
     @_telemetry_emitter(Feature.LOCAL_MODE, "local_pipeline_session.create_pipeline")
     def create_pipeline(
         self, pipeline, pipeline_description, **kwargs  # pylint: disable=unused-argument
@@ -68,7 +70,7 @@ class LocalPipelineSession(LocalSession):
             pipeline_description=pipeline_description,
             local_session=self,
         )
-        self.sagemaker_client._pipelines[pipeline.name] = local_pipeline
+        self._local_pipelines[pipeline.name] = local_pipeline
         return {"PipelineArn": pipeline.name}
 
     def update_pipeline(
@@ -83,7 +85,7 @@ class LocalPipelineSession(LocalSession):
         Returns:
             Pipeline metadata (PipelineArn)
         """
-        if pipeline.name not in self.sagemaker_client._pipelines:
+        if pipeline.name not in self._local_pipelines:
             error_response = {
                 "Error": {
                     "Code": "ResourceNotFound",
@@ -91,11 +93,9 @@ class LocalPipelineSession(LocalSession):
                 }
             }
             raise ClientError(error_response, "update_pipeline")
-        self.sagemaker_client._pipelines[pipeline.name].pipeline_description = pipeline_description
-        self.sagemaker_client._pipelines[pipeline.name].pipeline = pipeline
-        self.sagemaker_client._pipelines[pipeline.name].last_modified_time = (
-            datetime.now().timestamp()
-        )
+        self._local_pipelines[pipeline.name].pipeline_description = pipeline_description
+        self._local_pipelines[pipeline.name].pipeline = pipeline
+        self._local_pipelines[pipeline.name].last_modified_time = datetime.now().timestamp()
         return {"PipelineArn": pipeline.name}
 
     def describe_pipeline(self, PipelineName):
@@ -107,7 +107,7 @@ class LocalPipelineSession(LocalSession):
         Returns:
             Pipeline metadata (PipelineArn, PipelineDefinition, LastModifiedTime, etc)
         """
-        if PipelineName not in self.sagemaker_client._pipelines:
+        if PipelineName not in self._local_pipelines:
             error_response = {
                 "Error": {
                     "Code": "ResourceNotFound",
@@ -115,7 +115,7 @@ class LocalPipelineSession(LocalSession):
                 }
             }
             raise ClientError(error_response, "describe_pipeline")
-        return self.sagemaker_client._pipelines[PipelineName].describe()
+        return self._local_pipelines[PipelineName].describe()
 
     def delete_pipeline(self, PipelineName):
         """Delete the local pipeline.
@@ -126,8 +126,8 @@ class LocalPipelineSession(LocalSession):
         Returns:
             Pipeline metadata (PipelineArn)
         """
-        if PipelineName in self.sagemaker_client._pipelines:
-            del self.sagemaker_client._pipelines[PipelineName]
+        if PipelineName in self._local_pipelines:
+            del self._local_pipelines[PipelineName]
         return {"PipelineArn": PipelineName}
 
     def start_pipeline_execution(self, PipelineName, **kwargs):
@@ -136,14 +136,14 @@ class LocalPipelineSession(LocalSession):
         Args:
           PipelineName (str): Name of the pipeline
 
-        Returns: 
+        Returns:
             _LocalPipelineExecution object
         """
         if "ParallelismConfiguration" in kwargs:
             logger.warning("Parallelism configuration is not supported in local mode.")
         if "SelectiveExecutionConfig" in kwargs:
             raise ValueError("SelectiveExecutionConfig is not supported in local mode.")
-        if PipelineName not in self.sagemaker_client._pipelines:
+        if PipelineName not in self._local_pipelines:
             error_response = {
                 "Error": {
                     "Code": "ResourceNotFound",
@@ -151,4 +151,4 @@ class LocalPipelineSession(LocalSession):
                 }
             }
             raise ClientError(error_response, "start_pipeline_execution")
-        return self.sagemaker_client._pipelines[PipelineName].start(**kwargs)
+        return self._local_pipelines[PipelineName].start(**kwargs)

@@ -11,11 +11,11 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for logging_config module."""
+
 from __future__ import absolute_import
 
 import logging
 import time
-from unittest.mock import patch
 from sagemaker.train.remote_function.logging_config import _UTCFormatter, get_logger
 
 

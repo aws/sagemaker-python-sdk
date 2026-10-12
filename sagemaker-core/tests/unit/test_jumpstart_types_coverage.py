@@ -12,21 +12,17 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from sagemaker.core.jumpstart.types import (
-    JumpStartDataHolderType,
     JumpStartECRSpecs,
     JumpStartHyperparameter,
-    JumpStartEnvironmentVariable,
     JumpStartPredictorSpecs,
     JumpStartSerializablePayload,
     JumpStartInstanceTypeVariants,
     JumpStartAdditionalDataSources,
     JumpStartModelDataSource,
-    ModelAccessConfig,
     HubAccessConfig,
     S3DataSource,
-    AdditionalModelDataSource,
     JumpStartBenchmarkStat,
     JumpStartConfigRanking,
     JumpStartMetadataBaseFields,
@@ -35,20 +31,15 @@ from sagemaker.core.jumpstart.types import (
     JumpStartMetadataConfigs,
     JumpStartModelSpecs,
     JumpStartVersionedModelId,
-    JumpStartCachedContentKey,
-    JumpStartCachedContentValue,
     HubArnExtractedInfo,
-    JumpStartKwargs,
     JumpStartModelInitKwargs,
     JumpStartModelDeployKwargs,
     JumpStartEstimatorInitKwargs,
     JumpStartEstimatorFitKwargs,
-    JumpStartEstimatorDeployKwargs,
     JumpStartModelRegisterKwargs,
     BaseDeploymentConfigDataHolder,
     DeploymentArgs,
     DeploymentConfigMetadata,
-    JumpStartS3FileType,
     HubContentType,
 )
 from sagemaker.core.jumpstart.enums import JumpStartScriptScope, JumpStartModelType

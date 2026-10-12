@@ -24,6 +24,7 @@ Run under pytest (the integ marker keeps it out of the unit run)::
 
 Requires AWS credentials with iam:GetRole (read-only).
 """
+
 from __future__ import absolute_import
 
 import logging
@@ -38,7 +39,6 @@ from botocore.exceptions import ClientError, NoCredentialsError
 if __package__ in (None, ""):
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
 
-from sagemaker.core.helper.iam_role_resolver import RoleValidationError  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("iam_role_validation_integ")
@@ -70,9 +70,6 @@ def _no_autorole_created(role_type_name: str) -> bool:
 pytestmark = pytest.mark.skipif(
     not _credentials_available(), reason="AWS credentials not available"
 )
-
-
-
 
 
 if __name__ == "__main__":

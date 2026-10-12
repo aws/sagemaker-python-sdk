@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains helper methods related to Lambda."""
+
 from __future__ import print_function, absolute_import
 
 from io import BytesIO
@@ -187,9 +188,7 @@ class Lambda:
                     # Spot check: enforce ownership only when the resolved bucket is
                     # the session's default bucket (defends against squatting on the
                     # predictable default name). Other buckets are left untouched.
-                    expected_owner = self.session._get_account_id_if_default_bucket(
-                        bucket
-                    )
+                    expected_owner = self.session._get_account_id_if_default_bucket(bucket)
 
                     response = lambda_client.update_function_code(
                         FunctionName=(self.function_name or self.function_arn),

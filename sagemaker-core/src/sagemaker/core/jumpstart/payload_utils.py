@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module stores inference payload utilities for JumpStart models."""
+
 from __future__ import absolute_import
 import base64
 import json
@@ -30,7 +31,6 @@ from sagemaker.core.jumpstart.utils import (
     get_region_fallback,
 )
 from sagemaker.core.helper.session_helper import Session
-
 
 S3_BYTES_REGEX = r"^\$s3<(?P<s3_key>[a-zA-Z0-9-_/.]+)>$"
 S3_B64_STR_REGEX = r"\$s3_b64<(?P<s3_key>[a-zA-Z0-9-_/.]+)>"

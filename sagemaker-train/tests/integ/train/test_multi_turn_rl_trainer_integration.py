@@ -15,12 +15,13 @@
 These tests run against real SageMaker services in prod us-west-2.
 Requires valid AWS credentials with appropriate permissions.
 """
+
 from __future__ import annotations
 
-import os
 import time
 
 import boto3
+import botocore.exceptions
 import pytest
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
@@ -38,10 +39,18 @@ def _get_account_id():
         _ACCOUNT_ID = boto_session.client("sts").get_caller_identity()["Account"]
     return _ACCOUNT_ID
 
+
 AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS"
-#BASE_MODEL = "openai-reasoning-gpt-oss-20b"
+# BASE_MODEL = "openai-reasoning-gpt-oss-20b"
 BASE_MODEL = "mock-oss-test"
 EXISTING_JOB_NAME = "mock-oss-test-mtrl-20260616153024"
+
+# Training jobs in this module register their output into a dedicated scratch group.
+# Without it they fall back to the SDK default ``{BASE_MODEL}-mtrl-mpg``
+# (``mock-oss-test-mtrl-mpg``), which also holds the fixed fixture package that the
+# MTRL evaluator integ tests attach to. Every new version there made the resource
+# cleaner trim (delete) that fixture package.
+TRAIN_OUTPUT_MODEL_PACKAGE_GROUP = f"{BASE_MODEL}-mtrl-train-mpg"
 
 
 @pytest.fixture(scope="module")
@@ -49,6 +58,33 @@ def sagemaker_session():
     boto_session = boto3.Session(region_name=_REGION)
     session = Session(boto_session=boto_session)
     yield session
+
+
+@pytest.fixture(scope="module")
+def train_output_model_package_group(sagemaker_session):
+    """Get-or-create the scratch output ModelPackageGroup and return its name.
+
+    ``MultiTurnRLTrainer`` only validates an explicitly passed group, so it must
+    exist before the trainer is constructed. Race-safe for concurrent runs: losing
+    the create race ("already exists") is treated as success.
+    """
+    sm_client = sagemaker_session.boto_session.client("sagemaker")
+    try:
+        sm_client.describe_model_package_group(
+            ModelPackageGroupName=TRAIN_OUTPUT_MODEL_PACKAGE_GROUP
+        )
+    except botocore.exceptions.ClientError:
+        try:
+            sm_client.create_model_package_group(
+                ModelPackageGroupName=TRAIN_OUTPUT_MODEL_PACKAGE_GROUP,
+                ModelPackageGroupDescription=(
+                    "Scratch output group for MTRL trainer integ tests (sagemaker-train)"
+                ),
+            )
+        except botocore.exceptions.ClientError as e:
+            if "already exists" not in str(e):
+                raise
+    return TRAIN_OUTPUT_MODEL_PACKAGE_GROUP
 
 
 @pytest.fixture(scope="module")
@@ -68,12 +104,15 @@ def test_resources():
 class TestMultiTurnRLTrainerBedrockAgent:
     """Test MTRL training with Bedrock AgentCore runtime."""
 
-    def test_train_and_wait(self, sagemaker_session, test_resources):
+    def test_train_and_wait(
+        self, sagemaker_session, test_resources, train_output_model_package_group
+    ):
         """Test complete MTRL workflow with Bedrock AgentCore agent."""
         trainer = MultiTurnRLTrainer(
             model=BASE_MODEL,
             agent_env=AGENT_RUNTIME_ID,
             training_dataset=test_resources["s3_input_path"],
+            output_model_package_group=train_output_model_package_group,
             mlflow_app_arn=test_resources["mlflow_arn"],
             s3_output_path=test_resources["s3_output_path"],
             accept_eula=True,
@@ -92,12 +131,15 @@ class TestMultiTurnRLTrainerBedrockAgent:
         assert job.output_model_package_arn is not None
         assert job.s3_output_path is not None
 
-    def test_train_and_stop(self, sagemaker_session, test_resources):
+    def test_train_and_stop(
+        self, sagemaker_session, test_resources, train_output_model_package_group
+    ):
         """Test creating and stopping an MTRL job."""
         trainer = MultiTurnRLTrainer(
             model=BASE_MODEL,
             agent_env=AGENT_RUNTIME_ID,
             training_dataset=test_resources["s3_input_path"],
+            output_model_package_group=train_output_model_package_group,
             mlflow_app_arn=test_resources["mlflow_arn"],
             accept_eula=True,
             sagemaker_session=sagemaker_session,
@@ -120,12 +162,15 @@ class TestMultiTurnRLTrainerBedrockAgent:
 class TestMultiTurnRLTrainerLambdaAgent:
     """Test MTRL training with Lambda agent."""
 
-    def test_train_with_lambda_arn(self, sagemaker_session, test_resources):
+    def test_train_with_lambda_arn(
+        self, sagemaker_session, test_resources, train_output_model_package_group
+    ):
         """Test MTRL workflow using an existing Lambda ARN as agent."""
         trainer = MultiTurnRLTrainer(
             model=BASE_MODEL,
             agent_env=test_resources["lambda_arn"],
             training_dataset=test_resources["s3_input_path"],
+            output_model_package_group=train_output_model_package_group,
             mlflow_app_arn=test_resources["mlflow_arn"],
             s3_output_path=test_resources["s3_output_path"],
             accept_eula=True,
@@ -142,7 +187,6 @@ class TestMultiTurnRLTrainerLambdaAgent:
 
         assert job.job_status == "Completed"
         assert job.output_model_package_arn is not None
-
 
 
 class TestMultiTurnRLTrainerAttach:
@@ -164,10 +208,12 @@ class TestMultiTurnRLTrainerAttach:
     @pytest.mark.skip(reason="GPU resource intensive — run manually")
     def test_get_all_jobs(self, sagemaker_session):
         """Test listing all MTRL jobs."""
-        jobs = list(AgentRFTJob.get_all(
-            session=sagemaker_session.boto_session,
-            status_equals="Completed",
-        ))
+        jobs = list(
+            AgentRFTJob.get_all(
+                session=sagemaker_session.boto_session,
+                status_equals="Completed",
+            )
+        )
         assert len(jobs) > 0
         assert all(j.job_status == "Completed" for j in jobs)
 
@@ -177,9 +223,7 @@ class TestMultiTurnRLTrainerListModels:
 
     def test_list_supported_models(self, sagemaker_session):
         """Test that list_supported_models returns models from the hub."""
-        result = MultiTurnRLTrainer.list_supported_models(
-            session=sagemaker_session.boto_session
-        )
+        result = MultiTurnRLTrainer.list_supported_models(session=sagemaker_session.boto_session)
         assert isinstance(result, list)
         assert len(result) > 0
 
@@ -189,6 +233,3 @@ class TestMultiTurnRLTrainerListModels:
             session=sagemaker_session.boto_session
         )
         assert isinstance(runtimes, list)
-
-
-

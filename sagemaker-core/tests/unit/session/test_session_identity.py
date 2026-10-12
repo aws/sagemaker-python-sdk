@@ -11,13 +11,11 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-import json
-import os
 import pytest
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
 
-from sagemaker.core.helper.session_helper import Session, get_execution_role, NOTEBOOK_METADATA_FILE
+from sagemaker.core.helper.session_helper import Session, get_execution_role
 
 
 class TestSessionIdentity:

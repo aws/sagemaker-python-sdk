@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Attribution module for tracking the provenance of SDK usage."""
+
 from __future__ import absolute_import
 import os
 from enum import Enum

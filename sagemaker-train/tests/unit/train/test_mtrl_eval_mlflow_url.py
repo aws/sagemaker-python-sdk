@@ -16,9 +16,10 @@ from sagemaker.train.evaluate.execution import (
 )
 from sagemaker.train.evaluate.constants import EvalType
 
-
 MOCK_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-app/app-test123"
-MOCK_PRESIGNED_URL = "https://app-test123.mlflow.sagemaker.us-west-2.app.aws/auth?authToken=eyJtoken123"
+MOCK_PRESIGNED_URL = (
+    "https://app-test123.mlflow.sagemaker.us-west-2.app.aws/auth?authToken=eyJtoken123"
+)
 
 
 class TestGetPresignedMlflowUrl:
@@ -112,16 +113,18 @@ class TestMTRLEvaluationExecutionMlflowDetails:
 
     @patch("sagemaker.core.resources.Job")
     def test_extracts_details_from_completed_step(self, mock_job_cls):
-        config_doc = json.dumps({
-            "ServiceOutput": {
-                "MlflowDetails": {
-                    "ExperimentName": "mtrl-eval-test",
-                    "RunName": "base-model-eval",
-                    "ExperimentId": "23",
-                    "RunId": "65fedc9db0a4491e927dc2766e35ad7a",
+        config_doc = json.dumps(
+            {
+                "ServiceOutput": {
+                    "MlflowDetails": {
+                        "ExperimentName": "mtrl-eval-test",
+                        "RunName": "base-model-eval",
+                        "ExperimentId": "23",
+                        "RunId": "65fedc9db0a4491e927dc2766e35ad7a",
+                    }
                 }
             }
-        })
+        )
         mock_job = MagicMock()
         mock_job.job_config_document = config_doc
         mock_job_cls.get.return_value = mock_job
@@ -147,16 +150,18 @@ class TestMTRLEvaluationExecutionMlflowDetails:
 
     @patch("sagemaker.core.resources.Job")
     def test_caches_result(self, mock_job_cls):
-        config_doc = json.dumps({
-            "ServiceOutput": {
-                "MlflowDetails": {
-                    "ExperimentId": "23",
-                    "RunId": "run-abc",
-                    "ExperimentName": "exp",
-                    "RunName": "base-model-eval",
+        config_doc = json.dumps(
+            {
+                "ServiceOutput": {
+                    "MlflowDetails": {
+                        "ExperimentId": "23",
+                        "RunId": "run-abc",
+                        "ExperimentName": "exp",
+                        "RunName": "base-model-eval",
+                    }
                 }
             }
-        })
+        )
         mock_job = MagicMock()
         mock_job.job_config_document = config_doc
         mock_job_cls.get.return_value = mock_job
@@ -198,16 +203,18 @@ class TestMTRLEvaluationExecutionGetMlflowUrl:
             "AuthorizedUrl": MOCK_PRESIGNED_URL
         }
 
-        config_doc = json.dumps({
-            "ServiceOutput": {
-                "MlflowDetails": {
-                    "ExperimentId": "23",
-                    "RunId": "run-xyz",
-                    "ExperimentName": "exp",
-                    "RunName": "base-model-eval",
+        config_doc = json.dumps(
+            {
+                "ServiceOutput": {
+                    "MlflowDetails": {
+                        "ExperimentId": "23",
+                        "RunId": "run-xyz",
+                        "ExperimentName": "exp",
+                        "RunName": "base-model-eval",
+                    }
                 }
             }
-        })
+        )
         mock_job = MagicMock()
         mock_job.job_config_document = config_doc
         mock_job_cls.get.return_value = mock_job
@@ -237,7 +244,9 @@ class TestMTRLEvaluationExecutionGetMlflowUrl:
     @patch("sagemaker.train.common_utils.mlflow_url_utils._resolve_run_id")
     @patch("sagemaker.train.common_utils.mlflow_url_utils._resolve_experiment_id")
     @patch("sagemaker.core.utils.utils.SageMakerClient")
-    def test_resolves_via_rest_api_when_no_job_details(self, mock_sm_class, mock_resolve_exp, mock_resolve_run):
+    def test_resolves_via_rest_api_when_no_job_details(
+        self, mock_sm_class, mock_resolve_exp, mock_resolve_run
+    ):
         mock_client = MagicMock()
         mock_sm_class.return_value.sagemaker_client = mock_client
         mock_client.create_presigned_mlflow_app_url.return_value = {

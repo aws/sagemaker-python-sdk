@@ -11,15 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Comprehensive unit tests for uncovered lines in sagemaker.core.remote_function.job module."""
+
 from __future__ import absolute_import
 
 import json
 import os
 import pytest
 import sys
-import tempfile
-from unittest.mock import Mock, patch, MagicMock, mock_open
-from io import BytesIO
+from unittest.mock import Mock, patch, MagicMock
 
 from sagemaker.core.remote_function.job import (
     _JobSettings,
@@ -35,7 +34,6 @@ from sagemaker.core.remote_function.job import (
     _logs_init,
     _get_initial_job_state,
     LogState,
-    _RunInfo,
 )
 from sagemaker.core.remote_function.checkpoint_location import CheckpointLocation
 

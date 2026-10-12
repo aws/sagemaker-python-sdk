@@ -11,10 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-import pytest
 import json
 import os
-from unittest.mock import Mock, patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 from sagemaker.core.modules.train.container_drivers.scripts.environment import (
     num_cpus,
     num_gpus,

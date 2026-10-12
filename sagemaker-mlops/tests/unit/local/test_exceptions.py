@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for local exceptions."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -29,6 +30,6 @@ def test_step_execution_exception_init():
 def test_step_execution_exception_raise():
     with pytest.raises(StepExecutionException) as exc_info:
         raise StepExecutionException("test-step", "Test error")
-    
+
     assert exc_info.value.step_name == "test-step"
     assert exc_info.value.message == "Test error"

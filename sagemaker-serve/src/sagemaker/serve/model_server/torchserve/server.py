@@ -2,10 +2,12 @@
 
 from __future__ import absolute_import
 
-import requests
 import logging
 import platform
 from pathlib import Path
+
+import requests
+
 from sagemaker.core.common_utils import _is_s3_uri
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.utils import determine_bucket_and_prefix, parse_s3_url
@@ -18,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 class LocalTorchServe:
     """Placeholder docstring"""
+
+    # pylint: disable=attribute-defined-outside-init
+    # Mixin sets self.container during _start_*, not in __init__, by design.
 
     def _start_torch_serve(
         self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict

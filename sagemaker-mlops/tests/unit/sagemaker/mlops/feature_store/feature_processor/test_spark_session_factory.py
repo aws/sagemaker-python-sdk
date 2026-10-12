@@ -13,7 +13,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import feature_store_pyspark
 import pyspark
 import pytest
 from mock import Mock, patch, call
@@ -75,6 +74,7 @@ def test_spark_session_factory_configuration(mock_classpath_jars):
     # Verify configurations when not running on a training job
     assert ",".join(mock_classpath_jars.return_value) in spark_configs.get("spark.jars")
     from sagemaker.mlops.feature_store.feature_processor._spark_factory import _get_hadoop_version
+
     hadoop_version = _get_hadoop_version()
     assert ",".join(
         [
@@ -128,9 +128,11 @@ def test_spark_session_factory_with_iceberg_config(mock_spark_context, mock_clas
     spark_session = spark_session_factory.spark_session
     mock_conf = Mock()
 
-    with patch.object(type(spark_session), "conf", new_callable=lambda: property(lambda self: mock_conf)):
-        spark_session_with_iceberg_config = spark_session_factory.get_spark_session_with_iceberg_config(
-            "warehouse", "catalog"
+    with patch.object(
+        type(spark_session), "conf", new_callable=lambda: property(lambda self: mock_conf)
+    ):
+        spark_session_with_iceberg_config = (
+            spark_session_factory.get_spark_session_with_iceberg_config("warehouse", "catalog")
         )
 
         assert spark_session is spark_session_with_iceberg_config
@@ -197,13 +199,19 @@ def test_spark_session_factory_get_spark_session_with_iceberg_config(env_helper)
 )
 def test_get_hadoop_version(spark_version, expected_hadoop):
     with patch.object(pyspark, "__version__", spark_version):
-        from sagemaker.mlops.feature_store.feature_processor._spark_factory import _get_hadoop_version
+        from sagemaker.mlops.feature_store.feature_processor._spark_factory import (
+            _get_hadoop_version,
+        )
+
         assert _get_hadoop_version() == expected_hadoop
 
 
 def test_get_hadoop_version_unknown_falls_back():
     with patch.object(pyspark, "__version__", "3.6.0"):
-        from sagemaker.mlops.feature_store.feature_processor._spark_factory import _get_hadoop_version
+        from sagemaker.mlops.feature_store.feature_processor._spark_factory import (
+            _get_hadoop_version,
+        )
+
         assert _get_hadoop_version() == "3.3.4"
 
 

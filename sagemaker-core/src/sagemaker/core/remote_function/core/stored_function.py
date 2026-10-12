@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """SageMaker job function serializer/deserializer."""
+
 from __future__ import absolute_import
 
 import os
@@ -27,7 +28,6 @@ from sagemaker.core.remote_function.core.pipeline_variables import (
 
 import sagemaker.core.remote_function.core.serialization as serialization
 from sagemaker.core.helper.session_helper import Session
-
 
 logger = logging_config.get_logger()
 

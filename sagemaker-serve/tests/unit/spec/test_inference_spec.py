@@ -5,7 +5,7 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 class ConcreteInferenceSpec(InferenceSpec):
     def load(self, model_dir):
         return "loaded_model"
-    
+
     def invoke(self, input_object, model):
         return f"invoked with {input_object}"
 
@@ -19,7 +19,7 @@ class TestInferenceSpec(unittest.TestCase):
         spec = ConcreteInferenceSpec()
         model = spec.load("/path/to/model")
         self.assertEqual(model, "loaded_model")
-        
+
         result = spec.invoke("test_input", model)
         self.assertEqual(result, "invoked with test_input")
 

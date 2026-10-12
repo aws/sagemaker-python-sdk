@@ -15,7 +15,7 @@
 import pytest
 import time
 import asyncio
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.train.aws_batch.training_queued_job import TrainingQueuedJob
 from sagemaker.train.aws_batch.exception import NoTrainingJob, MissingRequiredArgument
@@ -24,8 +24,6 @@ from .conftest import (
     JOB_ARN,
     JOB_ID,
     REASON,
-    TRAINING_JOB_NAME,
-    TRAINING_JOB_ARN,
     JOB_STATUS_PENDING,
     JOB_STATUS_RUNNING,
     JOB_STATUS_SUCCEEDED,
@@ -173,14 +171,20 @@ class TestTrainingQueuedJobWait:
 class TestTrainingQueuedJobGetModelTrainer:
     """Tests for TrainingQueuedJob.get_model_trainer method"""
 
-    @patch("sagemaker.train.aws_batch.training_queued_job._remove_system_tags_in_place_in_model_trainer_object")
-    @patch("sagemaker.train.aws_batch.training_queued_job._construct_model_trainer_from_training_job_name")
+    @patch(
+        "sagemaker.train.aws_batch.training_queued_job._remove_system_tags_in_place_in_model_trainer_object"
+    )
+    @patch(
+        "sagemaker.train.aws_batch.training_queued_job._construct_model_trainer_from_training_job_name"
+    )
     @patch("sagemaker.train.aws_batch.training_queued_job._describe_service_job")
-    def test_get_model_trainer_success(self, mock_describe_service_job, mock_construct_trainer, mock_remove_tags):
+    def test_get_model_trainer_success(
+        self, mock_describe_service_job, mock_construct_trainer, mock_remove_tags
+    ):
         """Test get_model_trainer returns ModelTrainer when training job created"""
         # Return a real dict (not a mock) so nested dict access works
         mock_describe_service_job.return_value = DESCRIBE_SERVICE_JOB_RESP_SUCCEEDED
-        
+
         mock_trainer = Mock()
         mock_construct_trainer.return_value = mock_trainer
 

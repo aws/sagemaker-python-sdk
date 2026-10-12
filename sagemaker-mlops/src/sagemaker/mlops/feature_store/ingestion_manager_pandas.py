@@ -1,13 +1,14 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Multi-threaded data ingestion for FeatureStore using SageMaker Core."""
+
 import logging
 import math
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from multiprocessing import Pool
-from typing import Any, Dict, Iterable, List, Sequence, Union
+from typing import Any, Dict, Iterable, List, Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -52,6 +53,12 @@ class IngestionManagerPandas:
         max_workers (int): number of threads to create.
         max_processes (int): number of processes to create. Each process spawns
             ``max_workers`` threads.
+        use_batch_write_record (bool): whether to use the BatchWriteRecord API
+            instead of PutRecord.
+        region (str): AWS region name to write the records to, e.g. "eu-west-1".
+            If None, the region is resolved by boto3 from the environment
+            (``AWS_DEFAULT_REGION``, ``AWS_REGION``, or the active profile in
+            ``~/.aws/config``).
     """
 
     feature_group_name: str
@@ -59,6 +66,7 @@ class IngestionManagerPandas:
     max_workers: int = 1
     max_processes: int = 1
     use_batch_write_record: bool = False
+    region: str = None
     _async_result: Any = field(default=None, init=False)
     _processing_pool: Pool = field(default=None, init=False)
     _failed_indices: List[int] = field(default_factory=list, init=False)
@@ -89,7 +97,7 @@ class IngestionManagerPandas:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
-        
+
         Raises:
             ValueError: If wait=False with max_workers=1 and max_processes=1.
         """
@@ -99,11 +107,15 @@ class IngestionManagerPandas:
                 "Async ingestion (wait=False) requires max_processes > 1 or max_workers > 1. "
                 "Single-threaded ingestion only supports synchronous mode (wait=True)."
             )
-        
+
         if self.max_workers == 1 and self.max_processes == 1:
-            self._run_single_process_single_thread(data_frame=data_frame, target_stores=target_stores)
+            self._run_single_process_single_thread(
+                data_frame=data_frame, target_stores=target_stores
+            )
         else:
-            self._run_multi_process(data_frame=data_frame, target_stores=target_stores, wait=wait, timeout=timeout)
+            self._run_multi_process(
+                data_frame=data_frame, target_stores=target_stores, wait=wait, timeout=timeout
+            )
 
     def wait(self, timeout: Union[int, float] = None):
         """Wait for the ingestion process to finish.
@@ -151,6 +163,7 @@ class IngestionManagerPandas:
                 start_index=0,
                 end_index=len(data_frame),
                 target_stores=target_stores,
+                region=self.region,
             )
         else:
             failed_rows = []
@@ -163,6 +176,7 @@ class IngestionManagerPandas:
                     feature_definitions=self.feature_definitions,
                     failed_rows=failed_rows,
                     target_stores=target_stores,
+                    region=self.region,
                 )
 
         self._failed_indices = failed_rows
@@ -186,16 +200,19 @@ class IngestionManagerPandas:
         for i in range(self.max_processes):
             start_index = min(i * batch_size, data_frame.shape[0])
             end_index = min(i * batch_size + batch_size, data_frame.shape[0])
-            args.append((
-                self.max_workers,
-                self.feature_group_name,
-                self.feature_definitions,
-                data_frame[start_index:end_index],
-                target_stores,
-                start_index,
-                timeout,
-                self.use_batch_write_record,
-            ))
+            args.append(
+                (
+                    self.max_workers,
+                    self.feature_group_name,
+                    self.feature_definitions,
+                    data_frame[start_index:end_index],
+                    target_stores,
+                    start_index,
+                    timeout,
+                    self.use_batch_write_record,
+                    self.region,
+                )
+            )
 
         def init_worker():
             signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -220,6 +237,7 @@ class IngestionManagerPandas:
         row_offset: int = 0,
         timeout: Union[int, float] = None,
         use_batch_write_record: bool = False,
+        region: str = None,
     ) -> List[int]:
         """Start multi-threaded ingestion within a single process."""
         executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -238,6 +256,7 @@ class IngestionManagerPandas:
                     start_index=start_index,
                     end_index=end_index,
                     target_stores=target_stores,
+                    region=region,
                 )
             else:
                 future = executor.submit(
@@ -248,6 +267,7 @@ class IngestionManagerPandas:
                     start_index=start_index,
                     end_index=end_index,
                     target_stores=target_stores,
+                    region=region,
                 )
             futures[future] = (start_index + row_offset, end_index + row_offset)
 
@@ -270,6 +290,7 @@ class IngestionManagerPandas:
         start_index: int,
         end_index: int,
         target_stores: List[str] = None,
+        region: str = None,
     ) -> List[int]:
         """Ingest a single batch of DataFrame rows into FeatureStore."""
         logger.info("Started ingesting index %d to %d", start_index, end_index)
@@ -285,6 +306,7 @@ class IngestionManagerPandas:
                 feature_definitions=feature_definitions,
                 failed_rows=failed_rows,
                 target_stores=target_stores,
+                region=region,
             )
 
         return failed_rows
@@ -297,6 +319,7 @@ class IngestionManagerPandas:
         feature_definitions: Dict[str, Dict[Any, Any]],
         failed_rows: List[int],
         target_stores: List[str] = None,
+        region: str = None,
     ):
         """Ingest a single DataFrame row into FeatureStore using SageMaker Core."""
         try:
@@ -308,21 +331,30 @@ class IngestionManagerPandas:
                 if not IngestionManagerPandas._feature_value_is_not_none(feature_value):
                     continue
 
-                if IngestionManagerPandas._is_feature_collection_type(feature_name, feature_definitions):
-                    record.append(FeatureValue(
-                        feature_name=feature_name,
-                        value_as_string_list=IngestionManagerPandas._convert_to_string_list(feature_value),
-                    ))
+                if IngestionManagerPandas._is_feature_collection_type(
+                    feature_name, feature_definitions
+                ):
+                    record.append(
+                        FeatureValue(
+                            feature_name=feature_name,
+                            value_as_string_list=IngestionManagerPandas._convert_to_string_list(
+                                feature_value
+                            ),
+                        )
+                    )
                 else:
-                    record.append(FeatureValue(
-                        feature_name=feature_name,
-                        value_as_string=str(feature_value),
-                    ))
+                    record.append(
+                        FeatureValue(
+                            feature_name=feature_name,
+                            value_as_string=str(feature_value),
+                        )
+                    )
 
             # Use SageMaker Core's put_record directly
             feature_group.put_record(
                 record=record,
                 target_stores=target_stores,
+                region=region,
             )
 
         except Exception as e:
@@ -338,7 +370,11 @@ class IngestionManagerPandas:
         feature_def = feature_definitions.get(feature_name)
         if feature_def:
             collection_type = feature_def.get("CollectionType")
-            if isinstance(collection_type, Unassigned) or collection_type is None or collection_type == "":
+            if (
+                isinstance(collection_type, Unassigned)
+                or collection_type is None
+                or collection_type == ""
+            ):
                 return False
             return True
         return False
@@ -388,16 +424,24 @@ class IngestionManagerPandas:
             if not IngestionManagerPandas._feature_value_is_not_none(feature_value):
                 continue
 
-            if IngestionManagerPandas._is_feature_collection_type(feature_name, feature_definitions):
-                record.append(FeatureValue(
-                    feature_name=feature_name,
-                    value_as_string_list=IngestionManagerPandas._convert_to_string_list(feature_value),
-                ))
+            if IngestionManagerPandas._is_feature_collection_type(
+                feature_name, feature_definitions
+            ):
+                record.append(
+                    FeatureValue(
+                        feature_name=feature_name,
+                        value_as_string_list=IngestionManagerPandas._convert_to_string_list(
+                            feature_value
+                        ),
+                    )
+                )
             else:
-                record.append(FeatureValue(
-                    feature_name=feature_name,
-                    value_as_string=str(feature_value),
-                ))
+                record.append(
+                    FeatureValue(
+                        feature_name=feature_name,
+                        value_as_string=str(feature_value),
+                    )
+                )
         return record
 
     @staticmethod
@@ -408,6 +452,7 @@ class IngestionManagerPandas:
         start_index: int,
         end_index: int,
         target_stores: List[str] = None,
+        region: str = None,
     ) -> List[int]:
         """Ingest records using BatchWriteRecord API (up to 25 per call).
 
@@ -418,19 +463,23 @@ class IngestionManagerPandas:
             start_index: Start index in the DataFrame slice.
             end_index: End index in the DataFrame slice.
             target_stores: Target stores for ingestion.
+            region: AWS region name to write the records to. If None, boto3 resolves
+                the region from the environment.
 
         Returns:
             List of row indices that failed to ingest.
         """
         logger.info(
             "Started batch write ingestion index %d to %d (batch_size=%d)",
-            start_index, end_index, BATCH_WRITE_MAX_ENTRIES,
+            start_index,
+            end_index,
+            BATCH_WRITE_MAX_ENTRIES,
         )
         failed_rows = []
         rows = list(data_frame[start_index:end_index].itertuples())
 
         for batch_start in range(0, len(rows), BATCH_WRITE_MAX_ENTRIES):
-            batch = rows[batch_start:batch_start + BATCH_WRITE_MAX_ENTRIES]
+            batch = rows[batch_start : batch_start + BATCH_WRITE_MAX_ENTRIES]
             entries = []
             row_indices = []
 
@@ -459,7 +508,7 @@ class IngestionManagerPandas:
 
             try:
                 fg = CoreFeatureGroup(feature_group_name=feature_group_name)
-                response = fg.batch_write_record(entries=entries)
+                response = fg.batch_write_record(entries=entries, region=region)
 
                 # Handle partial failures from unprocessed entries
                 if response.unprocessed_entries:
@@ -505,7 +554,8 @@ class IngestionManagerPandas:
             except Exception as e:
                 logger.error(
                     "BatchWriteRecord call failed for batch starting at row %d: %s",
-                    row_indices[0] if row_indices else start_index, e,
+                    row_indices[0] if row_indices else start_index,
+                    e,
                 )
                 failed_rows.extend(row_indices)
 

@@ -138,4 +138,4 @@ Interactive Notebook
 .. toctree::
    :maxdepth: 1
 
-   ../../v3-examples/model-customization-examples/sft_finetuning_serverful_smtj
+   ../../v3-examples/model-customization-examples/serverful/sft_finetuning_serverful_smtj

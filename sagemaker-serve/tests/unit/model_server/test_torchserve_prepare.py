@@ -40,7 +40,7 @@ class TestTorchServePrepare(unittest.TestCase):
         mock_inference_spec = Mock()
 
         with patch("builtins.open", mock_open(read_data=b"test data")):
-            secret_key = prepare_for_torchserve(
+            prepare_for_torchserve(
                 model_path=str(model_path),
                 shared_libs=[],
                 dependencies={},
@@ -75,7 +75,7 @@ class TestTorchServePrepare(unittest.TestCase):
         mock_session = Mock()
 
         with patch("builtins.open", mock_open(read_data=b"test data")):
-            secret_key = prepare_for_torchserve(
+            prepare_for_torchserve(
                 model_path=str(model_path),
                 shared_libs=[],
                 dependencies={},
@@ -165,7 +165,7 @@ class TestTorchServePrepare(unittest.TestCase):
         mock_session = Mock()
 
         with patch("builtins.open", mock_open(read_data=b"test data")):
-            secret_key = prepare_for_torchserve(
+            prepare_for_torchserve(
                 model_path=str(model_path),
                 shared_libs=[],
                 dependencies={},

@@ -16,7 +16,6 @@ from unittest.mock import MagicMock
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.core.telemetry.resource_creation import _RESOURCE_ARN_ATTRIBUTES, get_resource_arn
 
-
 # Each entry: (class_name, arn_attr, arn_value)
 _RESOURCE_TEST_CASES = [
     (

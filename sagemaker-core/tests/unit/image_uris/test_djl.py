@@ -86,6 +86,7 @@ EXPECTED_DJL_LMI_REGIONS = {
 # Known missing framework:version:region combinations that don't exist in ECR
 KNOWN_MISSING_COMBINATIONS = {
     "djl-lmi": {
+        "0.38.0-lmi29.0.0-cu130": {"ap-east-2"},
         "0.36.0-lmi27.0.0-cu130": {"ap-east-2"},
         "0.36.0-lmi26.0.0-cu130": {"ap-east-2"},
         "0.36.0-lmi22.0.0-cu129": {"ap-east-2"},

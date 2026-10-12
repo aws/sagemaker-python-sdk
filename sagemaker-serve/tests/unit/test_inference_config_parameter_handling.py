@@ -6,8 +6,7 @@ Requirements: 2.3, 2.4, 2.5
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, call
-import pytest
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
@@ -454,7 +453,6 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         )
 
         # Set cached requirements (from build())
-        from sagemaker.core.utils.utils import Unassigned
 
         cached_requirements = InferenceComponentComputeResourceRequirements(
             number_of_cpu_cores_required=4,

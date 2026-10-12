@@ -1,4 +1,5 @@
 # sagemaker_config.py
+"""Manager for loading and resolving SageMaker configuration values."""
 
 import pathlib
 import copy
@@ -25,6 +26,8 @@ log_info_function = non_repeating_log_factory(logger, "info")
 
 
 class SageMakerConfig:
+    """Manages loading and resolution of SageMaker configuration."""
+
     _APP_NAME = "sagemaker"
     _CONFIG_FILE_NAME = "config.yaml"
     _DEFAULT_ADMIN_CONFIG_FILE_PATH = os.path.join(site_config_dir(_APP_NAME), _CONFIG_FILE_NAME)
@@ -46,6 +49,7 @@ class SageMakerConfig:
         s3_resource=None,
         repeat_log: bool = False,
     ) -> dict:
+        """Load the SageMaker configuration from the given paths."""
         default_config_path = os.getenv(
             self.ENV_VARIABLE_ADMIN_CONFIG_OVERRIDE, self._DEFAULT_ADMIN_CONFIG_FILE_PATH
         )
@@ -87,9 +91,11 @@ class SageMakerConfig:
 
     @staticmethod
     def validate_sagemaker_config(sagemaker_config: Optional[dict] = None):
+        """Validate the given SageMaker configuration against the schema."""
         jsonschema.validate(sagemaker_config, SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA)
 
     def load_local_mode_config(self) -> Optional[dict]:
+        """Load the local mode configuration."""
         try:
             content = self._load_config_from_file(self._DEFAULT_LOCAL_MODE_CONFIG_FILE_PATH)
         except ValueError:
@@ -578,6 +584,7 @@ class SageMakerConfig:
 
     @lru_cache(maxsize=None)
     def load_default_configs_for_resource_name(self, resource_name: str):
+        """Load the default configs for the given resource name."""
         configs_data = self.load_sagemaker_config()
         if not configs_data:
             logger.debug("No default configurations found for resource: %s", resource_name)
@@ -585,6 +592,7 @@ class SageMakerConfig:
         return configs_data["SageMaker"]["PythonSDK"]["Resources"].get(resource_name)
 
     def get_resolved_config_value(self, attribute, resource_defaults, global_defaults):
+        """Return the resolved configuration value for the given key path."""
         if resource_defaults and attribute in resource_defaults:
             return resource_defaults[attribute]
         if global_defaults and attribute in global_defaults:

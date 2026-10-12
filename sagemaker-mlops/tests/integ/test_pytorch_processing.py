@@ -25,7 +25,7 @@ def test_pytorch_processing_job(sagemaker_session, role):
     s3_prefix = "integ-test-pytorch-processing"
     processing_job_name = "{}-{}".format(s3_prefix, strftime("%d-%H-%M-%S", gmtime()))
     output_destination = "s3://{}/{}".format(bucket, s3_prefix)
-    
+
     try:
         image_uri = get_training_image_uri(
             region=region,
@@ -34,14 +34,14 @@ def test_pytorch_processing_job(sagemaker_session, role):
             py_version="py39",
             instance_type="ml.m5.xlarge",
         )
-        
+
         pytorch_processor = FrameworkProcessor(
             image_uri=image_uri,
             role=role,
             instance_type="ml.m5.xlarge",
             instance_count=1,
         )
-        
+
         pytorch_processor.run(
             code="preprocessing.py",
             source_dir=os.path.join(os.path.dirname(__file__), "code", "pytorch_processing"),
@@ -67,28 +67,28 @@ def test_pytorch_processing_job(sagemaker_session, role):
             ],
             wait=False,
         )
-        
+
         # Check job status with 10 minute timeout
         job = pytorch_processor.latest_job
         timeout = 600
         start_time = time.time()
-        
+
         while time.time() - start_time < timeout:
             job.refresh()
             status = job.processing_job_status
-            
+
             if status == "Completed":
                 assert status == "Completed"
                 break
             elif status in ["Failed", "Stopped"]:
                 pytest.fail(f"Processing job {status}")
-            
+
             time.sleep(30)
         else:
             pytest.fail(f"Processing job timed out after {timeout} seconds")
-    
+
     finally:
         # Cleanup S3 resources
-        s3 = boto3.resource('s3')
+        s3 = boto3.resource("s3")
         bucket_obj = s3.Bucket(bucket)
-        bucket_obj.objects.filter(Prefix=f'{s3_prefix}/').delete()
+        bucket_obj.objects.filter(Prefix=f"{s3_prefix}/").delete()

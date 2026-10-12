@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """A class for extracting resource information from a service JSON."""
+
 from typing import Optional
 
 import pandas as pd
@@ -31,8 +32,7 @@ This class is used to extract the resources and its actions from the service-2.j
 
 
 class ResourcesExtractor:
-    """
-    A class for extracting resource information from a service JSON.
+    """A class for extracting resource information from a service JSON.
 
     Args:
         service_json (dict): The Botocore service.json containing the shape definitions.
@@ -54,7 +54,8 @@ class ResourcesExtractor:
     Methods:
         _filter_actions_for_resources(resources): Filters actions based on the given resources.
         _extract_resources_plan(): Extracts the resource plan from the service JSON.
-        _get_status_chain_and_states(shape_name, status_chain): Recursively extracts the status chain and states for a given shape.
+        _get_status_chain_and_states(shape_name, status_chain): Recursively extracts the status
+            chain and states for a given shape.
         _extract_resource_plan_as_dataframe(): Builds a DataFrame containing resource information.
         get_resource_plan(): Returns the resource plan DataFrame.
     """
@@ -68,8 +69,7 @@ class ResourcesExtractor:
         combined_shapes: Optional[dict] = None,
         combined_operations: Optional[dict] = None,
     ):
-        """
-        Initializes a ResourceExtractor object.
+        """Initializes a ResourceExtractor object.
 
         Args:
             service_json (dict): The service JSON containing operations and shapes.
@@ -86,8 +86,7 @@ class ResourcesExtractor:
         self._extract_resources_plan()
 
     def _filter_additional_operations(self):
-        """
-        Extracts information from additional operations defined in additional_operations.json
+        """Extracts information from additional operations defined in additional_operations.json
 
         Returns:
             None
@@ -104,8 +103,7 @@ class ResourcesExtractor:
                 self.actions.remove(operation_name)
 
     def _filter_actions_for_resources(self, resources):
-        """
-        Filters actions based on the given resources.
+        """Filters actions based on the given resources.
 
         Args:
             resources (set): A set of resources.
@@ -129,8 +127,7 @@ class ResourcesExtractor:
             self.actions = self.actions - filtered_actions
 
     def _extract_resources_plan(self):
-        """
-        Extracts the resource plan from the service JSON.
+        """Extracts the resource plan from the service JSON.
 
         Returns:
             None
@@ -187,8 +184,7 @@ class ResourcesExtractor:
         self._extract_resource_plan_as_dataframe()
 
     def get_status_chain_and_states(self, resource_name):
-        """
-        Extract the status chain and states for a given resource.
+        """Extract the status chain and states for a given resource.
 
         Args:
             resource_name (str): The name of the resource
@@ -218,8 +214,7 @@ class ResourcesExtractor:
         return resource_status_chain, resource_states
 
     def _get_status_chain_and_states(self, shape_name, status_chain: list = None):
-        """
-        Recursively extracts the status chain and states for a given shape.
+        """Recursively extracts the status chain and states for a given shape.
 
         Args:
             shape_name (str): The name of the shape.
@@ -251,8 +246,7 @@ class ResourcesExtractor:
             return status_chain, resource_states
 
     def _extract_resource_plan_as_dataframe(self):
-        """
-        Builds a DataFrame containing resource information.
+        """Builds a DataFrame containing resource information.
 
         Returns:
             None
@@ -286,9 +280,6 @@ class ResourcesExtractor:
                 if action_low.split(resource_low)[0] == "describe":
                     class_methods.add("get")
                     object_methods.add("refresh")
-
-                    output_shape_name = self.operations[action]["output"]["shape"]
-                    output_members_data = self.shapes[output_shape_name]["members"]
 
                     resource_status_chain, resource_states = self.get_status_chain_and_states(
                         resource
@@ -349,8 +340,7 @@ class ResourcesExtractor:
         self.df.to_csv("resource_plan.csv", index=False)
 
     def get_resource_plan(self):
-        """
-        Returns the resource plan DataFrame.
+        """Returns the resource plan DataFrame.
 
         Returns:
             df (DataFrame): The resource plan DataFrame.
@@ -358,8 +348,7 @@ class ResourcesExtractor:
         return self.df
 
     def get_resource_methods(self):
-        """
-        Returns the resource methods dict.
+        """Returns the resource methods dict.
 
         Returns:
             resource_methods (dict): The resource methods dict.

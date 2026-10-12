@@ -276,9 +276,7 @@ class TestGeneralBucketCheckExpectedBucketOwner:
             Bucket="customer-cross-account-bucket"
         )
 
-    def test_list_objects_probe_includes_expected_owner_when_sdk_selected(
-        self, mock_boto_session
-    ):
+    def test_list_objects_probe_includes_expected_owner_when_sdk_selected(self, mock_boto_session):
         """list_objects_v2 branch (default_bucket_prefix set) passes ExpectedBucketOwner
         only when SDK picked the name.
         """
@@ -338,9 +336,10 @@ class TestGeneralBucketCheckExpectedBucketOwner:
         session = Session(boto_session=mock_boto_session)
         session._default_bucket_set_by_sdk = True
 
-        with patch.object(session, "account_id", return_value="123456789012"), patch.object(
-            session, "create_bucket_for_not_exist_error"
-        ) as mock_create:
+        with (
+            patch.object(session, "account_id", return_value="123456789012"),
+            patch.object(session, "create_bucket_for_not_exist_error") as mock_create,
+        ):
             session.general_bucket_check_if_user_has_permission(
                 "sagemaker-us-west-2-123456789012",
                 mock_s3_resource,
@@ -370,18 +369,14 @@ class TestExpectedBucketOwnerIdIfDefaultBucket:
         assert session._get_account_id_if_default_bucket(None) is None
         assert session._get_account_id_if_default_bucket("") is None
 
-    def test_returns_account_id_when_bucket_matches_resolved_default(
-        self, mock_boto_session
-    ):
+    def test_returns_account_id_when_bucket_matches_resolved_default(self, mock_boto_session):
         session = Session(boto_session=mock_boto_session)
         session._default_bucket = "sagemaker-us-west-2-123456789012"
         session._default_bucket_set_by_sdk = True
 
         with patch.object(session, "account_id", return_value="123456789012"):
             assert (
-                session._get_account_id_if_default_bucket(
-                    "sagemaker-us-west-2-123456789012"
-                )
+                session._get_account_id_if_default_bucket("sagemaker-us-west-2-123456789012")
                 == "123456789012"
             )
 
@@ -403,10 +398,7 @@ class TestExpectedBucketOwnerIdIfDefaultBucket:
 
         with patch.object(session, "account_id", return_value="123456789012"):
             assert (
-                session._get_account_id_if_default_bucket(
-                    "jumpstart-cache-prod-us-west-2"
-                )
-                is None
+                session._get_account_id_if_default_bucket("jumpstart-cache-prod-us-west-2") is None
             )
 
     def test_returns_none_when_default_not_yet_resolved(self, mock_boto_session):
@@ -415,12 +407,7 @@ class TestExpectedBucketOwnerIdIfDefaultBucket:
         session._default_bucket = None
         session._default_bucket_name_override = None
 
-        assert (
-            session._get_account_id_if_default_bucket(
-                "sagemaker-us-west-2-123456789012"
-            )
-            is None
-        )
+        assert session._get_account_id_if_default_bucket("sagemaker-us-west-2-123456789012") is None
 
     def test_returns_none_when_account_id_fails(self, mock_boto_session):
         """If STS call fails, fall back gracefully rather than block the S3 op."""
@@ -430,8 +417,6 @@ class TestExpectedBucketOwnerIdIfDefaultBucket:
 
         with patch.object(session, "account_id", side_effect=Exception("sts failure")):
             assert (
-                session._get_account_id_if_default_bucket(
-                    "sagemaker-us-west-2-123456789012"
-                )
+                session._get_account_id_if_default_bucket("sagemaker-us-west-2-123456789012")
                 is None
             )

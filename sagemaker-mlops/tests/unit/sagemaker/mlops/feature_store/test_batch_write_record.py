@@ -1,8 +1,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for BatchWriteRecord and ListRecords wiring."""
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pandas as pd
 import numpy as np
 
@@ -26,20 +27,24 @@ class TestBatchWriteRecordIngestion:
 
     @pytest.fixture
     def sample_dataframe(self):
-        return pd.DataFrame({
-            "RecordIdentifier": [f"id-{i}" for i in range(5)],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 5,
-            "Feature1": [f"value-{i}" for i in range(5)],
-        })
+        return pd.DataFrame(
+            {
+                "RecordIdentifier": [f"id-{i}" for i in range(5)],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 5,
+                "Feature1": [f"value-{i}" for i in range(5)],
+            }
+        )
 
     @pytest.fixture
     def large_dataframe(self):
         """DataFrame with 60 rows — should produce 3 BatchWriteRecord calls."""
-        return pd.DataFrame({
-            "RecordIdentifier": [f"id-{i}" for i in range(60)],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 60,
-            "Feature1": [f"value-{i}" for i in range(60)],
-        })
+        return pd.DataFrame(
+            {
+                "RecordIdentifier": [f"id-{i}" for i in range(60)],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 60,
+                "Feature1": [f"value-{i}" for i in range(60)],
+            }
+        )
 
     def test_batch_write_max_entries_constant(self):
         assert BATCH_WRITE_MAX_ENTRIES == 25
@@ -80,7 +85,9 @@ class TestBatchWriteRecordIngestion:
         assert mgr.failed_rows == []
 
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
-    def test_batch_write_multiple_batches(self, mock_fg_class, feature_definitions, large_dataframe):
+    def test_batch_write_multiple_batches(
+        self, mock_fg_class, feature_definitions, large_dataframe
+    ):
         """60 rows → 3 batch_write_record calls (25+25+10)."""
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -102,11 +109,13 @@ class TestBatchWriteRecordIngestion:
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
     def test_batch_write_exactly_25(self, mock_fg_class, feature_definitions):
         """Exactly 25 rows → 1 call (boundary)."""
-        df = pd.DataFrame({
-            "RecordIdentifier": [f"id-{i}" for i in range(25)],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 25,
-            "Feature1": [f"v-{i}" for i in range(25)],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": [f"id-{i}" for i in range(25)],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 25,
+                "Feature1": [f"v-{i}" for i in range(25)],
+            }
+        )
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
         mock_response = Mock()
@@ -125,11 +134,13 @@ class TestBatchWriteRecordIngestion:
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
     def test_batch_write_exactly_26(self, mock_fg_class, feature_definitions):
         """Exactly 26 rows → 2 calls (25+1 boundary)."""
-        df = pd.DataFrame({
-            "RecordIdentifier": [f"id-{i}" for i in range(26)],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 26,
-            "Feature1": [f"v-{i}" for i in range(26)],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": [f"id-{i}" for i in range(26)],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 26,
+                "Feature1": [f"v-{i}" for i in range(26)],
+            }
+        )
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
         mock_response = Mock()
@@ -148,11 +159,13 @@ class TestBatchWriteRecordIngestion:
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
     def test_batch_write_empty_dataframe(self, mock_fg_class, feature_definitions):
         """Empty DataFrame → no batch_write_record calls."""
-        df = pd.DataFrame({
-            "RecordIdentifier": [],
-            "EventTime": [],
-            "Feature1": [],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": [],
+                "EventTime": [],
+                "Feature1": [],
+            }
+        )
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
 
@@ -170,11 +183,13 @@ class TestBatchWriteRecordIngestion:
         """Error with matching entry maps to specific row index."""
         from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 
-        df = pd.DataFrame({
-            "RecordIdentifier": ["good-1", None, "good-3"],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 3,
-            "Feature1": ["v1", "v2", "v3"],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["good-1", None, "good-3"],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 3,
+                "Feature1": ["v1", "v2", "v3"],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -215,11 +230,13 @@ class TestBatchWriteRecordIngestion:
         """Multiple errors map to correct row indices."""
         from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 
-        df = pd.DataFrame({
-            "RecordIdentifier": ["good-0", None, "good-2", None, "good-4"],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 5,
-            "Feature1": ["v0", "v1", "v2", "v3", "v4"],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["good-0", None, "good-2", None, "good-4"],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 5,
+                "Feature1": ["v0", "v1", "v2", "v3", "v4"],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -293,11 +310,13 @@ class TestBatchWriteRecordIngestion:
         """Unprocessed entries map back to specific row indices."""
         from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-0", "id-1", "id-2"],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 3,
-            "Feature1": ["v0", "v1", "v2"],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-0", "id-1", "id-2"],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 3,
+                "Feature1": ["v0", "v1", "v2"],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -331,15 +350,19 @@ class TestBatchWriteRecordIngestion:
         assert 1 not in exc_info.value.failed_rows
 
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
-    def test_batch_write_unprocessed_entry_no_match_marks_all(self, mock_fg_class, feature_definitions):
+    def test_batch_write_unprocessed_entry_no_match_marks_all(
+        self, mock_fg_class, feature_definitions
+    ):
         """If unprocessed entry can't be matched, all rows in batch marked failed."""
         from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-0", "id-1"],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 2,
-            "Feature1": ["v0", "v1"],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-0", "id-1"],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 2,
+                "Feature1": ["v0", "v1"],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -376,11 +399,13 @@ class TestBatchWriteRecordIngestion:
         """Multiple unprocessed entries each map to correct row."""
         from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-0", "id-1", "id-2", "id-3", "id-4"],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 5,
-            "Feature1": ["v0", "v1", "v2", "v3", "v4"],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-0", "id-1", "id-2", "id-3", "id-4"],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 5,
+                "Feature1": ["v0", "v1", "v2", "v3", "v4"],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -428,11 +453,13 @@ class TestBatchWriteRecordIngestion:
         """Both errors and unprocessed_entries in same response."""
         from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-0", None, "id-2", "id-3", "id-4"],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 5,
-            "Feature1": ["v0", "v1", "v2", "v3", "v4"],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-0", None, "id-2", "id-3", "id-4"],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 5,
+                "Feature1": ["v0", "v1", "v2", "v3", "v4"],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -485,11 +512,13 @@ class TestBatchWriteRecordIngestion:
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
     def test_batch_write_error_without_entry_marks_all(self, mock_fg_class, feature_definitions):
         """Error object without .entry attribute marks all rows failed."""
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-0", "id-1"],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 2,
-            "Feature1": ["v0", "v1"],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-0", "id-1"],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 2,
+                "Feature1": ["v0", "v1"],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -519,11 +548,13 @@ class TestBatchWriteRecordIngestion:
         """Error with entry that doesn't match → marks all rows in batch failed."""
         from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-0", "id-1"],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 2,
-            "Feature1": ["v0", "v1"],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-0", "id-1"],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 2,
+                "Feature1": ["v0", "v1"],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -557,11 +588,13 @@ class TestBatchWriteRecordIngestion:
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
     def test_batch_write_skips_null_values(self, mock_fg_class, feature_definitions):
         """Null/NaN values not included in record."""
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-1"],
-            "EventTime": ["2026-01-01T00:00:00Z"],
-            "Feature1": [None],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-1"],
+                "EventTime": ["2026-01-01T00:00:00Z"],
+                "Feature1": [None],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -586,9 +619,13 @@ class TestBatchWriteRecordIngestion:
 
     def test_use_batch_write_record_false_uses_put_record(self, feature_definitions):
         """False flag → put_record called, not batch_write_record."""
-        df = pd.DataFrame({"RecordIdentifier": ["id-1"], "EventTime": ["2026-01-01T00:00:00Z"], "Feature1": ["v"]})
+        df = pd.DataFrame(
+            {"RecordIdentifier": ["id-1"], "EventTime": ["2026-01-01T00:00:00Z"], "Feature1": ["v"]}
+        )
 
-        with patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup") as mock_fg_class:
+        with patch(
+            "sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup"
+        ) as mock_fg_class:
             mock_fg = Mock()
             mock_fg_class.return_value = mock_fg
 
@@ -603,7 +640,9 @@ class TestBatchWriteRecordIngestion:
             mock_fg.batch_write_record.assert_not_called()
 
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
-    def test_batch_write_does_not_pass_none_target_stores(self, mock_fg_class, feature_definitions, sample_dataframe):
+    def test_batch_write_does_not_pass_none_target_stores(
+        self, mock_fg_class, feature_definitions, sample_dataframe
+    ):
         """target_stores=None → entries have Unassigned (not None)."""
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -622,10 +661,13 @@ class TestBatchWriteRecordIngestion:
         call_kwargs = mock_fg.batch_write_record.call_args
         entries = call_kwargs.kwargs.get("entries") or call_kwargs[1].get("entries")
         from sagemaker.core.utils.utils import Unassigned
+
         assert isinstance(entries[0].target_stores, Unassigned)
 
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
-    def test_batch_write_passes_target_stores_when_set(self, mock_fg_class, feature_definitions, sample_dataframe):
+    def test_batch_write_passes_target_stores_when_set(
+        self, mock_fg_class, feature_definitions, sample_dataframe
+    ):
         """target_stores=['OnlineStore'] → entries have target_stores set."""
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -646,13 +688,17 @@ class TestBatchWriteRecordIngestion:
         assert entries[0].target_stores == ["OnlineStore"]
 
     @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
-    def test_batch_write_sliced_dataframe_preserves_indices(self, mock_fg_class, feature_definitions):
+    def test_batch_write_sliced_dataframe_preserves_indices(
+        self, mock_fg_class, feature_definitions
+    ):
         """Sliced DataFrame (non-zero index) reports correct original indices on failure."""
-        df = pd.DataFrame({
-            "RecordIdentifier": [f"id-{i}" for i in range(10)],
-            "EventTime": ["2026-01-01T00:00:00Z"] * 10,
-            "Feature1": [f"v-{i}" for i in range(10)],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": [f"id-{i}" for i in range(10)],
+                "EventTime": ["2026-01-01T00:00:00Z"] * 10,
+                "Feature1": [f"v-{i}" for i in range(10)],
+            }
+        )
 
         mock_fg = Mock()
         mock_fg_class.return_value = mock_fg
@@ -699,10 +745,12 @@ class TestBuildRecord:
 
     def test_build_record_multiple_rows_correct_values(self):
         """Each row maps to correct column values (no cross-row contamination)."""
-        df = pd.DataFrame({
-            "Id": ["id-0", "id-1", "id-2"],
-            "Val": ["v0", "v1", "v2"],
-        })
+        df = pd.DataFrame(
+            {
+                "Id": ["id-0", "id-1", "id-2"],
+                "Val": ["v0", "v1", "v2"],
+            }
+        )
         defs = {c: {"FeatureType": "String", "CollectionType": None} for c in df.columns}
         for row in df.itertuples():
             record = IngestionManagerPandas._build_record(df, row, defs)
@@ -713,10 +761,12 @@ class TestBuildRecord:
 
     def test_build_record_sliced_dataframe(self):
         """Sliced DataFrame (non-zero index) still maps correctly."""
-        df = pd.DataFrame({
-            "Id": ["id-0", "id-1", "id-2", "id-3", "id-4"],
-            "Val": ["v0", "v1", "v2", "v3", "v4"],
-        })
+        df = pd.DataFrame(
+            {
+                "Id": ["id-0", "id-1", "id-2", "id-3", "id-4"],
+                "Val": ["v0", "v1", "v2", "v3", "v4"],
+            }
+        )
         sliced = df[2:4]  # rows at index 2, 3
         defs = {c: {"FeatureType": "String", "CollectionType": None} for c in df.columns}
         for row in sliced.itertuples():
@@ -728,11 +778,13 @@ class TestBuildRecord:
 
     def test_build_record_skips_none(self):
         """None values excluded from record."""
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-1"],
-            "EventTime": ["2026-01-01T00:00:00Z"],
-            "Feature1": [None],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-1"],
+                "EventTime": ["2026-01-01T00:00:00Z"],
+                "Feature1": [None],
+            }
+        )
         defs = {c: {"FeatureType": "String", "CollectionType": None} for c in df.columns}
         row = next(df.itertuples())
         record = IngestionManagerPandas._build_record(df, row, defs)
@@ -742,11 +794,13 @@ class TestBuildRecord:
 
     def test_build_record_skips_nan(self):
         """NaN values excluded from record."""
-        df = pd.DataFrame({
-            "RecordIdentifier": ["id-1"],
-            "EventTime": ["2026-01-01T00:00:00Z"],
-            "Feature1": [np.nan],
-        })
+        df = pd.DataFrame(
+            {
+                "RecordIdentifier": ["id-1"],
+                "EventTime": ["2026-01-01T00:00:00Z"],
+                "Feature1": [np.nan],
+            }
+        )
         defs = {c: {"FeatureType": "String", "CollectionType": None} for c in df.columns}
         row = next(df.itertuples())
         record = IngestionManagerPandas._build_record(df, row, defs)
@@ -754,10 +808,12 @@ class TestBuildRecord:
 
     def test_build_record_collection_type(self):
         """Collection type feature uses value_as_string_list."""
-        df = pd.DataFrame({
-            "id": ["id-1"],
-            "tags": [["a", "b", "c"]],
-        })
+        df = pd.DataFrame(
+            {
+                "id": ["id-1"],
+                "tags": [["a", "b", "c"]],
+            }
+        )
         defs = {
             "id": {"FeatureType": "String", "CollectionType": None},
             "tags": {"FeatureType": "String", "CollectionType": "List"},
@@ -791,5 +847,3 @@ class TestBuildRecord:
         assert rows[0][0] == 0
         assert rows[1][0] == 1
         assert rows[2][0] == 2
-
-

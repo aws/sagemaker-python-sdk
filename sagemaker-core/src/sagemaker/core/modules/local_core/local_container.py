@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """LocalContainer class module."""
+
 from __future__ import absolute_import
 
 import base64
@@ -68,7 +69,8 @@ def _rmtree(path, image=None, is_studio=False):
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
                 "You may need to remove them manually with: sudo rm -rf %s",
-                path, path,
+                path,
+                path,
             )
             raise
         try:
@@ -82,7 +84,8 @@ def _rmtree(path, image=None, is_studio=False):
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
                 "You may need to remove them manually with: sudo rm -rf %s",
-                path, path,
+                path,
+                path,
             )
             raise
 
@@ -618,7 +621,7 @@ class _LocalContainer(BaseModel):
             )
 
         if output:
-            match = re.search(r"v(\d+)", output.strip())
+            match = re.search(r"version\s+v?(\d+)", output.strip())
             if match and int(match.group(1)) >= 2:
                 logger.info("'Docker Compose' found using Docker CLI.")
                 compose_cmd_prefix.extend(["docker", "compose"])

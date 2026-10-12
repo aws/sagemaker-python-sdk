@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utility functions for SageMaker training recipes."""
+
 from __future__ import absolute_import
 
 import math
@@ -28,7 +29,7 @@ from omegaconf import OmegaConf, dictconfig
 
 # from sagemaker.utils.image_uris import retrieve
 
-from sagemaker.train import logger
+from sagemaker.core.utils.utils import logger
 from sagemaker.train.utils import _run_clone_command_silent
 from sagemaker.train.configs import Compute, SourceCode
 from sagemaker.train.distributed import Torchrun, SMP
@@ -102,8 +103,7 @@ def _drop_unknown_recipe_overrides(
         base_has_key = isinstance(base_recipe, Mapping) and key in base_recipe
         if not base_has_key:
             logger.warning(
-                "Recipe override key '%s' does not exist in the recipe and will "
-                "be dropped.",
+                "Recipe override key '%s' does not exist in the recipe and will " "be dropped.",
                 dotpath,
             )
             continue
@@ -392,14 +392,14 @@ def _get_args_from_recipe(
 
     # Update args with compute and hyperparameters
     hyperparameters = {"config-path": ".", "config-name": SM_RECIPE_YAML}
-    
+
     # Handle eval custom lambda configuration
     if recipe.get("evaluation", {}):
         processor = recipe.get("processor", {})
         lambda_arn = processor.get("lambda_arn", "")
         if lambda_arn and "{{" not in str(lambda_arn):
             hyperparameters["lambda_arn"] = lambda_arn
-    
+
     args.update(
         {
             "compute": compute,
@@ -408,6 +408,7 @@ def _get_args_from_recipe(
     )
 
     return args, recipe_train_dir
+
 
 def _is_nova_recipe(
     recipe: dictconfig.DictConfig,
@@ -441,6 +442,7 @@ def _is_nova_recipe(
     training_config = recipe.get("training_config", {})
     has_distillation = training_config.get("distillation_data") is not None
     return bool(has_nova_model) or bool(has_distillation)
+
 
 def _get_args_from_nova_recipe(
     recipe: dictconfig.DictConfig,
@@ -526,6 +528,7 @@ def _get_args_from_nova_recipe(
     )
     return args, recipe_local_dir
 
+
 def _resolve_final_recipe(recipe: dictconfig.DictConfig):
     """Resolve final recipe."""
     final_recipe = _try_resolve_recipe(recipe)
@@ -537,6 +540,7 @@ def _resolve_final_recipe(recipe: dictconfig.DictConfig):
         raise RuntimeError("Could not resolve provided recipe.")
 
     return final_recipe
+
 
 def _is_llmft_recipe(
     recipe: dictconfig.DictConfig,
@@ -562,8 +566,8 @@ def _is_llmft_recipe(
     model_type = (run_config.get("model_type") or "").lower()
     has_llmft_model = model_type == "llm_finetuning_aws"
     has_verl_model = model_type == "verl"
-    is_llmft_training = (
-        (bool(has_llmft_model) or bool(has_verl_model)) and bool(recipe.get("training_config"))
+    is_llmft_training = (bool(has_llmft_model) or bool(has_verl_model)) and bool(
+        recipe.get("training_config")
     )
 
     # Open-source SMTJ *evaluation* recipes share the LLMFT submission path but
@@ -580,6 +584,7 @@ def _is_llmft_recipe(
     )
 
     return is_llmft_training or is_oss_eval_recipe
+
 
 def _get_args_from_llmft_recipe(
     recipe: dictconfig.DictConfig,

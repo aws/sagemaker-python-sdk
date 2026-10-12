@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import os
-import re
 import shutil
 import sys
 import importlib.util as _importlib_util
@@ -25,15 +24,28 @@ import pytest
 # Shared container-build helpers (file-locked, xdist-safe)
 # ---------------------------------------------------------------------------
 _container_build_path = _os.path.abspath(
-    _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "..", "tests", "integ_helpers", "container_build.py")
+    _os.path.join(
+        _os.path.dirname(__file__),
+        "..",
+        "..",
+        "..",
+        "..",
+        "tests",
+        "integ_helpers",
+        "container_build.py",
+    )
 )
-_spec = _importlib_util.spec_from_file_location("integ_helpers.container_build", _container_build_path)
+_spec = _importlib_util.spec_from_file_location(
+    "integ_helpers.container_build", _container_build_path
+)
 _container_build = _importlib_util.module_from_spec(_spec)
 _spec.loader.exec_module(_container_build)
 
 DOCKERFILE_TEMPLATE = _container_build.DOCKERFILE_TEMPLATE
 DOCKERFILE_TEMPLATE_WITH_CONDA = _container_build.DOCKERFILE_TEMPLATE_WITH_CONDA
-DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = _container_build.DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR
+DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = (
+    _container_build.DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR
+)
 build_sdk_tar_once = _container_build.build_sdk_tar_once
 build_container_once = _container_build.build_container_once
 
@@ -108,42 +120,58 @@ def sagemaker_sdk_tar_path(tmp_path_factory):
 
 
 @pytest.fixture(scope="session")
-def dummy_container_without_error(sagemaker_session, compatible_python_version,
-                                   sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_without_error(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return build_container_once(
         "dummy_container_without_error",
-        sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
-def dummy_container_with_user_and_workdir(sagemaker_session, compatible_python_version,
-                                           sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_with_user_and_workdir(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return build_container_once(
         "dummy_container_with_user_and_workdir",
-        sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
-def dummy_container_incompatible_python_runtime(sagemaker_session, incompatible_python_version,
-                                                 sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_incompatible_python_runtime(
+    sagemaker_session, incompatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return build_container_once(
         "dummy_container_incompatible_python_runtime",
-        sagemaker_session, incompatible_python_version,
-        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        incompatible_python_version,
+        DOCKERFILE_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
-def dummy_container_with_conda(sagemaker_session, compatible_python_version,
-                                sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_with_conda(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return build_container_once(
         "dummy_container_with_conda",
-        sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE_WITH_CONDA, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE_WITH_CONDA,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
@@ -155,8 +183,11 @@ def auto_capture_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_p
 
     return build_container_once(
         "auto_capture_test_container",
-        sagemaker_session, "3.10",
-        AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        "3.10",
+        AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
         is_auto_capture=True,
         extra_files_hook=_copy_auto_capture_test_file,
     )
@@ -166,8 +197,11 @@ def auto_capture_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_p
 def spark_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_path_factory):
     return build_container_once(
         "spark_test_container",
-        sagemaker_session, "3.9",
-        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        sagemaker_session,
+        "3.9",
+        DOCKERFILE_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
@@ -184,9 +218,7 @@ def spark_pre_execution_commands(sagemaker_session):
     import tempfile
     from sagemaker.core.s3 import S3Uploader
 
-    repo_root = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
-    )
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
     core_dir = os.path.join(repo_root, "sagemaker-core")
 
     with tempfile.TemporaryDirectory() as dist_dir:
@@ -202,9 +234,7 @@ def spark_pre_execution_commands(sagemaker_session):
         wheel_path = wheels[0]
         wheel_name = os.path.basename(wheel_path)
 
-        s3_prefix = "s3://{}/spark-integ-test/wheels".format(
-            sagemaker_session.default_bucket()
-        )
+        s3_prefix = "s3://{}/spark-integ-test/wheels".format(sagemaker_session.default_bucket())
         S3Uploader.upload(wheel_path, s3_prefix, sagemaker_session=sagemaker_session)
 
     PIP = "python3 -m pip install --root-user-action=ignore"
@@ -233,6 +263,3 @@ def conda_env_yml():
     yield conda_file_path
     if os.path.isfile(conda_yml_file_name):
         os.remove(conda_yml_file_name)
-
-
-

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utilities related to payloads of pretrained machine learning models."""
+
 from __future__ import absolute_import
 
 import logging
@@ -23,7 +24,6 @@ from sagemaker.core.jumpstart.payload_utils import PayloadSerializer
 from sagemaker.core.jumpstart.types import JumpStartSerializablePayload
 from sagemaker.core.jumpstart.enums import JumpStartModelType
 from sagemaker.core.helper.session_helper import Session
-
 
 logger = logging.getLogger(__name__)
 

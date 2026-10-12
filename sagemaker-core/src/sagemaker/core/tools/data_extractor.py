@@ -1,3 +1,5 @@
+"""Loads and caches service JSON data used by the code generator."""
+
 import json
 from functools import lru_cache
 
@@ -13,6 +15,8 @@ from sagemaker.core.tools.constants import (
 
 
 class ServiceJsonData(BaseModel):
+    """Container for the parsed service JSON data."""
+
     sagemaker: dict
     sagemaker_runtime: dict
     sagemaker_feature_store: dict
@@ -21,6 +25,7 @@ class ServiceJsonData(BaseModel):
 
 @lru_cache(maxsize=1)
 def load_service_jsons() -> ServiceJsonData:
+    """Load and return the service and runtime service JSON data."""
     with open(SERVICE_JSON_FILE_PATH, "r") as file:
         service_json = json.load(file)
     with open(RUNTIME_SERVICE_JSON_FILE_PATH, "r") as file:
@@ -39,6 +44,7 @@ def load_service_jsons() -> ServiceJsonData:
 
 @lru_cache(maxsize=1)
 def load_combined_shapes_data() -> dict:
+    """Load and return the combined shapes data."""
     service_json_data = load_service_jsons()
     return {
         **service_json_data.sagemaker_runtime["shapes"],
@@ -50,6 +56,7 @@ def load_combined_shapes_data() -> dict:
 
 @lru_cache(maxsize=1)
 def load_combined_operations_data() -> dict:
+    """Load and return the combined operations data."""
     service_json_data = load_service_jsons()
     return {
         **service_json_data.sagemaker_runtime["operations"],
@@ -61,6 +68,7 @@ def load_combined_operations_data() -> dict:
 
 @lru_cache(maxsize=1)
 def load_additional_operations_data() -> dict:
+    """Load and return the additional operations data."""
     with open(ADDITIONAL_OPERATION_FILE_PATH, "r") as file:
         additional_operation_json = json.load(file)
     return additional_operation_json

@@ -171,7 +171,9 @@ def configure_pip(auth_method=CodeArtifactAuthMethod.AUTO):
 
 
 def install_requirements(
-    requirements_file="requirements.txt", python_executable=None, auth_method=CodeArtifactAuthMethod.AUTO
+    requirements_file="requirements.txt",
+    python_executable=None,
+    auth_method=CodeArtifactAuthMethod.AUTO,
 ):
     """Install pip requirements with optional CodeArtifact authentication.
 

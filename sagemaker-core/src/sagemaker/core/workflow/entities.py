@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Defines the base entities used in workflow."""
+
 from __future__ import absolute_import
 
 import abc

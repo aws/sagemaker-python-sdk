@@ -18,6 +18,7 @@ This module provides backward compatibility for code using the old
 
 DEPRECATED: This module is deprecated. Use `sagemaker.core.lineage` instead.
 """
+
 from __future__ import absolute_import
 
 import warnings
@@ -30,4 +31,4 @@ warnings.warn(
 )
 
 # Re-export from core.lineage for backward compatibility
-from sagemaker.core.lineage import *  # noqa: F401, F403
+from sagemaker.core.lineage import *  # noqa: F401, F403, E402

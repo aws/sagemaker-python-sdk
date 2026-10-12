@@ -82,8 +82,7 @@ def test_retrieve_hugging_face_uri():
         container_version="cu110-ubuntu20.04",
     )
     assert (
-        image_uri
-        == "763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training"
+        image_uri == "763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training"
         ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
     )
 

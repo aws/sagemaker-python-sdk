@@ -4,7 +4,7 @@ Targets uncovered Triton functionality.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 import os
 import tempfile
 from pathlib import Path

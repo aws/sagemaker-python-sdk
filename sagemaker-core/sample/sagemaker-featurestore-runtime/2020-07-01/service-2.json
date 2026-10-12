@@ -111,6 +111,23 @@
         {"shape":"AccessForbidden"}
       ],
       "documentation":"<p>The <code>PutRecord</code> API is used to ingest a list of <code>Records</code> into your feature group. </p> <p>If a new record’s <code>EventTime</code> is greater, the new record is written to both the <code>OnlineStore</code> and <code>OfflineStore</code>. Otherwise, the record is a historic record and it is written only to the <code>OfflineStore</code>. </p> <p>You can specify the ingestion to be applied to the <code>OnlineStore</code>, <code>OfflineStore</code>, or both by using the <code>TargetStores</code> request parameter. </p> <p>You can set the ingested record to expire at a given time to live (TTL) duration after the record’s event time, <code>ExpiresAt</code> = <code>EventTime</code> + <code>TtlDuration</code>, by specifying the <code>TtlDuration</code> parameter. A record level <code>TtlDuration</code> is set when specifying the <code>TtlDuration</code> parameter using the <code>PutRecord</code> API call. If the input <code>TtlDuration</code> is <code>null</code> or unspecified, <code>TtlDuration</code> is set to the default feature group level <code>TtlDuration</code>. A record level <code>TtlDuration</code> supersedes the group level <code>TtlDuration</code>.</p>"
+    },
+    "UpdateRecord":{
+      "name":"UpdateRecord",
+      "http":{
+        "method":"POST",
+        "requestUri":"/FeatureGroup/{FeatureGroupName}/Record"
+      },
+      "input":{"shape":"UpdateRecordRequest"},
+      "errors":[
+        {"shape":"ValidationError"},
+        {"shape":"InternalFailure"},
+        {"shape":"ServiceUnavailable"},
+        {"shape":"AccessForbidden"},
+        {"shape":"ResourceNotFound"},
+        {"shape":"ConflictException"}
+      ],
+      "documentation":"<p>Updates one or more feature values for an existing record in the specified feature group. Features that you do not include in the request remain unchanged. You can update up to 100 features per call. This operation requires the online store and is available only for feature groups that use the <code>Standard_V2</code> or <code>InMemory</code> online store type.</p> <p>The record must already exist in the online store; if it does not exist or has been soft-deleted, the operation returns a <code>ResourceNotFound</code> error. To create a record, use <code>PutRecord</code>.</p> <p>Pass <code>EventTime</code> as a feature in the <code>Features</code> list rather than as a top-level parameter. If you provide an <code>EventTime</code> that is older than the record's current <code>EventTime</code>, the update is rejected with a <code>ConflictException</code>; if it is equal to or newer, the update is applied; if you omit it, the record's existing <code>EventTime</code> is kept. If you specify <code>TtlDuration</code> you must also provide an <code>EventTime</code>, otherwise a <code>ValidationError</code> is returned. <code>TargetStores</code> must include the <code>OnlineStore</code>; a value that resolves to the <code>OfflineStore</code> only is rejected.</p>"
     }
   },
   "shapes":{
@@ -123,6 +140,15 @@
       "error":{"httpStatusCode":403},
       "exception":true,
       "synthetic":true
+    },
+    "ConflictException":{
+      "type":"structure",
+      "members":{
+        "Message":{"shape":"Message"}
+      },
+      "documentation":"<p>The request conflicts with the current state of the record. This is returned by <code>UpdateRecord</code> when the supplied <code>EventTime</code> is not greater than the record's current <code>EventTime</code>.</p>",
+      "error":{"httpStatusCode":409},
+      "exception":true
     },
     "BatchGetRecordError":{
       "type":"structure",
@@ -661,6 +687,38 @@
       "type":"list",
       "member":{"shape":"BatchGetRecordIdentifier"},
       "min":0
+    },
+    "UpdateRecordRequest":{
+      "type":"structure",
+      "required":[
+        "FeatureGroupName",
+        "RecordIdentifierValueAsString",
+        "Features"
+      ],
+      "members":{
+        "FeatureGroupName":{
+          "shape":"FeatureGroupNameOrArn",
+          "documentation":"<p>The name or Amazon Resource Name (ARN) of the feature group that contains the record you want to update. The feature group must use an <code>OnlineStoreConfig</code> <code>StorageType</code> of <code>Standard_V2</code> or <code>InMemory</code>.</p>",
+          "location":"uri",
+          "locationName":"FeatureGroupName"
+        },
+        "RecordIdentifierValueAsString":{
+          "shape":"ValueAsString",
+          "documentation":"<p>The value for the <code>RecordIdentifier</code> that uniquely identifies the record to update, in string format.</p>"
+        },
+        "Features":{
+          "shape":"Record",
+          "documentation":"<p>The feature values to write to the record. Only the features included here are written; features that are not listed are preserved. Pass <code>EventTime</code> as a feature in this list. You can update up to 100 features per call.</p>"
+        },
+        "TargetStores":{
+          "shape":"TargetStores",
+          "documentation":"<p>A list of stores to which the update is applied. By default, Feature Store applies the update to all of the stores that you're using for the <code>FeatureGroup</code>. A value that resolves to the <code>OfflineStore</code> only is rejected.</p>"
+        },
+        "TtlDuration":{
+          "shape":"TtlDuration",
+          "documentation":"<p>Time to live duration, where the record is hard deleted after the expiration time is reached; <code>ExpiresAt</code> = <code>EventTime</code> + <code>TtlDuration</code>. Specifying <code>TtlDuration</code> requires <code>EventTime</code> to be present in <code>Features</code>.</p>"
+        }
+      }
     },
     "ValidationError":{
       "type":"structure",

@@ -17,6 +17,7 @@ for Processing jobs. These jobs let customers perform data pre-processing,
 post-processing, feature engineering, data validation, and model evaluation
 on SageMaker using Spark and PySpark.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -96,6 +97,7 @@ class _SparkProcessorBase(ScriptProcessor):
         env=None,
         tags=None,
         network_config=None,
+        instance_preferences=None,
     ):
         """Initialize a ``_SparkProcessorBase`` instance.
 
@@ -150,9 +152,45 @@ class _SparkProcessorBase(ScriptProcessor):
         session = sagemaker_session or Session()
         region = session.boto_region_name
 
-        self.image_uri = self._retrieve_image_uri(
-            image_uri, framework_version, py_version, container_version, region, instance_type
-        )
+        # One image per job, winner unknown at create: auto-resolve only when
+        # every candidate type yields the same image.
+        if image_uri is None and instance_type is None and instance_preferences:
+            candidate_uris = {}
+            for pref in instance_preferences:
+                candidate_type = pref.get("InstanceType")
+                if not candidate_type:
+                    continue
+                try:
+                    candidate_uris[candidate_type] = self._retrieve_image_uri(
+                        None,
+                        framework_version,
+                        py_version,
+                        container_version,
+                        region,
+                        candidate_type,
+                    )
+                except ValueError as e:
+                    # e.g. GPU candidates: Spark images have no gpu variant.
+                    raise ValueError(
+                        f"Cannot auto-resolve a Spark image for instance_preferences "
+                        f"candidate {candidate_type} ({e}); pass image_uri explicitly."
+                    ) from e
+            if len(set(candidate_uris.values())) > 1:
+                raise ValueError(
+                    "instance_preferences candidates resolve to different container "
+                    f"images ({candidate_uris}); pass image_uri explicitly."
+                )
+            if candidate_uris:
+                self.image_uri = next(iter(candidate_uris.values()))
+            else:
+                # No typed candidates: base Processor validation owns the reject.
+                self.image_uri = self._retrieve_image_uri(
+                    image_uri, framework_version, py_version, container_version, region, None
+                )
+        else:
+            self.image_uri = self._retrieve_image_uri(
+                image_uri, framework_version, py_version, container_version, region, instance_type
+            )
 
         env = env or {}
         command = [_SparkProcessorBase._default_command]
@@ -172,6 +210,7 @@ class _SparkProcessorBase(ScriptProcessor):
             env=env,
             tags=format_tags(tags),
             network_config=network_config,
+            instance_preferences=instance_preferences,
         )
 
     def get_run_args(
@@ -707,6 +746,7 @@ class PySparkProcessor(_SparkProcessorBase):
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
+        instance_preferences: Optional[List[Dict[str, Union[str, int]]]] = None,
     ):
         """Initialize an ``PySparkProcessor`` instance.
 
@@ -775,6 +815,7 @@ class PySparkProcessor(_SparkProcessorBase):
             env=env,
             tags=format_tags(tags),
             network_config=network_config,
+            instance_preferences=instance_preferences,
         )
 
     def get_run_args(
@@ -984,6 +1025,7 @@ class SparkJarProcessor(_SparkProcessorBase):
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
+        instance_preferences: Optional[List[Dict[str, Union[str, int]]]] = None,
     ):
         """Initialize a ``SparkJarProcessor`` instance.
 
@@ -1051,6 +1093,7 @@ class SparkJarProcessor(_SparkProcessorBase):
             env=env,
             tags=format_tags(tags),
             network_config=network_config,
+            instance_preferences=instance_preferences,
         )
 
     def get_run_args(

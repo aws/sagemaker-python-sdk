@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """ModelTrainer Tests."""
+
 from __future__ import absolute_import
 
 import shutil
@@ -18,7 +19,7 @@ import tempfile
 import json
 import os
 import yaml
-from omegaconf import OmegaConf
+import logging
 import pytest
 from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
@@ -51,6 +52,8 @@ from sagemaker.train.constants import (
     SOURCE_CODE_JSON,
     TRAIN_SCRIPT,
     SM_RECIPE_CONTAINER_PATH,
+    SM_CODE,
+    SM_DRIVERS,
 )
 from sagemaker.train.configs import (
     Compute,
@@ -76,7 +79,6 @@ from sagemaker.train.configs import (
     InstanceGroup,
 )
 from sagemaker.train.distributed import Torchrun, SMP, MPI
-from sagemaker.train.sm_recipes.utils import _load_recipes_cfg, _is_nova_recipe, _get_args_from_nova_recipe
 from sagemaker.train.templates import EXEUCTE_DISTRIBUTED_DRIVER
 from tests.unit import DATA_DIR
 
@@ -114,8 +116,9 @@ DEFAULT_ARGUMENTS = [
 
 @pytest.fixture(scope="module", autouse=True)
 def modules_session():
-    with patch("sagemaker.train.Session", spec=Session) as session_mock, patch(
-        "sagemaker.train.defaults.resolve_and_validate_role", return_value=DEFAULT_ROLE
+    with (
+        patch("sagemaker.train.Session", spec=Session) as session_mock,
+        patch("sagemaker.train.defaults.resolve_and_validate_role", return_value=DEFAULT_ROLE),
     ):
         session_instance = session_mock.return_value
         session_instance.default_bucket.return_value = DEFAULT_BUCKET
@@ -251,6 +254,47 @@ def test_model_trainer_param_validation(test_case, modules_session):
         assert trainer.output_data_config == DEFAULT_OUTPUT_DATA_CONFIG
         assert trainer.stopping_condition == DEFAULT_STOPPING_CONDITION
         assert trainer.base_job_name == DEFAULT_BASE_NAME
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+@patch("sagemaker.train.model_trainer.ModelTrainer.create_input_data_channel")
+def test_sm_drivers_channel_ignores_user_ignore_patterns(
+    mock_create_input_data_channel, mock_training_job, modules_session
+):
+    """Regression for #5493.
+
+    The user's ``ignore_patterns`` apply only to their own source_dir channel. They must NOT be
+    forwarded to the SDK-owned ``sm_drivers`` driver channel -- patterns like ``"scripts"`` or
+    ``"environment"`` would strip the driver's own ``scripts/environment.py`` and break the
+    container bootstrap with "sm_drivers/scripts/environment.py: No such file or directory".
+    """
+    user_patterns = ["scripts", "environment", "data"]
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        source_code=SourceCode(
+            source_dir=DEFAULT_SOURCE_DIR,
+            entry_script="custom_script.py",
+            ignore_patterns=user_patterns,
+        ),
+        sagemaker_session=modules_session,
+    )
+
+    trainer.train()
+
+    calls_by_channel = {
+        call.kwargs.get("channel_name"): call.kwargs
+        for call in mock_create_input_data_channel.call_args_list
+    }
+    assert SM_CODE in calls_by_channel, "source_dir channel was not created"
+    assert SM_DRIVERS in calls_by_channel, "sm_drivers channel was not created"
+    # User patterns still apply to the user's own source_dir channel.
+    assert calls_by_channel[SM_CODE].get("ignore_patterns") == user_patterns
+    # ...but must NOT be applied to the SDK-owned driver channel.
+    assert calls_by_channel[SM_DRIVERS].get("ignore_patterns") is None
 
 
 @patch("sagemaker.train.model_trainer.TrainingJob")
@@ -473,6 +517,58 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
             assert channel.data_source.s3_data_source.s3_uri == expected_s3_uri
 
 
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_encrypts_uploads_with_output_kms_key(
+    mock_default_bucket, mock_upload_data
+):
+    """GH #5956: local source uploads are encrypted with output_data_config.kms_key_id."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=OutputDataConfig(
+            s3_output_path=f"s3://{DEFAULT_BUCKET}/out",
+            kms_key_id="my-kms-key",
+        ),
+    )
+    trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+    assert mock_upload_data.call_args.kwargs["extra_args"] == {
+        "ServerSideEncryption": "aws:kms",
+        "SSEKMSKeyId": "my-kms-key",
+    }
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_explicit_kms_key_overrides(
+    mock_default_bucket, mock_upload_data, model_trainer
+):
+    """An explicit kms_key argument takes precedence over output_data_config."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+    model_trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR, kms_key="explicit-key")
+    assert mock_upload_data.call_args.kwargs["extra_args"] == {
+        "ServerSideEncryption": "aws:kms",
+        "SSEKMSKeyId": "explicit-key",
+    }
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_no_kms_by_default(
+    mock_default_bucket, mock_upload_data, model_trainer
+):
+    """Default (no kms_key_id) leaves uploads unencrypted -> extra_args None (unchanged)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+    model_trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+    assert mock_upload_data.call_args.kwargs["extra_args"] is None
+
+
 def test_create_input_data_channel_with_instance_group_names(model_trainer):
     """instance_group_names is propagated onto the channel's S3DataSource."""
     channel = model_trainer.create_input_data_channel(
@@ -484,6 +580,87 @@ def test_create_input_data_channel_with_instance_group_names(model_trainer):
         "head-instance-group",
         "worker-instance-group-1",
     ]
+
+
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_default_prefix_uses_base_job_name(
+    mock_default_bucket, mock_upload_data, mock_staging, model_trainer
+):
+    """Without input_s3_key_prefix, the upload key prefix is derived from base_job_name (unchanged)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+
+    assert model_trainer.input_s3_key_prefix is None
+    model_trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+
+    # Leading segment is derived from base_job_name when input_s3_key_prefix is unset.
+    assert mock_upload_data.call_args.kwargs["key_prefix"] == f"{DEFAULT_BASE_NAME}/input/code"
+
+
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_custom_input_s3_key_prefix(
+    mock_default_bucket, mock_upload_data, mock_staging
+):
+    """input_s3_key_prefix replaces base_job_name as the leading key prefix (issue #5638)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        input_s3_key_prefix="my-pipeline/my-step",
+    )
+    trainer.create_input_data_channel("code", DEFAULT_SOURCE_DIR)
+
+    # input_s3_key_prefix replaces base_job_name as the leading segment.
+    assert mock_upload_data.call_args.kwargs["key_prefix"] == "my-pipeline/my-step/input/code"
+    assert f"{DEFAULT_BASE_NAME}/input/code" not in mock_upload_data.call_args.kwargs["key_prefix"]
+
+
+@patch("sagemaker.train.model_trainer.ModelTrainer._resolve_staging_bucket")
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_training_job_args_input_s3_key_prefix(
+    mock_default_bucket, mock_upload_data, mock_staging
+):
+    """Managed sm_drivers/code channels use input_s3_key_prefix in their S3 URIs (issue #5638)."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_staging.return_value = (DEFAULT_BUCKET, None)
+
+    def _echo(path, bucket, key_prefix, extra_args=None):
+        return f"s3://{bucket}/{key_prefix}"
+
+    mock_upload_data.side_effect = _echo
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        input_s3_key_prefix="my-pipeline",
+    )
+    args = trainer._create_training_job_args()
+    uris = {
+        channel.channel_name: channel.data_source.s3_data_source.s3_uri
+        for channel in args["input_data_config"]
+        if channel.data_source and channel.data_source.s3_data_source
+    }
+
+    # The SDK-managed sm_drivers channel is staged from a local temp dir, so its S3 URI
+    # is built from the input key prefix -> it must lead with the custom pipeline prefix.
+    assert "/my-pipeline/" in uris["sm_drivers"]
+    assert f"/{DEFAULT_BASE_NAME}/input" not in uris["sm_drivers"]
 
 
 HETEROGENEOUS_INSTANCE_GROUPS = [
@@ -506,9 +683,7 @@ def _instance_group_names(channel):
 
 
 def _managed_channel_names(input_data_config):
-    return {
-        channel.channel_name: _instance_group_names(channel) for channel in input_data_config
-    }
+    return {channel.channel_name: _instance_group_names(channel) for channel in input_data_config}
 
 
 @patch("sagemaker.train.model_trainer.Session.upload_data")
@@ -875,7 +1050,7 @@ def test_remote_debug_config(mock_training_job, modules_session):
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_session):
-    def mock_upload_data(path, bucket, key_prefix):
+    def mock_upload_data(path, bucket, key_prefix, extra_args=None):
         return f"s3://{bucket}/{key_prefix}"
 
     modules_session.upload_data.side_effect = mock_upload_data
@@ -1051,7 +1226,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
         ),
         session=ANY,
         role_arn=role,
-        tags=[{'key': 'key', 'value': 'value'}],
+        tags=[{"key": "key", "value": "value"}],
         stopping_condition=stopping_condition,
         output_data_config=output_data_config,
         checkpoint_config=checkpoint_config,
@@ -1153,7 +1328,7 @@ def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_se
 # def test_model_trainer_local_full_init(
 #     mock_download_folder, mock_unique_name, mock_local_container, modules_session
 # ):
-#     def mock_upload_data(path, bucket, key_prefix):
+#     def mock_upload_data(path, bucket, key_prefix, extra_args=None):
 #         return f"s3://{bucket}/{key_prefix}"
 
 #     modules_session.upload_data.side_effect = mock_upload_data
@@ -1407,7 +1582,7 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_model_trainer_default_paths(mock_training_job, mock_unique_name, modules_session):
-    def mock_upload_data(path, bucket, key_prefix):
+    def mock_upload_data(path, bucket, key_prefix, extra_args=None):
         return f"s3://{bucket}/{key_prefix}"
 
     unique_name = "base-job-0123456789"
@@ -1440,6 +1615,93 @@ def test_model_trainer_default_paths(mock_training_job, mock_unique_name, module
 
     assert kwargs["tensor_board_output_config"].s3_output_path == default_base_path
     assert kwargs["tensor_board_output_config"].local_path == "/opt/ml/output/tensorboard"
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+@patch("sagemaker.train.model_trainer.TemporaryDirectory")
+def test_prepare_train_script_uses_lf_line_endings(
+    mock_tmp_dir, mock_training_job, modules_session
+):
+    """Test that _prepare_train_script generates sm_train.sh with LF line endings only."""
+    modules_session.upload_data.return_value = (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/test"
+    )
+
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_dir._cleanup = False
+    tmp_dir.cleanup = lambda: None
+    mock_tmp_dir.return_value = tmp_dir
+
+    try:
+        model_trainer = ModelTrainer(
+            sagemaker_session=modules_session,
+            training_image=DEFAULT_IMAGE,
+            source_code=DEFAULT_SOURCE_CODE,
+            role=DEFAULT_ROLE,
+        )
+
+        model_trainer.train()
+
+        train_script_path = os.path.join(tmp_dir.name, TRAIN_SCRIPT)
+        assert os.path.exists(train_script_path)
+
+        with open(train_script_path, "rb") as f:
+            content = f.read()
+
+        # Verify no CRLF line endings exist
+        assert b"\r\n" not in content, "sm_train.sh contains CRLF line endings; expected LF only"
+        # Verify LF line endings are present
+        assert b"\n" in content, "sm_train.sh does not contain any LF line endings"
+    finally:
+        shutil.rmtree(tmp_dir.name, ignore_errors=True)
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+@patch("sagemaker.train.model_trainer.TemporaryDirectory")
+def test_prepare_train_script_opened_with_lf_newline(
+    mock_tmp_dir, mock_training_job, modules_session
+):
+    """Regression for #5897: sm_train.sh must be opened with ``newline="\\n"``.
+
+    On Windows, text-mode ``open(..., "w")`` translates ``\\n`` to ``\\r\\n``, which breaks
+    the bash script inside the Linux training container. Byte-level assertions alone pass
+    on POSIX hosts even without the fix, so this test inspects the ``open`` call itself and
+    therefore holds independently of the test host OS.
+    """
+    modules_session.upload_data.return_value = (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/test"
+    )
+
+    tmp_dir = tempfile.TemporaryDirectory()
+    tmp_dir._cleanup = False
+    tmp_dir.cleanup = lambda: None
+    mock_tmp_dir.return_value = tmp_dir
+
+    train_script_newlines = []
+    real_open = open
+
+    def tracking_open(file, mode="r", *args, **kwargs):
+        if str(file).endswith(TRAIN_SCRIPT) and "w" in mode:
+            train_script_newlines.append(kwargs.get("newline"))
+        return real_open(file, mode, *args, **kwargs)
+
+    try:
+        model_trainer = ModelTrainer(
+            sagemaker_session=modules_session,
+            training_image=DEFAULT_IMAGE,
+            source_code=DEFAULT_SOURCE_CODE,
+            role=DEFAULT_ROLE,
+        )
+
+        with patch("builtins.open", side_effect=tracking_open):
+            model_trainer.train()
+
+        assert train_script_newlines == ["\n"], (
+            "sm_train.sh must be opened with newline='\\n' to keep LF endings, "
+            f"got {train_script_newlines}"
+        )
+    finally:
+        shutil.rmtree(tmp_dir.name, ignore_errors=True)
 
 
 @patch("sagemaker.train.model_trainer.TrainingJob")
@@ -1482,6 +1744,7 @@ def test_input_merge(mock_training_job, modules_session):
         ),
     ]
 
+
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_metric_definitions(mock_training_job, modules_session):
     image_uri = DEFAULT_IMAGE
@@ -1510,7 +1773,7 @@ def test_metric_definitions(mock_training_job, modules_session):
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.core.resources.TrainingJob")
 def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
-    def mock_upload_data(path, bucket, key_prefix):
+    def mock_upload_data(path, bucket, key_prefix, extra_args=None):
         if os.path.isfile(path):
             file_name = os.path.basename(path)
             return f"s3://{bucket}/{key_prefix}/{file_name}"
@@ -1535,7 +1798,7 @@ def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
             yaml.dump(recipe_data, file)
 
         # Patch TrainingJob.create to avoid Pydantic validation on session
-        with patch.object(TrainingJob, 'create', return_value=mock_training_job) as mock_create:
+        with patch.object(TrainingJob, "create", return_value=mock_training_job) as mock_create:
             trainer = ModelTrainer.from_recipe(
                 training_recipe=recipe.name,
                 role=DEFAULT_ROLE,
@@ -1597,6 +1860,109 @@ def test_nova_recipe_with_distillation(modules_session):
         os.unlink(recipe.name)
 
 
+@pytest.mark.parametrize(
+    "suffix, dump",
+    [(".json", json.dumps), (".yaml", yaml.dump)],
+)
+def test_nova_recipe_with_hyperparameters_file(suffix, dump, modules_session):
+    """Hyperparameters passed as a file path are loaded and merged into the recipe's."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+    hyperparameters = {"param1": "value1", "param2": 2}
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        with NamedTemporaryFile(suffix=suffix, delete=False, mode="w") as hp_file:
+            hp_file.write(dump(hyperparameters))
+
+        try:
+            trainer = ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                training_image=DEFAULT_IMAGE,
+                hyperparameters=hp_file.name,
+            )
+
+            assert trainer._is_nova_recipe
+            assert trainer.hyperparameters == {
+                "base_model": "dummy-model",
+                "param1": "value1",
+                "param2": 2,
+            }
+        finally:
+            os.unlink(hp_file.name)
+            os.unlink(recipe.name)
+
+
+def test_nova_recipe_with_hyperparameters_dict(modules_session):
+    """Hyperparameters passed as a dict are merged into the recipe's."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        try:
+            trainer = ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                training_image=DEFAULT_IMAGE,
+                hyperparameters={"param1": "value1"},
+            )
+
+            assert trainer.hyperparameters == {
+                "base_model": "dummy-model",
+                "param1": "value1",
+            }
+        finally:
+            os.unlink(recipe.name)
+
+
+def test_nova_recipe_with_missing_hyperparameters_file(modules_session):
+    """A hyperparameters path that does not exist raises a ValueError."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        try:
+            with pytest.raises(ValueError, match="Hyperparameters file not found"):
+                ModelTrainer.from_recipe(
+                    training_recipe=recipe.name,
+                    role=DEFAULT_ROLE,
+                    sagemaker_session=modules_session,
+                    compute=DEFAULT_COMPUTE_CONFIG,
+                    training_image=DEFAULT_IMAGE,
+                    hyperparameters="nonexistent.json",
+                )
+        finally:
+            os.unlink(recipe.name)
+
+
 def test_nova_recipe_with_model_package_arn(modules_session):
     """Test that MP ARN in model_name_or_path routes to ModelPackageConfig."""
     mp_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-mpg/1"
@@ -1623,6 +1989,7 @@ def test_nova_recipe_with_model_package_arn(modules_session):
         )
 
         from sagemaker.core.shapes import ModelPackageConfig
+
         assert isinstance(trainer.model_package_config, ModelPackageConfig)
         assert trainer.model_package_config.source_model_package_arn == mp_arn
         assert trainer.model_package_config.model_package_group_arn == mpg_arn
@@ -1658,6 +2025,7 @@ def test_nova_recipe_mp_arn_with_mpg_creates_model_package_config(modules_sessio
         )
 
         from sagemaker.core.shapes import ModelPackageConfig
+
         assert isinstance(trainer.model_package_config, ModelPackageConfig)
         assert trainer.model_package_config.source_model_package_arn == mp_arn
         assert trainer.model_package_config.model_package_group_arn == mpg_arn
@@ -1684,6 +2052,7 @@ def test_nova_recipe_model_package_config_direct_overrides_recipe(modules_sessio
 
         direct_mpg = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/direct-mpg"
         from sagemaker.core.shapes import ModelPackageConfig
+
         trainer = ModelTrainer.from_recipe(
             training_recipe=recipe.name,
             role=DEFAULT_ROLE,
@@ -1696,11 +2065,12 @@ def test_nova_recipe_model_package_config_direct_overrides_recipe(modules_sessio
         )
 
         assert trainer.model_package_config.model_package_group_arn == direct_mpg
-        assert trainer.model_package_config.source_model_package_arn == \
-            "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1"
+        assert (
+            trainer.model_package_config.source_model_package_arn
+            == "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1"
+        )
 
         os.unlink(recipe.name)
-
 
 
 def test_nova_recipe_model_package_config_direct_source_mp_overrides_recipe(modules_session):
@@ -1720,6 +2090,7 @@ def test_nova_recipe_model_package_config_direct_source_mp_overrides_recipe(modu
 
         direct_source_mp = "arn:aws:sagemaker:us-east-1:123456789012:model-package/direct-mp/2"
         from sagemaker.core.shapes import ModelPackageConfig
+
         trainer = ModelTrainer.from_recipe(
             training_recipe=recipe.name,
             role=DEFAULT_ROLE,
@@ -1733,10 +2104,13 @@ def test_nova_recipe_model_package_config_direct_source_mp_overrides_recipe(modu
         )
 
         assert trainer.model_package_config.source_model_package_arn == direct_source_mp
-        assert trainer.model_package_config.model_package_group_arn == \
-            "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg"
+        assert (
+            trainer.model_package_config.model_package_group_arn
+            == "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg"
+        )
 
         os.unlink(recipe.name)
+
 
 def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
     """Test recipe with base model name + MPG (no MP ARN)."""
@@ -1764,6 +2138,7 @@ def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
 
         assert trainer.hyperparameters["base_model"] == "nova-pro"
         from sagemaker.core.shapes import ModelPackageConfig
+
         assert isinstance(trainer.model_package_config, ModelPackageConfig)
         assert trainer.model_package_config.model_package_group_arn == mpg_arn
 
@@ -1773,7 +2148,7 @@ def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_llmft_recipe(mock_training_job, mock_unique_name, modules_session):
-    def mock_upload_data(path, bucket, key_prefix):
+    def mock_upload_data(path, bucket, key_prefix, extra_args=None):
         if os.path.isfile(path):
             file_name = os.path.basename(path)
             return f"s3://{bucket}/{key_prefix}/{file_name}"
@@ -1859,13 +2234,16 @@ def test_llmft_recipe_missing_training_image_error(modules_session):
         # Clean up the temporary file
         os.unlink(recipe.name)
 
+
 def test_resolve_staging_bucket_returns_default_when_allowed(model_trainer):
     """When training role has PutObject access to default bucket, use default bucket."""
     mock_iam = MagicMock()
     mock_iam.simulate_principal_policy.return_value = {
         "EvaluationResults": [{"EvalDecision": "allowed"}]
     }
-    with patch.object(model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+    with patch.object(
+        model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET
+    ):
         with patch.object(model_trainer.sagemaker_session, "boto_session") as mock_boto:
             mock_boto.client.return_value = mock_iam
             bucket, prefix = model_trainer._resolve_staging_bucket()
@@ -1902,7 +2280,9 @@ def test_resolve_staging_bucket_returns_default_on_iam_error(model_trainer):
     """When IAM simulate call fails, gracefully returns default bucket."""
     mock_iam = MagicMock()
     mock_iam.simulate_principal_policy.side_effect = Exception("AccessDenied")
-    with patch.object(model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+    with patch.object(
+        model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET
+    ):
         with patch.object(model_trainer.sagemaker_session, "boto_session") as mock_boto:
             mock_boto.client.return_value = mock_iam
             bucket, prefix = model_trainer._resolve_staging_bucket()
@@ -2019,3 +2399,163 @@ def test_networking_intelligent_defaults_fills_subnets_on_existing(model_trainer
     assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
     # pre-existing security_group_ids are preserved.
     assert model_trainer.networking.security_group_ids == ["sg-preexisting"]
+
+
+# Actionable error guidance in train(). The original exception must always propagate
+# unchanged; the SDK only adds remediation logging for common terminal failures
+# (quota exhaustion, missing region/credentials) so users and automation stop
+# blind-retrying errors that cannot succeed.
+
+RLE_ERROR_RESPONSE = {
+    "Error": {
+        "Code": "ResourceLimitExceeded",
+        "Message": (
+            "The account-level service limit 'ml.g5.2xlarge for training job usage' is 0 "
+            "Instances, with current utilization of 0 Instances and a request delta of 1 "
+            "Instances. Please use AWS Service Quotas to request an increase for this quota."
+        ),
+    }
+}
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_resource_limit_exceeded_reraises_and_logs_guidance(
+    mock_training_job, model_trainer, caplog
+):
+    from botocore.exceptions import ClientError
+
+    mock_training_job.create.side_effect = ClientError(RLE_ERROR_RESPONSE, "CreateTrainingJob")
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(ClientError) as raised:
+            model_trainer.train()
+
+    assert raised.value.response["Error"]["Code"] == "ResourceLimitExceeded"
+    guidance = caplog.text
+    assert "Service Quotas" in guidance
+    assert "ml.g5.2xlarge for training job usage" in guidance
+    assert "Retrying will keep failing" in guidance
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_no_region_error_reraises_and_logs_guidance(mock_training_job, model_trainer, caplog):
+    from botocore.exceptions import NoRegionError
+
+    mock_training_job.create.side_effect = NoRegionError()
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(NoRegionError):
+            model_trainer.train()
+
+    assert "AWS_DEFAULT_REGION" in caplog.text
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_no_credentials_error_reraises_and_logs_guidance(
+    mock_training_job, model_trainer, caplog
+):
+    from botocore.exceptions import NoCredentialsError
+
+    mock_training_job.create.side_effect = NoCredentialsError()
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(NoCredentialsError):
+            model_trainer.train()
+
+    assert "aws configure" in caplog.text
+
+
+def test_log_actionable_client_error_access_denied(caplog):
+    from botocore.exceptions import ClientError
+    from sagemaker.train.model_trainer import _log_actionable_client_error
+
+    error = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": "User is not authorized"}},
+        "CreateTrainingJob",
+    )
+    with caplog.at_level(logging.ERROR):
+        _log_actionable_client_error(error)
+
+    assert "iam:PassRole" in caplog.text
+
+
+def test_log_actionable_client_error_other_codes_stay_silent(caplog):
+    from botocore.exceptions import ClientError
+    from sagemaker.train.model_trainer import _log_actionable_client_error
+
+    error = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "1 validation error detected"}},
+        "CreateTrainingJob",
+    )
+    with caplog.at_level(logging.ERROR):
+        _log_actionable_client_error(error)
+
+    assert caplog.text == ""
+
+
+def test_output_data_returns_output_tar_gz_uri(model_trainer):
+    """output_data derives the output.tar.gz S3 URI from the completed job."""
+    from sagemaker.core.shapes import OutputDataConfig as CoreOutputDataConfig
+
+    model_trainer._latest_training_job = TrainingJob(
+        training_job_name="my-training-job",
+        output_data_config=CoreOutputDataConfig(
+            s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}"
+        ),
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_strips_trailing_slash(model_trainer):
+    """A trailing slash on s3_output_path must not produce a double slash."""
+    from sagemaker.core.shapes import OutputDataConfig as CoreOutputDataConfig
+
+    model_trainer._latest_training_job = TrainingJob(
+        training_job_name="my-training-job",
+        output_data_config=CoreOutputDataConfig(
+            s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/"
+        ),
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_falls_back_to_trainer_output_config(model_trainer):
+    """When the job resource has no output_data_config, fall back to the trainer's."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+
+    assert model_trainer.output_data == (
+        f"{DEFAULT_OUTPUT_DATA_CONFIG.s3_output_path}" "/my-training-job/output/output.tar.gz"
+    )
+
+
+def test_output_data_raises_when_no_training_job(model_trainer):
+    """Accessing output_data before training raises a clear error."""
+    assert model_trainer._latest_training_job is None
+    with pytest.raises(ValueError, match="No training job"):
+        _ = model_trainer.output_data
+
+
+def test_output_data_raises_when_no_output_path(model_trainer):
+    """output_data raises if no S3 output path can be resolved."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+    model_trainer.output_data_config = None
+    with pytest.raises(ValueError, match="output S3 path"):
+        _ = model_trainer.output_data
+
+
+def test_output_data_strips_trailing_slash_on_fallback(model_trainer):
+    """The trailing slash is also normalized when using the trainer fallback."""
+    model_trainer._latest_training_job = TrainingJob(training_job_name="my-training-job")
+    model_trainer.output_data_config = OutputDataConfig(
+        s3_output_path=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/"
+    )
+
+    assert model_trainer.output_data == (
+        f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
+    )

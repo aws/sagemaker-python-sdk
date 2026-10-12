@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module provides utility functions for the container drivers."""
+
 from __future__ import absolute_import
 
 import os
@@ -50,12 +51,15 @@ SM_EFA_NCCL_INSTANCES = [
     "ml.p4d.24xlarge",
     "ml.p4de.24xlarge",
     "ml.p5.48xlarge",
+    "ml.p5e.48xlarge",
     "ml.trn1.32xlarge",
 ]
 
 SM_EFA_RDMA_INSTANCES = [
     "ml.p4d.24xlarge",
     "ml.p4de.24xlarge",
+    "ml.p5.48xlarge",
+    "ml.p5e.48xlarge",
     "ml.trn1.32xlarge",
 ]
 

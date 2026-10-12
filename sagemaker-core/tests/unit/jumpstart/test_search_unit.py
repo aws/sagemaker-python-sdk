@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Test for JumpStart search_public_hub_models function."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -106,7 +107,7 @@ def test_filter_no_eval_execution():
     # This would execute code if eval() was used
     dangerous_expr = "__import__('sys').exit(1)"
     f = _Filter(dangerous_expr)
-    
+
     # Should not crash the program or execute the exit
     result = f.match(["test"])
     assert result is False
@@ -115,14 +116,15 @@ def test_filter_no_eval_execution():
 def test_filter_safe_ast_parsing():
     """Test that the filter uses AST parsing instead of eval()."""
     f = _Filter("test AND keyword")
-    
+
     # Verify AST is created
     assert f._ast is None  # Not parsed yet
     f.match(["test", "keyword"])
     assert f._ast is not None  # AST created after first match
-    
+
     # Verify it's an AST node, not a string for eval
     from sagemaker.core.jumpstart.search import _ExpressionNode
+
     assert isinstance(f._ast, _ExpressionNode)
 
 

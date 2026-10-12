@@ -19,11 +19,10 @@ import random
 import string
 
 from sagemaker.train.model_trainer import ModelTrainer
-from sagemaker.train.configs import SourceCode, InputData, Compute
+from sagemaker.train.configs import SourceCode, Compute
 
 from sagemaker.train.aws_batch.training_queue import TrainingQueue
 
-from tests.integ import DATA_DIR
 from tests.integ.train.conftest import sagemaker_session  # noqa: F401
 from tests.integ.train.test_model_trainer import (
     DEFAULT_CPU_IMAGE,
@@ -87,18 +86,15 @@ def test_model_trainer_submit(batch_test_resource_manager, sagemaker_session):  
                 "evaluateOnExit": [
                     {
                         "action": "Retry",
-                        "onStatusReason": "Received status from SageMaker: AlgorithmError: *"
+                        "onStatusReason": "Received status from SageMaker: AlgorithmError: *",
                     },
-                    {
-                        "action": "EXIT",
-                        "onStatusReason": "*"
-                    }
-                ]
+                    {"action": "EXIT", "onStatusReason": "*"},
+                ],
             },
             priority=1,
             tags={"pysdk-integ-test-tag-key": "pysdk-integ-test-tag-value"},
             quota_share_name=batch_test_resource_manager.quota_share_name,
-            preemption_config={"preemptionRetriesBeforeTermination": 0}
+            preemption_config={"preemptionRetriesBeforeTermination": 0},
         )
     except botocore.exceptions.ClientError as e:
         print(e.response["ResponseMetadata"])

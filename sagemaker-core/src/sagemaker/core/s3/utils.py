@@ -16,6 +16,7 @@ This has a subset of the functions available through s3.py. This module was init
 functions that were originally in `s3.py` so that those functions could be imported inside
 `session.py` without circular dependencies. (`s3.py` imports Session as a dependency.)
 """
+
 from __future__ import print_function, absolute_import
 
 import logging

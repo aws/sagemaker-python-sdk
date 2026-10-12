@@ -11,8 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-"""
-Local SageMaker Serve development package.
+"""Local SageMaker Serve development package.
 
 This __init__.py file imports key modules used by inference scripts to prevent
 Python module resolution conflicts with external serve.py files.
@@ -41,6 +40,7 @@ from sagemaker.serve.ai_inference_recommender import (
     WorkloadValidationError,
     start_benchmark,
 )
+from sagemaker.serve.utils.hf_utils import download_huggingface_model
 
 __all__ = [
     "InferenceSpec",
@@ -56,4 +56,5 @@ __all__ = [
     "FeatureGatedError",
     "WorkloadValidationError",
     "start_benchmark",
+    "download_huggingface_model",
 ]

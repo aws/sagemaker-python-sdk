@@ -74,6 +74,8 @@ logger = logging.getLogger(__name__)
 
 
 class WarmStartTypes(Enum):
+    """Types of warm start supported for hyperparameter tuning jobs."""
+
     IDENTICAL_DATA_AND_ALGORITHM = "IdenticalDataAndAlgorithm"
     TRANSFER_LEARNING = "TransferLearning"
 
@@ -90,7 +92,7 @@ class HyperparameterTuner(object):
         self,
         model_trainer: "ModelTrainer",
         objective_metric_name: Union[str, PipelineVariable],
-        hyperparameter_ranges: Dict[str, ParameterRange],
+        hyperparameter_ranges: Dict[Union[str, PipelineVariable], ParameterRange],
         metric_definitions: Optional[List[Dict[str, Union[str, PipelineVariable]]]] = None,
         strategy: Union[str, PipelineVariable] = "Bayesian",
         objective_type: Union[str, PipelineVariable] = "Maximize",
@@ -104,7 +106,7 @@ class HyperparameterTuner(object):
         completion_criteria_config: Optional[TuningJobCompletionCriteria] = None,
         early_stopping_type: Union[str, PipelineVariable] = "Off",
         model_trainer_name: Optional[str] = None,
-        random_seed: Optional[int] = None,
+        random_seed: Optional[Union[int, PipelineVariable]] = None,
         autotune: bool = False,
         hyperparameters_to_keep_static: Optional[List[str]] = None,
     ):
@@ -120,10 +122,11 @@ class HyperparameterTuner(object):
                 instance.
             objective_metric_name (str or PipelineVariable): Name of the metric for evaluating
                 training jobs.
-            hyperparameter_ranges (dict[str, sagemaker.parameter.ParameterRange]): Dictionary of
-                parameter ranges. These parameter ranges can be one
+            hyperparameter_ranges (dict[str or PipelineVariable, sagemaker.parameter.ParameterRange]):
+                Dictionary of parameter ranges. These parameter ranges can be one
                 of three types: Continuous, Integer, or Categorical. The keys of
-                the dictionary are the names of the hyperparameter, and the
+                the dictionary are the names of the hyperparameter (a str, or a
+                PipelineVariable such as a pipeline ParameterString), and the
                 values are the appropriate parameter range class to represent
                 the range.
             metric_definitions (list[dict[str, str] or list[dict[str, PipelineVariable]]): A list of
@@ -170,7 +173,8 @@ class HyperparameterTuner(object):
             model_trainer_name (str): A unique name to identify a model_trainer within the
                 hyperparameter tuning job, when more than one model_trainer is used with
                 the same tuning job (default: None).
-            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+            random_seed (int or PipelineVariable): An initial value used to initialize a pseudo-random
+                number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
             autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
@@ -264,7 +268,8 @@ class HyperparameterTuner(object):
         """Override the instance configuration of the model_trainers used by the tuner.
 
         Args:
-            instance_configs (List[HyperParameterTuningInstanceConfig] or Dict[str, List[HyperParameterTuningInstanceConfig]):
+            instance_configs (List[HyperParameterTuningInstanceConfig] or
+                Dict[str, List[HyperParameterTuningInstanceConfig]):
                 The InstanceConfigs to use as an override for the instance configuration
                 of the model_trainer. ``None`` will remove the override.
         """
@@ -486,11 +491,8 @@ class HyperparameterTuner(object):
         from tempfile import TemporaryDirectory
 
         from sagemaker.train.constants import (
-            SM_CODE,
             SM_DRIVERS,
             SM_DRIVERS_LOCAL_PATH,
-            DEFAULT_CONTAINER_ENTRYPOINT,
-            DEFAULT_CONTAINER_ARGUMENTS,
         )
 
         source_code = model_trainer.source_code
@@ -563,9 +565,7 @@ class HyperparameterTuner(object):
                             fpath = os.path.join(root, f)
                             arcname = os.path.relpath(fpath, source_code.source_dir)
                             tar.add(fpath, arcname=arcname)
-                s3_client = session.boto_session.client(
-                    "s3", region_name=session.boto_region_name
-                )
+                s3_client = session.boto_session.client("s3", region_name=session.boto_region_name)
                 s3_client.upload_file(tar_path, bucket, s3_key)
                 model_trainer.hyperparameters["sagemaker_submit_directory"] = (
                     f"s3://{bucket}/{s3_key}"
@@ -1041,8 +1041,9 @@ class HyperparameterTuner(object):
                 names as in model_trainer_dict, and there must be one entry for each model_trainer in
                 model_trainer_dict. Each value is a dictionary of sagemaker.parameter.ParameterRange
                 instance, which can be one of three types: Continuous, Integer, or Categorical.
-                The keys of each ParameterRange dictionaries are the names of the hyperparameter,
-                and the values are the appropriate parameter range class to represent the range.
+                The keys of each ParameterRange dictionary are the names of the hyperparameter
+                (a str, or a PipelineVariable such as a pipeline ParameterString), and the values
+                are the appropriate parameter range class to represent the range.
             metric_definitions_dict (dict(str, list[dict]]): Dictionary of metric definitions.
                 The keys are the same set or a subset of model_trainer names as in model_trainer_dict,
                 and there must be one entry for each model_trainer in model_trainer_dict. Each value is
@@ -1075,14 +1076,16 @@ class HyperparameterTuner(object):
             tags (Optional[Tags]): List of tags for labeling the tuning job (default: None).
                 For more,
                 see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            warm_start_config (sagemaker.core.shapes.HyperParameterTuningJobWarmStartConfig): A ``HyperParameterTuningJobWarmStartConfig`` object that
+            warm_start_config (sagemaker.core.shapes.HyperParameterTuningJobWarmStartConfig):
+                A ``HyperParameterTuningJobWarmStartConfig`` object that
                 has been initialized with the configuration defining the nature of warm start
                 tuning job.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off' (default: 'Off'). If set to 'Off', early stopping
                 will not be attempted. If set to 'Auto', early stopping of some training jobs may
                 happen, but is not guaranteed to.
-            random_seed (int): An initial value used to initialize a pseudo-random number generator.
+            random_seed (int or PipelineVariable): An initial value used to initialize a pseudo-random
+                number generator.
                 Setting a random seed will make the hyperparameter tuning search strategies to
                 produce more consistent configurations for the same tuning job.
             autotune (bool): Whether the parameter ranges or other unset settings of a tuning job
@@ -1378,7 +1381,6 @@ class HyperparameterTuner(object):
             OutputDataConfig,
             ResourceConfig,
             StoppingCondition,
-            Channel,
             DataSource,
             S3DataSource,
         )
@@ -1426,10 +1428,12 @@ class HyperparameterTuner(object):
                 # List of InputData or Channel objects
                 for inp in inputs:
                     if isinstance(inp, InputData):
-                        # Convert InputData to Channel
+                        # Convert InputData to Channel. Preserve content_type so built-in
+                        # algorithms (e.g. XGBoost) know the data format (issue #5632).
                         input_data_config.append(
                             Channel(
                                 channel_name=inp.channel_name,
+                                content_type=inp.content_type,
                                 data_source=DataSource(
                                     s3_data_source=S3DataSource(
                                         s3_data_type="S3Prefix",
@@ -1474,9 +1478,7 @@ class HyperparameterTuner(object):
 
         # Pass through the full OutputDataConfig from ModelTrainer so that
         # kms_key_id, compression_type, and any other fields are preserved.
-        output_config = model_trainer.output_data_config or OutputDataConfig(
-            s3_output_path=None
-        )
+        output_config = model_trainer.output_data_config or OutputDataConfig(s3_output_path=None)
 
         # Build resource config
         resource_config = ResourceConfig(

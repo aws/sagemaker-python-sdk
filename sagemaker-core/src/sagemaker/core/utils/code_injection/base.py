@@ -10,12 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Base client helpers used by generated SageMaker resource code."""
+
 import os
 import boto3
 from botocore.config import Config
 
 
 class Base:
+    """Base client helpers for generated resource code."""
+
     def __init__(self, session=None, region=None):
         aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
         aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")

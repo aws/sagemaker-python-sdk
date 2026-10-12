@@ -3,8 +3,6 @@
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License.
 """Unit tests for recipe_resolver module."""
-import os
-import tempfile
 
 import pytest
 import yaml
@@ -17,7 +15,6 @@ from sagemaker.train.recipe_resolver import (
     _validate_value,
     _get_nested_value,
 )
-
 
 # --- render_template tests ---
 
@@ -508,8 +505,7 @@ class TestFullRecipeTemplate:
         assert "nonexistent_key" not in result["training_config"]
         # And the drop is surfaced as a warning.
         assert any(
-            "nonexistent_key" in r.message and "dropped" in r.message
-            for r in caplog.records
+            "nonexistent_key" in r.message and "dropped" in r.message for r in caplog.records
         )
 
     def test_override_key_in_recipe_but_not_spec_is_kept(self):
@@ -551,9 +547,7 @@ class TestFullRecipeTemplate:
 
     def test_user_recipe_key_not_in_recipe_is_dropped(self, tmp_path, caplog):
         """A user-recipe key absent from the base recipe is dropped + warned."""
-        recipe_content = {
-            "training_config": {"learning_rate": 5e-5, "bogus_param": "x"}
-        }
+        recipe_content = {"training_config": {"learning_rate": 5e-5, "bogus_param": "x"}}
         recipe_file = tmp_path / "recipe.yaml"
         recipe_file.write_text(yaml.dump(recipe_content))
 
@@ -569,10 +563,7 @@ class TestFullRecipeTemplate:
 
         assert result["training_config"]["learning_rate"] == 5e-5
         assert "bogus_param" not in result["training_config"]
-        assert any(
-            "bogus_param" in r.message and "dropped" in r.message
-            for r in caplog.records
-        )
+        assert any("bogus_param" in r.message and "dropped" in r.message for r in caplog.records)
 
     def test_flat_override_maps_to_nested_path(self):
         """A flat override key (recipe field name) is placed at the correct nested path."""
@@ -604,9 +595,7 @@ class TestFullRecipeTemplate:
         """Spec keys without a matching recipe field are skipped (not ValueError)."""
         spec = self._make_spec()
         # max_context_length is in the spec but has no {{placeholder}} in the template
-        spec["max_context_length"] = {
-            "default": 32768, "type": "integer", "min": 1, "max": 131072
-        }
+        spec["max_context_length"] = {"default": 32768, "type": "integer", "min": 1, "max": 131072}
 
         resolver = RecipeResolver(
             recipe_template={"training_config": {"max_length": "{{max_context_length}}"}},
@@ -819,7 +808,8 @@ class TestValidateValueExtended:
     def test_enum_default_value_passes(self):
         """Value matching the default passes enum validation even if not in enum list."""
         _validate_value(
-            "mode", "special",
+            "mode",
+            "special",
             {"type": "string", "enum": ["full", "lora"], "default": "special"},
             "test",
         )
@@ -835,7 +825,8 @@ class TestValidateValueExtended:
     def test_required_none_value_raises(self):
         with pytest.raises(ValueError, match="required"):
             _validate_value(
-                "dataset_path", None,
+                "dataset_path",
+                None,
                 {"type": "string", "required": True},
                 "test",
                 resolved_recipe={"training_config": {}},
@@ -844,7 +835,8 @@ class TestValidateValueExtended:
 
     def test_required_with_value_passes(self):
         _validate_value(
-            "dataset_path", "s3://bucket/data",
+            "dataset_path",
+            "s3://bucket/data",
             {"type": "string", "required": True},
             "test",
             resolved_recipe={"training_config": {"dataset_path": "s3://bucket/data"}},
@@ -855,7 +847,8 @@ class TestValidateValueExtended:
         """Required key with no dotpath (key not found in recipe) raises."""
         with pytest.raises(ValueError, match="required"):
             _validate_value(
-                "missing_key", None,
+                "missing_key",
+                None,
                 {"type": "string", "required": True},
                 "test",
                 resolved_recipe={},
@@ -903,7 +896,9 @@ class TestValidateStepConstraints:
             "max_steps": "training_config.max_steps",
         }
 
-        with pytest.raises(ValueError, match="save_steps.*must be less than or equal to.*max_steps"):
+        with pytest.raises(
+            ValueError, match="save_steps.*must be less than or equal to.*max_steps"
+        ):
             _validate_step_constraints(resolved, key_path_map)
 
     def test_missing_save_steps_skips_validation(self):
@@ -1085,7 +1080,9 @@ class TestRecipeResolverValidationIntegration:
             overrides={"training_config": {"max_steps": 50, "save_steps": 200}},
         )
 
-        with pytest.raises(ValueError, match="save_steps.*must be less than or equal to.*max_steps"):
+        with pytest.raises(
+            ValueError, match="save_steps.*must be less than or equal to.*max_steps"
+        ):
             resolver.resolve()
 
     def test_cross_field_passes_when_save_steps_equals_max_steps(self):
@@ -1113,7 +1110,9 @@ class TestRecipeResolverValidationIntegration:
         )
 
         # max_steps=30 from recipe, save_steps=50 from override -> violation
-        with pytest.raises(ValueError, match="save_steps.*must be less than or equal to.*max_steps"):
+        with pytest.raises(
+            ValueError, match="save_steps.*must be less than or equal to.*max_steps"
+        ):
             resolver.resolve()
 
     def test_all_defaults_pass_validation(self):

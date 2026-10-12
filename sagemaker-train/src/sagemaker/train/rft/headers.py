@@ -36,9 +36,7 @@ def make_inference_headers(metadata: dict[str, Any] | RolloutMetadata) -> dict[s
     # Accept both camelCase (from TLM) and snake_case field names
     job_arn = metadata.get("job_arn") or metadata.get("jobArn")
     trajectory_id = (
-        metadata.get("trajectory_id")
-        or metadata.get("trajectoryId")
-        or metadata.get("rolloutId")
+        metadata.get("trajectory_id") or metadata.get("trajectoryId") or metadata.get("rolloutId")
     )
 
     headers: dict[str, str] = {}

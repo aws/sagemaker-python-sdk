@@ -58,7 +58,10 @@ def test_process_studio_metadata_file_not_exists(tmp_path):
 
 # Test sanitize_user_agent_string_component function
 def test_sanitize_replaces_slash_with_dash():
-    assert sanitize_user_agent_string_component("awslabs/agent-plugins/sagemaker-ai") == "awslabs-agent-plugins-sagemaker-ai"
+    assert (
+        sanitize_user_agent_string_component("awslabs/agent-plugins/sagemaker-ai")
+        == "awslabs-agent-plugins-sagemaker-ai"
+    )
 
 
 def test_sanitize_allows_alphanumeric():

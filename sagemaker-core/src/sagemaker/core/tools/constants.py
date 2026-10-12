@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Constants used in the code_generator modules."""
+
 import os
 
 CLASS_METHODS = set(["create", "add", "register", "import", "list", "get"])
@@ -125,6 +126,9 @@ REQUIRED_TO_OPTIONAL_OVERRIDES = {
     "ModelPackageSecurityConfig": ["KmsKeyId"],
     # S3Uri is optional when ModelDataSource references escrow-managed artifacts (RMP).
     "S3ModelDataSource": ["S3Uri"],
+    # DescribeEndpoint omits DataCaptureConfig.KmsKeyId when data capture is enabled
+    # without a customer-managed KMS key (S3 default encryption is used instead).
+    "DataCaptureConfigSummary": ["KmsKeyId"],
 }
 
 # Members where the generated primitive type should be replaced with a PipelineVariable
@@ -134,5 +138,21 @@ PIPE_VAR_OVERRIDES = {
         "InstanceCount": "IntPipeVar",
         "VolumeSizeInGB": "IntPipeVar",
         "KeepAlivePeriodInSeconds": "IntPipeVar",
+        "SelectedInstanceCount": "IntPipeVar",
+    },
+    "InstancePreference": {
+        "InstanceCount": "IntPipeVar",
+    },
+    "ProcessingClusterConfig": {
+        "InstanceCount": "IntPipeVar",
+        "SelectedInstanceCount": "IntPipeVar",
+    },
+    "ProcessingInstancePreference": {
+        "InstanceCount": "IntPipeVar",
+    },
+    # RandomSeed accepts a pipeline variable (e.g. a ParameterInteger) so tuning pipelines
+    # can parameterize reproducibility (issue #5614 / #6171).
+    "HyperParameterTuningJobConfig": {
+        "RandomSeed": "IntPipeVar",
     },
 }

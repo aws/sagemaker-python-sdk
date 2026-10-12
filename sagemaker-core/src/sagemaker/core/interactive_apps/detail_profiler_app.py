@@ -15,6 +15,7 @@
 This module contains methods for starting up and accessing
 DetailProfiler apps hosted on SageMaker
 """
+
 from __future__ import absolute_import
 
 import json

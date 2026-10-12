@@ -56,7 +56,7 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> tu
         logger.info("Copying uncompressed JumpStart artifacts...")
         s3_downloader.download(model_data.get("S3DataSource").get("S3Uri"), code_dir)
     else:
-        raise ValueError("JumpStart model data compression format is unsupported: %s", model_data)
+        raise ValueError(f"JumpStart model data compression format is unsupported: {model_data}")
 
     config_json_file = code_dir.joinpath("config.json")
     hf_model_config = None

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Test for JumpStart search_public_hub_models function."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -74,10 +75,10 @@ def test_search_public_hub_models_safe_from_injection():
     """Integration test to verify malicious queries don't execute code."""
     # This would have executed code with the old eval() implementation
     malicious_query = "__import__('os').system('echo test')"
-    
+
     # Should safely return empty results without executing code
     results = search_public_hub_models(malicious_query)
-    
+
     # Verify it returns a list (even if empty) and doesn't crash
     assert isinstance(results, list)
     # Should not match any models since it's not a valid filter expression

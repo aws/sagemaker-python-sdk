@@ -1,10 +1,8 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for feature_definition.py"""
-import pytest
 
 from sagemaker.mlops.feature_store.feature_definition import (
-    FeatureDefinition,
     FeatureTypeEnum,
     CollectionTypeEnum,
     IntegralFeatureDefinition,

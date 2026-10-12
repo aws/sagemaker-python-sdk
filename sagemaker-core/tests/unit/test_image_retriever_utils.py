@@ -11,10 +11,11 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.image_retriever.image_retriever_utils module."""
+
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from sagemaker.core.image_retriever.image_retriever_utils import (
     _get_image_tag,
     _get_final_image_scope,

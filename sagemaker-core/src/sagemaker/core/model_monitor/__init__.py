@@ -15,6 +15,7 @@
 This module provides classes for monitoring model quality, data quality, and bias
 in deployed SageMaker models.
 """
+
 from __future__ import absolute_import
 
 # Model monitoring classes
@@ -38,7 +39,7 @@ from sagemaker.core.model_monitor.clarify_model_monitoring import (  # noqa: F40
 )
 
 # Monitoring configuration classes
-from sagemaker.core.model_monitor.cron_expression_generator import (
+from sagemaker.core.model_monitor.cron_expression_generator import (  # noqa: F401
     CronExpressionGenerator,
 )  # noqa: F401
 from sagemaker.core.model_monitor.data_capture_config import DataCaptureConfig  # noqa: F401
@@ -50,11 +51,11 @@ from sagemaker.core.model_monitor.data_quality_monitoring_config import (  # noq
 )
 from sagemaker.core.model_monitor.dataset_format import DatasetFormat  # noqa: F401
 from sagemaker.core.model_monitor.dataset_format import MonitoringDatasetFormat  # noqa: F401
-from sagemaker.core.model_monitor.monitoring_alert import (
+from sagemaker.core.model_monitor.monitoring_alert import (  # noqa: F401
     ModelDashboardIndicatorAction,
 )  # noqa: F401
 from sagemaker.core.model_monitor.monitoring_alert import MonitoringAlertActions  # noqa: F401
-from sagemaker.core.model_monitor.monitoring_alert import (
+from sagemaker.core.model_monitor.monitoring_alert import (  # noqa: F401
     MonitoringAlertHistorySummary,
 )  # noqa: F401
 from sagemaker.core.model_monitor.monitoring_alert import MonitoringAlertSummary  # noqa: F401

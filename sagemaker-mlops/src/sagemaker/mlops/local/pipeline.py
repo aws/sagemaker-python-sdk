@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Local Pipeline Executor"""
+
 from __future__ import absolute_import
 from abc import ABC, abstractmethod
 
@@ -36,7 +37,6 @@ from sagemaker.mlops.local.exceptions import StepExecutionException
 from sagemaker.core.local.utils import get_using_dot_notation
 from sagemaker.core.common_utils import unique_name_from_base
 from sagemaker.core.s3 import parse_s3_url, s3_path_join
-
 
 PRIMITIVES = (str, int, bool, float)
 BINARY_CONDITION_TYPES = (

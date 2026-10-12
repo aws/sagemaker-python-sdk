@@ -23,10 +23,13 @@ from sagemaker.mlops.feature_store.feature_processor._image_resolver import _get
 
 @patch("sagemaker.mlops.feature_store.feature_processor._image_resolver.image_uris.retrieve")
 def test_spark_33_py39(mock_retrieve):
-    mock_retrieve.return_value = "123456.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark-processing:3.3-cpu-py39-v1"
+    mock_retrieve.return_value = (
+        "123456.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark-processing:3.3-cpu-py39-v1"
+    )
     session = Mock(boto_region_name="us-west-2")
-    with patch.object(pyspark, "__version__", "3.3.2"), \
-         patch.object(sys, "version_info", (3, 9, 0)):
+    with patch.object(pyspark, "__version__", "3.3.2"), patch.object(
+        sys, "version_info", (3, 9, 0)
+    ):
         result = _get_spark_image_uri(session)
     mock_retrieve.assert_called_once_with(
         framework="spark",
@@ -40,10 +43,13 @@ def test_spark_33_py39(mock_retrieve):
 
 @patch("sagemaker.mlops.feature_store.feature_processor._image_resolver.image_uris.retrieve")
 def test_spark_35_py39(mock_retrieve):
-    mock_retrieve.return_value = "123456.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark-processing:3.5-cpu-py39-v1"
+    mock_retrieve.return_value = (
+        "123456.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark-processing:3.5-cpu-py39-v1"
+    )
     session = Mock(boto_region_name="us-west-2")
-    with patch.object(pyspark, "__version__", "3.5.1"), \
-         patch.object(sys, "version_info", (3, 9, 0)):
+    with patch.object(pyspark, "__version__", "3.5.1"), patch.object(
+        sys, "version_info", (3, 9, 0)
+    ):
         result = _get_spark_image_uri(session)
     mock_retrieve.assert_called_once_with(
         framework="spark",
@@ -57,10 +63,13 @@ def test_spark_35_py39(mock_retrieve):
 
 @patch("sagemaker.mlops.feature_store.feature_processor._image_resolver.image_uris.retrieve")
 def test_spark_35_py312(mock_retrieve):
-    mock_retrieve.return_value = "123456.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark-processing:3.5-cpu-py312-v1"
+    mock_retrieve.return_value = (
+        "123456.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark-processing:3.5-cpu-py312-v1"
+    )
     session = Mock(boto_region_name="us-west-2")
-    with patch.object(pyspark, "__version__", "3.5.1"), \
-         patch.object(sys, "version_info", (3, 12, 0)):
+    with patch.object(pyspark, "__version__", "3.5.1"), patch.object(
+        sys, "version_info", (3, 12, 0)
+    ):
         result = _get_spark_image_uri(session)
     mock_retrieve.assert_called_once_with(
         framework="spark",
@@ -74,31 +83,39 @@ def test_spark_35_py312(mock_retrieve):
 
 def test_spark_34_raises():
     session = Mock(boto_region_name="us-west-2")
-    with patch.object(pyspark, "__version__", "3.4.1"), \
-         patch.object(sys, "version_info", (3, 9, 0)):
-        with pytest.raises(ValueError, match="No SageMaker Spark container image available for Spark 3.4"):
+    with patch.object(pyspark, "__version__", "3.4.1"), patch.object(
+        sys, "version_info", (3, 9, 0)
+    ):
+        with pytest.raises(
+            ValueError, match="No SageMaker Spark container image available for Spark 3.4"
+        ):
             _get_spark_image_uri(session)
 
 
 def test_spark_35_py310_raises():
     session = Mock(boto_region_name="us-west-2")
-    with patch.object(pyspark, "__version__", "3.5.1"), \
-         patch.object(sys, "version_info", (3, 10, 0)):
+    with patch.object(pyspark, "__version__", "3.5.1"), patch.object(
+        sys, "version_info", (3, 10, 0)
+    ):
         with pytest.raises(ValueError, match="SageMaker Spark 3.5 container images support"):
             _get_spark_image_uri(session)
 
 
 def test_spark_33_py312_raises():
     session = Mock(boto_region_name="us-west-2")
-    with patch.object(pyspark, "__version__", "3.3.2"), \
-         patch.object(sys, "version_info", (3, 12, 0)):
+    with patch.object(pyspark, "__version__", "3.3.2"), patch.object(
+        sys, "version_info", (3, 12, 0)
+    ):
         with pytest.raises(ValueError, match="SageMaker Spark 3.3 container images support"):
             _get_spark_image_uri(session)
 
 
 def test_unknown_spark_version_raises():
     session = Mock(boto_region_name="us-west-2")
-    with patch.object(pyspark, "__version__", "3.6.0"), \
-         patch.object(sys, "version_info", (3, 9, 0)):
-        with pytest.raises(ValueError, match="No SageMaker Spark container image available for Spark 3.6"):
+    with patch.object(pyspark, "__version__", "3.6.0"), patch.object(
+        sys, "version_info", (3, 9, 0)
+    ):
+        with pytest.raises(
+            ValueError, match="No SageMaker Spark container image available for Spark 3.6"
+        ):
             _get_spark_image_uri(session)

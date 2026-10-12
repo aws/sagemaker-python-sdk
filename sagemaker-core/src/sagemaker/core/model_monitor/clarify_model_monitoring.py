@@ -15,6 +15,7 @@
 These classes assist with suggesting baselines and creating monitoring schedules for monitoring
 bias metrics and feature attribution of SageMaker Endpoints.
 """
+
 from __future__ import print_function, absolute_import
 
 import copy
@@ -30,7 +31,6 @@ from sagemaker.core.model_monitor.utils import (
 from sagemaker.core import image_uris, s3
 from sagemaker.core.helper.session_helper import Session, expand_role
 from sagemaker.core.common_utils import (
-    name_from_base,
     format_tags,
     get_resource_name_from_arn,
     list_tags,
@@ -95,7 +95,7 @@ class ClarifyModelMonitor(mm.ModelMonitor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
-        if type(self) == __class__:  # pylint: disable=unidiomatic-typecheck
+        if type(self) is __class__:  # pylint: disable=unidiomatic-typecheck
             raise TypeError(
                 "{} is abstract, please instantiate its subclasses instead.".format(
                     __class__.__name__
@@ -639,7 +639,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         monitor_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_job_definition_request(
             monitoring_schedule_name=monitor_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -782,7 +782,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         job_desc = self.sagemaker_session.sagemaker_client.describe_model_bias_job_definition(
             JobDefinitionName=self.job_definition_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_job_definition_request(
             monitoring_schedule_name=self.monitoring_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -1081,7 +1081,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         monitor_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_job_definition_request(
             monitoring_schedule_name=monitor_schedule_name,
             job_definition_name=new_job_definition_name,
@@ -1229,7 +1229,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 JobDefinitionName=self.job_definition_name
             )
         )
-        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        new_job_definition_name = self._generate_job_definition_name()
         request_dict = self._build_create_job_definition_request(
             monitoring_schedule_name=self.monitoring_schedule_name,
             job_definition_name=new_job_definition_name,

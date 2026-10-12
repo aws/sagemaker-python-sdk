@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow callback_step."""
+
 from __future__ import absolute_import
 
 from sagemaker.mlops.workflow.callback_step import CallbackStep, CallbackOutput
@@ -22,7 +23,7 @@ def test_callback_step_init():
         name="callback-step",
         sqs_queue_url="https://sqs.us-west-2.amazonaws.com/123456789012/test-queue",
         inputs={"key": "value"},
-        outputs=[]
+        outputs=[],
     )
     assert step.name == "callback-step"
     assert step.step_type == StepTypeEnum.CALLBACK

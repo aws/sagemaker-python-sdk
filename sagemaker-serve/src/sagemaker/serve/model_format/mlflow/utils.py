@@ -11,14 +11,16 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Holds the util functions used for MLflow model format"""
+
 from __future__ import absolute_import
 
+import logging
+import os
+import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any, Union
+
 import yaml
-import logging
-import shutil
-import os
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core import image_uris
@@ -148,8 +150,7 @@ def _get_all_flavor_metadata(mlmodel_path: str) -> Optional[Dict[str, Any]]:
             if "flavors" in mlmodel_content:
                 # Extract and return the flavors as a list of keys
                 return mlmodel_content["flavors"]
-            else:
-                raise ValueError("The 'flavors' key is missing in the MLmodel file.")
+            raise ValueError("The 'flavors' key is missing in the MLmodel file.")
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing the file as YAML: {e}")
 
@@ -210,7 +211,7 @@ def _get_deployment_flavor(flavor_metadata: Optional[Dict[str, Any]]) -> str:
 
 
 def _get_python_version_from_parsed_mlflow_model_file(
-    parsed_metadata: Dict[str, Any]
+    parsed_metadata: Dict[str, Any],
 ) -> Optional[str]:
     """Checks the python version of a given parsed MLflow model file.
 
@@ -245,7 +246,6 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
     s3 = session.boto_session.client("s3")
 
     os.makedirs(dst_path, exist_ok=True)
-    dst_path_real = os.path.realpath(dst_path)
 
     paginator = s3.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_key):
@@ -254,9 +254,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
 
-            validate_path_within_directory(
-                local_file_path, dst_path, source_description=key
-            )
+            validate_path_within_directory(local_file_path, dst_path, source_description=key)
 
             if not key.endswith("/"):
                 local_file_dir = os.path.dirname(local_file_path)
@@ -281,7 +279,7 @@ def _copy_directory_contents(src_dir, dest_dir) -> None:
         logger.info("Source and destination directories are the same. No action taken.")
         return
 
-    for root, dirs, files in os.walk(src_dir):
+    for root, _, files in os.walk(src_dir):
         relative_path = os.path.relpath(root, src_dir)
         dest_path = os.path.join(dest_dir, relative_path)
         normalized_dest_path = os.path.normpath(dest_path)
@@ -425,7 +423,7 @@ def _get_saved_model_path_for_tensorflow_and_keras_flavor(model_path: str) -> Op
     Returns:
         Optional[str]: The absolute path to the directory containing 'saved_model.pb'.
     """
-    for dirpath, dirnames, filenames in os.walk(model_path):
+    for dirpath, _, filenames in os.walk(model_path):
         if TENSORFLOW_SAVED_MODEL_NAME in filenames:
             return os.path.abspath(dirpath)
 
@@ -448,5 +446,5 @@ def _move_contents(src_dir: Union[str, Path], dest_dir: Union[str, Path]) -> Non
     for item in _src_dir.iterdir():
         _dest_path = _dest_dir / item.name
         shutil.move(str(item), str(_dest_path))
-    
+
     _src_dir.rmdir()

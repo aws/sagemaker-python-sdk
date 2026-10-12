@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for workflow tuning_step."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -26,13 +27,13 @@ def test_tuning_step_requires_step_args():
 
 def test_tuning_step_properties():
     from unittest.mock import patch
-    
+
     step_args = Mock()
     step_args.caller_name = "tune"
     step_args.func_args = [Mock()]
     step_args.func_args[0].sagemaker_session = Mock()
     step_args.func_args[0].sagemaker_session.context = Mock()
-    
+
     with patch("sagemaker.core.workflow.utilities.validate_step_args_input"):
         step = TuningStep(name="tuning-step", step_args=step_args)
         assert hasattr(step, "properties")

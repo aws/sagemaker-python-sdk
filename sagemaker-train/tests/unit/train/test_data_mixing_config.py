@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for DataMixingConfig class."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -128,17 +129,23 @@ class TestDataMixingConfigInvalidCustomerDataPercent:
 
     def test_negative_customer_data_percent_raises(self):
         """Negative customer_data_percent raises ValidationError."""
-        with pytest.raises(ValidationError, match="customer_data_percent must be between 0 and 100"):
+        with pytest.raises(
+            ValidationError, match="customer_data_percent must be between 0 and 100"
+        ):
             DataMixingConfig(customer_data_percent=-1.0)
 
     def test_over_hundred_customer_data_percent_raises(self):
         """customer_data_percent over 100 raises ValidationError."""
-        with pytest.raises(ValidationError, match="customer_data_percent must be between 0 and 100"):
+        with pytest.raises(
+            ValidationError, match="customer_data_percent must be between 0 and 100"
+        ):
             DataMixingConfig(customer_data_percent=100.01)
 
     def test_large_negative_customer_data_percent_raises(self):
         """Large negative customer_data_percent raises ValidationError."""
-        with pytest.raises(ValidationError, match="customer_data_percent must be between 0 and 100"):
+        with pytest.raises(
+            ValidationError, match="customer_data_percent must be between 0 and 100"
+        ):
             DataMixingConfig(customer_data_percent=-500.0)
 
     def test_non_numeric_customer_data_percent_raises(self):

@@ -1,9 +1,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0
 """Unit tests for athena_query.py"""
-import os
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pandas as pd
 
 from sagemaker.mlops.feature_store.athena_query import AthenaQuery
@@ -82,7 +82,9 @@ class TestAthenaQuery:
     @patch("sagemaker.mlops.feature_store.athena_query.download_athena_query_result")
     @patch("pandas.read_csv")
     @patch("os.path.join")
-    def test_as_dataframe_success(self, mock_join, mock_read_csv, mock_download, mock_get, athena_query):
+    def test_as_dataframe_success(
+        self, mock_join, mock_read_csv, mock_download, mock_get, athena_query
+    ):
         athena_query._current_query_execution_id = "query-123"
         athena_query._result_bucket = "bucket"
         athena_query._result_file_prefix = "prefix"
@@ -112,3 +114,60 @@ class TestAthenaQuery:
 
         with pytest.raises(RuntimeError, match="failed"):
             athena_query.as_dataframe()
+
+    @staticmethod
+    def _write_csv(**kwargs):
+        with open(kwargs["filename"], "w") as f:
+            f.write("col\n1\n2\n3\n")
+
+    @patch("sagemaker.mlops.feature_store.athena_query.get_query_execution")
+    @patch("sagemaker.mlops.feature_store.athena_query.download_athena_query_result")
+    def test_as_dataframe_removes_temp_file(self, mock_download, mock_get, athena_query, tmp_path):
+        athena_query._current_query_execution_id = "query-123"
+        athena_query._result_bucket = "bucket"
+        athena_query._result_file_prefix = "prefix"
+        mock_get.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
+        mock_download.side_effect = self._write_csv
+        expected_file = tmp_path / "query-123.csv"
+
+        with patch("tempfile.gettempdir", return_value=str(tmp_path)):
+            df = athena_query.as_dataframe()
+
+        assert df["col"].tolist() == [1, 2, 3]
+        assert mock_download.call_args[1]["filename"] == str(expected_file)
+        assert not expected_file.exists()
+
+    @patch("sagemaker.mlops.feature_store.athena_query.get_query_execution")
+    @patch("sagemaker.mlops.feature_store.athena_query.download_athena_query_result")
+    @patch("pandas.read_csv", side_effect=ValueError("bad csv"))
+    def test_as_dataframe_removes_temp_file_when_read_fails(
+        self, mock_read_csv, mock_download, mock_get, athena_query, tmp_path
+    ):
+        athena_query._current_query_execution_id = "query-123"
+        athena_query._result_bucket = "bucket"
+        athena_query._result_file_prefix = "prefix"
+        mock_get.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
+        mock_download.side_effect = self._write_csv
+
+        with patch("tempfile.gettempdir", return_value=str(tmp_path)):
+            with pytest.raises(ValueError, match="bad csv"):
+                athena_query.as_dataframe()
+
+        assert not (tmp_path / "query-123.csv").exists()
+
+    @patch("sagemaker.mlops.feature_store.athena_query.get_query_execution")
+    @patch("sagemaker.mlops.feature_store.athena_query.download_athena_query_result")
+    def test_as_dataframe_cleanup_failure_does_not_raise(
+        self, mock_download, mock_get, athena_query, tmp_path
+    ):
+        athena_query._current_query_execution_id = "query-123"
+        athena_query._result_bucket = "bucket"
+        athena_query._result_file_prefix = "prefix"
+        mock_get.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
+        mock_download.side_effect = self._write_csv
+
+        with patch("tempfile.gettempdir", return_value=str(tmp_path)):
+            with patch("os.remove", side_effect=PermissionError("file in use")):
+                df = athena_query.as_dataframe()
+
+        assert len(df) == 3

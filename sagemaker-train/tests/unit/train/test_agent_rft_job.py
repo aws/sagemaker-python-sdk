@@ -1,11 +1,10 @@
 """Unit tests for AgentRFTJob."""
+
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from sagemaker.train.agent_rft_job import AgentRFTJob
-
 
 SAMPLE_CONFIG_DOC = json.dumps(
     {
@@ -90,16 +89,18 @@ class TestAgentRFTJobProperties:
         assert rft.progress_info is None
 
     def test_progress_info(self):
-        config = json.dumps({
-            "ServiceOutput": {
-                "ProgressInfo": {
-                    "MaxEpoch": 3,
-                    "StepsPerEpoch": 100,
-                    "CurrentEpoch": 2,
-                    "CurrentStep": 50,
+        config = json.dumps(
+            {
+                "ServiceOutput": {
+                    "ProgressInfo": {
+                        "MaxEpoch": 3,
+                        "StepsPerEpoch": 100,
+                        "CurrentEpoch": 2,
+                        "CurrentStep": 50,
+                    }
                 }
             }
-        })
+        )
         rft = AgentRFTJob(_make_mock_job(job_config_document=config))
         info = rft.progress_info
         assert info["MaxEpoch"] == 3
@@ -112,9 +113,7 @@ class TestAgentRFTJobProperties:
         assert rft.progress_info is None
 
     def test_progress_info_none_when_incomplete(self):
-        config = json.dumps({
-            "ServiceOutput": {"ProgressInfo": {"CurrentEpoch": 1}}
-        })
+        config = json.dumps({"ServiceOutput": {"ProgressInfo": {"CurrentEpoch": 1}}})
         rft = AgentRFTJob(_make_mock_job(job_config_document=config))
         assert rft.progress_info is None
 
@@ -193,14 +192,17 @@ class TestAgentRFTJobMlflowUrl:
     @patch("sagemaker.train.common_utils.job_wait._get_mlflow_presigned_url")
     def test_get_mlflow_url(self, mock_presigned):
         mock_presigned.return_value = "https://mlflow.example.com/presigned"
-        config = json.dumps({
-            "TrainingConfig": {
-                "MlflowConfig": {"MlflowResourceArn": "arn:mlflow", "MlflowExperimentName": "exp"}
-            },
-            "ServiceOutput": {
-                "MlflowDetails": {"ExperimentId": "123", "RunId": "456"}
-            },
-        })
+        config = json.dumps(
+            {
+                "TrainingConfig": {
+                    "MlflowConfig": {
+                        "MlflowResourceArn": "arn:mlflow",
+                        "MlflowExperimentName": "exp",
+                    }
+                },
+                "ServiceOutput": {"MlflowDetails": {"ExperimentId": "123", "RunId": "456"}},
+            }
+        )
         rft = AgentRFTJob(_make_mock_job(job_config_document=config))
         url = rft.get_mlflow_url()
         assert url == "https://mlflow.example.com/presigned"
@@ -212,19 +214,23 @@ class TestAgentRFTJobMlflowUrl:
     @patch("sagemaker.train.common_utils.job_wait._get_mlflow_presigned_url")
     def test_get_mlflow_url_displays_in_jupyter(self, mock_presigned, _mock_jupyter):
         import sys
+
         mock_ipython_display = MagicMock()
         sys.modules["IPython"] = MagicMock()
         sys.modules["IPython.display"] = mock_ipython_display
         try:
             mock_presigned.return_value = "https://mlflow.example.com/presigned"
-            config = json.dumps({
-                "TrainingConfig": {
-                    "MlflowConfig": {"MlflowResourceArn": "arn:mlflow", "MlflowExperimentName": "exp"}
-                },
-                "ServiceOutput": {
-                    "MlflowDetails": {"ExperimentId": "123", "RunId": "456"}
-                },
-            })
+            config = json.dumps(
+                {
+                    "TrainingConfig": {
+                        "MlflowConfig": {
+                            "MlflowResourceArn": "arn:mlflow",
+                            "MlflowExperimentName": "exp",
+                        }
+                    },
+                    "ServiceOutput": {"MlflowDetails": {"ExperimentId": "123", "RunId": "456"}},
+                }
+            )
             rft = AgentRFTJob(_make_mock_job(job_config_document=config))
             url = rft.get_mlflow_url()
             assert url == "https://mlflow.example.com/presigned"
@@ -238,18 +244,20 @@ class TestAgentRFTJobMlflowUrl:
 
 
 class TestAgentRFTJobTrainingMetrics:
-    MLFLOW_CONFIG_DOC = json.dumps({
-        "TrainingConfig": {
-            "MlflowConfig": {
-                "MlflowResourceArn": "arn:mlflow",
-                "MlflowExperimentName": "exp",
-                "MlflowRunName": "run1",
-            }
-        },
-        "ServiceOutput": {
-            "MlflowDetails": {"ExperimentId": "eid", "RunId": "rid"},
-        },
-    })
+    MLFLOW_CONFIG_DOC = json.dumps(
+        {
+            "TrainingConfig": {
+                "MlflowConfig": {
+                    "MlflowResourceArn": "arn:mlflow",
+                    "MlflowExperimentName": "exp",
+                    "MlflowRunName": "run1",
+                }
+            },
+            "ServiceOutput": {
+                "MlflowDetails": {"ExperimentId": "eid", "RunId": "rid"},
+            },
+        }
+    )
 
     @patch("sagemaker.train.common_utils.job_wait._setup_mlflow_metrics_util")
     def test_returns_per_step_metrics(self, mock_setup):

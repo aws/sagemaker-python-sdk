@@ -2,7 +2,12 @@ import unittest
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
-from sagemaker.serve.detector.pickler import save_pkl, save_xgboost, save_sklearn, load_xgboost_from_json
+from sagemaker.serve.detector.pickler import (
+    save_pkl,
+    save_xgboost,
+    save_sklearn,
+    load_xgboost_from_json,
+)
 
 
 class TestPickler(unittest.TestCase):
@@ -33,7 +38,7 @@ class TestPickler(unittest.TestCase):
             mock_instance = Mock()
             mock_class.return_value = mock_instance
             mock_get_class.return_value = mock_class
-            
+
             result = load_xgboost_from_json("model.json", "xgboost.XGBClassifier")
             self.assertEqual(result, mock_instance)
 

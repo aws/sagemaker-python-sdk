@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for checkpoint_location module."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -66,7 +67,9 @@ class TestCheckpointLocation:
 
     def test_init_with_invalid_uri_raises_error(self):
         """Test initialization with invalid URI raises ValueError."""
-        with pytest.raises(ValueError, match="CheckpointLocation should be specified with valid s3 URI"):
+        with pytest.raises(
+            ValueError, match="CheckpointLocation should be specified with valid s3 URI"
+        ):
             CheckpointLocation("invalid-uri")
 
     def test_fspath_returns_local_path(self):
@@ -77,6 +80,7 @@ class TestCheckpointLocation:
     def test_can_be_used_as_pathlike(self):
         """Test CheckpointLocation can be used as os.PathLike."""
         import os
+
         checkpoint_loc = CheckpointLocation("s3://my-bucket/checkpoints")
         path = os.fspath(checkpoint_loc)
         assert path == _JOB_CHECKPOINT_LOCATION

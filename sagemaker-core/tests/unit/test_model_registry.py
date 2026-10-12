@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from sagemaker.core.model_registry import (
     get_model_package_args,
     get_create_model_package_request,
@@ -330,7 +330,7 @@ class TestModelRegistry:
             "sagemaker.core.model_registry.can_model_package_source_uri_autopopulate",
             return_value=True,
         ):
-            result = create_model_package_from_containers(
+            create_model_package_from_containers(
                 sagemaker_session=mock_session,
                 model_package_group_name="test-group",
                 containers=[{"Image": "test-image:latest"}],
@@ -362,7 +362,7 @@ class TestModelRegistry:
             "sagemaker.core.model_registry.can_model_package_source_uri_autopopulate",
             return_value=False,
         ):
-            result = create_model_package_from_containers(
+            create_model_package_from_containers(
                 sagemaker_session=mock_session,
                 model_package_group_name="test-group",
                 containers=[{"Image": "test-image:latest"}],
@@ -400,7 +400,7 @@ class TestModelRegistry:
             with patch(
                 "sagemaker.core.model_registry.update_list_of_dicts_with_values_from_config"
             ):
-                result = create_model_package_from_containers(
+                create_model_package_from_containers(
                     sagemaker_session=mock_session,
                     model_package_group_name="test-group",
                     containers=[{"Image": "test-image:latest"}],
@@ -429,7 +429,7 @@ class TestModelRegistry:
         with patch(
             "sagemaker.core.model_registry.update_list_of_dicts_with_values_from_config"
         ) as mock_update:
-            result = create_model_package_from_containers(
+            create_model_package_from_containers(
                 sagemaker_session=mock_session,
                 model_package_group_name="test-group",
                 containers=containers,

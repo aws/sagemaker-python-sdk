@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Contains classes for loading the 'params' argument for the UDF."""
+
 from __future__ import absolute_import
 
 from typing import Dict, Union

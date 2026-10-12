@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Holds constants used for interpreting MLflow models."""
+
 from __future__ import absolute_import
 
 DEFAULT_FW_USED_FOR_DEFAULT_IMAGE = "pytorch"
@@ -49,6 +50,6 @@ FLAVORS_WITH_FRAMEWORK_SPECIFIC_DLC_SUPPORT = {
     "xgboost": "xgboost",
     "tensorflow": "tensorflow",
     "keras": "tensorflow",
-    "spark": "sparkml"
+    "spark": "sparkml",
 }
 FLAVORS_DEFAULT_WITH_TF_SERVING = ["keras", "tensorflow"]
