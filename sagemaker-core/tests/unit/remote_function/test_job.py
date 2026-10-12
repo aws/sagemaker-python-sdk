@@ -106,6 +106,56 @@ class TestJobSettings:
                 image_uri="test-image",
             )
 
+    @patch.object(_JobSettings, "_get_default_spark_image", return_value="spark-image")
+    def test_init_with_spark_and_pre_execution_script(self, mock_spark_image, mock_session):
+        """The SDK's own Spark setup commands must not make a user's script conflict."""
+        settings = _JobSettings(
+            sagemaker_session=mock_session,
+            role="arn:aws:iam::123456789012:role/role",
+            instance_type="ml.m5.xlarge",
+            spark_config=SparkConfig(),
+            pre_execution_script="/path/to/script.sh",
+        )
+
+        assert settings.pre_execution_script == "/path/to/script.sh"
+        assert settings.pre_execution_commands is None
+
+    @patch.object(_JobSettings, "_get_default_spark_image", return_value="spark-image")
+    def test_init_with_spark_does_not_mutate_user_pre_execution_commands(
+        self, mock_spark_image, mock_session
+    ):
+        user_commands = ["echo test"]
+
+        settings = _JobSettings(
+            sagemaker_session=mock_session,
+            role="arn:aws:iam::123456789012:role/role",
+            instance_type="ml.m5.xlarge",
+            spark_config=SparkConfig(),
+            pre_execution_commands=user_commands,
+        )
+
+        assert user_commands == ["echo test"]
+        assert settings.pre_execution_commands[0] == "echo test"
+        assert any(
+            "sagemaker-feature-store-pyspark" in cmd for cmd in settings.pre_execution_commands
+        )
+
+    @patch.object(_JobSettings, "_get_default_spark_image", return_value="spark-image")
+    def test_init_with_spark_and_user_commands_and_script_raises_error(
+        self, mock_spark_image, mock_session
+    ):
+        with pytest.raises(
+            ValueError, match="Only one of pre_execution_commands or pre_execution_script"
+        ):
+            _JobSettings(
+                sagemaker_session=mock_session,
+                role="arn:aws:iam::123456789012:role/role",
+                instance_type="ml.m5.xlarge",
+                spark_config=SparkConfig(),
+                pre_execution_commands=["echo test"],
+                pre_execution_script="/path/to/script.sh",
+            )
+
     def test_init_without_instance_type_raises_error(self, mock_session):
         """Test that instance_type is required."""
         with pytest.raises(ValueError, match="instance_type is a required parameter"):
