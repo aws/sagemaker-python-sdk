@@ -245,6 +245,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         inference_spec: Custom inference specification with load() and invoke() functions.
         schema_builder: Defines input/output schema for serialization and deserialization.
         modelbuilder_list: List of ModelBuilder objects for multi-model deployments.
+        resource_requirements: Compute resources allocated to an inference component.
+        inference_component_name: Name to use when building an inference component.
         pipeline_models: List of Model objects for creating inference pipelines.
         role_arn: IAM role ARN for SageMaker to assume.
         sagemaker_session: Session object for managing SageMaker API interactions.
@@ -314,6 +316,17 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             "help": "List of ModelBuilder objects for multi-model or inference component deployments. "
             "Used when deploying multiple models to a single endpoint."
         },
+    )
+    resource_requirements: Optional[ResourceRequirements] = field(
+        default=None,
+        metadata={
+            "help": "Compute resources to allocate to an inference component, including CPU, "
+            "memory, accelerator devices, and copies."
+        },
+    )
+    inference_component_name: Optional[str] = field(
+        default=None,
+        metadata={"help": "Name to use when building an inference component."},
     )
     role_arn: Optional[str] = field(
         default=None,
@@ -1837,8 +1850,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.inference_ami_version = None
         if not hasattr(self, "model_version"):
             self.model_version = None
-        if not hasattr(self, "resource_requirements"):
-            self.resource_requirements = None
         if not hasattr(self, "model_kms_key"):
             self.model_kms_key = None
         if not hasattr(self, "hub_name"):
