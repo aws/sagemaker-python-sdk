@@ -19,6 +19,7 @@ import multiprocessing
 import subprocess
 import json
 import os
+import re
 import sys
 from pathlib import Path
 import logging
@@ -238,7 +239,12 @@ def set_env(
     }
     with open(output_file, "w") as f:
         for key, value in env_vars.items():
-            f.write(f"export {key}='{safe_serialize(value)}'\n")
+            # The file is sourced by a bash script running with 'set -e', so names must be valid
+            # shell identifiers (channel names and hyperparameter keys may contain '-' or '.')
+            # and single quotes inside values must be escaped.
+            name = re.sub(r"[^A-Za-z0-9_]", "_", key)
+            quoted = safe_serialize(value).replace("'", "'\"'\"'")
+            f.write(f"export {name}='{quoted}'\n")
 
     logger.info("Environment Variables:")
     log_env_variables(env_vars_dict=env_vars)

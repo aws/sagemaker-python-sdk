@@ -212,3 +212,52 @@ def test_log_env_variables():
 def _remove_extra_lines(string):
     """Removes extra blank lines from a string."""
     return "\n".join([line for line in string.splitlines() if line.strip()])
+
+
+@patch(
+    "sagemaker.train.container_drivers.scripts.environment.read_source_code_json", return_value=None
+)
+@patch(
+    "sagemaker.train.container_drivers.scripts.environment.read_distributed_json", return_value=None
+)
+@patch("sagemaker.train.container_drivers.scripts.environment.num_cpus", return_value=1)
+@patch("sagemaker.train.container_drivers.scripts.environment.num_gpus", return_value=0)
+@patch("sagemaker.train.container_drivers.scripts.environment.num_neurons", return_value=0)
+@patch("sagemaker.train.container_drivers.scripts.environment.log_env_variables")
+def test_set_env_output_can_be_sourced_with_special_characters(*_mocks):
+    """The env file is sourced under 'set -e'; quotes and non-identifier names must not break it."""
+    import subprocess
+    import tempfile
+
+    from sagemaker.train.container_drivers.scripts.environment import set_env as _set_env
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        output_file = os.path.join(tmp_dir, "sm_training.env")
+        with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+            _set_env(
+                resource_config={
+                    "current_host": "algo-1",
+                    "current_instance_type": "ml.m5.xlarge",
+                    "hosts": ["algo-1"],
+                    "network_interface_name": "eth0",
+                },
+                input_data_config={"train-data": {"TrainingInputMode": "File"}},
+                hyperparameters_config={"model.lr": "0.1", "prompt": "it's a test"},
+                output_file=output_file,
+            )
+
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                'set -e; trap "exit 3" ERR; source "$1"; '
+                'printf "%s\n" "$SM_CHANNEL_TRAIN_DATA" "$SM_HP_MODEL_LR" "$SM_HP_PROMPT"',
+                "bash",
+                output_file,
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["/opt/ml/input/data/train-data", "0.1", "it's a test"]
