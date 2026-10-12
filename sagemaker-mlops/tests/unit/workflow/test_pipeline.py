@@ -63,7 +63,7 @@ def test_pipeline_create_without_role_auto_resolves(mock_session, mock_step):
                 role_type="pipeline",
                 sagemaker_session=mock_session,
             )
-            mock_session.sagemaker_client.create_pipeline.assert_called_once()
+            mock_session.create_pipeline.assert_called_once()
 
 
 def test_format_start_parameters():
@@ -104,7 +104,7 @@ def test_pipeline_create_local_mode(mock_session, mock_step):
             description="test",
             parallelism_config={"MaxParallelExecutionSteps": 2},
         )
-        mock_session.sagemaker_client.create_pipeline.assert_called_once()
+        mock_session.create_pipeline.assert_called_once()
 
 
 def test_pipeline_create_large_definition(mock_session, mock_step):
@@ -147,7 +147,7 @@ def test_pipeline_update_without_role_auto_resolves(mock_session, mock_step):
                 role_type="pipeline",
                 sagemaker_session=mock_session,
             )
-            mock_session.sagemaker_client.update_pipeline.assert_called_once()
+            mock_session.update_pipeline.assert_called_once()
 
 
 def test_pipeline_update_local_mode(mock_session, mock_step):
@@ -165,7 +165,7 @@ def test_pipeline_update_local_mode(mock_session, mock_step):
             description="test",
             parallelism_config={"MaxParallelExecutionSteps": 2},
         )
-        mock_session.sagemaker_client.update_pipeline.assert_called_once()
+        mock_session.update_pipeline.assert_called_once()
 
 
 def test_pipeline_upsert_without_role_auto_resolves(mock_session, mock_step):
@@ -245,7 +245,7 @@ def test_pipeline_start_local_mode(mock_session, mock_step):
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
 
     pipeline.start(parameters={"param": "value"})
-    mock_session.sagemaker_client.start_pipeline_execution.assert_called_once()
+    mock_session.start_pipeline_execution.assert_called_once()
 
 
 def test_create_args_converts_parallelism_config_to_dict(mock_session, mock_step):
