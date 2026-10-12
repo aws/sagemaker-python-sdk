@@ -146,3 +146,59 @@ class TestDjlHfCacheAndModelId:
         builder._build_for_djl()
 
         assert builder.env_vars["HF_HUB_OFFLINE"] == "1"
+
+
+def test_endpoint_build_hf_cache_is_tmp_with_real_prepare_for_mode(tmp_path):
+    """The DJL server defaults merged by _prepare_for_mode must not win over /tmp.
+
+    The tests above mock _prepare_for_mode; here it runs for real (only the S3 upload is
+    mocked), since it merges the DJL server's HF_HOME=/opt/ml/model/ defaults into env_vars.
+    """
+    builder = ModelBuilder(
+        model="test-org/test-model",
+        role_arn=MOCK_ROLE_ARN,
+        sagemaker_session=_mock_sagemaker_session(),
+        model_path=str(tmp_path),
+        mode=Mode.SAGEMAKER_ENDPOINT,
+        image_uri=MOCK_IMAGE_URI,
+        model_server=ModelServer.DJL_SERVING,
+        instance_type="ml.g5.2xlarge",
+    )
+    builder.schema_builder = Mock(
+        sample_input={"inputs": "Hello", "parameters": {}},
+        sample_output=[{"generated_text": "Hi"}],
+    )
+    builder._optimizing = False
+    # Normally initialized by build()
+    builder.modes = {}
+    builder.serve_settings = Mock(s3_model_data_url=None)
+    envs_at_create = []
+
+    with (
+        patch("sagemaker.serve.model_builder_servers._get_nb_instance", return_value=None),
+        patch(
+            "sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf",
+            return_value={"num_attention_heads": 32},
+        ),
+        patch("sagemaker.serve.model_builder_servers._get_gpu_info", return_value=1),
+        patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=False),
+        patch.object(ModelBuilder, "_validate_djl_serving_sample_data"),
+        patch.object(ModelBuilder, "_auto_detect_image_uri"),
+        patch.object(
+            ModelBuilder,
+            "_create_model",
+            side_effect=lambda: envs_at_create.append(dict(builder.env_vars)),
+        ),
+        patch(
+            "sagemaker.serve.model_server.djl_serving.server.determine_bucket_and_prefix",
+            return_value=("mock-bucket", "prefix"),
+        ),
+        patch(
+            "sagemaker.serve.model_server.djl_serving.server.S3Uploader.upload",
+            return_value="s3://mock-bucket/prefix/code",
+        ),
+    ):
+        builder._build_for_djl()
+
+    assert envs_at_create[-1]["HF_HOME"] == "/tmp"
+    assert envs_at_create[-1]["HUGGINGFACE_HUB_CACHE"] == "/tmp"
