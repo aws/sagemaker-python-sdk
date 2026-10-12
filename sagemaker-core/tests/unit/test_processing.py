@@ -64,6 +64,41 @@ class TestProcessorNormalizeArgs:
 
 
 class TestProcessorNormalizeInputs:
+    def test_normalize_inputs_uploads_local_source(self, mock_session, tmp_path):
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "test-job"
+        local_source = tmp_path / "input.csv"
+        local_source.write_text("feature,label\n1,0\n", encoding="utf-8")
+        processing_input = ProcessingInput(
+            source=str(local_source),
+            destination="/opt/ml/processing/input",
+            input_name="training-data",
+        )
+
+        with patch(
+            "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/uploaded/input.csv"
+        ) as mock_upload:
+            result = processor._normalize_inputs([processing_input])
+
+        mock_upload.assert_called_once_with(
+            local_path=str(local_source),
+            desired_s3_uri="s3://test-bucket/sagemaker/test-job/input/training-data",
+            sagemaker_session=mock_session,
+            kms_key=None,
+        )
+        assert result[0].source == "s3://bucket/uploaded/input.csv"
+        assert result[0].destination == "/opt/ml/processing/input"
+
+    def test_processing_input_source_rejects_missing_destination(self):
+        with pytest.raises(ValueError, match="destination is required"):
+            ProcessingInput(source="./data")
+
     def test_normalize_inputs_with_dataset_definition(self, mock_session):
         from sagemaker.core.shapes import DatasetDefinition, AthenaDatasetDefinition
 
