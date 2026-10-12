@@ -24,6 +24,7 @@ from sagemaker.mlops.workflow.function_step import _FunctionStep
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum, PropertyFile
 from sagemaker.mlops.workflow.condition_step import ConditionStep
 from sagemaker.mlops.workflow.step_dependency import StepDependency
+from sagemaker.mlops.workflow.step_collections import StepCollection
 
 from sagemaker.core.workflow.step_outputs import get_step
 from sagemaker.core.workflow.pipeline_definition_config import PipelineDefinitionConfig
@@ -212,6 +213,8 @@ class StepsCompiler(object):
             step_map[step.name] = step
             if isinstance(step, ConditionStep):
                 StepsCompiler._generate_step_map(step.if_steps + step.else_steps, step_map)
+            if isinstance(step, StepCollection):
+                StepsCompiler._generate_step_map(step.steps, step_map)
 
     def _simplify_step_list(
         self,
@@ -241,7 +244,10 @@ class StepsCompiler(object):
             if isinstance(step, Step):
                 if step not in resolved_step_set:
                     resolved_step_set.add(step)
-
+            elif isinstance(step, StepCollection):
+                for sub_step in step.steps:
+                    if sub_step not in resolved_step_set:
+                        resolved_step_set.add(sub_step)
             else:
                 raise ValueError(f"Invalid input step type: {type(step)}")
 
