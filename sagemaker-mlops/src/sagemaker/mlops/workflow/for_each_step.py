@@ -25,6 +25,7 @@ from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 
 MAX_CONCURRENCY_MIN = 1
 MAX_CONCURRENCY_MAX = 50
+MAX_LITERAL_ITERABLE_ITEMS = 100
 
 _ITERATION_OUTPUT_NAMESPACE = "IterationOutput"
 _CURRENT_ITEM_PATH = "ForEach.CurrentItem"
@@ -229,12 +230,29 @@ class ForEachStep(Step):
     - ``properties.Selected.<member>`` — output of the selector-picked
       iteration (no body step name qualifier: the selector's ``field`` already
       identifies which body step's output was compared)
+    - ``properties.Status`` (String: Succeeded | Failed | Stopped)
+    - ``properties.InputItemCount`` (Integer: number of items iterated) and
+      ``properties.TotalStepCount``, ``properties.SucceededStepCount``,
+      ``properties.FailedStepCount``, ``properties.StoppedStepCount``
+      (Integers: child step counts across all iterations, so up to
+      ``InputItemCount`` times the number of body steps)
     """
+
+    _AGGREGATE_PROPERTY_MEMBERS = (
+        "Status",
+        "InputItemCount",
+        "TotalStepCount",
+        "SucceededStepCount",
+        "FailedStepCount",
+        "StoppedStepCount",
+    )
 
     def __init__(
         self,
         name: str,
-        iterable_items: PipelineVariable = None,
+        iterable_items: Union[
+            PipelineVariable, List[Union[PipelineVariable, str, int, float, bool]]
+        ] = None,
         max_concurrency: int = None,
         for_each_body: List[Step] = None,
         selector: Optional[ForEachSelector] = None,
@@ -246,15 +264,18 @@ class ForEachStep(Step):
 
         Args:
             name (str): The name of the `ForEachStep`.
-            iterable_items (PipelineVariable): REQUIRED. The items to iterate
-                over. A property reference (e.g. a `ParameterString` or a step
-                output) whose value must resolve to a JSON list string at
-                runtime, such as ``'["item-a", "item-b"]'``. The service
-                currently only accepts the property-reference form; literal
-                values (including literal lists) are rejected ("a literal value
-                cannot resolve to a list"). Items are commonly JSON-object
-                strings whose fields are addressed via ``CurrentItem().<field>``
-                inside the body step.
+            iterable_items (Union[PipelineVariable, List]): REQUIRED. The items
+                to iterate over, in one of two forms:
+
+                - A property reference (e.g. a `ParameterString` or a step
+                  output) whose value resolves to a JSON list string at
+                  runtime, such as ``'["item-a", "item-b"]'``.
+                - A non-empty list of at most 100 elements, each a property
+                  reference or a literal scalar (str, int, float, bool). Each
+                  element is one iteration item.
+
+                Items are commonly JSON-object strings whose fields are
+                addressed via ``CurrentItem().<field>`` inside the body step.
             max_concurrency (int): REQUIRED. The maximum number of child steps
                 that run concurrently. Range: [1, 50].
             for_each_body (List[Step]): REQUIRED. The step(s) to run once per
@@ -279,12 +300,16 @@ class ForEachStep(Step):
         self._validate_for_each_body(name, for_each_body)
         self._validate_selector(name, selector, for_each_body)
 
-        self.iterable_items = iterable_items
+        self.iterable_items = (
+            list(iterable_items) if isinstance(iterable_items, list) else iterable_items
+        )
         self.max_concurrency = max_concurrency
         self.for_each_body = list(for_each_body)
         self.selector = selector
 
         root_prop = Properties(step_name=name)
+        for member in ForEachStep._AGGREGATE_PROPERTY_MEMBERS:
+            root_prop.__dict__[member] = Properties(step_name=name, path=member, step=self)
         root_prop.__dict__["IterationOutputs"] = _IterationOutputsAccessor(self)
         root_prop.__dict__["Selected"] = _ForEachPropertyReference(f"Steps.{name}.Selected", [self])
         self._properties = root_prop
@@ -296,13 +321,29 @@ class ForEachStep(Step):
             raise ValueError(
                 f"ForEach step '{name}': iterable_items is required. Provide a "
                 f"property reference that resolves to a JSON list string at "
-                f"runtime."
+                f"runtime, or a list of items."
             )
+        if isinstance(iterable_items, list):
+            if not 1 <= len(iterable_items) <= MAX_LITERAL_ITERABLE_ITEMS:
+                raise ValueError(
+                    f"ForEach step '{name}': an iterable_items list must have between 1 "
+                    f"and {MAX_LITERAL_ITERABLE_ITEMS} elements. Got: {len(iterable_items)}."
+                )
+            for element in iterable_items:
+                if element is None or not isinstance(
+                    element, (PipelineVariable, str, int, float, bool)
+                ):
+                    raise ValueError(
+                        f"ForEach step '{name}': iterable_items list elements must be "
+                        f"property references or literal scalars (str, int, float, bool). "
+                        f"Got: {type(element)}."
+                    )
+            return
         if not isinstance(iterable_items, PipelineVariable):
             raise ValueError(
                 f"ForEach step '{name}': iterable_items must be a property "
-                f"reference that resolves to a JSON list string at runtime; "
-                f"a literal value cannot resolve to a list. "
+                f"reference that resolves to a JSON list string at runtime, or a "
+                f"list of items; a single literal value cannot resolve to a list. "
                 f"Got: {type(iterable_items)}."
             )
 
@@ -398,6 +439,8 @@ class ForEachStep(Step):
     def properties(self):
         """A Properties object exposing the ForEach step's results.
 
-        Members: ``IterationOutputs[i].<bodyStepName>`` and ``Selected``.
+        Members: ``Status``, ``InputItemCount``, ``TotalStepCount``,
+        ``SucceededStepCount``, ``FailedStepCount``, ``StoppedStepCount``,
+        ``IterationOutputs[i].<bodyStepName>`` and ``Selected``.
         """
         return self._properties
