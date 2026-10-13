@@ -1,5 +1,3 @@
-"""Generated shape dependency graph used for serialization."""
-
 SHAPE_DAG = {
     "AIAdapterModelPackageEntry": {
         "members": [
@@ -10548,12 +10546,19 @@ SHAPE_DAG = {
             {"name": "CustomAttributes", "shape": "CustomAttributesHeader", "type": "string"},
             {"name": "InferenceId", "shape": "InferenceId", "type": "string"},
             {"name": "InputLocation", "shape": "InputLocationHeader", "type": "string"},
+            {
+                "name": "S3OutputPathExtension",
+                "shape": "S3OutputPathExtensionHeader",
+                "type": "string",
+            },
+            {"name": "Filename", "shape": "FilenameHeader", "type": "string"},
             {"name": "RequestTTLSeconds", "shape": "RequestTTLSecondsHeader", "type": "integer"},
             {
                 "name": "InvocationTimeoutSeconds",
                 "shape": "InvocationTimeoutSecondsHeader",
                 "type": "integer",
             },
+            {"name": "Body", "shape": "AsyncBodyBlob", "type": "blob"},
         ],
         "type": "structure",
     },
@@ -10587,6 +10592,7 @@ SHAPE_DAG = {
                 "type": "string",
             },
             {"name": "SessionId", "shape": "SessionIdOrNewSessionConstantHeader", "type": "string"},
+            {"name": "PrefixAwareId", "shape": "PrefixAwareIdHeader", "type": "string"},
         ],
         "type": "structure",
     },
@@ -10621,6 +10627,7 @@ SHAPE_DAG = {
                 "type": "string",
             },
             {"name": "SessionId", "shape": "SessionIdHeader", "type": "string"},
+            {"name": "PrefixAwareId", "shape": "PrefixAwareIdHeader", "type": "string"},
         ],
         "type": "structure",
     },

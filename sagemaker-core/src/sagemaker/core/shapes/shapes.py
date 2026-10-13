@@ -71,7 +71,7 @@ class InvokeEndpointAsyncOutput(Base):
 
     Attributes
     ----------------------
-    inference_id: Identifier for an inference request. This will be the same as the InferenceId specified in the input. Amazon SageMaker will generate an identifier for you if you do not specify one.
+    inference_id: Identifier for an inference request. This will be the same as the InferenceId specified in the input. Amazon SageMaker AI will generate an identifier for you if you do not specify one.
     output_location: The Amazon S3 URI where the inference response payload is stored.
     failure_location: The Amazon S3 URI where the inference failure response payload is stored.
     """
@@ -90,7 +90,7 @@ class InvokeEndpointOutput(Base):
     body: Includes the inference provided by the model.  For information about the format of the response body, see Common Data Formats-Inference. If the explainer is activated, the body includes the explanations provided by the model. For more information, see the Response section under Invoke the Endpoint in the Developer Guide.
     content_type: The MIME type of the inference returned from the model container.
     invoked_production_variant: Identifies the production variant that was invoked.
-    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
+    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
     new_session_id: If you created a stateful session with your request, the ID and expiration time that the model assigns to that session.
     closed_session_id: If you closed a stateful session with your request, the ID of that session.
     """
@@ -119,12 +119,12 @@ class PayloadPart(Base):
 class ModelStreamError(Base):
     """
     ModelStreamError
-       An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+       An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
 
     Attributes
     ----------------------
     message
-    error_code: This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+    error_code: This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
     """
 
     message: Optional[StrPipeVar] = Unassigned()
@@ -139,7 +139,7 @@ class ResponseStream(Base):
     Attributes
     ----------------------
     payload_part: A wrapper for pieces of the payload that's returned in response to a streaming inference request. A streaming inference response consists of one or more payload parts.
-    model_stream_error:  An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+    model_stream_error:  An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
     internal_stream_failure: The stream processing failed because of an unknown error, exception or failure. Try your request again.
     """
 
@@ -157,7 +157,7 @@ class InvokeEndpointWithResponseStreamOutput(Base):
     body
     content_type: The MIME type of the inference returned from the model container.
     invoked_production_variant: Identifies the production variant that was invoked.
-    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
+    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
     """
 
     body: ResponseStream
@@ -228,19 +228,6 @@ class AccessForbidden(Base):
     """
     AccessForbidden
       You do not have permission to perform an action.
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
-
-
-class ConflictException(Base):
-    """
-    ConflictException
-      There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
 
     Attributes
     ----------------------
@@ -401,6 +388,19 @@ class BatchWriteRecordResponse(Base):
 
     errors: List[BatchWriteRecordError]
     unprocessed_entries: List[BatchWriteRecordEntry]
+
+
+class ConflictException(Base):
+    """
+    ConflictException
+      There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+
+    Attributes
+    ----------------------
+    message
+    """
+
+    message: Optional[StrPipeVar] = Unassigned()
 
 
 class GetRecordResponse(Base):
