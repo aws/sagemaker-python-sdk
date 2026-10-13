@@ -53,6 +53,7 @@ Homepage = "https://github.com/aws/sagemaker-python-sdk"
 [project.optional-dependencies]
 rft-strands = ["strands-agents"]
 rft-langchain = ["httpx>=0.24.0"]
+tokenizer = ["transformers"]
 test = [
     "pytest",
     "pytest-cov",
@@ -63,7 +64,8 @@ test = [
     "scipy",
     "omegaconf",
     "graphene",
-    "IPython"
+    "IPython",
+    "transformers",
 ]
 notebook = [
     "ipywidgets>=8.0.0",
