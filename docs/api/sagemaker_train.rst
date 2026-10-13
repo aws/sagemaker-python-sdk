@@ -39,6 +39,44 @@ Multi-Turn RL Training
    :undoc-members:
    :show-inheritance:
 
+Interactive Training Sessions
+-----------------------------
+
+.. automodule:: sagemaker.train.training_session
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: sagemaker.train.training_session.service_client
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: sagemaker.train.training_session.training_client
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: sagemaker.train.training_session.sampling_client
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: sagemaker.train.training_session.types
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: sagemaker.train.training_session.futures
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: sagemaker.train.training_session.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Model Evaluation
 ----------------
 
