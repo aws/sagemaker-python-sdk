@@ -121,9 +121,7 @@ def test_current_item_drilled_expr():
 def test_current_item_bracket_indexing():
     assert CurrentItem()["score"].expr == {"Get": "ForEach.CurrentItem['score']"}
     assert CurrentItem().items[0].expr == {"Get": "ForEach.CurrentItem.items[0]"}
-    assert CurrentItem()["nested"]["key"].expr == {
-        "Get": "ForEach.CurrentItem['nested']['key']"
-    }
+    assert CurrentItem()["nested"]["key"].expr == {"Get": "ForEach.CurrentItem['nested']['key']"}
 
 
 def test_current_item_has_no_referenced_steps():
@@ -163,12 +161,23 @@ def test_for_each_step_to_request_reference_items(item_list_parameter):
     assert args["ForEachBody"][0]["Type"] == "Lambda"
 
 
-def test_for_each_step_literal_array_items_rejected():
-    # the service currently only accepts the property-reference form
-    literal_item = '{"name": "lit-c", "score": 5}'
+def test_for_each_step_literal_list_items_accepted():
     ref_item = ParameterString(name="ItemOne")
-    with pytest.raises(ValueError, match="literal value cannot resolve to a list"):
-        make_for_each_step(iterable_items=[ref_item, literal_item])
+    items = [ref_item, '{"name": "lit-c", "score": 5}', 42, 1.5, True]
+    step = make_for_each_step(iterable_items=items)
+    assert step.to_request()["Arguments"]["IterableItems"] == items
+
+
+@pytest.mark.parametrize("items", [[], ["x"] * 101])
+def test_for_each_step_literal_list_size_out_of_range(items):
+    with pytest.raises(ValueError, match="between 1 and 100 elements"):
+        make_for_each_step(iterable_items=items)
+
+
+@pytest.mark.parametrize("element", [None, {"a": 1}, ["nested"]])
+def test_for_each_step_literal_list_invalid_element(element):
+    with pytest.raises(ValueError, match="literal scalars"):
+        make_for_each_step(iterable_items=["ok", element])
 
 
 def test_for_each_step_to_request_with_selector():
@@ -219,6 +228,24 @@ def test_for_each_step_iteration_outputs_property():
     assert ref._referenced_steps == [step]
 
 
+@pytest.mark.parametrize(
+    "member",
+    [
+        "Status",
+        "InputItemCount",
+        "TotalStepCount",
+        "SucceededStepCount",
+        "FailedStepCount",
+        "StoppedStepCount",
+    ],
+)
+def test_for_each_step_aggregate_properties(member):
+    step = make_for_each_step()
+    ref = getattr(step.properties, member)
+    assert ref.expr == {"Get": f"Steps.ForEachItems.{member}"}
+    assert ref._referenced_steps == [step]
+
+
 def test_for_each_step_iteration_outputs_must_be_indexed():
     step = make_for_each_step()
     with pytest.raises(TypeError, match="must be indexed"):
@@ -228,9 +255,7 @@ def test_for_each_step_iteration_outputs_must_be_indexed():
 def test_for_each_step_selected_property():
     step = make_for_each_step()
     ref = step.properties.Selected.OutputParameters["ProcessedScore"]
-    assert ref.expr == {
-        "Get": "Steps.ForEachItems.Selected.OutputParameters['ProcessedScore']"
-    }
+    assert ref.expr == {"Get": "Steps.ForEachItems.Selected.OutputParameters['ProcessedScore']"}
     assert ref._referenced_steps == [step]
 
 
@@ -451,9 +476,7 @@ def test_pipeline_definition_downstream_references(mock_session):
             "Get": "Steps.ForEachItems.IterationOutputs[0].ProcessItem"
             ".OutputParameters['ResultPath']"
         },
-        "selected": {
-            "Get": "Steps.ForEachItems.Selected.OutputParameters['ResultPath']"
-        },
+        "selected": {"Get": "Steps.ForEachItems.Selected.OutputParameters['ResultPath']"},
     }
     # dependency is inferred by the service from the Get expressions;
     # no explicit DependsOn is added for property references
@@ -539,3 +562,43 @@ def test_pipeline_graph_includes_body_step_edges(mock_session):
     graph = PipelineGraph([for_each])
     assert "ProcessItem" in graph.step_map
     assert "ProcessItem" in graph.adjacency_list["ForEachItems"]
+
+
+def test_pipeline_definition_literal_list_items_and_aggregate_reference(mock_session):
+    body = CustomStep(name="ProcessItem", input_data=CurrentItem())
+    producer = CustomStep(name="ProduceItem")
+    producer_output = Properties(
+        step_name="ProduceItem", path="OutputParameters['ItemA']", step=producer
+    )
+    for_each = ForEachStep(
+        name="ForEachItems",
+        iterable_items=[producer_output, "s3://my-bucket/item-b", 42, True],
+        max_concurrency=2,
+        for_each_body=[body],
+    )
+    consumer = CustomStep(
+        name="Consumer",
+        input_data={
+            "status": for_each.properties.Status,
+            "total": for_each.properties.TotalStepCount,
+        },
+    )
+    pipeline = Pipeline(
+        name="test-pipeline",
+        steps=[producer, for_each, consumer],
+        sagemaker_session=mock_session,
+    )
+    steps = _definition_steps(pipeline)
+    for_each_request = next(s for s in steps if s["Name"] == "ForEachItems")
+    # same shape as the service's iterable_literal_list.json fixture
+    assert for_each_request["Arguments"]["IterableItems"] == [
+        {"Get": "Steps.ProduceItem.OutputParameters['ItemA']"},
+        "s3://my-bucket/item-b",
+        42,
+        True,
+    ]
+    consumer_request = next(s for s in steps if s["Name"] == "Consumer")
+    assert consumer_request["Arguments"]["input_data"] == {
+        "status": {"Get": "Steps.ForEachItems.Status"},
+        "total": {"Get": "Steps.ForEachItems.TotalStepCount"},
+    }
