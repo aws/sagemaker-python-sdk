@@ -40,6 +40,7 @@ from pandas.api.types import is_list_like
 
 import boto3
 from botocore.config import Config
+import multiprocess
 from pathos.multiprocessing import ProcessingPool
 
 from sagemaker.config import (
@@ -75,6 +76,16 @@ from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
+
+
+def _initialize_worker():
+    """Ignore keyboard interrupts in child processes."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+def _run_multi_threaded_worker(args):
+    """Run one pathos ingestion task from its argument tuple."""
+    return IngestionManagerPandas._run_multi_threaded(*args)
 
 
 @attr.s
@@ -522,15 +533,15 @@ class IngestionManagerPandas:
                 )
             ]
 
-        def init_worker():
-            # ignore keyboard interrupts in child processes.
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        self._processing_pool = ProcessingPool(self.max_processes, init_worker)
+        spawn_context = multiprocess.get_context("spawn")
+        self._processing_pool = ProcessingPool(
+            self.max_processes,
+            initializer=_initialize_worker,
+            context=spawn_context,
+        )
         self._processing_pool.restart(force=True)
 
-        f = lambda x: IngestionManagerPandas._run_multi_threaded(*x)  # noqa: E731
-        self._async_result = self._processing_pool.amap(f, args)
+        self._async_result = self._processing_pool.amap(_run_multi_threaded_worker, args)
 
         if wait:
             self.wait(timeout=timeout)
