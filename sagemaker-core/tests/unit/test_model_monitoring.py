@@ -380,6 +380,55 @@ class TestModelMonitor:
             job_name = monitor._generate_baselining_job_name(job_name="custom-job")
             assert job_name == "custom-job"
 
+    def test_generate_job_definition_name_uses_base_job_name(self, mock_session, test_role):
+        """A user-supplied base_job_name is reflected in the job definition name (#4783)."""
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring."
+                "DefaultModelMonitor._get_default_image_uri",
+                return_value="test-image",
+            ),
+        ):
+            monitor = DefaultModelMonitor(
+                role=test_role,
+                sagemaker_session=mock_session,
+                base_job_name="my-monitor",
+            )
+            name = monitor._generate_job_definition_name()
+            assert name.startswith("my-monitor-")
+            assert DefaultModelMonitor.JOB_DEFINITION_BASE_NAME not in name
+
+    def test_generate_job_definition_name_defaults_without_base_job_name(
+        self, mock_session, test_role
+    ):
+        """Without base_job_name, the job definition name falls back to the type default."""
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring."
+                "DefaultModelMonitor._get_default_image_uri",
+                return_value="test-image",
+            ),
+        ):
+            monitor = DefaultModelMonitor(role=test_role, sagemaker_session=mock_session)
+            name = monitor._generate_job_definition_name()
+            assert name.startswith(DefaultModelMonitor.JOB_DEFINITION_BASE_NAME)
+
     def test_start_monitoring_schedule(self, mock_session, test_role):
         with (
             patch(

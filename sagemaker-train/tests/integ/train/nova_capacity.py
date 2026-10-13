@@ -20,11 +20,10 @@ customer job. These helpers keep the tests' footprint to one job at a time:
 
 * ``nova_capacity_slot`` serializes Nova serverless jobs across all xdist workers of a
   test run. Hold it from submission until the job is terminal.
-* ``wait_for_nova_training_job`` waits for the job with a bounded wait for capacity:
-  if the job is still waiting for instances after ``pending_timeout`` it is stopped
-  and the test is skipped. It also stops the job whenever the wait ends with the job
-  still running (timeout, error, interrupt), so no orphaned job keeps queueing for
-  capacity after the test is gone.
+* ``wait_for_nova_training_job`` waits for the job with a bounded wait for capacity
+  (see ``tests/integ/capacity.py``): if the job is still waiting for instances after
+  ``pending_timeout`` it is stopped and the test is skipped, and the job is stopped
+  whenever the wait ends with it still running.
 """
 
 from __future__ import absolute_import
@@ -35,9 +34,8 @@ import tempfile
 import time
 from contextlib import contextmanager
 
-import pytest
-
 from .. import lock
+from ..capacity import wait_for_training_job_with_capacity_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +49,6 @@ NOVA_CAPACITY_LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_nova_ca
 # give the capacity back instead of queueing behind customers.
 NOVA_PENDING_TIMEOUT_SECONDS = 3600
 
-TERMINAL_STATUSES = ("Completed", "Failed", "Stopped")
-_WAITING_FOR_CAPACITY_STATUSES = ("Starting", "Pending")
-
 
 @contextmanager
 def nova_capacity_slot():
@@ -65,63 +60,21 @@ def nova_capacity_slot():
         yield
 
 
-def _stop_quietly(training_job):
-    """Best-effort stop of a training job that is not terminal yet."""
-    name = getattr(training_job, "training_job_name", None)
-    try:
-        logger.warning("Stopping non-terminal training job %s", name)
-        training_job.stop()
-    except Exception as e:  # pylint: disable=broad-except
-        logger.warning("Failed to stop training job %s: %s", name, e)
-
-
 def wait_for_nova_training_job(
     training_job,
     max_wait_time,
     poll_interval=30,
     pending_timeout=NOVA_PENDING_TIMEOUT_SECONDS,
 ):
-    """Poll a training job until it is terminal, with a bounded wait for capacity.
+    """Poll a Nova training job until it is terminal, with a bounded wait for capacity.
 
-    Args:
-        training_job: The ``sagemaker.core.resources.TrainingJob`` returned by
-            ``train(wait=False)``.
-        max_wait_time (int): Maximum total seconds to wait for a terminal status.
-        poll_interval (int): Seconds between status checks.
-        pending_timeout (int): Seconds after which a job that is still waiting for
-            instances (secondary status ``Starting``/``Pending``) is stopped and the
-            test is skipped.
-
-    Returns:
-        str: The last observed ``training_job_status``. It is terminal unless
-        ``max_wait_time`` ran out, in which case the job has been stopped.
+    Thin wrapper over ``wait_for_training_job_with_capacity_timeout``; see that
+    function for the arguments and return value.
     """
-    start = time.time()
-    status = None
-    try:
-        while time.time() - start < max_wait_time:
-            training_job.refresh()
-            status = training_job.training_job_status
-            if status in TERMINAL_STATUSES:
-                return status
-            elapsed = time.time() - start
-            if (
-                training_job.secondary_status in _WAITING_FOR_CAPACITY_STATUSES
-                and elapsed > pending_timeout
-            ):
-                pytest.skip(
-                    f"Nova capacity unavailable: training job "
-                    f"{training_job.training_job_name} was still waiting for instances "
-                    f"after {int(elapsed)}s; stopped it to release the shared pool."
-                )
-            time.sleep(poll_interval)
-        logger.warning(
-            "Training job %s not terminal after %ds (status: %s)",
-            training_job.training_job_name,
-            max_wait_time,
-            status,
-        )
-        return status
-    finally:
-        if status not in TERMINAL_STATUSES:
-            _stop_quietly(training_job)
+    return wait_for_training_job_with_capacity_timeout(
+        training_job,
+        max_wait_time=max_wait_time,
+        poll_interval=poll_interval,
+        pending_timeout=pending_timeout,
+        capacity_label="Nova",
+    )
