@@ -1,0 +1,117 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""The step definitions for the Cleanup step in SageMaker Pipelines."""
+
+from __future__ import absolute_import
+
+from typing import List, Optional, Union
+
+from sagemaker.core.helper.pipeline_variable import PipelineVariable, RequestType
+
+from sagemaker.mlops.workflow.step_collections import StepCollection
+from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
+
+
+class S3CleanupSource:
+    """An upstream step whose Amazon S3 outputs a `CleanupStep` deletes.
+
+    Omit `s3_uris` to let the service find the outputs from the source step
+    (Training and Athena steps). Set `s3_uris` to delete exact objects
+    written by a Processing or Transform step; each URI must be under that
+    step's output location.
+    """
+
+    def __init__(
+        self,
+        step: Union[str, Step],
+        s3_uris: Optional[List[Union[str, PipelineVariable]]] = None,
+    ):
+        """Constructs an `S3CleanupSource`.
+
+        Args:
+            step (str or Step): The source step, or its name.
+            s3_uris (List[str or PipelineVariable]): Exact `s3://bucket/key`
+                object URIs to delete. Omit for Training and Athena steps
+                (default: None).
+        """
+        if s3_uris is not None and len(s3_uris) == 0:
+            raise ValueError("s3_uris must be omitted or contain at least one URI.")
+        self.step = step
+        self.s3_uris = s3_uris
+
+    @property
+    def step_name(self) -> str:
+        """The name of the source step."""
+        return self.step.name if isinstance(self.step, Step) else self.step
+
+    def to_request(self) -> RequestType:
+        """Gets the request structure for this cleanup source."""
+        request = {"StepName": self.step_name}
+        if self.s3_uris is not None:
+            request["S3Uris"] = list(self.s3_uris)
+        return request
+
+
+class CleanupStep(Step):
+    """`CleanupStep` for SageMaker Pipelines Workflows.
+
+    Deletes the Amazon S3 outputs of upstream steps. The pipeline execution
+    role needs `s3:DeleteObject` on the target objects. A source step that
+    sets a `VpcConfig` can't be cleaned up.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        s3_sources: List[S3CleanupSource],
+        display_name: Optional[str] = None,
+        description: Optional[str] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
+    ):
+        """Constructs a `CleanupStep`.
+
+        Args:
+            name (str): The name of the `CleanupStep`.
+            s3_sources (List[S3CleanupSource]): The steps whose S3 outputs
+                to delete.
+            display_name (str): The display name of the `CleanupStep`
+                (default: None).
+            description (str): The description of the `CleanupStep`
+                (default: None).
+            depends_on (List[str or Step or StepCollection]): The steps this
+                `CleanupStep` depends on. Defaults to the source steps
+                (default: None).
+        """
+        if not s3_sources:
+            raise ValueError("s3_sources must contain at least one S3CleanupSource.")
+        # The service can only delete outputs of steps that already ran, so the
+        # sources are the natural dependencies.
+        if depends_on is None:
+            depends_on = [source.step for source in s3_sources]
+        super(CleanupStep, self).__init__(
+            name, display_name, description, StepTypeEnum.CLEANUP, depends_on
+        )
+        self.s3_sources = s3_sources
+
+    @property
+    def arguments(self) -> RequestType:
+        """The arguments dictionary that is used to define the `CleanupStep`."""
+        return {"Resources": {"S3": [source.to_request() for source in self.s3_sources]}}
+
+    @property
+    def properties(self):
+        """A `Properties` object is not available for the `CleanupStep`.
+
+        Cleanup results are reported in the execution step metadata.
+        """
+        raise RuntimeError("The Properties object is not available for the CleanupStep.")
