@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.25.0 (2026-10-13)
+
+### Bug Fixes
+
+- fix(core): prevent false-positive RoleValidationError under conditional access (#6029)
+- fix(core): resolve HuggingFace version alias in image URI tag (#5722)
+- fix(local): align local mode with the SageMaker service (#6317)
+- fix: make local mode health-check timeout configurable via session config (#5778)
+- fix(model-monitor): honor base_job_name for job definition names (#6372)
+- fix(processing): fix V3 shape regressions + KMS/requirements gaps in processors (#6364)
+- fix: accept CUSTOMIZATION capability in JumpStart hub documents (#6456)
+
+### Tests
+
+- chore(core): sync the bundled SageMaker service model with botocore (#6453)
+
+
 ## v2.24.0 (2026-10-07)
 
 ### New Features
