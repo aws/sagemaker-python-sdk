@@ -139,6 +139,10 @@
         "content_bucket": "jumpstart-cache-prod-me-south-1",
         "gated_content_bucket": "jumpstart-private-cache-prod-me-south-1"
     },
+    "me-west-1": {
+        "content_bucket": "jumpstart-cache-prod-me-west-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-me-west-1"
+    },
     "mx-central-1": {
         "content_bucket": "jumpstart-cache-prod-mx-central-1",
         "gated_content_bucket": "jumpstart-private-cache-prod-mx-central-1"
