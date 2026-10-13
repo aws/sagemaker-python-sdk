@@ -1,5 +1,32 @@
 # Changelog
 
+## v3.25.0 (2026-10-13)
+
+### New Features
+
+- feat(train): add the interactive Training Sessions client surface (#6452)
+
+### Bug Fixes
+
+- fix(core): prevent false-positive RoleValidationError under conditional access (#6029)
+- fix(core): resolve HuggingFace version alias in image URI tag (#5722)
+- fix(local): align local mode with the SageMaker service (#6317)
+- fix: make local mode health-check timeout configurable via session config (#5778)
+- fix(model-monitor): honor base_job_name for job definition names (#6372)
+- fix(processing): fix V3 shape regressions + KMS/requirements gaps in processors (#6364)
+- fix: accept CUSTOMIZATION capability in JumpStart hub documents (#6456)
+- fix(train): bound pydantic to <3.0.0 for cross-package consistency (#6363)
+- fix(train): set input_data_config to None (#6154)
+
+### Tests
+
+- chore(core): sync the bundled SageMaker service model with botocore (#6453)
+- test(train): bound capacity wait in gated JumpStart train test (#6397)
+- test(train): bound capacity wait in SMTJ SFT integ test (#6409)
+- test(train): fail fast in HyperPod SFT integ tests (#6449)
+- test(serve): fix Bedrock resource leaks in Nova integ tests (#6398)
+
+
 ## v3.24.0 (2026-10-07)
 
 ### New Features

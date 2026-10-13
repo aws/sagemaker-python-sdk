@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.25.0 (2026-10-13)
+
+### Bug Fixes
+
+- No functional changes; version bump for dependency-pin alignment with core 2.25.0 / train 1.25.0 / serve 1.25.0.
+
+
 ## v1.24.0 (2026-10-07)
 
 ### New Features

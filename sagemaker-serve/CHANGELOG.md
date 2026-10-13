@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.25.0 (2026-10-13)
+
+### Tests
+
+- test(serve): fix Bedrock resource leaks in Nova integ tests (#6398)
+
+
 ## v1.24.0 (2026-10-07)
 
 ### Bug Fixes
