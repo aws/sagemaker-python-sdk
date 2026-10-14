@@ -1277,7 +1277,18 @@ class HyperparameterTuner(object):
         if self.tags:
             from sagemaker.core.shapes import Tag
 
-            tag_objects = [Tag(key=tag["Key"], value=tag["Value"]) for tag in self.tags]
+            # self.tags mixes Key/Value dicts (tuner/JumpStart tags) with the Tag objects
+            # merged in from ModelTrainer.tags.
+            tag_objects = [
+                (
+                    tag
+                    if isinstance(tag, Tag)
+                    else Tag(
+                        key=tag.get("Key", tag.get("key")), value=tag.get("Value", tag.get("value"))
+                    )
+                )
+                for tag in self.tags
+            ]
 
         # Build tuning request
         tuning_request = {
