@@ -1470,7 +1470,10 @@ class ModelMonitor(object):
                 "output",
             )
             output = ProcessingOutput(
-                source=output, destination=s3_uri, output_name=_DEFAULT_OUTPUT_NAME
+                output_name=_DEFAULT_OUTPUT_NAME,
+                s3_output=ProcessingS3Output(
+                    s3_uri=s3_uri, local_path=output, s3_upload_mode="EndOfJob"
+                ),
             )
 
         return output
