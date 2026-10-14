@@ -317,6 +317,29 @@ class TestEcrLoginIfNeeded:
         assert result is True
         mock_popen.assert_called_once()
 
+    @patch("subprocess.Popen")
+    @patch("sagemaker.core.local.image._check_output")
+    def test_ecr_login_removes_only_aws_prefix_from_token(self, mock_check_output, mock_popen):
+        """Test only the 'AWS:' prefix is removed, not trailing A/W/S/: characters"""
+        mock_check_output.return_value = ""
+        mock_session = Mock()
+        mock_ecr = Mock()
+        mock_ecr.get_authorization_token.return_value = {
+            "authorizationData": [
+                {
+                    # base64 encoded "AWS:abcWAS": the password ends in characters of "AWS:"
+                    "authorizationToken": "QVdTOmFiY1dBUw==",
+                    "proxyEndpoint": "https://123456789012.dkr.ecr.us-west-2.amazonaws.com",
+                }
+            ]
+        }
+        mock_session.client.return_value = mock_ecr
+        ecr_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest"
+
+        _ecr_login_if_needed(mock_session, ecr_image)
+
+        mock_popen.return_value.communicate.assert_called_once_with(input=b"abcWAS")
+
 
 class TestPullImage:
     """Test cases for _pull_image function"""
