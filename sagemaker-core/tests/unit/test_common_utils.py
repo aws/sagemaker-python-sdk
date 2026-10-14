@@ -2660,37 +2660,109 @@ class TestCreateOrUpdateCodeDir:
             assert os.path.exists(code_dir)
             assert os.path.exists(os.path.join(code_dir, "app.py"))
 
-    def test_create_or_update_code_dir_with_dependencies(self):
-        """Test code directory creation with dependencies."""
+    def test_create_or_update_code_dir_copies_directory_dependency_to_code_root(self, tmp_path):
+        """Test directory dependencies are importable from the code root."""
         from sagemaker.core.common_utils import _create_or_update_code_dir
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            model_dir = os.path.join(tmpdir, "model")
-            os.makedirs(model_dir)
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        inference_script = tmp_path / "inference.py"
+        inference_script.write_text("# inference code")
+        dependency = tmp_path / "my_lib"
+        dependency.mkdir()
+        (dependency / "helper.py").write_text("# helper code")
 
-            inference_script = os.path.join(tmpdir, "inference.py")
-            with open(inference_script, "w") as f:
-                f.write("# inference code")
+        _create_or_update_code_dir(
+            str(model_dir), str(inference_script), None, [str(dependency)], None, str(tmp_path)
+        )
 
-            dep_dir = os.path.join(tmpdir, "my_lib")
-            os.makedirs(dep_dir)
-            with open(os.path.join(dep_dir, "helper.py"), "w") as f:
-                f.write("# helper code")
+        assert (model_dir / "code" / "my_lib" / "helper.py").exists()
+        assert not (model_dir / "code" / "lib").exists()
 
-            # Should create code directory with dependencies
+    def test_create_or_update_code_dir_copies_file_dependency_to_code_root(self, tmp_path):
+        """Test single-file dependencies are importable from the code root."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        inference_script = tmp_path / "inference.py"
+        inference_script.write_text("# inference code")
+        dependency = tmp_path / "helper.py"
+        dependency.write_text("# helper code")
+
+        _create_or_update_code_dir(
+            str(model_dir), str(inference_script), None, [str(dependency)], None, str(tmp_path)
+        )
+
+        assert (model_dir / "code" / "helper.py").exists()
+        assert not (model_dir / "code" / "lib").exists()
+
+    def test_create_or_update_code_dir_dependency_coexists_with_source_directory(self, tmp_path):
+        """Test dependencies and source-directory files share the code root."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+        (source_dir / "inference.py").write_text("# inference code")
+        dependency = tmp_path / "my_lib"
+        dependency.mkdir()
+        (dependency / "helper.py").write_text("# helper code")
+
+        _create_or_update_code_dir(
+            str(model_dir), "inference.py", str(source_dir), [str(dependency)], None, str(tmp_path)
+        )
+
+        assert (model_dir / "code" / "inference.py").exists()
+        assert (model_dir / "code" / "my_lib" / "helper.py").exists()
+
+    def test_create_or_update_code_dir_rejects_directory_dependency_collision(self, tmp_path):
+        """Test directory dependencies do not silently merge with source code."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        source_dir = tmp_path / "source"
+        (source_dir / "my_lib").mkdir(parents=True)
+        (source_dir / "my_lib" / "source.py").write_text("# source code")
+        dependency_parent = tmp_path / "dependency"
+        dependency = dependency_parent / "my_lib"
+        dependency.mkdir(parents=True)
+        (dependency / "helper.py").write_text("# helper code")
+
+        with pytest.raises(FileExistsError):
             _create_or_update_code_dir(
-                model_dir,
-                inference_script,
+                str(model_dir),
+                "inference.py",
+                str(source_dir),
+                [str(dependency)],
                 None,
-                [dep_dir],
-                None,
-                tmpdir,
+                str(tmp_path),
             )
 
-            code_dir = os.path.join(model_dir, "code")
-            lib_dir = os.path.join(code_dir, "lib")
-            assert os.path.exists(lib_dir)
-            assert os.path.exists(os.path.join(lib_dir, "my_lib", "helper.py"))
+        assert (model_dir / "code" / "my_lib" / "source.py").exists()
+        assert not (model_dir / "code" / "my_lib" / "helper.py").exists()
+
+    def test_create_or_update_code_dir_file_dependency_overwrites_collision(self, tmp_path):
+        """Test a file dependency preserves copy2 overwrite semantics."""
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+        (source_dir / "helper.py").write_text("source")
+        dependency_parent = tmp_path / "dependency"
+        dependency_parent.mkdir()
+        dependency = dependency_parent / "helper.py"
+        dependency.write_text("dependency")
+
+        _create_or_update_code_dir(
+            str(model_dir), "inference.py", str(source_dir), [str(dependency)], None, str(tmp_path)
+        )
+
+        assert (model_dir / "code" / "helper.py").read_text() == "dependency"
 
     def test_create_or_update_code_dir_rejects_sensitive_paths(self):
         """Test that code_dir validation rejects sensitive system paths."""
