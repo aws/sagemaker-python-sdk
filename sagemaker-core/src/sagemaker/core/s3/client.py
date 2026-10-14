@@ -143,7 +143,9 @@ class S3Downloader(object):
         Args:
             s3_uri (str): An S3 uri to download from.
             local_path (str): A local path to download the file(s) to.
-            kms_key (str): The KMS key to use to decrypt the files.
+            kms_key (str): Not used. S3 decrypts objects encrypted with SSE-KMS
+                transparently, so no key needs to be sent with the download request.
+                Kept for backwards compatibility.
             sagemaker_session (sagemaker.core.helper.session_helper.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created
@@ -154,13 +156,12 @@ class S3Downloader(object):
         """
         sagemaker_session = sagemaker_session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
-        if kms_key is not None:
-            extra_args = {"SSECustomerKey": kms_key}
-        else:
-            extra_args = None
 
+        # Do not pass kms_key as SSECustomerKey: that header is for SSE-C (a raw
+        # customer-provided key), and sending a KMS key ARN in it makes S3 reject the
+        # request with 400 Bad Request.
         return sagemaker_session.download_data(
-            path=local_path, bucket=bucket, key_prefix=key_prefix, extra_args=extra_args
+            path=local_path, bucket=bucket, key_prefix=key_prefix, extra_args=None
         )
 
     @staticmethod
