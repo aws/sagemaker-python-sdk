@@ -3003,7 +3003,7 @@ class _ModelBuilderUtils:
                 "Please note that you may need to restart your runtime after installation."
             )
 
-        script_path = Path(__file__).parent.joinpath("pack_conda_env.sh")
+        script_path = Path(__file__).parent.joinpath("model_server", "triton", "pack_conda_env.sh")
         env_tar_path = pkl_path.joinpath("triton_env.tar.gz")
         conda_env_name = os.getenv("CONDA_DEFAULT_ENV")
 
@@ -3162,7 +3162,7 @@ class _ModelBuilderUtils:
             raise ValueError("%s is not supported" % self.framework)
 
         if self.inference_spec:
-            triton_model_path = Path(__file__).parent.joinpath("model.py")
+            triton_model_path = Path(__file__).parent.joinpath("model_server", "triton", "model.py")
             shutil.copy2(str(triton_model_path), str(export_path))
 
             self._generate_config_pbtxt(pkl_path=pkl_path)
