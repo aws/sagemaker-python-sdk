@@ -68,12 +68,12 @@ class Hub:
                 object, used for SageMaker interactions.
         """
         self.hub_name = hub_name
-        self.region = sagemaker_session.boto_region_name
         self.bucket_name = bucket_name
         self._sagemaker_session = (
             sagemaker_session
             or utils.get_default_jumpstart_session_with_user_agent_suffix(is_hub_content=True)
         )
+        self.region = self._sagemaker_session.boto_region_name
 
     def _get_latest_model_version(self, model_id: str) -> str:
         """Populates the lastest version of a model from specs no matter what is passed.
