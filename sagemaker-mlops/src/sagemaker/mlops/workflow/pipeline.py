@@ -212,8 +212,8 @@ class Pipeline:
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
-            # TODO: replace with sagemaker-core methods
-            return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
+            # Local pipelines are managed by LocalPipelineSession itself, not by its client.
+            return self.sagemaker_session.create_pipeline(self, description)
         tags = format_tags(tags)
         tags = _append_project_tags(tags)
         tags = self.sagemaker_session._append_sagemaker_config_tags(tags, PIPELINE_TAGS_PATH)
@@ -299,6 +299,9 @@ class Pipeline:
             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
 sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """
+        if self.sagemaker_session.local_mode:
+            return self.sagemaker_session.describe_pipeline(PipelineName=self.name)
+
         kwargs = dict(PipelineName=self.name)
         if pipeline_version_id:
             kwargs["PipelineVersionId"] = pipeline_version_id
@@ -337,7 +340,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
-            return self.sagemaker_session.sagemaker_client.update_pipeline(self, description)
+            return self.sagemaker_session.update_pipeline(self, description)
 
         kwargs = self._create_args(role_arn, description, parallelism_config)
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
@@ -412,6 +415,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             "If triggers have been setup for this target, they will become orphaned."
             "You will need to clean them up manually via the CLI or EventBridge console."
         )
+        if self.sagemaker_session.local_mode:
+            return self.sagemaker_session.delete_pipeline(PipelineName=self.name)
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
     @_telemetry_emitter(
@@ -477,7 +482,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
-            return self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
+            return self.sagemaker_session.start_pipeline_execution(**kwargs)
         update_args(kwargs, PipelineParameters=format_start_parameters(parameters))
 
         # retry on AccessDeniedException to cover case of tag propagation delay
