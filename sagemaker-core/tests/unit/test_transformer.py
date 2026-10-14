@@ -685,3 +685,70 @@ class TestTransformerTransformWithTags:
         call_kwargs = mock_transform_job_class.call_args[1]
         assert "tags" not in call_kwargs
         assert call_kwargs["transform_job_name"] == "test-job"
+
+
+class TestTransformerSessionRegion:
+    """The transform job must be polled through the Transformer's session and region."""
+
+    def test_transform_binds_job_to_session_region(self, mock_session):
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            output_path="s3://bucket/output",
+            sagemaker_session=mock_session,
+        )
+        mock_session._intercept_create_request = Mock(
+            side_effect=lambda request, submit, *args, **kwargs: submit(request)
+        )
+
+        with patch(
+            "sagemaker.core.utils.code_injection.codec.transform",
+            return_value={"transform_job_name": "test-job"},
+        ):
+            transformer.transform(
+                data="s3://bucket/input", content_type="text/csv", job_name="test-job", wait=False
+            )
+
+        job = transformer.latest_transform_job
+        assert job._session is mock_session.boto_session
+        assert job._region == "us-west-2"
+
+    @patch("sagemaker.core.transformer.TransformJob")
+    def test_attach_uses_boto_session_and_region(self, mock_transform_job_class, mock_session):
+        mock_transform_job_class.get.return_value = None
+
+        with pytest.raises(ValueError):
+            Transformer.attach("test-job", mock_session)
+
+        mock_transform_job_class.get.assert_called_once_with(
+            transform_job_name="test-job",
+            session=mock_session.boto_session,
+            region="us-west-2",
+        )
+
+    @patch("sagemaker.core.transformer._flush_log_streams")
+    @patch("sagemaker.core.transformer._logs_init")
+    def test_logs_for_transform_job_describes_with_session_client(
+        self, mock_logs_init, mock_flush, mock_session
+    ):
+        from sagemaker.core.transformer import logs_for_transform_job
+
+        description = {"TransformJobName": "test-job", "TransformJobStatus": "Completed"}
+        mock_session.sagemaker_client.describe_transform_job.return_value = description
+        mock_logs_init.return_value = (
+            1,
+            [],
+            {},
+            Mock(),
+            "/aws/sagemaker/TransformJobs",
+            False,
+            Mock(),
+        )
+
+        logs_for_transform_job(mock_session, "test-job", wait=True, poll=0)
+
+        mock_session.sagemaker_client.describe_transform_job.assert_called_with(
+            TransformJobName="test-job"
+        )
+        assert mock_logs_init.call_args[0][1] == description
