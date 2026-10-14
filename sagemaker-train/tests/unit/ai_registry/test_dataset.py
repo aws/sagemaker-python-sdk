@@ -596,3 +596,23 @@ class TestDataSetCreateWithContentMetadata:
                 "arn:aws:sagemaker:us-west-2:123:feature-group/fg2",
             ]
             assert document["ContentMetadata"]["ExtractionMethod"] == "FeatureStoreDatasetBuilder"
+
+
+class TestDataSetRefreshVersion:
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    def test_refresh_describes_own_version(self, mock_air_hub, mock_entity_air_hub):
+        mock_air_hub.describe_hub_content.return_value = {
+            "HubContentName": "test-dataset",
+            "HubContentArn": "test-arn",
+            "HubContentVersion": "1.0.0",
+            "HubContentStatus": "Available",
+            "HubContentDocument": json.dumps({"DatasetS3Bucket": "b", "DatasetS3Prefix": "p"}),
+            "HubContentSearchKeywords": [],
+        }
+        dataset = DataSet(name="test-dataset", arn="test-arn", version="1.0.0", status="Available")
+
+        dataset.refresh()
+
+        assert mock_air_hub.describe_hub_content.call_args.kwargs["hub_content_version"] == "1.0.0"
+        assert dataset.version == "1.0.0"
