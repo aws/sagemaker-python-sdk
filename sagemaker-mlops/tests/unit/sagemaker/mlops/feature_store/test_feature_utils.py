@@ -13,6 +13,7 @@ from sagemaker.mlops.feature_store.feature_utils import (
     ingest_dataframe,
     get_session_from_role,
     _is_collection_column,
+    wait_for_athena_query,
 )
 
 
@@ -199,6 +200,22 @@ class TestCreateAthenaQuery:
         session = Mock()
         with pytest.raises(RuntimeError, match="No metastore"):
             create_athena_query("my-fg", session)
+
+
+class TestWaitForAthenaQuery:
+    @pytest.mark.parametrize("terminal_state", ["SUCCEEDED", "FAILED", "CANCELLED"])
+    @patch("sagemaker.mlops.feature_store.feature_utils.time.sleep")
+    @patch("sagemaker.mlops.feature_store.feature_utils.get_query_execution")
+    def test_returns_on_terminal_state(self, mock_get, mock_sleep, terminal_state):
+        mock_get.side_effect = [
+            {"QueryExecution": {"Status": {"State": "RUNNING"}}},
+            {"QueryExecution": {"Status": {"State": terminal_state}}},
+        ]
+
+        wait_for_athena_query(Mock(), "query-id", poll=1)
+
+        assert mock_get.call_count == 2
+        mock_sleep.assert_called_once_with(1)
 
 
 class TestIngestDataframe:
