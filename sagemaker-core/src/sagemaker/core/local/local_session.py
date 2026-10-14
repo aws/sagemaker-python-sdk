@@ -670,8 +670,8 @@ class LocalSession(Session):
             validate_sagemaker_config(sagemaker_config)
 
         if self.s3_endpoint_url is not None:
-            self.s3_resource = boto_session.resource("s3", endpoint_url=self.s3_endpoint_url)
-            self.s3_client = boto_session.client("s3", endpoint_url=self.s3_endpoint_url)
+            self.s3_resource = self.boto_session.resource("s3", endpoint_url=self.s3_endpoint_url)
+            self.s3_client = self.boto_session.client("s3", endpoint_url=self.s3_endpoint_url)
             self.sagemaker_config = (
                 sagemaker_config
                 if sagemaker_config
