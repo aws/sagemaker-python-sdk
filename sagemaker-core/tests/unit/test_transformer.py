@@ -14,6 +14,8 @@
 import pytest
 from unittest.mock import Mock, patch
 from sagemaker.core.transformer import Transformer
+from sagemaker.core.resources import Model
+from sagemaker.core.shapes import ContainerDefinition
 
 
 @pytest.fixture
@@ -271,22 +273,10 @@ class TestTransformer:
     @patch("sagemaker.core.transformer.Model")
     def test_retrieve_image_uri_success(self, mock_model_class, mock_session):
         """Test _retrieve_image_uri with successful model retrieval"""
-        mock_primary_container = Mock()
-        mock_primary_container.image = "test-image:latest"
-
-        class DictWithAttrs(dict):
-            """A dict that also supports attribute access"""
-
-            def __getattr__(self, name):
-                return self.get(name)
-
-        class MockModel:
-            def __init__(self):
-                self.__dict__ = DictWithAttrs()
-                self.__dict__["primary_container"] = mock_primary_container
-                self.__dict__["containers"] = None
-
-        mock_model = MockModel()
+        mock_model = Model(
+            model_name="test-model",
+            primary_container=ContainerDefinition(image="test-image:latest"),
+        )
         mock_model_class.get.return_value = mock_model
 
         transformer = Transformer(
@@ -302,22 +292,10 @@ class TestTransformer:
     @patch("sagemaker.core.transformer.Model")
     def test_retrieve_image_uri_with_containers(self, mock_model_class, mock_session):
         """Test _retrieve_image_uri with containers instead of primary_container"""
-        mock_container = Mock()
-        mock_container.image = "container-image:latest"
-
-        class DictWithAttrs(dict):
-            """A dict that also supports attribute access"""
-
-            def __getattr__(self, name):
-                return self.get(name)
-
-        class MockModel:
-            def __init__(self):
-                self.__dict__ = DictWithAttrs()
-                self.__dict__["primary_container"] = None
-                self.__dict__["containers"] = [mock_container]
-
-        mock_model = MockModel()
+        mock_model = Model(
+            model_name="test-model",
+            containers=[ContainerDefinition(image="container-image:latest")],
+        )
         mock_model_class.get.return_value = mock_model
 
         transformer = Transformer(
