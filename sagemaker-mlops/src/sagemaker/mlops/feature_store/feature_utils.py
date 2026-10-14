@@ -447,7 +447,7 @@ def create_athena_query(feature_group_name: str, session: Session):
         raise RuntimeError("No metastore is configured with this feature group.")
 
     catalog_config = fg.offline_store_config.data_catalog_config
-    disable_glue = getattr(catalog_config, "disable_glue_table_creation", False) or False
+    disable_glue = bool(fg.offline_store_config.disable_glue_table_creation)
 
     return AthenaQuery(
         catalog=catalog_config.catalog if disable_glue else "AwsDataCatalog",

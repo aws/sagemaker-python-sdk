@@ -6,6 +6,8 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
 
+from sagemaker.core.shapes import DataCatalogConfig, OfflineStoreConfig, S3StorageConfig
+
 from sagemaker.mlops.feature_store.feature_utils import (
     load_feature_definitions_from_dataframe,
     as_hive_ddl,
@@ -174,19 +176,29 @@ class TestAsHiveDdl:
 
 
 class TestCreateAthenaQuery:
+    @pytest.mark.parametrize(
+        "disable_glue_table_creation, expected_catalog",
+        [(False, "AwsDataCatalog"), (True, "MyCatalog")],
+    )
     @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
-    def test_creates_athena_query(self, mock_fg_class):
+    def test_creates_athena_query(
+        self, mock_fg_class, disable_glue_table_creation, expected_catalog
+    ):
         mock_fg = MagicMock()
-        mock_fg.offline_store_config.data_catalog_config.catalog = "MyCatalog"
-        mock_fg.offline_store_config.data_catalog_config.database = "MyDatabase"
-        mock_fg.offline_store_config.data_catalog_config.table_name = "MyTable"
-        mock_fg.offline_store_config.data_catalog_config.disable_glue_table_creation = False
+        mock_fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/offline"),
+            disable_glue_table_creation=disable_glue_table_creation,
+            data_catalog_config=DataCatalogConfig(
+                catalog="MyCatalog", database="MyDatabase", table_name="MyTable"
+            ),
+        )
         mock_fg_class.get.return_value = mock_fg
 
         session = Mock()
         query = create_athena_query("my-fg", session)
 
-        assert query.catalog == "AwsDataCatalog"  # disable_glue=False uses default
+        # The custom catalog is only used when Glue table creation is disabled.
+        assert query.catalog == expected_catalog
         assert query.database == "MyDatabase"
         assert query.table_name == "MyTable"
 
