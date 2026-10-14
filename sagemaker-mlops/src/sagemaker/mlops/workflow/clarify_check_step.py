@@ -280,6 +280,15 @@ class ClarifyCheckStep(Step):
                     "S3DataType": getattr(inp.s3_input, "s3_data_type", "S3Prefix"),
                     "S3InputMode": getattr(inp.s3_input, "s3_input_mode", "File"),
                 }
+                # Optional fields, e.g. DataConfig(s3_compression_type="Gzip"); skip unset
+                # (None/Unassigned) values.
+                for api_key, attr in (
+                    ("S3DataDistributionType", "s3_data_distribution_type"),
+                    ("S3CompressionType", "s3_compression_type"),
+                ):
+                    value = getattr(inp.s3_input, attr, None)
+                    if isinstance(value, str):
+                        input_dict["S3Input"][api_key] = value
             processing_inputs.append(input_dict)
 
         s3_output_dict = {

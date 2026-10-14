@@ -91,6 +91,26 @@ def _create_mock_clarify_check_step(output_kms_key=None, volume_kms_key=None):
     return step
 
 
+class TestClarifyCheckStepDatasetInput:
+    """Tests for the dataset ProcessingInput in ClarifyCheckStep.arguments."""
+
+    @patch(_TRIM_PATCH, side_effect=_noop_trim)
+    def test_dataset_compression_and_distribution_type_propagated(self, mock_trim):
+        """S3CompressionType/S3DataDistributionType from DataConfig must reach the request."""
+        step = _create_mock_clarify_check_step()
+        data_s3_input = step._processing_params["data_input"].s3_input
+        data_s3_input.s3_compression_type = "Gzip"
+        data_s3_input.s3_data_distribution_type = "ShardedByS3Key"
+
+        args = step.arguments
+
+        dataset_input = next(
+            inp for inp in args["ProcessingInputs"] if inp["InputName"] == "dataset"
+        )
+        assert dataset_input["S3Input"]["S3CompressionType"] == "Gzip"
+        assert dataset_input["S3Input"]["S3DataDistributionType"] == "ShardedByS3Key"
+
+
 class TestClarifyCheckStepKmsKeyPropagation:
     """Tests for KMS key propagation in ClarifyCheckStep.arguments."""
 
