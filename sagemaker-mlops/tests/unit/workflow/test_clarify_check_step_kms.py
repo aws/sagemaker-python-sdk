@@ -14,7 +14,10 @@
 
 from __future__ import absolute_import
 
+import json
 from unittest.mock import Mock, patch
+
+from sagemaker.core.network import NetworkConfig
 
 from sagemaker.mlops.workflow.clarify_check_step import (
     ClarifyCheckStep,
@@ -196,3 +199,25 @@ class TestClarifyCheckStepKmsKeyPropagation:
 
         cluster_config = args["ProcessingResources"]["ClusterConfig"]
         assert cluster_config["VolumeKmsKeyId"] == _VOLUME_KMS_KEY
+
+
+class TestClarifyCheckStepNetworkConfig:
+    """Tests for NetworkConfig serialization in ClarifyCheckStep.arguments."""
+
+    @patch(_TRIM_PATCH, side_effect=_noop_trim)
+    def test_network_config_serialized_to_request_dict(self, mock_trim):
+        """NetworkConfig must be converted to its request dict, not passed as an object."""
+        step = _create_mock_clarify_check_step()
+        step._baselining_processor.network_config = NetworkConfig(
+            enable_network_isolation=True,
+            subnets=["subnet-1"],
+            security_group_ids=["sg-1"],
+        )
+
+        args = step.arguments
+
+        assert args["NetworkConfig"] == {
+            "EnableNetworkIsolation": True,
+            "VpcConfig": {"SecurityGroupIds": ["sg-1"], "Subnets": ["subnet-1"]},
+        }
+        json.dumps(args["NetworkConfig"])

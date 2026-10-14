@@ -328,7 +328,9 @@ class ClarifyCheckStep(Step):
         if self._baselining_processor.env:
             request_dict["Environment"] = self._baselining_processor.env
         if self._baselining_processor.network_config:
-            request_dict["NetworkConfig"] = self._baselining_processor.network_config
+            request_dict["NetworkConfig"] = (
+                self._baselining_processor.network_config._to_request_dict()
+            )
         if self._baselining_processor.entrypoint:
             request_dict["AppSpecification"][
                 "ContainerEntrypoint"
