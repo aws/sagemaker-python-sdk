@@ -579,7 +579,7 @@ class _ModelBuilderServers(object):
         model = self._create_model()
 
         if "HF_HUB_OFFLINE" in self.env_vars:
-            self.env_vars.update({"TRANSFORMERS_OFFLINE": "0"})
+            self.env_vars.update({"HF_HUB_OFFLINE": "0"})
 
         return model
 
