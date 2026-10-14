@@ -3168,7 +3168,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.sagemaker_session.create_model(**create_model_args)
         if isinstance(self.sagemaker_session, PipelineSession):
             return
-        return Model.get(model_name=self.model_name, region=self.region)
+        return Model.get(
+            model_name=self.model_name,
+            region=self.region,
+            session=self.sagemaker_session.boto_session,
+        )
 
     def _create_model(self):
         """Create a SageMaker Model instance from the current configuration."""
