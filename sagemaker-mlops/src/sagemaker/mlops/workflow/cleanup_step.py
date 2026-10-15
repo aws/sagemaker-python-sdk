@@ -88,16 +88,20 @@ class CleanupStep(Step):
                 (default: None).
             description (str): The description of the `CleanupStep`
                 (default: None).
-            depends_on (List[str or Step or StepCollection]): The steps this
-                `CleanupStep` depends on. Defaults to the source steps
-                (default: None).
+            depends_on (List[str or Step or StepCollection]): Additional steps
+                this `CleanupStep` depends on. The source steps are always
+                added (default: None).
         """
         if not s3_sources:
             raise ValueError("s3_sources must contain at least one S3CleanupSource.")
         # The service can only delete outputs of steps that already ran, so the
-        # sources are the natural dependencies.
-        if depends_on is None:
-            depends_on = [source.step for source in s3_sources]
+        # sources are always dependencies, in addition to any the caller passes.
+        depends_on = list(depends_on or [])
+        dependency_names = {dep if isinstance(dep, str) else dep.name for dep in depends_on}
+        for source in s3_sources:
+            if source.step_name not in dependency_names:
+                depends_on.append(source.step)
+                dependency_names.add(source.step_name)
         super(CleanupStep, self).__init__(
             name, display_name, description, StepTypeEnum.CLEANUP, depends_on
         )

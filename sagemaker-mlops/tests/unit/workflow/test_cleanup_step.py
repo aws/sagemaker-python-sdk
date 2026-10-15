@@ -71,14 +71,14 @@ def test_cleanup_step_direct_uri_source_with_step_name():
     assert step.depends_on == ["ProcessingJob1"]
 
 
-def test_cleanup_step_explicit_depends_on_overrides_sources():
+def test_cleanup_step_explicit_depends_on_adds_sources():
     step = CleanupStep(
         name="CleanupStep1",
-        s3_sources=[S3CleanupSource(step="TrainingJob1")],
-        depends_on=["OtherStep"],
+        s3_sources=[S3CleanupSource(step="TrainingJob1"), S3CleanupSource(step="AthenaStep1")],
+        depends_on=["OtherStep", "AthenaStep1"],
     )
 
-    assert step.depends_on == ["OtherStep"]
+    assert step.depends_on == ["OtherStep", "AthenaStep1", "TrainingJob1"]
 
 
 def test_cleanup_step_requires_sources():
