@@ -23,6 +23,7 @@ from sagemaker.train.tuner import (
     HyperparameterTuner,
     WarmStartTypes,
     GRID_SEARCH,
+    _to_boto_tag,
 )
 from sagemaker.core.parameter import (
     CategoricalParameter,
@@ -37,6 +38,7 @@ from sagemaker.core.shapes import (
     Channel,
     DataSource,
     S3DataSource,
+    Tag,
 )
 
 # ---------------------------------------------------------------------------
@@ -803,3 +805,107 @@ class TestHyperparameterTunerStaticMethods:
         assert (
             definition.output_data_config.s3_output_path == "s3://bucket/output"
         ), "s3_output_path should be preserved"
+
+
+class TestHyperparameterTunerTagInheritance:
+    """Test tag inheritance from ModelTrainer (issue #6472)."""
+
+    @pytest.fixture
+    def trainer_with_tag_objects(self):
+        """Create a mock ModelTrainer whose tags are v3 ``Tag`` objects."""
+        trainer = _create_mock_model_trainer()
+        trainer.tags = [Tag(key="project", value="ml-project")]
+        return trainer
+
+    @staticmethod
+    def _create_tuner(model_trainer, tags=None, include_jumpstart_tags=False):
+        """Create a tuner with JumpStart tagging disabled by default."""
+        tuner = HyperparameterTuner(
+            model_trainer=model_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+            tags=tags,
+        )
+        tuner.sagemaker_session.settings.include_jumpstart_tags = include_jumpstart_tags
+        return tuner
+
+    def test_inherits_tag_objects_from_model_trainer(self, trainer_with_tag_objects):
+        """Test v3 ``Tag`` objects are normalized to boto-style dicts when inherited."""
+        tuner = self._create_tuner(trainer_with_tag_objects)
+
+        tuner._prepare_tags_for_tuning()
+
+        assert tuner.tags == [{"Key": "project", "Value": "ml-project"}]
+
+    def test_merges_tag_objects_with_boto_style_tuner_tags(self, trainer_with_tag_objects):
+        """Test inherited ``Tag`` objects merge with the tuner's own boto-style tags."""
+        tuner = self._create_tuner(
+            trainer_with_tag_objects, tags=[{"Key": "owner", "Value": "team"}]
+        )
+
+        tuner._prepare_tags_for_tuning()
+
+        assert tuner.tags == [
+            {"Key": "owner", "Value": "team"},
+            {"Key": "project", "Value": "ml-project"},
+        ]
+
+    def test_does_not_duplicate_equivalent_tags(self, trainer_with_tag_objects):
+        """Test a tuner tag equal to an inherited ``Tag`` object is not added twice."""
+        tuner = self._create_tuner(
+            trainer_with_tag_objects, tags=[{"Key": "project", "Value": "ml-project"}]
+        )
+
+        tuner._prepare_tags_for_tuning()
+
+        assert tuner.tags == [{"Key": "project", "Value": "ml-project"}]
+
+    def test_tags_stay_none_when_no_tags_are_set(self):
+        """Test tags remain None when neither the tuner nor the trainer has tags."""
+        trainer = _create_mock_model_trainer()
+        trainer.tags = None
+        tuner = self._create_tuner(trainer)
+
+        tuner._prepare_tags_for_tuning()
+
+        assert tuner.tags is None
+
+    def test_jumpstart_tag_helper_receives_boto_style_tags(self, trainer_with_tag_objects):
+        """Test tags are normalized before being passed to the JumpStart tag helper.
+
+        ``add_jumpstart_uri_tags`` subscripts each tag with ``tag["Key"]``, so it fails
+        on ``Tag`` objects too.
+        """
+        tuner = self._create_tuner(trainer_with_tag_objects, include_jumpstart_tags=True)
+
+        with patch("sagemaker.train.tuner.add_jumpstart_uri_tags") as mock_add_tags:
+            mock_add_tags.side_effect = lambda tags, **kwargs: tags
+            tuner._prepare_tags_for_tuning()
+
+        passed_tags = mock_add_tags.call_args[1]["tags"]
+        assert passed_tags == [{"Key": "project", "Value": "ml-project"}]
+
+    def test_start_tuning_job_converts_tag_objects(self, trainer_with_tag_objects):
+        """Test ``_start_tuning_job`` accepts ``Tag`` objects left on ``tuner.tags``."""
+        tuner = self._create_tuner(trainer_with_tag_objects)
+        tuner._current_job_name = "test-tuning-job"
+        tuner.tags = [Tag(key="project", value="ml-project")]
+
+        with patch("sagemaker.train.tuner.HyperParameterTuningJob") as mock_tuning_job:
+            tuner._start_tuning_job(None)
+
+        tags = mock_tuning_job.create.call_args[1]["tags"]
+        assert tags == [Tag(key="project", value="ml-project")]
+
+    def test_to_boto_tag_normalizes_lowercase_dicts(self):
+        """Test lowercase tag dicts are normalized to boto-style dicts."""
+        assert _to_boto_tag({"key": "project", "value": "ml-project"}) == {
+            "Key": "project",
+            "Value": "ml-project",
+        }
+
+    def test_to_boto_tag_passes_through_unknown_tags(self):
+        """Test tags that are neither ``Tag`` objects nor dicts are left untouched."""
+        parameter = ParameterString(name="TagValue")
+
+        assert _to_boto_tag(parameter) is parameter
