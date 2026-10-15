@@ -882,6 +882,11 @@ class ModelTrainer(BaseModel):
         if boto3 or isinstance(self.sagemaker_session, PipelineSession):
             if isinstance(self.sagemaker_session, PipelineSession):
                 training_request.pop("training_job_name", None)
+            # ``serialize`` renames the fields of Tag models to the boto-style
+            # {"Key": ..., "Value": ...} form the service requires, but passes plain dicts
+            # through untouched, so hand it the validated Tag objects. ``TrainingJob.create``
+            # takes the dicts instead, which it revalidates into its own Tag model.
+            training_request["tags"] = self.tags
             # Convert snake_case to PascalCase for AWS API
             pipeline_request = {to_pascal_case(k): v for k, v in training_request.items()}
             serialized_request = serialize(pipeline_request)
