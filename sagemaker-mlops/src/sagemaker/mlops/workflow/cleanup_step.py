@@ -17,9 +17,22 @@ from __future__ import absolute_import
 from typing import List, Optional, Union
 
 from sagemaker.core.helper.pipeline_variable import PipelineVariable, RequestType
+from sagemaker.core.workflow.step_outputs import StepOutput, get_step
 
 from sagemaker.mlops.workflow.step_collections import StepCollection
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
+
+
+def _dependency_name(dep: Union[str, Step, StepCollection, StepOutput]) -> str:
+    """The name of the step a `depends_on` entry refers to."""
+    if isinstance(dep, str):
+        return dep
+    if isinstance(dep, StepCollection):
+        # Matches how the pipeline resolves a StepCollection dependency.
+        return dep.steps[-1].name
+    if isinstance(dep, StepOutput):
+        return get_step(dep).name
+    return dep.name
 
 
 class S3CleanupSource:
@@ -76,7 +89,7 @@ class CleanupStep(Step):
         s3_sources: List[S3CleanupSource],
         display_name: Optional[str] = None,
         description: Optional[str] = None,
-        depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
+        depends_on: Optional[List[Union[str, Step, StepCollection, StepOutput]]] = None,
     ):
         """Constructs a `CleanupStep`.
 
@@ -88,16 +101,16 @@ class CleanupStep(Step):
                 (default: None).
             description (str): The description of the `CleanupStep`
                 (default: None).
-            depends_on (List[str or Step or StepCollection]): Additional steps
-                this `CleanupStep` depends on. The source steps are always
-                added (default: None).
+            depends_on (List[str or Step or StepCollection or StepOutput]):
+                Additional steps this `CleanupStep` depends on. The source
+                steps are always added (default: None).
         """
         if not s3_sources:
             raise ValueError("s3_sources must contain at least one S3CleanupSource.")
         # The service can only delete outputs of steps that already ran, so the
         # sources are always dependencies, in addition to any the caller passes.
         depends_on = list(depends_on or [])
-        dependency_names = {dep if isinstance(dep, str) else dep.name for dep in depends_on}
+        dependency_names = {_dependency_name(dep) for dep in depends_on}
         for source in s3_sources:
             if source.step_name not in dependency_names:
                 depends_on.append(source.step)

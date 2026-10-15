@@ -21,8 +21,10 @@ import pytest
 
 from sagemaker.core.workflow.functions import Join
 from sagemaker.core.workflow.parameters import ParameterString
+from sagemaker.core.workflow.step_outputs import StepOutput
 from sagemaker.mlops.workflow import CleanupStep, S3CleanupSource
 from sagemaker.mlops.workflow.pipeline import Pipeline
+from sagemaker.mlops.workflow.step_collections import StepCollection
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 
 
@@ -79,6 +81,44 @@ def test_cleanup_step_explicit_depends_on_adds_sources():
     )
 
     assert step.depends_on == ["OtherStep", "AthenaStep1", "TrainingJob1"]
+
+
+class _StepOutput(StepOutput):
+    @property
+    def expr(self):
+        return {}
+
+
+def _dependency_forms(target):
+    """Every form a depends_on entry can take, each referring to `target`."""
+    return {
+        "str": target.name,
+        "step": target,
+        "step_collection": StepCollection(name="Collection", steps=[CustomStep("First"), target]),
+        "step_output": _StepOutput(target),
+    }
+
+
+@pytest.mark.parametrize("form", ["str", "step", "step_collection", "step_output"])
+def test_cleanup_step_depends_on_already_has_source(form):
+    training = CustomStep("TrainingJob1")
+    dep = _dependency_forms(training)[form]
+    step = CleanupStep(
+        name="CleanupStep1", s3_sources=[S3CleanupSource(step=training)], depends_on=[dep]
+    )
+
+    assert step.depends_on == [dep]
+
+
+@pytest.mark.parametrize("form", ["str", "step", "step_collection", "step_output"])
+def test_cleanup_step_depends_on_other_step_adds_source(form):
+    training = CustomStep("TrainingJob1")
+    dep = _dependency_forms(CustomStep("OtherStep"))[form]
+    step = CleanupStep(
+        name="CleanupStep1", s3_sources=[S3CleanupSource(step=training)], depends_on=[dep]
+    )
+
+    assert step.depends_on == [dep, training]
 
 
 def test_cleanup_step_requires_sources():
