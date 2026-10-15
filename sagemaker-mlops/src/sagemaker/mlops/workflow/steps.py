@@ -35,6 +35,7 @@ from sagemaker.core.workflow.functions import Join, JsonGet
 
 # Orchestration imports (now in mlops)
 from sagemaker.mlops.workflow.retry import RetryPolicy
+from sagemaker.mlops.workflow.step_dependency import StepDependency
 from sagemaker.core.workflow.step_outputs import StepOutput
 from sagemaker.core.workflow.utilities import trim_request_dict
 from sagemaker.core.processing import Processor
@@ -90,7 +91,8 @@ class Step(Entity):
             step_type (StepTypeEnum): The type of the `Step`.
             depends_on (List[Union[str, Step, StepCollection]]): The list of `Step`/`StepCollection`
                 names or `Step` or `StepCollection`, `StepOutput` instances that the current `Step`
-                depends on.
+                depends on. Wrap an entry in `StepDependency` to run the current `Step` when
+                the upstream step fails, stops, or reaches any terminal state.
         """
         self.name = name
         self.display_name = display_name
@@ -189,6 +191,11 @@ class Step(Entity):
 
         dependencies = set()
         for step in self.depends_on:
+            if isinstance(step, StepDependency):
+                step = step.step
+            elif isinstance(step, dict):
+                # compiled run-condition entry: {"Step": <name>, "Trigger": <trigger>}
+                step = step["Step"]
             if isinstance(step, Step):
                 dependencies.add(step.name)
             elif isinstance(step, StepCollection):
