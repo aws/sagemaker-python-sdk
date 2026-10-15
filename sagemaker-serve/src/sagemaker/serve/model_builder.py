@@ -2452,7 +2452,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             model_name = variants[0].get("ModelName")
             if not model_name:
                 return None
-            return Model.get(model_name=model_name, region=self.region)
+            return Model.get(
+                model_name=model_name,
+                session=self.sagemaker_session.boto_session,
+                region=self.region,
+            )
         except Exception as e:
             logger.warning(
                 "Could not resolve the Model backing endpoint %s: %s.",
@@ -2482,7 +2486,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if model_arn:
                 # Extract model name from ARN: arn:aws:sagemaker:region:account:model/name
                 model_name = model_arn.rsplit("/", 1)[-1]
-                return Model.get(model_name=model_name, region=self.region)
+                return Model.get(
+                    model_name=model_name,
+                    session=self.sagemaker_session.boto_session,
+                    region=self.region,
+                )
         except Exception as e:
             logger.warning("Could not search Models for reuse: %s", e)
 
@@ -3168,7 +3176,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.sagemaker_session.create_model(**create_model_args)
         if isinstance(self.sagemaker_session, PipelineSession):
             return
-        return Model.get(model_name=self.model_name, region=self.region)
+        # CreateModel above went through the configured session, so the reload
+        # must use it too: a session-less get() describes the model in the
+        # default boto session's account and fails cross-account.
+        return Model.get(
+            model_name=self.model_name,
+            session=self.sagemaker_session.boto_session,
+            region=self.region,
+        )
 
     def _create_model(self):
         """Create a SageMaker Model instance from the current configuration."""
