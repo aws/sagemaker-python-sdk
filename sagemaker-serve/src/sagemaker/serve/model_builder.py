@@ -6875,9 +6875,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         Args:
             content_types (list[str] or list[PipelineVariable]): The supported MIME types
-                for the input data.
+                for the input data. When omitted, any value supplied to an earlier
+                ``register()`` call is reused, otherwise it is left out of the request
+                (default: None).
             response_types (list[str] or list[PipelineVariable]): The supported MIME types
-                for the output data.
+                for the output data. When omitted, any value supplied to an earlier
+                ``register()`` call is reused, otherwise it is left out of the request
+                (default: None).
             inference_instances (list[str] or list[PipelineVariable]): A list of the instance
                 types that are used to generate inferences in real-time (default: None).
             transform_instances (list[str] or list[PipelineVariable]): A list of the instance
@@ -6986,8 +6990,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         container_def_list = container_def if isinstance(container_def, list) else [container_def]
 
         model_pkg_args = get_model_package_args(
-            self.content_types,
-            self.response_types,
+            getattr(self, "content_types", None),
+            getattr(self, "response_types", None),
             inference_instances=inference_instances,
             transform_instances=transform_instances,
             model_package_name=model_package_name,
