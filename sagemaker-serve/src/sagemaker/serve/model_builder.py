@@ -2093,6 +2093,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             model_artifact_uri = self.model_path
         elif isinstance(self.s3_model_data_url, str) and self.s3_model_data_url.startswith("s3://"):
             model_artifact_uri = self.s3_model_data_url
+        elif is_pipeline_variable(self.s3_model_data_url):
+            # The artifact does not exist yet: it is produced by an upstream
+            # pipeline step. ``_upload_code(repack=True)`` defers the repack to a
+            # ``_RepackModelStep`` created by ``ModelStep``.
+            model_artifact_uri = self.s3_model_data_url
 
         has_source_code = bool(
             getattr(self, "entry_point", None) and getattr(self, "source_dir", None)

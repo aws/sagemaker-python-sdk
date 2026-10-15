@@ -47,6 +47,9 @@ FRAMEWORK_VERSION = "1.2-1"
 INSTANCE_TYPE = "ml.m5.large"
 REPACK_SCRIPT = "_repack_model.py"
 REPACK_SCRIPT_LAUNCHER = "_repack_script_launcher.sh"
+# Suffix appended to an ``s3://`` source_dir object name to derive the SDK-owned
+# staging key. The caller's original object is never overwritten (issue #6481).
+STAGED_SOURCE_DIR_SUFFIX = "-sagemaker-repack.tar.gz"
 LAUNCH_REPACK_SCRIPT_CMD = """
 #!/bin/bash
 
@@ -179,8 +182,11 @@ class _RepackModelStep(TrainingStep):
         self._entry_point_basename = os.path.basename(self._entry_point)
         self._source_dir = source_dir
         self._requirements = requirements
+        # The SDK-owned copy of the source that the repack helper files are written
+        # into. ``None`` until the first ``_prepare_for_repacking()`` call.
+        self._staged_source_dir = None
 
-        # Prepare source directory with repack scripts
+        # Stage an SDK-owned copy of the source with the repack scripts in it
         self._prepare_for_repacking()
 
         # Handle requirements.txt like ModelTrainer
@@ -194,7 +200,7 @@ class _RepackModelStep(TrainingStep):
         from sagemaker.core.training.configs import SourceCode, Compute, Networking
 
         source_code = SourceCode(
-            source_dir=self._source_dir,
+            source_dir=self._staged_source_dir,
             entry_script=REPACK_SCRIPT_LAUNCHER,
             requirements=requirements_file,
         )
@@ -251,11 +257,31 @@ class _RepackModelStep(TrainingStep):
         )
 
     def _prepare_for_repacking(self):
-        """Prepares the source for the model trainer."""
-        if self._source_dir is None:
-            self._establish_source_dir()
+        """Stages an SDK-owned copy of the source for the model trainer.
 
-        self._inject_repack_script_and_launcher()
+        The caller-provided ``source_dir`` is never modified: the repack helper
+        files are written into a copy that the SDK owns -- a temporary directory
+        for a local ``source_dir``, a new S3 object for an ``s3://`` one. Staging
+        runs at most once, so repeated ``arguments`` access neither re-stages nor
+        re-uploads (see issue #6481).
+        """
+        if self._staged_source_dir is not None:
+            return
+
+        if self._source_dir is not None and self._source_dir.lower().startswith("s3://"):
+            self._staged_source_dir = self._stage_s3_source_dir()
+            return
+
+        if self._source_dir is None:
+            # _establish_source_dir already builds a directory that the SDK owns,
+            # so the helper files can go straight into it.
+            self._establish_source_dir()
+            self._staged_source_dir = self._source_dir
+        else:
+            self._staged_source_dir = tempfile.mkdtemp()
+            shutil.copytree(self._source_dir, self._staged_source_dir, dirs_exist_ok=True)
+
+        self._inject_repack_script_and_launcher(self._staged_source_dir)
 
     def _establish_source_dir(self):
         """If the source_dir is None, creates it for the repacking job.
@@ -272,10 +298,10 @@ class _RepackModelStep(TrainingStep):
         shutil.copy2(self._entry_point, os.path.join(self._source_dir, self._entry_point_basename))
         self._entry_point = self._entry_point_basename
 
-    def _inject_repack_script_and_launcher(self):
+    def _inject_repack_script_and_launcher(self, target_dir):
         """Injects the _repack_model.py script and _repack_script_launcher.sh
 
-        into S3 or local source directory.
+        into a local directory that the SDK owns.
 
         Note: The bash file is needed because if not supplied, the SKLearn
         training job will auto install all dependencies listed in requirements.txt.
@@ -283,58 +309,82 @@ class _RepackModelStep(TrainingStep):
         since it should just simply repack the model along with other supplied files,
         e.g. the requirements.txt.
 
-        If the source_dir is an S3 path:
+        It performs the following:
+            1) copies the _repack_model.py script into ``target_dir``
+            2) creates the _repack_script_launcher.sh in ``target_dir``
+
+        Args:
+            target_dir (str): A local directory owned by the SDK. This is never
+                the caller-provided ``source_dir`` (see issue #6481).
+        """
+        fname = os.path.join(os.path.dirname(__file__), REPACK_SCRIPT)
+        shutil.copy2(fname, os.path.join(target_dir, REPACK_SCRIPT))
+        # newline="\n" forces LF endings so the bash launcher stays runnable in the
+        # Linux repack container even when written from a Windows host (see issue #3762).
+        with open(
+            os.path.join(target_dir, REPACK_SCRIPT_LAUNCHER), "w", newline="\n"
+        ) as launcher_file:
+            launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
+
+    def _stage_s3_source_dir(self):
+        """Stages an ``s3://`` source archive into a new, SDK-owned S3 object.
+
+        It performs the following:
             1) downloads the source_dir tar.gz
             2) extracts it
             3) copies the _repack_model.py script into the extracted directory
             4) creates the _repack_script_launcher.sh in the extracted dir
             5) rezips the directory
-            6) overwrites the S3 source_dir with the new tar.gz
+            6) uploads the new tar.gz under a new key, alongside the original
 
-        If the source_dir is a local path:
-            1) copies the _repack_model.py script into the source dir
-            2) creates the _repack_script_launcher.sh in the source dir
+        The caller's object is read but never overwritten (see issue #6481). The
+        staging key is derived from the original one, so it stays in the caller's
+        bucket and prefix and inherits the same access and encryption policies.
+
+        Returns:
+            str: The S3 URI of the staged source archive.
         """
-        fname = os.path.join(os.path.dirname(__file__), REPACK_SCRIPT)
-        if self._source_dir.lower().startswith("s3://"):
-            with tempfile.TemporaryDirectory() as tmp:
-                targz_contents_dir = os.path.join(tmp, "extracted")
+        staged_uri = self._staged_s3_source_dir_uri()
+        with tempfile.TemporaryDirectory() as tmp:
+            targz_contents_dir = os.path.join(tmp, "extracted")
 
-                old_targz_path = os.path.join(tmp, "old.tar.gz")
-                download_file_from_url(self._source_dir, old_targz_path, self.sagemaker_session)
+            old_targz_path = os.path.join(tmp, "old.tar.gz")
+            download_file_from_url(self._source_dir, old_targz_path, self.sagemaker_session)
 
-                with tarfile.open(name=old_targz_path, mode="r:gz") as t:
-                    custom_extractall_tarfile(t, targz_contents_dir)
+            with tarfile.open(name=old_targz_path, mode="r:gz") as t:
+                custom_extractall_tarfile(t, targz_contents_dir)
 
-                shutil.copy2(fname, os.path.join(targz_contents_dir, REPACK_SCRIPT))
-                # newline="\n" forces LF endings so the bash launcher stays runnable in the
-                # Linux repack container even when written from a Windows host (see issue #3762).
-                with open(
-                    os.path.join(targz_contents_dir, REPACK_SCRIPT_LAUNCHER), "w", newline="\n"
-                ) as launcher_file:
-                    launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
+            self._inject_repack_script_and_launcher(targz_contents_dir)
 
-                new_targz_path = os.path.join(tmp, "new.tar.gz")
-                with tarfile.open(new_targz_path, mode="w:gz") as t:
-                    t.add(targz_contents_dir, arcname=os.path.sep)
+            new_targz_path = os.path.join(tmp, "new.tar.gz")
+            with tarfile.open(new_targz_path, mode="w:gz") as t:
+                t.add(targz_contents_dir, arcname=os.path.sep)
 
-                _save_model(self._source_dir, new_targz_path, self.sagemaker_session, kms_key=None)
-        else:
-            shutil.copy2(fname, os.path.join(self._source_dir, REPACK_SCRIPT))
-            # newline="\n" forces LF endings so the bash launcher stays runnable in the
-            # Linux repack container even when written from a Windows host (see issue #3762).
-            with open(
-                os.path.join(self._source_dir, REPACK_SCRIPT_LAUNCHER), "w", newline="\n"
-            ) as launcher_file:
-                launcher_file.write(LAUNCH_REPACK_SCRIPT_CMD)
+            _save_model(staged_uri, new_targz_path, self.sagemaker_session, kms_key=None)
+
+        return staged_uri
+
+    def _staged_s3_source_dir_uri(self):
+        """Derives the staging S3 URI for an ``s3://`` source_dir.
+
+        Returns:
+            str: The original URI with its object name suffixed, keeping the
+                caller's bucket and prefix.
+        """
+        prefix, _, object_name = self._source_dir.rpartition("/")
+        for extension in (".tar.gz", ".tgz"):
+            if object_name.lower().endswith(extension):
+                object_name = object_name[: -len(extension)]
+                break
+        return "/".join([prefix, object_name + STAGED_SOURCE_DIR_SUFFIX])
 
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that are used to call `create_training_job`.
 
-        This first prepares the source bundle for repackinglby placing artifacts
-        in locations which the training container will make available to the
-        repacking script and then gets the arguments for the training job.
+        The source bundle is staged once, by the constructor, so repeated access
+        here neither re-stages the source nor touches the caller's ``source_dir``
+        (see issue #6481).
         """
         self._prepare_for_repacking()
         return super(_RepackModelStep, self).arguments
