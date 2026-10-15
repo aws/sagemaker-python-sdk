@@ -153,6 +153,57 @@ def test_conflicting_triggers_raise(session):
         Pipeline(name="P", steps=[a, b], sagemaker_session=session).definition()
 
 
+FAILED_A = {"Step": "A", "Trigger": "Failed"}
+
+
+@pytest.mark.parametrize(
+    "depends_on, expected",
+    [
+        (lambda a: ["A"], ["A"]),
+        (lambda a: [a], ["A"]),
+        (lambda a: [a, "A"], ["A"]),
+        (lambda a: [StepDependency(a)], ["A"]),
+        (lambda a: [StepDependency(a, TriggerCondition.COMPLETED)], ["A"]),
+        (lambda a: [StepDependency(a), "A"], ["A"]),
+        (lambda a: [StepDependency(a, TriggerCondition.FAILED)], [FAILED_A]),
+        (lambda a: [StepDependency(a, TriggerCondition.ANY)], [{"Step": "A", "Trigger": "Any"}]),
+        (
+            lambda a: [
+                StepDependency(a, TriggerCondition.FAILED),
+                StepDependency("A", TriggerCondition.FAILED),
+            ],
+            [FAILED_A],
+        ),
+    ],
+)
+def test_depends_on_combinations(session, depends_on, expected):
+    a = CustomStep("A")
+    b = CustomStep("B", depends_on=depends_on(a))
+
+    assert _depends_on_by_step([a, b], session)["B"] == expected
+
+
+@pytest.mark.parametrize(
+    "depends_on",
+    [
+        lambda a: [
+            StepDependency(a, TriggerCondition.COMPLETED),
+            StepDependency(a, TriggerCondition.FAILED),
+        ],
+        lambda a: ["A", StepDependency(a, TriggerCondition.FAILED)],
+        lambda a: [a, StepDependency(a, TriggerCondition.FAILED)],
+        lambda a: [StepDependency(a, TriggerCondition.FAILED), "A"],
+        lambda a: [StepDependency("A", TriggerCondition.ANY), a],
+    ],
+)
+def test_plain_entry_conflicts_with_non_completed_trigger(session, depends_on):
+    a = CustomStep("A")
+    b = CustomStep("B", depends_on=depends_on(a))
+
+    with pytest.raises(ValueError, match="conflicting triggers: (Completed|Failed|Any)"):
+        Pipeline(name="P", steps=[a, b], sagemaker_session=session).definition()
+
+
 def test_pipeline_graph_keeps_object_form_edges(session):
     a = CustomStep("A")
     b = CustomStep("B", depends_on=[StepDependency(a, TriggerCondition.ANY)])

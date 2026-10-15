@@ -300,8 +300,9 @@ class StepsCompiler(object):
         """Build the `DependsOn` entries, keeping plain names for Completed dependencies."""
         dependencies = {}
         for item in step.depends_on or []:
+            # a plain str/Step/StepOutput entry is an implicit Completed dependency
             if not isinstance(item, StepDependency):
-                continue
+                item = StepDependency(item)
             name = self._simplify_step_list([item])[0].name
             if name in dependencies and dependencies[name].trigger != item.trigger:
                 raise ValueError(
