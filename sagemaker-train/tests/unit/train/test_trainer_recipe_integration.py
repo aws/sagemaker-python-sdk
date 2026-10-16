@@ -552,14 +552,32 @@ class TestModelTrainerRecipeIntegration:
 
     def test_model_trainer_no_from_recipe_raises(self):
         """ModelTrainer not created via from_recipe raises AttributeError."""
+        from sagemaker.core.helper.session_helper import Session
         from sagemaker.train.model_trainer import ModelTrainer
         from sagemaker.train.configs import Compute
 
         # Construction resolves an execution role via STS; mock it so this unit
         # test (which only exercises get_resolved_recipe) runs without AWS creds.
-        with patch(
-            "sagemaker.train.defaults.TrainDefaults.get_role",
-            return_value="arn:aws:iam::123456789012:role/test-role",
+        # It also builds a default OutputDataConfig, which calls
+        # session.default_bucket() and so reaches STS by a second route, so the
+        # session is stubbed too. Stubbing the session rather than
+        # get_output_data_config keeps that defaulting logic under test.
+        # spec=Session is required because ModelTrainer validates the field as a
+        # Session instance; default_bucket_prefix is set on instances, not the
+        # class, so it has to be assigned explicitly.
+        mock_session = MagicMock(spec=Session)
+        mock_session.default_bucket.return_value = "test-bucket"
+        mock_session.default_bucket_prefix = None
+
+        with (
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_role",
+                return_value="arn:aws:iam::123456789012:role/test-role",
+            ),
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+                return_value=mock_session,
+            ),
         ):
             trainer = ModelTrainer(
                 training_image="123456789012.dkr.ecr.us-east-1.amazonaws.com/test:latest",
