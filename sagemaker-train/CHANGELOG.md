@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.25.0 (2026-10-13)
+
+### New Features
+
+- feat(train): add the interactive Training Sessions client surface (#6452)
+
+### Bug Fixes
+
+- fix(train): bound pydantic to <3.0.0 for cross-package consistency (#6363)
+- fix(train): set input_data_config to None (#6154)
+
+### Tests
+
+- test(train): bound capacity wait in gated JumpStart train test (#6397)
+- test(train): bound capacity wait in SMTJ SFT integ test (#6409)
+- test(train): fail fast in HyperPod SFT integ tests (#6449)
+
+
 ## v1.24.0 (2026-10-07)
 
 ### New Features

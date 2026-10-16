@@ -66,6 +66,9 @@ from sagemaker.mlops.workflow.quality_check_step import QualityCheckStep, Qualit
 # Step collections
 from sagemaker.mlops.workflow.step_collections import StepCollection
 
+# Run conditions
+from sagemaker.mlops.workflow.step_dependency import StepDependency, TriggerCondition
+
 # Retry policies
 from sagemaker.mlops.workflow.retry import (
     RetryPolicy,
@@ -127,6 +130,9 @@ __all__ = [
     "QualityCheckConfig",
     # Step collections
     "StepCollection",
+    # Run conditions
+    "StepDependency",
+    "TriggerCondition",
     # Retry policies
     "RetryPolicy",
     "StepRetryPolicy",

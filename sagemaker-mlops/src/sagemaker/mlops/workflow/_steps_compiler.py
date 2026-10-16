@@ -23,6 +23,7 @@ from sagemaker.core.helper.pipeline_variable import RequestType
 from sagemaker.mlops.workflow.function_step import _FunctionStep
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum, PropertyFile
 from sagemaker.mlops.workflow.condition_step import ConditionStep
+from sagemaker.mlops.workflow.step_dependency import StepDependency
 
 from sagemaker.core.workflow.step_outputs import get_step
 from sagemaker.core.workflow.pipeline_definition_config import PipelineDefinitionConfig
@@ -223,6 +224,8 @@ class StepsCompiler(object):
 
         resolved_step_set = _StepsSet()
         for item in step_list:
+            if isinstance(item, StepDependency):
+                item = item.step
             if isinstance(item, str):
                 step_name = item
                 step = self._input_steps_map.get(item)
@@ -293,6 +296,26 @@ class StepsCompiler(object):
 
         return list(depends_on), upstream_step_in_args
 
+    def _to_depends_on_request(self, step: Step, depends_on: List[Step]) -> List[Union[str, dict]]:
+        """Build the `DependsOn` entries, keeping plain names for Completed dependencies."""
+        dependencies = {}
+        for item in step.depends_on or []:
+            # a plain str/Step/StepOutput entry is an implicit Completed dependency
+            if not isinstance(item, StepDependency):
+                item = StepDependency(item)
+            name = self._simplify_step_list([item])[0].name
+            if name in dependencies and dependencies[name].trigger != item.trigger:
+                raise ValueError(
+                    f"Step {step.name} depends on step {name} with conflicting triggers: "
+                    f"{dependencies[name].trigger.value} and {item.trigger.value}."
+                )
+            dependencies[name] = item
+
+        return [
+            dependencies[s.name].to_request(s.name) if s.name in dependencies else s.name
+            for s in depends_on
+        ]
+
     def _set_serialize_output_to_json_flag(self, compiled_steps: List[CompiledStep]):
         """Set the serialize_output_to_json to true in container arguments
 
@@ -332,7 +355,7 @@ class StepsCompiler(object):
                 step, request_dict["Arguments"]
             )
             if depends_on:
-                request_dict["DependsOn"] = [s.name for s in depends_on]
+                request_dict["DependsOn"] = self._to_depends_on_request(step, depends_on)
 
             self._push_to_build_queue(depends_on)
             self._push_to_build_queue(upstream_steps_in_args)
@@ -353,7 +376,7 @@ class StepsCompiler(object):
             conditions=list(condition_step.conditions),
             if_steps=self._build_steps(condition_step.if_steps),
             else_steps=self._build_steps(condition_step.else_steps),
-            depends_on=[step.name for step in depends_on],
+            depends_on=self._to_depends_on_request(condition_step, depends_on),
         )
 
         return compiled_condition_step
