@@ -1411,6 +1411,43 @@ class TestFrameworkProcessorPackageCode:
             observed.get("still_open") == []
         ), "temp tar.gz handle was still open when os.unlink was called"
 
+    def test_package_code_with_pipeline_config(self, mock_session):
+        """Test that _package_code uses pipeline code_hash when available.
+
+        When _pipeline_config.code_hash is set, _package_code should use it
+        in the S3 key (similar to ScriptProcessor._upload_code) for pipeline
+        cache hits. This test verifies the fix for issue #6493.
+        """
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
+                mock_config.pipeline_name = "test-pipeline"
+                mock_config.code_hash = "abc123"
+
+                result = processor._package_code(
+                    entry_point=entry_point,
+                    source_dir=tmpdir,
+                    requirements=None,
+                    job_name="test-job",
+                    kms_key=None,
+                )
+
+                # Should use code_hash in the S3 path, not job_name
+                assert "test-pipeline" in result
+                assert "abc123" in result
+                assert "test-job" not in result
+
 
 class TestFrameworkProcessorRun:
     def test_run_with_s3_code(self, mock_session):
