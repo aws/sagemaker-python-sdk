@@ -128,16 +128,17 @@ class TestModelBuilderBuildMethod(unittest.TestCase):
         mock_get_serve.return_value = Mock()
 
         # Create ModelBuilder with inference component
+        resource_requirements = ResourceRequirements(
+            requests={"memory": 1024, "copies": 1}, limits={}
+        )
         mb1 = ModelBuilder(
             inference_spec=Mock(spec=InferenceSpec),
             role_arn=MOCK_ROLE_ARN,
             sagemaker_session=self.mock_session,
             image_uri=MOCK_IMAGE_URI,
             mode=Mode.SAGEMAKER_ENDPOINT,
-        )
-        mb1.inference_component_name = "ic-1"
-        mb1.resource_requirements = ResourceRequirements(
-            requests={"memory": 1024, "copies": 1}, limits={}
+            resource_requirements=resource_requirements,
+            inference_component_name="ic-1",
         )
         mb1.model_name = "test-model-1"
         mb1.model_server = ModelServer.TORCHSERVE
@@ -160,6 +161,11 @@ class TestModelBuilderBuildMethod(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("InferenceComponents", builder._deployables)
         self.assertEqual(len(builder._deployables["InferenceComponents"]), 1)
+        self.assertEqual(builder._deployables["InferenceComponents"][0]["Name"], "ic-1")
+        self.assertIs(
+            builder._deployables["InferenceComponents"][0]["ResourceRequirements"],
+            resource_requirements,
+        )
 
 
 class TestModelBuilderDeployMethod(unittest.TestCase):
