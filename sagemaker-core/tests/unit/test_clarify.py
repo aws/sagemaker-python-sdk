@@ -566,6 +566,20 @@ class TestModelConfig:
         config = ModelConfig(endpoint_name="my-endpoint")
         assert config.predictor_config["endpoint_name"] == "my-endpoint"
 
+    def test_init_with_parquet_content_and_accept_type(self):
+        """Test initialization with application/x-parquet content_type and accept_type."""
+        from sagemaker.core.clarify import ModelConfig
+
+        config = ModelConfig(
+            model_name="my-model",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            content_type="application/x-parquet",
+            accept_type="application/x-parquet",
+        )
+        assert config.predictor_config["content_type"] == "application/x-parquet"
+        assert config.predictor_config["accept_type"] == "application/x-parquet"
+
     def test_init_with_invalid_endpoint_prefix_raises_error(self):
         """Test that invalid endpoint_name_prefix raises ValueError."""
         from sagemaker.core.clarify import ModelConfig
