@@ -3098,38 +3098,42 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return containers
 
     def _core_container_to_dict(self, container):
-        """Convert core ContainerDefinition to dict using container_def helper."""
-        from sagemaker.core.utils.utils import Unassigned
+        """Convert a core ContainerDefinition into a CreateModel container dict.
 
-        # Helper to check if value is Unassigned
-        def get_value(obj, attr, default=None):
-            if not hasattr(obj, attr):
-                return default
-            val = getattr(obj, attr)
-            return default if isinstance(val, Unassigned) else val
+        The core serializer already emits the exact CreateModel request shape for
+        every field a ``ContainerDefinition`` supports, so the container is routed
+        through it instead of copying a fixed subset of fields. Copying a subset
+        dropped fields such as ``ModelPackageName`` and ``ModelDataSource``.
 
-        return container_def(
-            container.image,
-            get_value(container, "model_data_url"),
-            get_value(container, "environment", {}),
-            image_config=get_value(container, "image_config"),
-        )
+        Args:
+            container (sagemaker.core.shapes.ContainerDefinition): The container to convert.
+
+        Returns:
+            dict: A container definition usable with the CreateModel API.
+        """
+        from sagemaker.core.utils.utils import serialize
+
+        return serialize(container) or {}
 
     def _create_sagemaker_model(self):
         """Create a SageMaker Model Entity."""
         container_def = self._prepare_container_def()
 
+        # A container does not always carry an image: a model-package reference
+        # identifies its image through ModelPackageName instead, so Image is
+        # looked up rather than indexed.
+        resolved_image_uri = (
+            container_def.get("Image")
+            if isinstance(container_def, dict)
+            else container_def[0].get("Image")
+        )
+
         if not isinstance(self.sagemaker_session, PipelineSession):
             # _base_name, model_name are not needed under PipelineSession.
             # the model_data may be Pipeline variable
             # which may break the _base_name generation
-            image_uri = (
-                container_def["Image"]
-                if isinstance(container_def, dict)
-                else container_def[0]["Image"]
-            )
             self._ensure_base_name_if_needed(
-                image_uri=image_uri,
+                image_uri=resolved_image_uri,
                 script_uri=self.source_dir,
                 model_uri=self._get_model_uri(),
             )
@@ -3162,9 +3166,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # A pipeline-variable image is only resolved at execution time, so it
         # cannot be inspected here; set enable_network_isolation explicitly then.
         enable_network_isolation = self._enable_network_isolation
-        resolved_image_uri = (
-            container_def["Image"] if isinstance(container_def, dict) else container_def[0]["Image"]
-        )
         if (
             not enable_network_isolation
             and isinstance(resolved_image_uri, str)
