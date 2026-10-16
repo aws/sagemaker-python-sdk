@@ -3,6 +3,7 @@ Unit tests for ModelBuilder deployment and container definition methods.
 Focuses on increasing coverage for deploy-related functionality.
 """
 
+import inspect
 import unittest
 from unittest.mock import Mock, patch
 
@@ -10,6 +11,7 @@ from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.core.resources import Model, Endpoint
+from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.enums import EndpointType
 from sagemaker.core.inference_config import (
     ResourceRequirements,
@@ -298,6 +300,41 @@ class TestModelBuilderDeployCore(unittest.TestCase):
             )
 
         self.assertIn("AsyncInferenceConfig object", str(context.exception))
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    def test_deploy_core_endpoint_update_endpoint_creates_config_from_variants(
+        self, mock_endpoint_get
+    ):
+        """update_endpoint=True must call Session.create_endpoint_config with its real signature."""
+        builder = ModelBuilder(
+            model=Mock(),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        builder.built_model = Mock()
+        builder.model_name = "demo-model"
+        self.mock_session.create_endpoint_config.return_value = "demo-model-config"
+
+        builder._deploy_core_endpoint(
+            endpoint_name="demo-endpoint",
+            instance_type="ml.g5.xlarge",
+            initial_instance_count=1,
+            wait=False,
+            update_endpoint=True,
+        )
+
+        call_kwargs = self.mock_session.create_endpoint_config.call_args.kwargs
+        inspect.signature(Session.create_endpoint_config).bind(None, **call_kwargs)
+        self.assertTrue(call_kwargs["name"].startswith("demo-model"))
+        self.assertNotEqual(call_kwargs["name"], "demo-model")
+        [variant] = call_kwargs["production_variants"]
+        self.assertEqual(variant["ModelName"], "demo-model")
+        self.assertEqual(variant["InstanceType"], "ml.g5.xlarge")
+        self.assertEqual(variant["InitialInstanceCount"], 1)
+        self.mock_session.update_endpoint.assert_called_once_with(
+            "demo-endpoint", "demo-model-config", wait=False
+        )
+        self.mock_session.endpoint_from_production_variants.assert_not_called()
 
     def test_deploy_core_endpoint_invalid_serverless_config_raises_error(self):
         """Test _deploy_core_endpoint raises error for invalid serverless config."""
