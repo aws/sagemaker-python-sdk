@@ -20,11 +20,14 @@ from sagemaker.core.helper.pipeline_variable import PipelineVariable, RequestTyp
 from sagemaker.core.workflow.step_outputs import StepOutput, get_step
 
 from sagemaker.mlops.workflow.step_collections import StepCollection
+from sagemaker.mlops.workflow.step_dependency import StepDependency
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 
 
-def _dependency_name(dep: Union[str, Step, StepCollection, StepOutput]) -> str:
+def _dependency_name(dep: Union[str, Step, StepCollection, StepOutput, StepDependency]) -> str:
     """The name of the step a `depends_on` entry refers to."""
+    if isinstance(dep, StepDependency):
+        return _dependency_name(dep.step)
     if isinstance(dep, str):
         return dep
     if isinstance(dep, StepCollection):
@@ -89,7 +92,9 @@ class CleanupStep(Step):
         s3_sources: List[S3CleanupSource],
         display_name: Optional[str] = None,
         description: Optional[str] = None,
-        depends_on: Optional[List[Union[str, Step, StepCollection, StepOutput]]] = None,
+        depends_on: Optional[
+            List[Union[str, Step, StepCollection, StepOutput, StepDependency]]
+        ] = None,
     ):
         """Constructs a `CleanupStep`.
 
@@ -101,9 +106,12 @@ class CleanupStep(Step):
                 (default: None).
             description (str): The description of the `CleanupStep`
                 (default: None).
-            depends_on (List[str or Step or StepCollection or StepOutput]):
-                Additional steps this `CleanupStep` depends on. The source
-                steps are always added (default: None).
+            depends_on (List[str or Step or StepCollection or StepOutput or
+                StepDependency]): Additional steps this `CleanupStep` depends
+                on. Source steps not already listed are added with the
+                default `Completed` trigger; list a source in a
+                `StepDependency` to clean up on another outcome, for example
+                `TriggerCondition.ANY` (default: None).
         """
         if not s3_sources:
             raise ValueError("s3_sources must contain at least one S3CleanupSource.")

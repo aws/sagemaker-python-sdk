@@ -25,6 +25,7 @@ from sagemaker.core.workflow.step_outputs import StepOutput
 from sagemaker.mlops.workflow import CleanupStep, S3CleanupSource
 from sagemaker.mlops.workflow.pipeline import Pipeline
 from sagemaker.mlops.workflow.step_collections import StepCollection
+from sagemaker.mlops.workflow.step_dependency import StepDependency, TriggerCondition
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 
 
@@ -96,10 +97,14 @@ def _dependency_forms(target):
         "step": target,
         "step_collection": StepCollection(name="Collection", steps=[CustomStep("First"), target]),
         "step_output": _StepOutput(target),
+        "step_dependency": StepDependency(target, TriggerCondition.ANY),
     }
 
 
-@pytest.mark.parametrize("form", ["str", "step", "step_collection", "step_output"])
+_FORMS = ["str", "step", "step_collection", "step_output", "step_dependency"]
+
+
+@pytest.mark.parametrize("form", _FORMS)
 def test_cleanup_step_depends_on_already_has_source(form):
     training = CustomStep("TrainingJob1")
     dep = _dependency_forms(training)[form]
@@ -110,7 +115,7 @@ def test_cleanup_step_depends_on_already_has_source(form):
     assert step.depends_on == [dep]
 
 
-@pytest.mark.parametrize("form", ["str", "step", "step_collection", "step_output"])
+@pytest.mark.parametrize("form", _FORMS)
 def test_cleanup_step_depends_on_other_step_adds_source(form):
     training = CustomStep("TrainingJob1")
     dep = _dependency_forms(CustomStep("OtherStep"))[form]
@@ -119,6 +124,23 @@ def test_cleanup_step_depends_on_other_step_adds_source(form):
     )
 
     assert step.depends_on == [dep, training]
+
+
+def test_cleanup_step_source_with_any_trigger_pipeline_definition(mock_session):
+    training = CustomStep("TrainingJob1")
+    cleanup = CleanupStep(
+        name="CleanupStep1",
+        s3_sources=[S3CleanupSource(step=training)],
+        depends_on=[StepDependency(training, TriggerCondition.ANY)],
+    )
+    pipeline = Pipeline(
+        name="MyPipeline", steps=[training, cleanup], sagemaker_session=mock_session
+    )
+
+    steps = json.loads(pipeline.definition())["Steps"]
+    cleanup_definition = next(s for s in steps if s["Name"] == "CleanupStep1")
+
+    assert cleanup_definition["DependsOn"] == [{"Step": "TrainingJob1", "Trigger": "Any"}]
 
 
 def test_cleanup_step_requires_sources():
