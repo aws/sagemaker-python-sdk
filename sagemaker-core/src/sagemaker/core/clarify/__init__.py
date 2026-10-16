@@ -1197,7 +1197,8 @@ class ModelConfig:
                 "application/x-parquet",
             ]:
                 raise ValueError(
-                    f"Invalid content_type {content_type}." f" Please choose a valid content_type."
+                    f"Invalid content_type {content_type}."
+                    f" Please choose text/csv, application/jsonlines, application/json, image/jpeg, image/jpg, image/png, application/x-npy, or application/x-parquet."
                 )
             if content_type == "application/jsonlines":
                 if content_template is None:
