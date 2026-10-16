@@ -1518,6 +1518,7 @@ class HyperparameterTuner(object):
             stopping_condition=stopping_condition,
             static_hyper_parameters=getattr(self, "static_hyperparameters", None) or {},
             enable_managed_spot_training=model_trainer.compute.enable_managed_spot_training,
+            checkpoint_config=model_trainer.checkpoint_config,
         )
 
         # Include environment only when it's a dict (including empty).
