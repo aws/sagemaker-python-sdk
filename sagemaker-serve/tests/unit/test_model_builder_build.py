@@ -9,10 +9,20 @@ import tempfile
 import os
 
 from sagemaker.core.exceptions import UnexpectedStatusException
+from sagemaker.core.inference_config import ResourceRequirements
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.serve.spec.inference_base import CustomOrchestrator
 from sagemaker.core.resources import Model
+
+
+class ConcreteOrchestrator(CustomOrchestrator):
+    """Custom orchestrator implementation for ModelBuilder tests."""
+
+    def handle(self, data, context=None):
+        """Return the supplied data unchanged."""
+        return data
 
 
 class TestModelBuilderSaveModel(unittest.TestCase):
@@ -181,6 +191,56 @@ class TestModelBuilderBuild(unittest.TestCase):
         self.mock_session.sagemaker_config = {}
         self.mock_session.boto_session = Mock()
         self.mock_session.boto_session.region_name = "us-west-2"
+
+    def test_constructor_accepts_orchestrator_deployment_fields(self):
+        """Verify ModelBuilder accepts inference component settings at construction time."""
+        resource_requirements = ResourceRequirements(
+            requests={"num_cpus": 2, "memory": 4096}, limits={"memory": 8192}
+        )
+
+        builder = ModelBuilder(
+            inference_spec=ConcreteOrchestrator(),
+            resource_requirements=resource_requirements,
+            inference_component_name="custom-orchestrator",
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+
+        self.assertIs(builder.resource_requirements, resource_requirements)
+        self.assertEqual(builder.inference_component_name, "custom-orchestrator")
+
+    def test_custom_orchestrator_build_retains_deployment_fields(self):
+        """Custom orchestrator deployables retain constructor deployment settings."""
+        resource_requirements = ResourceRequirements(
+            requests={"num_cpus": 2, "memory": 4096}, limits={"memory": 8192}
+        )
+        builder = ModelBuilder(
+            inference_spec=ConcreteOrchestrator(),
+            resource_requirements=resource_requirements,
+            inference_component_name="custom-orchestrator",
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        built_model = Mock(spec=Model)
+
+        with (
+            patch.object(builder, "_get_serve_setting", return_value=Mock()),
+            patch.object(builder, "_get_processing_unit", return_value="cpu"),
+            patch.object(builder, "_get_smd_image_uri", return_value="test-smd-image"),
+            patch.object(builder, "_build_single_modelbuilder", return_value=built_model),
+        ):
+            result = builder.build()
+
+        self.assertIs(result, builder)
+        self.assertEqual(
+            builder._deployables["CustomOrchestrator"],
+            {
+                "Name": "custom-orchestrator",
+                "Mode": "InferenceComponent",
+                "ResourceRequirements": resource_requirements,
+                "Model": built_model,
+            },
+        )
 
     def test_build_warns_on_multiple_calls(self):
         """Test build() warns when called multiple times."""
