@@ -405,7 +405,7 @@ class StepsCompiler(object):
             max_concurrency=for_each_step.max_concurrency,
             selector=for_each_step.selector,
             for_each_body=self._build_steps(for_each_step.for_each_body),
-            depends_on=[step.name for step in depends_on],
+            depends_on=self._to_depends_on_request(for_each_step, depends_on),
         )
 
         return compiled_for_each_step
