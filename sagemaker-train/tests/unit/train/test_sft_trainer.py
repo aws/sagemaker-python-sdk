@@ -1565,13 +1565,22 @@ class TestSFTTrainerSmtjS3DataType:
         mock_session.sagemaker_config = {}
 
         with (
-            patch("sagemaker.train.defaults.TrainDefaults") as mock_defaults,
+            # These three are imported into base_trainer at module level, so
+            # they must be patched in base_trainer's namespace -- patching them
+            # where they are defined does not rebind the reference base_trainer
+            # already holds. Left unpatched there, TrainDefaults hands back a
+            # real Session (so download_file issues a live HeadObject) and
+            # get_recipe_s3_uri calls DescribeHubContent for real. The two
+            # finetune_utils patches below are correct as written, because
+            # _train_serverful_smtj imports those names in its own body, so the
+            # import re-executes while the patch is active.
+            patch("sagemaker.train.base_trainer.TrainDefaults") as mock_defaults,
             patch(
-                "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
+                "sagemaker.train.base_trainer.get_recipe_s3_uri",
                 return_value="s3://bucket/recipe.yaml",
             ),
             patch(
-                "sagemaker.train.common_utils.finetune_utils.get_training_image",
+                "sagemaker.train.base_trainer.get_training_image",
                 return_value="img:latest",
             ),
             patch(
