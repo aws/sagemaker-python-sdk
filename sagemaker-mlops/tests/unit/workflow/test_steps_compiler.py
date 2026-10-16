@@ -459,3 +459,42 @@ class TestStepsCompiler:
 
         # Should only be added once to queue
         assert len(compiler._build_queue) == 1
+
+
+class TestStepCollectionSupport:
+    """StepCollections (e.g. MonitorBatchTransformStep) are flattened into their sub-steps."""
+
+    @staticmethod
+    def _definition_step_names(steps):
+        import json
+        from sagemaker.mlops.workflow.pipeline import Pipeline
+
+        session = Mock(boto_region_name="us-west-2", local_mode=False)
+        definition = json.loads(
+            Pipeline(name="p", steps=steps, sagemaker_session=session).definition()
+        )
+        return {step["Name"]: step for step in definition["Steps"]}
+
+    def test_pipeline_with_step_collection(self):
+        from sagemaker.mlops.workflow.fail_step import FailStep
+        from sagemaker.mlops.workflow.step_collections import StepCollection
+
+        first = FailStep("first")
+        second = FailStep("second", depends_on=[first])
+
+        steps = self._definition_step_names([StepCollection(name="coll", steps=[first, second])])
+
+        assert set(steps) == {"first", "second"}
+        assert steps["second"]["DependsOn"] == ["first"]
+
+    @pytest.mark.parametrize("by_name", [False, True])
+    def test_depends_on_step_collection(self, by_name):
+        from sagemaker.mlops.workflow.fail_step import FailStep
+        from sagemaker.mlops.workflow.step_collections import StepCollection
+
+        collection = StepCollection(name="coll", steps=[FailStep("first"), FailStep("second")])
+        after = FailStep("after", depends_on=["coll" if by_name else collection])
+
+        steps = self._definition_step_names([collection, after])
+
+        assert sorted(steps["after"]["DependsOn"]) == ["first", "second"]
