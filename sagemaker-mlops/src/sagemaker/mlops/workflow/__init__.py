@@ -51,6 +51,13 @@ from sagemaker.mlops.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.mlops.workflow.endpoint_step import EndpointConfigStep, EndpointStep
 from sagemaker.mlops.workflow.fail_step import FailStep
 from sagemaker.mlops.workflow.inference_component_step import InferenceComponentStep
+from sagemaker.mlops.workflow.for_each_step import (
+    ForEachStep,
+    ForEachSelector,
+    ForEachSelectorPickType,
+    CurrentItem,
+    IterationOutput,
+)
 from sagemaker.mlops.workflow.lambda_step import LambdaStep, LambdaOutput
 from sagemaker.mlops.workflow.lineage_step import (
     LineageAssociation,
@@ -115,6 +122,11 @@ __all__ = [
     "EndpointStep",
     "FailStep",
     "InferenceComponentStep",
+    "ForEachStep",
+    "ForEachSelector",
+    "ForEachSelectorPickType",
+    "CurrentItem",
+    "IterationOutput",
     "LambdaStep",
     "LambdaOutput",
     "LineageAssociation",
