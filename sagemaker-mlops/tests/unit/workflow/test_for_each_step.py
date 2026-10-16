@@ -36,6 +36,7 @@ from sagemaker.mlops.workflow.lambda_step import (
     LambdaStep,
 )
 from sagemaker.mlops.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.mlops.workflow.step_dependency import StepDependency, TriggerCondition
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 
 
@@ -602,3 +603,35 @@ def test_pipeline_definition_literal_list_items_and_aggregate_reference(mock_ses
         "status": {"Get": "Steps.ForEachItems.Status"},
         "total": {"Get": "Steps.ForEachItems.TotalStepCount"},
     }
+
+
+def test_pipeline_definition_run_conditions(mock_session):
+    producer = CustomStep(name="ProduceItem")
+    first = CustomStep(name="FirstBodyStep", input_data=CurrentItem())
+    second = CustomStep(
+        name="SecondBodyStep",
+        depends_on=[StepDependency(first, TriggerCondition.ANY)],
+    )
+    for_each = ForEachStep(
+        name="ForEachItems",
+        iterable_items=ParameterString(name="ItemList"),
+        max_concurrency=2,
+        for_each_body=[first, second],
+        depends_on=[StepDependency(producer, TriggerCondition.FAILED)],
+    )
+    notify = CustomStep(
+        name="NotifyOnFailure",
+        depends_on=[StepDependency(for_each, TriggerCondition.FAILED)],
+    )
+    pipeline = Pipeline(
+        name="test-pipeline",
+        parameters=[ParameterString(name="ItemList")],
+        steps=[producer, for_each, notify],
+        sagemaker_session=mock_session,
+    )
+    steps = {s["Name"]: s for s in _definition_steps(pipeline)}
+    assert steps["ForEachItems"]["DependsOn"] == [{"Step": "ProduceItem", "Trigger": "Failed"}]
+    assert steps["NotifyOnFailure"]["DependsOn"] == [{"Step": "ForEachItems", "Trigger": "Failed"}]
+    body = {s["Name"]: s for s in steps["ForEachItems"]["Arguments"]["ForEachBody"]}
+    assert "DependsOn" not in body["FirstBodyStep"]
+    assert body["SecondBodyStep"]["DependsOn"] == [{"Step": "FirstBodyStep", "Trigger": "Any"}]
