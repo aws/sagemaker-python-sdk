@@ -630,7 +630,7 @@ class HyperparameterTuner(object):
         if wait:
             self.latest_tuning_job.wait()
 
-    def _train_with_model_trainer(self, inputs, job_name):
+    def _train_with_model_trainer(self, inputs, job_name, **kwargs):
         """Start tuning for tuner instances that have the ``model_trainer`` field set."""
         # Prepare model_trainer before tuning (upload source code, set hyperparameters)
         self._prepare_model_trainer_for_tuning(self.model_trainer, inputs, job_name)
