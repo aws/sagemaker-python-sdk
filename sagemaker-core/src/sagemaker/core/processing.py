@@ -1345,6 +1345,7 @@ class FrameworkProcessor(ScriptProcessor):
                     _pipeline_config.pipeline_name,
                     "source",
                     _pipeline_config.code_hash,
+                    "sourcedir.tar.gz",
                 )
             else:
                 s3_uri = s3.s3_path_join(

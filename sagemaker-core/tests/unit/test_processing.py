@@ -1443,9 +1443,11 @@ class TestFrameworkProcessorPackageCode:
                     kms_key=None,
                 )
 
-                # Should use code_hash in the S3 path, not job_name
+                # Should use code_hash in the S3 path, not job_name, and keep
+                # sourcedir.tar.gz so helper-script replace() URIs stay distinct.
                 assert "test-pipeline" in result
                 assert "abc123" in result
+                assert "sourcedir.tar.gz" in result
                 assert "test-job" not in result
 
 
@@ -1667,6 +1669,71 @@ class TestFrameworkProcessorPackAndUpload:
         assert mock_package_code.call_args.kwargs["kms_key"] == explicit_kms
         upload_kms = [call.kwargs.get("kms_key") for call in mock_upload.call_args_list]
         assert upload_kms and all(k == explicit_kms for k in upload_kms)
+
+    def test_pack_and_upload_code_with_pipeline_config(self, mock_session):
+        """Pipeline code_hash prefix must keep sourcedir.tar.gz so helper uploads do not collide.
+
+        ``_pack_and_upload_code`` derives runproc.sh and install_requirements.py URIs
+        with ``s3_payload.replace("sourcedir.tar.gz", ...)``. If the payload URI is
+        only the hash (no sourcedir.tar.gz filename), those replacements are no-ops
+        and the helper scripts overwrite the source archive. Two different hashes
+        must also produce different S3 keys (issue #6493).
+        """
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        def pack_with_hash(code_hash):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                entry_point = os.path.join(tmpdir, "train.py")
+                with open(entry_point, "w") as f:
+                    f.write("print('training')")
+
+                with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
+                    mock_config.pipeline_name = "test-pipeline"
+                    mock_config.code_hash = code_hash
+                    with patch(
+                        "sagemaker.core.s3.S3Uploader.upload_string_as_file_body"
+                    ) as mock_upload:
+                        mock_upload.side_effect = (
+                            lambda body, desired_s3_uri=None, **kwargs: desired_s3_uri
+                        )
+                        processor._pack_and_upload_code(
+                            code=entry_point,
+                            source_dir=tmpdir,
+                            requirements=None,
+                            job_name="test-job",
+                            inputs=None,
+                            kms_key=None,
+                        )
+                        upload_uris = [
+                            call.kwargs.get("desired_s3_uri") for call in mock_upload.call_args_list
+                        ]
+
+            sourcedir_uris = [uri for uri in upload_uris if uri and "sourcedir.tar.gz" in uri]
+            helper_uris = [
+                uri
+                for uri in upload_uris
+                if uri and ("install_requirements.py" in uri or uri.endswith("/runproc.sh"))
+            ]
+            assert sourcedir_uris, "sourcedir.tar.gz must remain in the pipeline hash S3 key"
+            payload_uri = sourcedir_uris[0]
+            assert code_hash in payload_uri
+            assert "test-pipeline" in payload_uri
+            assert "test-job" not in payload_uri
+            assert helper_uris, "expected helper-script uploads"
+            assert payload_uri not in helper_uris
+            return payload_uri
+
+        uri_a = pack_with_hash("abc123")
+        uri_b = pack_with_hash("def456")
+        assert uri_a != uri_b
+        assert "abc123" in uri_a
+        assert "def456" in uri_b
 
 
 class TestProcessingInputOutputHelpers:
