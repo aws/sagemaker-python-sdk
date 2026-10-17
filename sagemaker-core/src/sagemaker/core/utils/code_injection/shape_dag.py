@@ -1,5 +1,3 @@
-"""Generated shape dependency graph used for serialization."""
-
 SHAPE_DAG = {
     "AIAdapterModelPackageEntry": {
         "members": [
@@ -867,6 +865,13 @@ SHAPE_DAG = {
             {"name": "KmsKeyId", "shape": "KmsKeyId", "type": "string"},
             {"name": "OutputFormat", "shape": "AthenaResultFormat", "type": "string"},
             {"name": "OutputCompression", "shape": "AthenaResultCompressionType", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "AthenaStepMetadata": {
+        "members": [
+            {"name": "QueryExecutionId", "shape": "String256", "type": "string"},
+            {"name": "S3OutputLocation", "shape": "String1024", "type": "string"},
         ],
         "type": "structure",
     },
@@ -2132,6 +2137,28 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "CleanupFailure": {
+        "members": [
+            {"name": "StepName", "shape": "String256", "type": "string"},
+            {"name": "ErrorCode", "shape": "CleanupFailureErrorCode", "type": "string"},
+            {"name": "ErrorMessage", "shape": "String2048", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "CleanupFailureList": {
+        "member_shape": "CleanupFailure",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "CleanupStepMetadata": {
+        "members": [
+            {"name": "CleanedSteps", "shape": "CleanupStepNameList", "type": "list"},
+            {"name": "FailedSteps", "shape": "CleanupFailureList", "type": "list"},
+            {"name": "SkippedSteps", "shape": "CleanupStepNameList", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "CleanupStepNameList": {"member_shape": "String256", "member_type": "string", "type": "list"},
     "ClusterAccountingDatabase": {
         "members": [
             {"name": "Endpoint", "shape": "ClusterAccountingDatabaseEndpoint", "type": "string"},
@@ -8360,6 +8387,15 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "EMRServerlessStepMetadata": {
+        "members": [
+            {"name": "ApplicationId", "shape": "EMRServerlessApplicationId", "type": "string"},
+            {"name": "JobRunId", "shape": "EMRServerlessJobRunId", "type": "string"},
+            {"name": "JobRunName", "shape": "String256", "type": "string"},
+            {"name": "LogFilePath", "shape": "String1024", "type": "string"},
+        ],
+        "type": "structure",
+    },
     "EMRStepMetadata": {
         "members": [
             {"name": "ClusterId", "shape": "String256", "type": "string"},
@@ -9067,6 +9103,25 @@ SHAPE_DAG = {
         "member_shape": "FlowDefinitionTaskKeyword",
         "member_type": "string",
         "type": "list",
+    },
+    "ForEachSelectorResult": {
+        "members": [
+            {"name": "StepName", "shape": "String256", "type": "string"},
+            {"name": "Index", "shape": "Integer", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ForEachStepMetadata": {
+        "members": [
+            {"name": "Status", "shape": "ForEachStatus", "type": "string"},
+            {"name": "InputItemCount", "shape": "Integer", "type": "integer"},
+            {"name": "TotalStepCount", "shape": "Integer", "type": "integer"},
+            {"name": "SucceededStepCount", "shape": "Integer", "type": "integer"},
+            {"name": "FailedStepCount", "shape": "Integer", "type": "integer"},
+            {"name": "StoppedStepCount", "shape": "Integer", "type": "integer"},
+            {"name": "Selector", "shape": "ForEachSelectorResult", "type": "structure"},
+        ],
+        "type": "structure",
     },
     "ForecastQuantiles": {
         "member_shape": "ForecastQuantile",
@@ -10548,12 +10603,19 @@ SHAPE_DAG = {
             {"name": "CustomAttributes", "shape": "CustomAttributesHeader", "type": "string"},
             {"name": "InferenceId", "shape": "InferenceId", "type": "string"},
             {"name": "InputLocation", "shape": "InputLocationHeader", "type": "string"},
+            {
+                "name": "S3OutputPathExtension",
+                "shape": "S3OutputPathExtensionHeader",
+                "type": "string",
+            },
+            {"name": "Filename", "shape": "FilenameHeader", "type": "string"},
             {"name": "RequestTTLSeconds", "shape": "RequestTTLSecondsHeader", "type": "integer"},
             {
                 "name": "InvocationTimeoutSeconds",
                 "shape": "InvocationTimeoutSecondsHeader",
                 "type": "integer",
             },
+            {"name": "Body", "shape": "AsyncBodyBlob", "type": "blob"},
         ],
         "type": "structure",
     },
@@ -10587,6 +10649,7 @@ SHAPE_DAG = {
                 "type": "string",
             },
             {"name": "SessionId", "shape": "SessionIdOrNewSessionConstantHeader", "type": "string"},
+            {"name": "PrefixAwareId", "shape": "PrefixAwareIdHeader", "type": "string"},
         ],
         "type": "structure",
     },
@@ -10621,6 +10684,7 @@ SHAPE_DAG = {
                 "type": "string",
             },
             {"name": "SessionId", "shape": "SessionIdHeader", "type": "string"},
+            {"name": "PrefixAwareId", "shape": "PrefixAwareIdHeader", "type": "string"},
         ],
         "type": "structure",
     },
@@ -10630,6 +10694,14 @@ SHAPE_DAG = {
             {"name": "ContentType", "shape": "Header", "type": "string"},
             {"name": "InvokedProductionVariant", "shape": "Header", "type": "string"},
             {"name": "CustomAttributes", "shape": "CustomAttributesHeader", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "IterationContext": {
+        "members": [
+            {"name": "ParentStepName", "shape": "String256", "type": "string"},
+            {"name": "Index", "shape": "Integer", "type": "integer"},
+            {"name": "Item", "shape": "String12800", "type": "string"},
         ],
         "type": "structure",
     },
@@ -14986,6 +15058,7 @@ SHAPE_DAG = {
                 "shape": "SelectiveExecutionResult",
                 "type": "structure",
             },
+            {"name": "IterationContext", "shape": "IterationContext", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -15006,6 +15079,7 @@ SHAPE_DAG = {
             {"name": "Callback", "shape": "CallbackStepMetadata", "type": "structure"},
             {"name": "Lambda", "shape": "LambdaStepMetadata", "type": "structure"},
             {"name": "EMR", "shape": "EMRStepMetadata", "type": "structure"},
+            {"name": "EMRServerless", "shape": "EMRServerlessStepMetadata", "type": "structure"},
             {"name": "QualityCheck", "shape": "QualityCheckStepMetadata", "type": "structure"},
             {"name": "ClarifyCheck", "shape": "ClarifyCheckStepMetadata", "type": "structure"},
             {"name": "Fail", "shape": "FailStepMetadata", "type": "structure"},
@@ -15039,6 +15113,9 @@ SHAPE_DAG = {
             },
             {"name": "Lineage", "shape": "LineageMetadata", "type": "structure"},
             {"name": "Job", "shape": "JobStepMetadata", "type": "structure"},
+            {"name": "Athena", "shape": "AthenaStepMetadata", "type": "structure"},
+            {"name": "Cleanup", "shape": "CleanupStepMetadata", "type": "structure"},
+            {"name": "ForEach", "shape": "ForEachStepMetadata", "type": "structure"},
         ],
         "type": "structure",
     },
