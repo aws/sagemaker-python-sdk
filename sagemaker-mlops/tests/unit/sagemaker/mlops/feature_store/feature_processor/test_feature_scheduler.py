@@ -974,6 +974,7 @@ def test_remote_decorator_fields_consistency(get_execution_role, session):
         "use_torchrun",
         "use_mpirun",
         "nproc_per_node",
+        "training_plan_arn",
     }
 
     job_settings = _JobSettings(
