@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 import warnings
 import weakref
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, FrozenSet, List, Optional
 
 from sagemaker.train.training_session.types import (
     Datum,
@@ -34,12 +34,34 @@ logger = logging.getLogger(__name__)
 
 _PUBLIC_HUB_NAME = "SageMakerPublicHub"
 
-#: Hub content search-keyword prefix identifying a base model this client can
-#: fine-tune. Each model's recipes are tagged
-#: ``@recipe:{type}_{technique}_{strategy}`` (lowercase) on the Public Hub;
-#: matching on the prefix selects models carrying a compatible fine-tuning
-#: recipe regardless of the parameter-efficient strategy it uses.
-_TRAINABLE_RECIPE_KEYWORD_PREFIX = "@recipe:finetuning_mtrl_"
+#: Hub content search keyword identifying a base model this client can train.
+#: The Public Hub publishes each model's ``Capabilities`` as
+#: ``@capability:{capability}`` (lowercase) keywords; ``TRAINING_SESSION`` is
+#: set per region, so the keyword is present only where the model is served.
+_TRAINABLE_CAPABILITY_KEYWORD = "@capability:training_session"
+
+#: Hub content names served by Training Sessions, by Region, for the interval
+#: before the Public Hub publishes the capability keyword above. Mirrors the
+#: service's model configuration; a listed model that is absent from a
+#: Region's Hub is simply not reported there. Remove when the keyword is live.
+_TRAINABLE_MODELS_BY_REGION: Dict[str, FrozenSet[str]] = {
+    "us-west-2": frozenset(
+        {
+            "huggingface-vlm-gemma-4-31b-it",
+            "huggingface-vlm-qwen3-6-27b",
+            "huggingface-vlm-qwen3-8-27b",
+            "openai-reasoning-gpt-oss-20b",
+        }
+    ),
+    "us-east-1": frozenset({"openai-reasoning-gpt-oss-20b"}),
+    "ap-south-1": frozenset(
+        {
+            "huggingface-vlm-gemma-4-31b-it",
+            "huggingface-vlm-qwen3-6-27b",
+            "openai-reasoning-gpt-oss-20b",
+        }
+    ),
+}
 
 #: Hub content search-keyword prefix carrying a model's published id, spelled
 #: ``@huggingface-id:{provider}/{model}``. Free on the list summary, but keyword
@@ -206,17 +228,29 @@ def _public_model_id(hub_content_name: str, keywords: List[str], hub_client: Any
     return model_id
 
 
+def _is_trainable(hub_content_name: str, keywords: List[str], region: Optional[str]) -> bool:
+    """Return True if the Hub entry is served by Training Sessions in this Region.
+
+    A model qualifies when its keywords carry the training-session capability
+    or when it is in the Region's static list (:data:`_TRAINABLE_MODELS_BY_REGION`).
+    """
+    if any(kw.lower() == _TRAINABLE_CAPABILITY_KEYWORD for kw in keywords):
+        return True
+    return hub_content_name in _TRAINABLE_MODELS_BY_REGION.get(region or "", frozenset())
+
+
 def _scan_trainable_hub_models(hub_client: Any) -> Dict[str, str]:
     """Return ``{model id: Hub content name}`` for the region's fine-tunable models.
 
-    Queries the SageMaker Public Hub and keeps the models that advertise a
-    compatible fine-tuning recipe (via their ``HubContentSearchKeywords``), so
+    Queries the SageMaker Public Hub and keeps the models that advertise the
+    training-session capability (via their ``HubContentSearchKeywords``), so
     the set is discovered live rather than hardcoded and a newly enabled model
     appears with no SDK change.
 
     Args:
         hub_client: A boto3 ``sagemaker`` client (its region determines results).
     """
+    region = getattr(getattr(hub_client, "meta", None), "region_name", None)
     trainable: List["tuple[str, List[str]]"] = []
     next_token = None
     while True:
@@ -231,7 +265,7 @@ def _scan_trainable_hub_models(hub_client: Any) -> Dict[str, str]:
             if _is_excluded_base_model(hub_content_name):
                 continue
             keywords = item.get("HubContentSearchKeywords", []) or []
-            if not any(kw.lower().startswith(_TRAINABLE_RECIPE_KEYWORD_PREFIX) for kw in keywords):
+            if not _is_trainable(hub_content_name, keywords, region):
                 continue
             trainable.append((hub_content_name, keywords))
         next_token = resp.get("NextToken")
