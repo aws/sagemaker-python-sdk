@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.26.0 (2026-10-19)
+
+### Bug Fixes
+
+- fix: pass the configured session to ModelBuilder's Model reloads (#6487)
+- fix: preserve all core container fields in ModelBuilder CreateModel requests (#6488)
+- fix: accept core shapes and omitted content types in ModelBuilder.register (#6489)
+- fix(serve): restore JumpStart default instance type from model spec (#6045)
+
+### Tests
+
+- test(serve): stop unit tests resolving IAM roles over the network (#6496)
+
+
 ## v1.25.0 (2026-10-13)
 
 ### Tests

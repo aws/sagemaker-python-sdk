@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.26.0 (2026-10-19)
+
+### New Features
+
+- Add sa-west-1 to JumpStart region_config and djl-neuronx image_uri config (#6478)
+- Add me-west-1 (RUH) JumpStart bucket info to region_config.json (#6455)
+
+
 ## v2.25.0 (2026-10-13)
 
 ### Bug Fixes
