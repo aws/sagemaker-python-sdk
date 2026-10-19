@@ -1,5 +1,31 @@
 # Changelog
 
+## v3.26.0 (2026-10-19)
+
+### New Features
+
+- Add sa-west-1 to JumpStart region_config and djl-neuronx image_uri config (#6478)
+- Add me-west-1 (RUH) JumpStart bucket info to region_config.json (#6455)
+- feat(mlops): Add run conditions to step dependencies (#6475)
+
+### Bug Fixes
+
+- fix: emit boto-style tag keys in ModelTrainer pipeline requests (#6485)
+- fix: normalize ModelTrainer Tag objects inherited by HyperparameterTuner (#6482)
+- fix: pass the configured session to ModelBuilder's Model reloads (#6487)
+- fix: preserve all core container fields in ModelBuilder CreateModel requests (#6488)
+- fix: accept core shapes and omitted content types in ModelBuilder.register (#6489)
+- fix(serve): restore JumpStart default instance type from model spec (#6045)
+- fix: put the check steps' output KMS key on ProcessingOutputConfig and send CheckJobConfig tags (#6497)
+- fix: generate repack step for ModelBuilder.register/build in ModelStep (#5828, #5829) (#6338)
+- fix: keep source_code for a pipeline-variable model URI and stop repack mutating caller source (#6490)
+
+### Tests
+
+- test(train): patch mocks at the lookup site so unit tests stop calling AWS (#6491)
+- test(serve): stop unit tests resolving IAM roles over the network (#6496)
+
+
 ## v3.25.0 (2026-10-13)
 
 ### New Features

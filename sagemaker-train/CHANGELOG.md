@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.26.0 (2026-10-19)
+
+### Bug Fixes
+
+- fix: emit boto-style tag keys in ModelTrainer pipeline requests (#6485)
+- fix: normalize ModelTrainer Tag objects inherited by HyperparameterTuner (#6482)
+
+### Tests
+
+- test(train): patch mocks at the lookup site so unit tests stop calling AWS (#6491)
+
+
 ## v1.25.0 (2026-10-13)
 
 ### New Features
