@@ -71,7 +71,7 @@ class InvokeEndpointAsyncOutput(Base):
 
     Attributes
     ----------------------
-    inference_id: Identifier for an inference request. This will be the same as the InferenceId specified in the input. Amazon SageMaker will generate an identifier for you if you do not specify one.
+    inference_id: Identifier for an inference request. This will be the same as the InferenceId specified in the input. Amazon SageMaker AI will generate an identifier for you if you do not specify one.
     output_location: The Amazon S3 URI where the inference response payload is stored.
     failure_location: The Amazon S3 URI where the inference failure response payload is stored.
     """
@@ -90,7 +90,7 @@ class InvokeEndpointOutput(Base):
     body: Includes the inference provided by the model.  For information about the format of the response body, see Common Data Formats-Inference. If the explainer is activated, the body includes the explanations provided by the model. For more information, see the Response section under Invoke the Endpoint in the Developer Guide.
     content_type: The MIME type of the inference returned from the model container.
     invoked_production_variant: Identifies the production variant that was invoked.
-    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
+    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
     new_session_id: If you created a stateful session with your request, the ID and expiration time that the model assigns to that session.
     closed_session_id: If you closed a stateful session with your request, the ID of that session.
     """
@@ -119,12 +119,12 @@ class PayloadPart(Base):
 class ModelStreamError(Base):
     """
     ModelStreamError
-       An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+       An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
 
     Attributes
     ----------------------
     message
-    error_code: This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+    error_code: This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
     """
 
     message: Optional[StrPipeVar] = Unassigned()
@@ -139,7 +139,7 @@ class ResponseStream(Base):
     Attributes
     ----------------------
     payload_part: A wrapper for pieces of the payload that's returned in response to a streaming inference request. A streaming inference response consists of one or more payload parts.
-    model_stream_error:  An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+    model_stream_error:  An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
     internal_stream_failure: The stream processing failed because of an unknown error, exception or failure. Try your request again.
     """
 
@@ -157,7 +157,7 @@ class InvokeEndpointWithResponseStreamOutput(Base):
     body
     content_type: The MIME type of the inference returned from the model container.
     invoked_production_variant: Identifies the production variant that was invoked.
-    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
+    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
     """
 
     body: ResponseStream
@@ -228,19 +228,6 @@ class AccessForbidden(Base):
     """
     AccessForbidden
       You do not have permission to perform an action.
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
-
-
-class ConflictException(Base):
-    """
-    ConflictException
-      There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
 
     Attributes
     ----------------------
@@ -401,6 +388,19 @@ class BatchWriteRecordResponse(Base):
 
     errors: List[BatchWriteRecordError]
     unprocessed_entries: List[BatchWriteRecordEntry]
+
+
+class ConflictException(Base):
+    """
+    ConflictException
+      There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+
+    Attributes
+    ----------------------
+    message
+    """
+
+    message: Optional[StrPipeVar] = Unassigned()
 
 
 class GetRecordResponse(Base):
@@ -2489,6 +2489,21 @@ class AthenaDatasetDefinition(Base):
     output_compression: Optional[StrPipeVar] = Unassigned()
 
 
+class AthenaStepMetadata(Base):
+    """
+    AthenaStepMetadata
+      The query execution identifier and the result output location for the Amazon Athena query that an Athena step runs.
+
+    Attributes
+    ----------------------
+    query_execution_id: The unique identifier of the Amazon Athena query execution that was run by this step execution.
+    s3_output_location: The Amazon S3 location of the Amazon Athena query results. This is the effective output location reported by GetQueryExecution for the query. This value can be absent when the query uses Athena managed query results.
+    """
+
+    query_execution_id: Optional[StrPipeVar] = Unassigned()
+    s3_output_location: Optional[StrPipeVar] = Unassigned()
+
+
 class AuthorizedUrl(Base):
     """
     AuthorizedUrl
@@ -4330,6 +4345,40 @@ class ClarifyExplainerConfig(Base):
     shap_config: ClarifyShapConfig
     enable_explanations: Optional[StrPipeVar] = Unassigned()
     inference_config: Optional[ClarifyInferenceConfig] = Unassigned()
+
+
+class CleanupFailure(Base):
+    """
+    CleanupFailure
+      The Amazon S3 output resources associated with an upstream step that the Cleanup step could not delete.
+
+    Attributes
+    ----------------------
+    step_name: The name of the upstream step whose Amazon S3 output resources the Cleanup step could not delete.
+    error_code: The error code that identifies why the Cleanup step could not delete the output resources associated with the upstream step.
+    error_message: A message describing why the Cleanup step could not delete the output resources associated with the upstream step.
+    """
+
+    step_name: Optional[StrPipeVar] = Unassigned()
+    error_code: Optional[StrPipeVar] = Unassigned()
+    error_message: Optional[StrPipeVar] = Unassigned()
+
+
+class CleanupStepMetadata(Base):
+    """
+    CleanupStepMetadata
+      The cleanup outcomes for Amazon S3 output resources associated with upstream steps.
+
+    Attributes
+    ----------------------
+    cleaned_steps: The names of upstream steps whose Amazon S3 output resources the Cleanup step deleted successfully.
+    failed_steps: The upstream steps whose Amazon S3 output resources the Cleanup step could not delete.
+    skipped_steps: The names of upstream steps that the Cleanup step skipped. The Cleanup step skips a step when the output properties needed to locate its resources are unavailable.
+    """
+
+    cleaned_steps: Optional[List[StrPipeVar]] = Unassigned()
+    failed_steps: Optional[List[CleanupFailure]] = Unassigned()
+    skipped_steps: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class ClusterAccountingDatabase(Base):
@@ -12466,6 +12515,25 @@ class DynamicScalingConfiguration(Base):
     scaling_policies: Optional[List[ScalingPolicy]] = Unassigned()
 
 
+class EMRServerlessStepMetadata(Base):
+    """
+    EMRServerlessStepMetadata
+      The configurations and outcomes of an Amazon EMR Serverless step execution.
+
+    Attributes
+    ----------------------
+    application_id: The identifier of the Amazon EMR Serverless application.
+    job_run_id: The identifier of the Amazon EMR Serverless job run.
+    job_run_name: The name of the Amazon EMR Serverless job run.
+    log_file_path: The path to the log file for the Amazon EMR Serverless job run.
+    """
+
+    application_id: Optional[StrPipeVar] = Unassigned()
+    job_run_id: Optional[StrPipeVar] = Unassigned()
+    job_run_name: Optional[StrPipeVar] = Unassigned()
+    log_file_path: Optional[StrPipeVar] = Unassigned()
+
+
 class EMRStepMetadata(Base):
     """
     EMRStepMetadata
@@ -12905,6 +12973,46 @@ class FlowDefinitionSummary(Base):
     flow_definition_status: StrPipeVar
     creation_time: datetime.datetime
     failure_reason: Optional[StrPipeVar] = Unassigned()
+
+
+class ForEachSelectorResult(Base):
+    """
+    ForEachSelectorResult
+      The result of the selector that identifies an iteration of a ForEach step.
+
+    Attributes
+    ----------------------
+    step_name: The name of the step associated with the iteration.
+    index: The index of the iteration within the ForEach step.
+    """
+
+    step_name: Optional[StrPipeVar] = Unassigned()
+    index: Optional[int] = Unassigned()
+
+
+class ForEachStepMetadata(Base):
+    """
+    ForEachStepMetadata
+      The status, the iteration-step counts, and the selector information for a ForEach step execution.
+
+    Attributes
+    ----------------------
+    status: The status of the ForEach step execution.
+    input_item_count: The number of input items that the ForEach step iterates over.
+    total_step_count: The total number of steps generated across all iterations of the ForEach step.
+    succeeded_step_count: The number of iteration steps that completed successfully.
+    failed_step_count: The number of iteration steps that failed.
+    stopped_step_count: The number of iteration steps that were stopped.
+    selector: Identifies the body step and iteration selected within the ForEach step.
+    """
+
+    status: Optional[StrPipeVar] = Unassigned()
+    input_item_count: Optional[int] = Unassigned()
+    total_step_count: Optional[int] = Unassigned()
+    succeeded_step_count: Optional[int] = Unassigned()
+    failed_step_count: Optional[int] = Unassigned()
+    stopped_step_count: Optional[int] = Unassigned()
+    selector: Optional[ForEachSelectorResult] = Unassigned()
 
 
 class GetDeviceFleetReportResponse(Base):
@@ -13460,6 +13568,23 @@ class InstanceGroupHealthCheckConfiguration(Base):
     instance_group_name: StrPipeVar
     deep_health_checks: List[StrPipeVar]
     instance_ids: Optional[List[StrPipeVar]] = Unassigned()
+
+
+class IterationContext(Base):
+    """
+    IterationContext
+      The context for an iteration of a ForEach step.
+
+    Attributes
+    ----------------------
+    parent_step_name: The name of the ForEach step that generated this iteration.
+    index: The index of the iteration within the ForEach step.
+    item: The input item that is being processed in this iteration.
+    """
+
+    parent_step_name: Optional[StrPipeVar] = Unassigned()
+    index: Optional[int] = Unassigned()
+    item: Optional[StrPipeVar] = Unassigned()
 
 
 class Job(Base):
@@ -14265,6 +14390,7 @@ class PipelineExecutionStepMetadata(Base):
     callback: The URL of the Amazon SQS queue used by this step execution, the pipeline generated token, and a list of output parameters.
     lambda: The Amazon Resource Name (ARN) of the Lambda function that was run by this step execution and a list of output parameters.
     emr: The configurations and outcomes of an Amazon EMR step execution.
+    emr_serverless: The configurations and outcomes of an Amazon EMR Serverless step execution.
     quality_check: The configurations and outcomes of the check step execution. This includes:    The type of the check conducted.   The Amazon S3 URIs of baseline constraints and statistics files to be used for the drift check.   The Amazon S3 URIs of newly calculated baseline constraints and statistics.   The model package group name provided.   The Amazon S3 URI of the violation report if violations detected.   The Amazon Resource Name (ARN) of check processing job initiated by the step execution.   The Boolean flags indicating if the drift check is skipped.   If step property BaselineUsedForDriftCheck is set the same as CalculatedBaseline.
     clarify_check: Container for the metadata for a Clarify check step. The configurations and outcomes of the check step execution. This includes:    The type of the check conducted,   The Amazon S3 URIs of baseline constraints and statistics files to be used for the drift check.   The Amazon S3 URIs of newly calculated baseline constraints and statistics.   The model package group name provided.   The Amazon S3 URI of the violation report if violations detected.   The Amazon Resource Name (ARN) of check processing job initiated by the step execution.   The boolean flags indicating if the drift check is skipped.   If step property BaselineUsedForDriftCheck is set the same as CalculatedBaseline.
     fail: The configurations and outcomes of a Fail step execution.
@@ -14278,6 +14404,9 @@ class PipelineExecutionStepMetadata(Base):
     inference_component:  The metadata of the inference component used in pipeline execution step.
     lineage:  The metadata of the lineage used in pipeline execution step.
     job: The metadata for a SageMaker job used in a pipeline execution step.
+    athena: The metadata for the Athena step execution.
+    cleanup: The metadata for the cleanup step execution.
+    for_each: The metadata for the ForEach step execution.
     """
 
     training_job: Optional[TrainingJobStepMetadata] = Unassigned()
@@ -14290,6 +14419,7 @@ class PipelineExecutionStepMetadata(Base):
     callback: Optional[CallbackStepMetadata] = Unassigned()
     # lambda: Optional[LambdaStepMetadata] = Unassigned()
     emr: Optional[EMRStepMetadata] = Unassigned()
+    emr_serverless: Optional[EMRServerlessStepMetadata] = Unassigned()
     quality_check: Optional[QualityCheckStepMetadata] = Unassigned()
     clarify_check: Optional[ClarifyCheckStepMetadata] = Unassigned()
     fail: Optional[FailStepMetadata] = Unassigned()
@@ -14305,6 +14435,9 @@ class PipelineExecutionStepMetadata(Base):
     inference_component: Optional[InferenceComponentMetadata] = Unassigned()
     lineage: Optional[LineageMetadata] = Unassigned()
     job: Optional[JobStepMetadata] = Unassigned()
+    athena: Optional[AthenaStepMetadata] = Unassigned()
+    cleanup: Optional[CleanupStepMetadata] = Unassigned()
+    for_each: Optional[ForEachStepMetadata] = Unassigned()
 
 
 class SelectiveExecutionResult(Base):
@@ -14338,6 +14471,7 @@ class PipelineExecutionStep(Base):
     metadata: Metadata to run the pipeline step.
     attempt_count: The current attempt of the execution step. For more information, see Retry Policy for SageMaker Pipelines steps.
     selective_execution_result: The ARN from an execution of the current pipeline from which results are reused for this step.
+    iteration_context: The context for the iteration of a ForEach step that generated this step execution.
     """
 
     step_name: Optional[StrPipeVar] = Unassigned()
@@ -14351,6 +14485,7 @@ class PipelineExecutionStep(Base):
     metadata: Optional[PipelineExecutionStepMetadata] = Unassigned()
     attempt_count: Optional[int] = Unassigned()
     selective_execution_result: Optional[SelectiveExecutionResult] = Unassigned()
+    iteration_context: Optional[IterationContext] = Unassigned()
 
 
 class PipelineExecutionSummary(Base):
