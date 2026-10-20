@@ -26,7 +26,6 @@ from sagemaker.mlops.workflow._steps_compiler import (
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 from sagemaker.mlops.workflow.condition_step import ConditionStep
 from sagemaker.mlops.workflow.for_each_step import ForEachStep
-from sagemaker.core.workflow.step_outputs import StepOutput
 
 
 class TestCompiledStep:
