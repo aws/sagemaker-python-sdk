@@ -35,9 +35,7 @@ def _load_fixture_spec_dict():
     # Exclude ml.m5.large (the buggy code's hardcoded fallback) from the
     # supported list so membership assertions discriminate red from green.
     spec["supported_inference_instance_types"] = [_FIXTURE_DEFAULT_INSTANCE_TYPE] + [
-        t
-        for t in spec.get("supported_inference_instance_types", [])
-        if t != "ml.m5.large"
+        t for t in spec.get("supported_inference_instance_types", []) if t != "ml.m5.large"
     ]
     return spec
 
@@ -48,7 +46,6 @@ def _get_fixture_spec(*args, **kwargs):
     from sagemaker.core.jumpstart.types import JumpStartModelSpecs
 
     return JumpStartModelSpecs(_load_fixture_spec_dict())
-
 
 
 def _mock_session():
@@ -122,14 +119,14 @@ class TestJumpStartDefaultInstanceTypeResolution(unittest.TestCase):
         with patch.object(ModelBuilder, "_get_default_instance_type", spy):
             _build_jumpstart_builder()
 
-        self.assertTrue(seen.get("has_region"), "self.region missing during instance-type detection")
+        self.assertTrue(
+            seen.get("has_region"), "self.region missing during instance-type detection"
+        )
         self.assertEqual(seen.get("region"), "us-west-2")
 
     def test_user_provided_instance_type_wins_and_skips_lookup(self):
         """Explicit instance_type must be honored without consulting the spec."""
-        builder, get_deploy_kwargs_mock = _build_jumpstart_builder(
-            instance_type="ml.p5.48xlarge"
-        )
+        builder, get_deploy_kwargs_mock = _build_jumpstart_builder(instance_type="ml.p5.48xlarge")
 
         self.assertEqual(builder.instance_type, "ml.p5.48xlarge")
         self.assertTrue(builder._user_provided_instance_type)
@@ -157,9 +154,9 @@ class TestDefaultInstanceTypePropagatesToDeploy(unittest.TestCase):
         builder, _ = _build_jumpstart_builder()
         builder.built_model = Mock()
 
-        with patch.object(ModelBuilder, "_is_model_customization", return_value=False), patch.object(
-            ModelBuilder, "_deploy", return_value=Mock()
-        ) as mock_deploy:
+        with patch.object(
+            ModelBuilder, "_is_model_customization", return_value=False
+        ), patch.object(ModelBuilder, "_deploy", return_value=Mock()) as mock_deploy:
             builder.deploy(endpoint_name="test-endpoint")
 
         mock_deploy.assert_called_once()
@@ -265,9 +262,9 @@ class TestUserOverrideFlowsDownstream(unittest.TestCase):
         builder, _ = _build_jumpstart_builder(instance_type=self.USER_INSTANCE_TYPE)
         builder.built_model = Mock()
 
-        with patch.object(ModelBuilder, "_is_model_customization", return_value=False), patch.object(
-            ModelBuilder, "_deploy", return_value=Mock()
-        ) as mock_deploy:
+        with patch.object(
+            ModelBuilder, "_is_model_customization", return_value=False
+        ), patch.object(ModelBuilder, "_deploy", return_value=Mock()) as mock_deploy:
             builder.deploy(endpoint_name="test-endpoint")
 
         mock_deploy.assert_called_once()
