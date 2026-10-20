@@ -69,6 +69,7 @@ class StepTypeEnum(Enum):
     INFERENCE_COMPONENT = "InferenceComponent"
     LINEAGE = "Lineage"
     JOB = "Job"
+    CLEANUP = "Cleanup"
 
 
 class Step(Entity):
