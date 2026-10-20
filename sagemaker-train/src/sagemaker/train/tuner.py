@@ -1403,10 +1403,12 @@ class HyperparameterTuner(object):
     def _build_training_job_definition(self, inputs):
         """Build the training job definition for the tuning job."""
         from sagemaker.core.shapes import (
+            CheckpointConfig,
             HyperParameterTrainingJobDefinition,
             HyperParameterAlgorithmSpecification,
             OutputDataConfig,
             ResourceConfig,
+            RetryStrategy,
             StoppingCondition,
             DataSource,
             S3DataSource,
@@ -1550,6 +1552,20 @@ class HyperparameterTuner(object):
         # Include environment only when it's a dict (including empty).
         if isinstance(env, dict):
             definition_kwargs["environment"] = env
+
+        # Propagate the checkpoint and retry configuration from ModelTrainer.
+        # HyperParameterTrainingJobDefinition accepts both, and dropping them means
+        # a tuned job cannot resume from its configured checkpoint (sharpest on
+        # managed spot training) and ignores the configured retry count (#6500).
+        # ``retry_strategy`` is held on ModelTrainer as a private attribute that
+        # ``with_retry_strategy()`` sets, so read it with getattr.
+        checkpoint_config = getattr(model_trainer, "checkpoint_config", None)
+        if isinstance(checkpoint_config, CheckpointConfig):
+            definition_kwargs["checkpoint_config"] = checkpoint_config
+
+        retry_strategy = getattr(model_trainer, "_retry_strategy", None)
+        if isinstance(retry_strategy, RetryStrategy):
+            definition_kwargs["retry_strategy"] = retry_strategy
 
         definition = HyperParameterTrainingJobDefinition(**definition_kwargs)
 
