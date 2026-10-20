@@ -52,6 +52,7 @@ EXPECTED_STEP_TYPES = {
     "JOB": "Job",
     "CLEANUP": "Cleanup",
     "FOR_EACH": "ForEach",
+    "ATHENA": "Athena",
 }
 
 
