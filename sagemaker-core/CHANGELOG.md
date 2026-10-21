@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.27.0 (2026-10-21)
+
+### Bug Fixes
+
+- fix: keep the Transformer's configured session when waiting on or stopping a transform job (#6509)
+- fix: add g7e, p6-b200 and trn2 to volume size unsupported instance families (#6505)
+
+
 ## v2.26.0 (2026-10-19)
 
 ### New Features
