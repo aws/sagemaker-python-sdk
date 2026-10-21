@@ -356,6 +356,15 @@ class _ModelBuilderUtils:
                 logger.debug(f"Using JumpStart recommended instance type: {recommended_type}")
                 return recommended_type
 
+        # A SageMaker model-package ARN is not a HuggingFace repo id. Routing it
+        # to the HF metadata API 404s and produces a misleading "provide a
+        # HUGGING_FACE_HUB_TOKEN" error, so skip smart detection for ARNs.
+        elif isinstance(self.model, str) and re.match(MODEL_PACKAGE_ARN_REGEX, self.model):
+            logger.debug(
+                "Model is a SageMaker model-package ARN, not a HuggingFace model ID; "
+                "skipping HuggingFace-based instance type detection."
+            )
+
         # For HuggingFace models, use metadata to detect requirements
         elif isinstance(self.model, str):
             try:
@@ -530,6 +539,11 @@ class _ModelBuilderUtils:
             True if model appears to be a HuggingFace model ID.
         """
         if not isinstance(self.model, str):
+            return False
+
+        # A SageMaker model-package ARN contains "/" but is not a HuggingFace
+        # model ID; exclude it before the organization/model-name heuristic.
+        if re.match(MODEL_PACKAGE_ARN_REGEX, self.model):
             return False
 
         # Simple pattern matching for HuggingFace model IDs
@@ -3455,6 +3469,13 @@ class _ModelBuilderUtils:
                 raise ValueError(
                     "Trying to access a gated/private HuggingFace model without valid credentials. "
                     "Please provide a HUGGING_FACE_HUB_TOKEN in env_vars"
+                )
+            if "HTTP Error 404: Not Found" in str(e):
+                raise ValueError(
+                    "HuggingFace model ID %s was not found on huggingface.co. Please verify the "
+                    "model ID is a valid HuggingFace repo. If you intended to deploy a SageMaker "
+                    "model-package or other non-HuggingFace artifact, it should not be passed as a "
+                    "HuggingFace model ID." % model_id
                 )
             logger.warning(
                 "Exception encountered while trying to retrieve HuggingFace model metadata %s. "
