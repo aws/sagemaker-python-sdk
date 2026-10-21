@@ -1447,7 +1447,14 @@ class _ModelBuilderUtils:
                     "Unable to import sagemaker_mlflow, check if sagemaker_mlflow is installed"
                 )
 
-            import mlflow
+            try:
+                import mlflow
+            except ImportError:
+                raise ImportError(
+                    "Building from an MLflow model path requires the mlflow module but it was "
+                    "not found in your environment. Install it with "
+                    "'pip install sagemaker-serve[mlflow]'."
+                )
 
             mlflow.set_tracking_uri(mlflow_tracking_arn)
 
@@ -3057,9 +3064,10 @@ class _ModelBuilderUtils:
 
         except ModuleNotFoundError:
             raise ImportError(
-                "Launching Triton with ModelBuilder for a PyTorch model requires onnx module "
-                "but it was not found in your environment. "
-                "Checkout the instructions on the installation page of its repo: "
+                "Launching Triton with ModelBuilder for a PyTorch model requires the torch and "
+                "onnx modules but they were not found in your environment. "
+                "Install them with 'pip install sagemaker-serve[triton]', or checkout the "
+                "instructions on the installation page of its repo: "
                 "https://onnxruntime.ai/docs/install/ "
                 "And follow the ones that match your environment. "
                 "Please note that you may need to restart your runtime after installation."
@@ -3075,7 +3083,8 @@ class _ModelBuilderUtils:
             raise ImportError(
                 "Launching Triton with ModelBuilder requires tritonClient[http] module "
                 "but it was not found in your environment. "
-                "Checkout the instructions on the installation page of its repo: "
+                "Install it with 'pip install sagemaker-serve[triton]', or checkout the "
+                "instructions on the installation page of its repo: "
                 "https://github.com/triton-inference-server/client#getting-the-client-libraries-and-examples "
                 "And follow the ones that match your environment. "
                 "Please note that you may need to restart your runtime after installation."
