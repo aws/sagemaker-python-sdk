@@ -34,9 +34,11 @@ from sagemaker.core.parameter import (
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.core.shapes import (
+    CheckpointConfig,
     HyperParameterTuningJobWarmStartConfig,
     Channel,
     DataSource,
+    RetryStrategy,
     S3DataSource,
     Tag,
 )
@@ -805,6 +807,62 @@ class TestHyperparameterTunerStaticMethods:
         assert (
             definition.output_data_config.s3_output_path == "s3://bucket/output"
         ), "s3_output_path should be preserved"
+
+
+class TestBuildTrainingJobDefinitionCheckpointAndRetry:
+    """Regression for #6500.
+
+    ``_build_training_job_definition`` dropped ``checkpoint_config`` and
+    ``retry_strategy``, so a tuned job could not resume from its configured
+    checkpoint and ignored the configured retry count.
+    """
+
+    @staticmethod
+    def _tuner(trainer):
+        return HyperparameterTuner(
+            model_trainer=trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+    def test_checkpoint_config_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        trainer.checkpoint_config = CheckpointConfig(
+            s3_uri="s3://bucket/checkpoints/", local_path="/opt/ml/checkpoints"
+        )
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.checkpoint_config == trainer.checkpoint_config
+
+    def test_retry_strategy_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        trainer._retry_strategy = RetryStrategy(maximum_retry_attempts=10)
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.retry_strategy == trainer._retry_strategy
+
+    def test_managed_spot_trainer_keeps_both(self):
+        trainer = _create_mock_model_trainer(with_spot_training=True)
+        trainer.checkpoint_config = CheckpointConfig(s3_uri="s3://bucket/checkpoints/")
+        trainer._retry_strategy = RetryStrategy(maximum_retry_attempts=3)
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.enable_managed_spot_training is True
+        assert definition.checkpoint_config.s3_uri == "s3://bucket/checkpoints/"
+        assert definition.retry_strategy.maximum_retry_attempts == 3
+
+    def test_omitted_values_stay_unassigned(self):
+        trainer = _create_mock_model_trainer()
+        trainer.checkpoint_config = None
+        trainer._retry_strategy = None
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert not isinstance(definition.checkpoint_config, CheckpointConfig)
+        assert not isinstance(definition.retry_strategy, RetryStrategy)
 
 
 class TestHyperparameterTunerTagInheritance:
