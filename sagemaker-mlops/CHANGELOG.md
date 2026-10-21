@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.27.0 (2026-10-21)
+
+### New Features
+
+- feat(mlops): Add ForEach pipeline step (#6473)
+- feat(mlops): Add CleanupStep pipeline step (#6468)
+
+
 ## v1.26.0 (2026-10-19)
 
 ### New Features
