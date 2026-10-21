@@ -17,7 +17,7 @@ Runs Athena queries end-to-end through SageMaker Pipelines and checks that:
 * a valid query drives the execution to ``Succeeded`` and the result CSV is
   written to the configured S3 output location,
 * an invalid query drives the execution to ``Failed`` with a ``FailureReason``,
-* a full-shape ``arguments`` dict, together with ``CacheConfig`` and
+* a full ``AthenaQueryConfig``, together with ``CacheConfig`` and
   ``RetryPolicies``, is accepted by ``CreatePipeline`` and round-trips
   through ``DescribePipeline`` unchanged.
 
@@ -40,7 +40,7 @@ import json
 
 from sagemaker.core.common_utils import unique_name_from_base
 from sagemaker.core.workflow.parameters import ParameterString
-from sagemaker.mlops.workflow.athena_step import AthenaStep
+from sagemaker.mlops.workflow.athena_step import AthenaQueryConfig, AthenaStep
 from sagemaker.mlops.workflow.pipeline import Pipeline
 from sagemaker.mlops.workflow.retry import StepExceptionTypeEnum, StepRetryPolicy
 from sagemaker.mlops.workflow.steps import CacheConfig
@@ -106,10 +106,10 @@ def test_athena_step_query_succeeds_and_writes_result(sagemaker_session_for_pipe
 
     step = AthenaStep(
         name="AthenaQuery",
-        arguments={
-            "QueryString": "SELECT 1 AS test_result",
-            "ResultConfiguration": {"OutputLocation": output_location_parameter},
-        },
+        query_config=AthenaQueryConfig(
+            query_string="SELECT 1 AS test_result",
+            output_location=output_location_parameter,
+        ),
     )
     pipeline = Pipeline(
         name=pipeline_name,
@@ -143,10 +143,10 @@ def test_athena_step_invalid_query_fails(sagemaker_session_for_pipeline, role):
 
     step = AthenaStep(
         name="AthenaInvalidQuery",
-        arguments={
-            "QueryString": "SELCT INVALID SYNTAX FROM nonexistent_table_xyz",
-            "ResultConfiguration": {"OutputLocation": output_location_parameter},
-        },
+        query_config=AthenaQueryConfig(
+            query_string="SELCT INVALID SYNTAX FROM nonexistent_table_xyz",
+            output_location=output_location_parameter,
+        ),
     )
     pipeline = Pipeline(
         name=pipeline_name,
@@ -165,23 +165,23 @@ def test_athena_step_invalid_query_fails(sagemaker_session_for_pipeline, role):
         _cleanup(pipeline, execution, sagemaker_session_for_pipeline, bucket, key_prefix)
 
 
-def test_athena_step_full_arguments_roundtrip(sagemaker_session_for_pipeline, role):
-    """Full-shape ``arguments`` plus ``CacheConfig``/``RetryPolicies`` are accepted at
+def test_athena_step_full_query_config_roundtrip(sagemaker_session_for_pipeline, role):
+    """A full ``AthenaQueryConfig`` plus ``CacheConfig``/``RetryPolicies`` are accepted at
     ``CreatePipeline`` and come back unchanged from ``DescribePipeline``."""
     pipeline_name = unique_name_from_base("athena-step-integ")
     output_location_parameter = ParameterString(name=_OUTPUT_LOCATION_PARAMETER)
 
     step = AthenaStep(
         name="AthenaFullQuery",
-        arguments={
-            "QueryString": "SELECT 1",
-            "QueryExecutionContext": {"Database": "default", "Catalog": "AwsDataCatalog"},
-            "ResultConfiguration": {
-                "OutputLocation": output_location_parameter,
-                "EncryptionConfiguration": {"EncryptionOption": "SSE_S3"},
-            },
-            "WorkGroup": "primary",
-        },
+        query_config=AthenaQueryConfig(
+            query_string="SELECT 1",
+            database="default",
+            catalog="AwsDataCatalog",
+            work_group="primary",
+            output_location=output_location_parameter,
+            encryption_option="SSE_S3",
+            result_reuse_max_age_in_minutes=60,
+        ),
         cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
         retry_policies=[
             StepRetryPolicy(

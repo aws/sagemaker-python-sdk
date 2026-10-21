@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Unit tests for AthenaStep -- pure passthrough of the StartQueryExecution request."""
+"""Unit tests for AthenaStep and AthenaQueryConfig."""
 
 from __future__ import absolute_import
 
@@ -23,53 +23,119 @@ import pytest
 from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.core.workflow.pipeline_context import PipelineSession
 from sagemaker.core.workflow.properties import Properties
-from sagemaker.mlops.workflow.athena_step import AthenaStep
+from sagemaker.mlops.workflow.athena_step import AthenaQueryConfig, AthenaStep
 from sagemaker.mlops.workflow.pipeline import Pipeline
 from sagemaker.mlops.workflow.retry import StepExceptionTypeEnum, StepRetryPolicy
 from sagemaker.mlops.workflow.step_dependency import StepDependency, TriggerCondition
 from sagemaker.mlops.workflow.steps import CacheConfig, StepTypeEnum
 
-# A full-shape Athena StartQueryExecution request, as a customer would write it.
+FULL_QUERY_CONFIG = AthenaQueryConfig(
+    query_string="SELECT * FROM daily_txn WHERE region = ? AND txn_date >= ?",
+    database="prod_catalog$transactions",
+    catalog="unity-catalog",
+    work_group="primary",
+    execution_parameters=["'us-east-1'", "'2026-01-01'"],
+    output_location="s3://bucket/sagemaker-athena-staging/",
+    encryption_option="SSE_KMS",
+    kms_key="arn:aws:kms:us-west-2:111122223333:key/example",
+    expected_bucket_owner="111122223333",
+    s3_acl_option="BUCKET_OWNER_FULL_CONTROL",
+    result_reuse_max_age_in_minutes=60,
+)
+
 FULL_ARGUMENTS = {
-    "QueryString": "SELECT * FROM daily_txn WHERE txn_date >= '2026-01-01'",
-    "QueryExecutionContext": {"Catalog": "unity-catalog", "Database": "prod_catalog$transactions"},
+    "QueryString": "SELECT * FROM daily_txn WHERE region = ? AND txn_date >= ?",
+    "QueryExecutionContext": {"Database": "prod_catalog$transactions", "Catalog": "unity-catalog"},
+    "WorkGroup": "primary",
+    "ExecutionParameters": ["'us-east-1'", "'2026-01-01'"],
     "ResultConfiguration": {
         "OutputLocation": "s3://bucket/sagemaker-athena-staging/",
-        "EncryptionConfiguration": {"EncryptionOption": "SSE_S3"},
+        "EncryptionConfiguration": {
+            "EncryptionOption": "SSE_KMS",
+            "KmsKey": "arn:aws:kms:us-west-2:111122223333:key/example",
+        },
+        "ExpectedBucketOwner": "111122223333",
+        "AclConfiguration": {"S3AclOption": "BUCKET_OWNER_FULL_CONTROL"},
     },
-    "WorkGroup": "primary",
     "ResultReuseConfiguration": {
         "ResultReuseByAgeConfiguration": {"Enabled": True, "MaxAgeInMinutes": 60}
     },
-    "ExecutionParameters": ["us-east-1", "2026-01-01"],
 }
 
 
 # ---------------------------------------------------------------------------
-# Passthrough contract
+# AthenaQueryConfig
 # ---------------------------------------------------------------------------
 
 
+def test_query_config_builds_full_request():
+    assert FULL_QUERY_CONFIG.to_request() == FULL_ARGUMENTS
+
+
+def test_query_config_minimal_emits_only_query_string():
+    assert AthenaQueryConfig(query_string="SELECT 1").to_request() == {"QueryString": "SELECT 1"}
+
+
 @pytest.mark.parametrize(
-    "arguments",
+    "kwargs, expected",
     [
-        FULL_ARGUMENTS,
-        # The service accepts QueryString alone; everything else is optional.
-        {"QueryString": "SELECT 1"},
-        # The SDK holds no opinion on required fields -- the service decides.
-        {},
+        ({"database": "db"}, {"QueryExecutionContext": {"Database": "db"}}),
+        (
+            {"output_location": "s3://b/p/"},
+            {"ResultConfiguration": {"OutputLocation": "s3://b/p/"}},
+        ),
+        (
+            {"encryption_option": "SSE_S3"},
+            {"ResultConfiguration": {"EncryptionConfiguration": {"EncryptionOption": "SSE_S3"}}},
+        ),
+        (
+            {"s3_acl_option": "BUCKET_OWNER_FULL_CONTROL"},
+            {
+                "ResultConfiguration": {
+                    "AclConfiguration": {"S3AclOption": "BUCKET_OWNER_FULL_CONTROL"}
+                }
+            },
+        ),
     ],
-    ids=["full", "minimal", "empty"],
+    ids=["context", "output-location", "encryption", "acl"],
 )
-def test_arguments_passed_through_unchanged(arguments):
+def test_query_config_nests_only_the_fields_that_are_set(kwargs, expected):
+    request = AthenaQueryConfig(query_string="SELECT 1", **kwargs).to_request()
+    assert request == {"QueryString": "SELECT 1", **expected}
+
+
+def test_step_with_query_config_emits_built_request():
+    step = AthenaStep(name="RunQuery", query_config=FULL_QUERY_CONFIG)
+    assert step.arguments == FULL_ARGUMENTS
+    assert step.to_request()["Arguments"] == FULL_ARGUMENTS
+
+
+# ---------------------------------------------------------------------------
+# Raw arguments escape hatch
+# ---------------------------------------------------------------------------
+
+
+def test_raw_arguments_passed_through_unchanged():
+    arguments = {
+        "QueryString": "SELECT 1",
+        "EngineConfiguration": {"MaxConcurrentDpus": 4},
+    }
     step = AthenaStep(name="RunQuery", arguments=arguments)
     assert step.arguments == arguments
-    assert step.to_request()["Arguments"] == arguments
 
 
-def test_arguments_is_required():
-    with pytest.raises(TypeError):
-        AthenaStep(name="RunQuery")  # pylint: disable=no-value-for-parameter
+def test_requires_query_config_or_arguments():
+    with pytest.raises(ValueError, match="must have either query_config or arguments"):
+        AthenaStep(name="RunQuery")
+
+
+def test_rejects_both_query_config_and_arguments():
+    with pytest.raises(ValueError, match="cannot have both query_config and arguments"):
+        AthenaStep(
+            name="RunQuery",
+            query_config=AthenaQueryConfig(query_string="SELECT 1"),
+            arguments={"QueryString": "SELECT 1"},
+        )
 
 
 def test_caller_mutations_do_not_leak_into_step_state():
@@ -91,10 +157,14 @@ def test_caller_mutations_do_not_leak_into_step_state():
     }
 
 
-def test_pipeline_variable_inside_arguments_compiles_to_get_expression():
-    """A pipeline variable nested anywhere in ``arguments`` serializes to a
-    ``{"Get": ...}`` expression in the compiled definition, and the step
-    compiles unchanged under a ``PipelineSession``."""
+# ---------------------------------------------------------------------------
+# Compilation
+# ---------------------------------------------------------------------------
+
+
+def test_pipeline_variable_in_query_config_compiles_to_get_expression():
+    """A pipeline variable in a config field serializes to a ``{"Get": ...}``
+    expression, and the step compiles unchanged under a ``PipelineSession``."""
     pipeline_session = PipelineSession(
         boto_session=boto3.Session(region_name="us-west-2"),
         sagemaker_client=MagicMock(name="sagemaker_client"),
@@ -103,10 +173,7 @@ def test_pipeline_variable_inside_arguments_compiles_to_get_expression():
     output_location = ParameterString(name="OutputLocation")
     step = AthenaStep(
         name="RunQuery",
-        arguments={
-            "QueryString": "SELECT 1",
-            "ResultConfiguration": {"OutputLocation": output_location},
-        },
+        query_config=AthenaQueryConfig(query_string="SELECT 1", output_location=output_location),
     )
     pipeline = Pipeline(
         name="athena-unit",
@@ -115,9 +182,8 @@ def test_pipeline_variable_inside_arguments_compiles_to_get_expression():
         sagemaker_session=pipeline_session,
     )
 
-    definition = json.loads(pipeline.definition())
+    compiled_step = json.loads(pipeline.definition())["Steps"][0]
 
-    compiled_step = definition["Steps"][0]
     assert compiled_step["Type"] == "Athena"
     assert compiled_step["Arguments"]["ResultConfiguration"]["OutputLocation"] == {
         "Get": "Parameters.OutputLocation"
@@ -127,20 +193,19 @@ def test_pipeline_variable_inside_arguments_compiles_to_get_expression():
 
 
 def test_run_conditions_compile_to_depends_on_triggers():
-    query = AthenaStep(name="Query", arguments={"QueryString": "SELECT 1"})
+    config = AthenaQueryConfig(query_string="SELECT 1")
+    query = AthenaStep(name="Query", query_config=config)
     on_failure = AthenaStep(
         name="OnFailure",
-        arguments={"QueryString": "SELECT 1"},
+        query_config=config,
         depends_on=[StepDependency(query, TriggerCondition.FAILED)],
     )
     on_any = AthenaStep(
         name="OnAny",
-        arguments={"QueryString": "SELECT 1"},
+        query_config=config,
         depends_on=[StepDependency("Query", TriggerCondition.ANY)],
     )
-    on_success = AthenaStep(
-        name="OnSuccess", arguments={"QueryString": "SELECT 1"}, depends_on=[query]
-    )
+    on_success = AthenaStep(name="OnSuccess", query_config=config, depends_on=[query])
     pipeline = Pipeline(
         name="athena-run-conditions",
         steps=[query, on_failure, on_any, on_success],
@@ -165,7 +230,7 @@ def test_run_conditions_compile_to_depends_on_triggers():
 
 
 def test_properties_shape_and_reference_paths():
-    step = AthenaStep(name="RunQuery", arguments={"QueryString": "SELECT 1"})
+    step = AthenaStep(name="RunQuery", query_config=AthenaQueryConfig(query_string="SELECT 1"))
 
     assert isinstance(step.properties, Properties)
     # Loaded from botocore's GetQueryExecutionOutput shape (service_name="athena");
@@ -192,7 +257,7 @@ def test_properties_shape_and_reference_paths():
 def test_to_request_includes_step_fields_cache_config_and_retry_policies():
     step = AthenaStep(
         name="QueryUCData",
-        arguments=FULL_ARGUMENTS,
+        query_config=FULL_QUERY_CONFIG,
         display_name="Query UC Transactions",
         description="Runs Athena query against Unity Catalog",
         depends_on=["Upstream"],
@@ -227,7 +292,9 @@ def test_to_request_includes_step_fields_cache_config_and_retry_policies():
 
 
 def test_to_request_omits_optional_sections_when_not_set():
-    request_dict = AthenaStep(name="RunQuery", arguments={"QueryString": "SELECT 1"}).to_request()
+    request_dict = AthenaStep(
+        name="RunQuery", query_config=AthenaQueryConfig(query_string="SELECT 1")
+    ).to_request()
     assert "CacheConfig" not in request_dict
     assert "RetryPolicies" not in request_dict
     assert "DependsOn" not in request_dict
@@ -238,10 +305,12 @@ def test_to_request_omits_optional_sections_when_not_set():
 # ---------------------------------------------------------------------------
 
 
-def test_athena_step_exported_from_workflow_package():
+def test_athena_classes_exported_from_workflow_package():
+    from sagemaker.mlops.workflow import AthenaQueryConfig as ExportedConfig
     from sagemaker.mlops.workflow import AthenaStep as ExportedAthenaStep
 
     assert ExportedAthenaStep is AthenaStep
+    assert ExportedConfig is AthenaQueryConfig
 
 
 def test_step_type_enum_has_athena_value():
