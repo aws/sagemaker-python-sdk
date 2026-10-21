@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.27.0 (2026-10-21)
+
+### Bug Fixes
+
+- fix: carry ModelTrainer checkpoint and retry config into the tuning job definition (#6511)
+- fix: discover base models by Training Sessions capability (#6506)
+
+
 ## v1.26.0 (2026-10-19)
 
 ### Bug Fixes
