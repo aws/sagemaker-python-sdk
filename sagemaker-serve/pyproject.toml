@@ -69,12 +69,13 @@ test = [
     "onnxruntime",
     "torch>=2.0.0",
     "tritonclient[http]",
-    # pandas is pulled in transitively (e.g. via mlflow). Pin to the 2.x line:
-    # pandas 3.x requires Python >=3.11, and on the py311/py312 unit-test envs
-    # its CI install leaves the C extensions unbuilt ("ImportError: C extension:
-    # None not built"), which fails pytest at collection time. 2.3.3 is the
-    # version the py310 env already resolves to and passes on.
-    "pandas>=2.3.0,<3",
+    # pandas is pulled in transitively (e.g. via mlflow). Cap below 3.1.0:
+    # pandas 3.1.0 ships wheels built against a newer NumPy C-ABI than the
+    # py311/py312 test envs resolve, so it fails to import ("ImportError:
+    # C extension: None not built") at pytest collection time. The previous
+    # release 3.0.6 was passing on py311/py312; py310 stays on the 2.x line
+    # (2.3.3) because pandas 3.x requires Python >=3.11.
+    "pandas>=2.3.0,<3.1.0",
 ]
 dev = [
     "pytest",
