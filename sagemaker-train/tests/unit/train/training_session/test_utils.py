@@ -89,7 +89,7 @@ class _FakeCatalogHub:
     Args:
         models: ``{hub_content_name: (arn, hf_id_or_None)}``.
         advertise_hf_id: Put ``@huggingface-id:`` on the list summary, as the
-            real Hub does. False leaves only the recipe keyword, so the
+            real Hub does. False leaves only the capability keyword, so the
             Describe fallback is what has to supply the id.
         region: Reported as ``meta.region_name``, as a real client does. The
             catalogue is cached per client rather than per Region, so this
@@ -98,7 +98,7 @@ class _FakeCatalogHub:
             that are not fine-tunable at all.
     """
 
-    _RECIPE_KW = "@recipe:finetuning_mtrl_lora"
+    _CAPABILITY_KW = "@capability:training_session"
 
     def __init__(self, models, *, advertise_hf_id=False, region=None, keywords_by_name=None):
         self._models = models
@@ -112,7 +112,7 @@ class _FakeCatalogHub:
     def _keywords(self, name):
         if name in self._keywords_by_name:
             return self._keywords_by_name[name]
-        keywords = [self._RECIPE_KW]
+        keywords = [self._CAPABILITY_KW]
         hf_id = self._models[name][1]
         if self._advertise_hf_id and hf_id:
             keywords.append(f"@huggingface-id:{hf_id.lower()}")
@@ -157,7 +157,7 @@ class _SlottedHub:
                 {
                     "HubContentName": "hubcontent-text-model-a",
                     "HubContentSearchKeywords": [
-                        "@recipe:finetuning_mtrl_lora",
+                        "@capability:training_session",
                         "@huggingface-id:provider-a/model-a",
                     ],
                 }
@@ -246,6 +246,34 @@ class TestListBaseModels:
         )
         assert list_base_models_in_region(hub) == ["provider-a/model-a"]
 
+    def test_static_region_list_surfaces_a_model_without_the_keyword(self):
+        # Until the Hub publishes the capability, a Region's static list stands in.
+        hub = _FakeCatalogHub(
+            {"huggingface-vlm-qwen3-8-27b": (_MODEL_A_ARN, "Qwen/Qwen3.8-27B")},
+            advertise_hf_id=True,
+            region="us-west-2",
+            keywords_by_name={"huggingface-vlm-qwen3-8-27b": ["@huggingface-id:qwen/qwen3.8-27b"]},
+        )
+        assert list_base_models_in_region(hub) == ["Qwen/Qwen3.8-27B"]
+        assert resolve_base_model("Qwen/Qwen3.8-27B", hub) == (_MODEL_A_ARN, "Qwen/Qwen3.8-27B")
+
+    def test_static_region_list_is_per_region(self):
+        hub = _FakeCatalogHub(
+            {"huggingface-vlm-qwen3-6-27b": (_MODEL_A_ARN, "Qwen/Qwen3.6-27B")},
+            advertise_hf_id=True,
+            region="us-east-1",
+            keywords_by_name={"huggingface-vlm-qwen3-6-27b": ["@huggingface-id:qwen/qwen3.6-27b"]},
+        )
+        assert list_base_models_in_region(hub) == []
+
+    def test_static_region_list_needs_a_region(self):
+        hub = _FakeCatalogHub(
+            {"huggingface-vlm-qwen3-8-27b": (_MODEL_A_ARN, "Qwen/Qwen3.8-27B")},
+            advertise_hf_id=True,
+            keywords_by_name={"huggingface-vlm-qwen3-8-27b": ["@huggingface-id:qwen/qwen3.8-27b"]},
+        )
+        assert list_base_models_in_region(hub) == []
+
     def test_paginates(self):
         hub = _FakeCatalogHub(self._MODELS, advertise_hf_id=True)
         pages = [
@@ -254,7 +282,7 @@ class TestListBaseModels:
                     {
                         "HubContentName": "hubcontent-text-model-a",
                         "HubContentSearchKeywords": [
-                            "@recipe:finetuning_mtrl_lora",
+                            "@capability:training_session",
                             "@huggingface-id:provider-a/model-a",
                         ],
                     }
@@ -266,7 +294,7 @@ class TestListBaseModels:
                     {
                         "HubContentName": "hubcontent-vlm-model-b",
                         "HubContentSearchKeywords": [
-                            "@recipe:finetuning_mtrl_lora",
+                            "@capability:training_session",
                             "@huggingface-id:provider-b/model-b",
                         ],
                     }
@@ -303,7 +331,7 @@ class TestListBaseModels:
         # in the very error that rejects it; the content name is listed instead.
         hub = _FakeCatalogHub({"hubcontent-single": (_MODEL_A_ARN, None)})
         hub._keywords_by_name = {
-            "hubcontent-single": ["@recipe:finetuning_mtrl_lora", "@huggingface-id:singleseg"]
+            "hubcontent-single": ["@capability:training_session", "@huggingface-id:singleseg"]
         }
 
         listed = list_base_models_in_region(hub)
@@ -410,7 +438,7 @@ class TestResolveBaseModel:
             """Advertises the canonical id; its Hub document carries none."""
 
             def _keywords(self, name):
-                return ["@recipe:finetuning_mtrl_lora", "@huggingface-id:Provider-A/Model-A"]
+                return ["@capability:training_session", "@huggingface-id:Provider-A/Model-A"]
 
             def describe_hub_content(self, **kwargs):
                 self.describe_calls.append(kwargs["HubContentName"])

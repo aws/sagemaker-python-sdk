@@ -46,11 +46,19 @@ from sagemaker.mlops.workflow.steps import (
 from sagemaker.mlops.workflow.automl_step import AutoMLStep
 from sagemaker.mlops.workflow.callback_step import CallbackStep, CallbackOutput
 from sagemaker.mlops.workflow.clarify_check_step import ClarifyCheckStep
+from sagemaker.mlops.workflow.cleanup_step import CleanupStep, S3CleanupSource
 from sagemaker.mlops.workflow.condition_step import ConditionStep
 from sagemaker.mlops.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.mlops.workflow.endpoint_step import EndpointConfigStep, EndpointStep
 from sagemaker.mlops.workflow.fail_step import FailStep
 from sagemaker.mlops.workflow.inference_component_step import InferenceComponentStep
+from sagemaker.mlops.workflow.for_each_step import (
+    ForEachStep,
+    ForEachSelector,
+    ForEachSelectorPickType,
+    CurrentItem,
+    IterationOutput,
+)
 from sagemaker.mlops.workflow.lambda_step import LambdaStep, LambdaOutput
 from sagemaker.mlops.workflow.lineage_step import (
     LineageAssociation,
@@ -108,6 +116,8 @@ __all__ = [
     "CallbackStep",
     "CallbackOutput",
     "ClarifyCheckStep",
+    "CleanupStep",
+    "S3CleanupSource",
     "ConditionStep",
     "EMRStep",
     "EMRStepConfig",
@@ -115,6 +125,11 @@ __all__ = [
     "EndpointStep",
     "FailStep",
     "InferenceComponentStep",
+    "ForEachStep",
+    "ForEachSelector",
+    "ForEachSelectorPickType",
+    "CurrentItem",
+    "IterationOutput",
     "LambdaStep",
     "LambdaOutput",
     "LineageAssociation",

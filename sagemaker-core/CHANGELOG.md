@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.27.0 (2026-10-21)
+
+### Bug Fixes
+
+- fix: keep the Transformer's configured session when waiting on or stopping a transform job (#6509)
+- fix: add g7e, p6-b200 and trn2 to volume size unsupported instance families (#6505)
+
+
+## v2.26.0 (2026-10-19)
+
+### New Features
+
+- Add sa-west-1 to JumpStart region_config and djl-neuronx image_uri config (#6478)
+- Add me-west-1 (RUH) JumpStart bucket info to region_config.json (#6455)
+
+
 ## v2.25.0 (2026-10-13)
 
 ### Bug Fixes

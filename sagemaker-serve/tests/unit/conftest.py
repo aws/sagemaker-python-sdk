@@ -26,6 +26,7 @@ test happened to be running. The failures are not reproducible -- each build run
 the suite three times (py310/py311/py312) and these failures almost always hit
 only one of the three.
 """
+
 from __future__ import annotations
 
 from contextlib import ExitStack

@@ -530,8 +530,8 @@ def test_list_keeps_a_status_this_version_does_not_know(patch_clients):
 class FakeHubClient:
     """Stubs DescribeHubContent + ListHubContents for base-model resolution."""
 
-    #: Recipe keyword marking a model as fine-tunable (what the SDK filters on).
-    _TRAINABLE_KEYWORD = "@recipe:finetuning_mtrl_lora"
+    #: Capability keyword marking a model as trainable (what the SDK filters on).
+    _TRAINABLE_KEYWORD = "@capability:training_session"
 
     def __init__(
         self,
@@ -547,7 +547,7 @@ class FakeHubClient:
             else ["hubcontent-vlm-model-b", "hubcontent-text-model-a"]
         )
         # Search keywords per content name. Default: every listed model carries
-        # the fine-tuning recipe keyword, i.e. is trainable.
+        # the training-session capability keyword, i.e. is trainable.
         self._keywords_by_name = (
             keywords_by_name
             if keywords_by_name is not None
@@ -1092,8 +1092,8 @@ def test_create_rejects_unresolvable_base_model(patch_clients):
         svc.create_lora_training_client("not-a-real-model", **kwargs)
 
 
-def test_list_base_models_filters_by_recipe_keyword(patch_clients):
-    # Only models carrying a fine-tuning recipe keyword are trainable; a model
+def test_list_base_models_filters_by_capability_keyword(patch_clients):
+    # Only models carrying the training-session capability keyword are trainable; a model
     # present in the hub without one must be excluded. Each trainable model is
     # reported by the model id its Hub entry advertises.
     install, _ = patch_clients
@@ -1108,11 +1108,11 @@ def test_list_base_models_filters_by_recipe_keyword(patch_clients):
         keywords_by_name={
             "hubcontent-vlm-model-b": [
                 "@recipe:finetuning_sft_lora",
-                "@recipe:finetuning_mtrl_lora",
+                "@capability:training_session",
                 "@huggingface-id:provider-b/model-b",
             ],
             "hubcontent-vlm-model-c": [
-                "@recipe:finetuning_mtrl_lora",
+                "@capability:training_session",
                 "@huggingface-id:provider-c/model-c",
             ],
             "some-eval-only-model": ["@recipe:evaluation_mtrlevaluation"],
@@ -1126,7 +1126,7 @@ def test_list_base_models_filters_by_recipe_keyword(patch_clients):
 
 
 def test_list_base_models_excludes_unsupported_names(patch_clients):
-    # The recipe keyword alone does not make a model usable through this client.
+    # The capability keyword alone does not make a model usable through this client.
     # A name the client does not support end to end is excluded even when the
     # Hub tags it as fine-tunable.
     install, _ = patch_clients
@@ -1140,11 +1140,11 @@ def test_list_base_models_excludes_unsupported_names(patch_clients):
         ],
         keywords_by_name={
             "hubcontent-vlm-model-b": [
-                "@recipe:finetuning_mtrl_lora",
+                "@capability:training_session",
                 "@huggingface-id:provider-b/model-b",
             ],
             "hubcontent-nova-model-x": [
-                "@recipe:finetuning_mtrl_lora",
+                "@capability:training_session",
                 "@huggingface-id:provider-x/model-x",
             ],
         },

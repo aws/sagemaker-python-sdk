@@ -4510,6 +4510,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         sagemaker_session: Optional[Session] = None,
         region: Optional[str] = None,
         reuse_resources: bool = False,
+        tags: Optional[Tags] = None,
     ) -> Union[Model, "ModelBuilder", None]:
         """Build a deployable ``Model`` instance with ``ModelBuilder``.
 
@@ -4538,6 +4539,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 no new Model and sets ``built_model`` to the existing Model; on a miss, it
                 creates a new Model. Endpoint reuse is handled independently by passing
                 ``reuse_resources=True`` to deploy(). (Default: False).
+            tags (Optional[Tags]): Tags to attach to the SageMaker Model resource that
+                build() creates, as boto-style ``{"Key": ..., "Value": ...}`` dicts or
+                ``sagemaker.core.shapes.Tag`` objects. Tags passed here are merged with
+                any added through ``add_tags()`` and are preserved when the build is
+                captured by a pipeline ``ModelStep``. Pass tags here rather than to
+                ``deploy()`` when the model is built without an endpoint — for a pipeline
+                step, batch transform, evaluation, or an inference pipeline.
+                (Default: None).
 
         Returns:
             Union[Model, ModelBuilder, None]: A ``sagemaker.core.resources.Model`` resource
@@ -4551,6 +4560,18 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             >>> result = endpoint.invoke(data=input_data)
         """
         self._built_model_was_reused = False
+
+        # Tag the Model resource that build() creates. Without this the only way to
+        # set _tags was deploy(), so every model built without an endpoint -- a
+        # pipeline ModelStep, batch transform, evaluation, an inference pipeline --
+        # was created untagged with no public way to fix it (#6501).
+        # format_tags() expands the {key: value} mapping form; serialize() turns
+        # sagemaker.core.shapes.Tag objects into the boto-style {"Key", "Value"}
+        # dicts the CreateModel request needs, so both representations are accepted.
+        if tags is not None:
+            from sagemaker.core.utils.utils import serialize
+
+            self.add_tags(serialize(format_tags(tags)))
 
         if hasattr(self, "built_model") and self.built_model is not None:
             logger.warning(

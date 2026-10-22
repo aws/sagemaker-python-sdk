@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.27.0 (2026-10-21)
+
+### New Features
+
+- feat(mlops): Add ForEach pipeline step (#6473)
+- feat(mlops): Add CleanupStep pipeline step (#6468)
+
+
+## v1.26.0 (2026-10-19)
+
+### New Features
+
+- feat(mlops): Add run conditions to step dependencies (#6475)
+
+### Bug Fixes
+
+- fix: put the check steps' output KMS key on ProcessingOutputConfig and send CheckJobConfig tags (#6497)
+- fix: generate repack step for ModelBuilder.register/build in ModelStep (#5828, #5829) (#6338)
+- fix: keep source_code for a pipeline-variable model URI and stop repack mutating caller source (#6490)
+
+
 ## v1.25.0 (2026-10-13)
 
 ### Bug Fixes
