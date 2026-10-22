@@ -206,3 +206,50 @@ class TestTuningJobSubmission:
             assert (
                 "sm_drivers" in channels
             ), f"tuning job {arn} is missing the sm_drivers channel; channels={channels}"
+
+    def test_tuning_job_keeps_checkpoint_and_retry_config(self, sagemaker_session):
+        """A trainer's checkpoint and retry configuration must reach the service.
+
+        Regression for issue #6500: ``_build_training_job_definition()`` dropped
+        ``checkpoint_config`` and ``retry_strategy``, so an interrupted managed
+        spot child job could not resume from its configured checkpoint and
+        transient failures ignored the configured retry count. Submission alone
+        does not prove it -- the service accepts a definition without either
+        field -- so the definition is read back.
+        """
+        name = unique_name("shallow-tune-ckpt", max_length=MAX_TUNING_JOB_NAME)
+        bucket = sagemaker_session.default_bucket()
+        checkpoint_s3_uri = "s3://{}/{}/checkpoints/".format(bucket, name)
+        model_trainer = _model_trainer(
+            sagemaker_session,
+            name,
+            checkpoint_config=shapes.CheckpointConfig(
+                s3_uri=checkpoint_s3_uri, local_path="/opt/ml/checkpoints"
+            ),
+        ).with_retry_strategy(shapes.RetryStrategy(maximum_retry_attempts=2))
+        tuner = _tuner(model_trainer)
+
+        with _tuning(tuner, name):
+            arn = assert_submitted(
+                tuner.latest_tuning_job,
+                expected_name=name,
+                resource="hyper-parameter-tuning-job",
+            )
+
+            described = tuner.latest_tuning_job.refresh()
+            definition = getattr(described, "training_job_definition", None)
+            assert definition is not None, (
+                f"tuning job {arn} has no training_job_definition to inspect; "
+                "cannot verify the checkpoint and retry configuration"
+            )
+            # An omitted field comes back as Unassigned() rather than None, so
+            # assert on the type and then on the values.
+            assert isinstance(
+                definition.checkpoint_config, shapes.CheckpointConfig
+            ), f"tuning job {arn} lost the checkpoint configuration"
+            assert definition.checkpoint_config.s3_uri == checkpoint_s3_uri
+            assert definition.checkpoint_config.local_path == "/opt/ml/checkpoints"
+            assert isinstance(
+                definition.retry_strategy, shapes.RetryStrategy
+            ), f"tuning job {arn} lost the retry strategy"
+            assert definition.retry_strategy.maximum_retry_attempts == 2

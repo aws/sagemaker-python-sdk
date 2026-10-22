@@ -18,7 +18,7 @@ import pytest
 import os
 import tarfile
 import tempfile
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from sagemaker.mlops.workflow._utils import (
     FRAMEWORK_VERSION,
@@ -26,6 +26,7 @@ from sagemaker.mlops.workflow._utils import (
     REPACK_SCRIPT,
     REPACK_SCRIPT_LAUNCHER,
     LAUNCH_REPACK_SCRIPT_CMD,
+    STAGED_SOURCE_DIR_SUFFIX,
     _RepackModelStep,
 )
 
@@ -284,7 +285,11 @@ class TestRepackModelStep:
                     assert os.path.exists(step._source_dir)
 
     def test_inject_repack_script_local_source_dir(self, mock_session, temp_entry_point):
-        """Test _inject_repack_script_and_launcher with local source_dir."""
+        """Test _inject_repack_script_and_launcher with local source_dir.
+
+        The helper files land in the SDK-owned staging copy, not in the
+        caller-provided ``source_dir`` (see issue #6481).
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
                 with patch("sagemaker.train.ModelTrainer") as mock_trainer:
@@ -297,7 +302,7 @@ class TestRepackModelStep:
                         mock_trainer.return_value = mock_trainer_instance
                         mock_super.return_value = None
 
-                        _RepackModelStep(
+                        step = _RepackModelStep(
                             name="repack-step",
                             sagemaker_session=mock_session,
                             role="arn:aws:iam::123456789012:role/SageMakerRole",
@@ -306,12 +311,18 @@ class TestRepackModelStep:
                             source_dir=temp_dir,
                         )
 
-                        # Verify repack script and launcher were created
-                        repack_script_path = os.path.join(temp_dir, REPACK_SCRIPT)
-                        launcher_path = os.path.join(temp_dir, REPACK_SCRIPT_LAUNCHER)
+                        # Verify repack script and launcher were created in the staged copy
+                        staged_dir = step._staged_source_dir
+                        assert staged_dir != temp_dir
+                        repack_script_path = os.path.join(staged_dir, REPACK_SCRIPT)
+                        launcher_path = os.path.join(staged_dir, REPACK_SCRIPT_LAUNCHER)
 
                         assert os.path.exists(repack_script_path)
                         assert os.path.exists(launcher_path)
+
+                        # ... and that the caller's directory is untouched
+                        assert not os.path.exists(os.path.join(temp_dir, REPACK_SCRIPT))
+                        assert not os.path.exists(os.path.join(temp_dir, REPACK_SCRIPT_LAUNCHER))
 
                         # Verify launcher content
                         with open(launcher_path, "r") as f:
@@ -426,6 +437,145 @@ class TestRepackModelStep:
             "launcher must be opened with newline='\\n' to keep LF endings, "
             f"got {launcher_open_calls}"
         )
+
+    def test_caller_source_dir_not_modified(self, mock_session, temp_entry_point):
+        """Regression for #6481: the caller's source_dir must never be written to.
+
+        The constructor used to drop ``_repack_model.py`` and
+        ``_repack_script_launcher.sh`` into the caller-provided directory, and
+        every ``arguments`` access did it again.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with open(os.path.join(temp_dir, "inference.py"), "w") as fh:
+                fh.write("def model_fn(model_dir):\n    return model_dir\n")
+            original_files = set(os.listdir(temp_dir))
+
+            with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+                with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                    with patch(
+                        "sagemaker.mlops.workflow._utils.TrainingStep.__init__"
+                    ) as mock_super:
+                        mock_retrieve.return_value = "sklearn-image:latest"
+                        mock_trainer_instance = Mock()
+                        mock_trainer_instance.train = Mock(return_value=Mock())
+                        mock_trainer.return_value = mock_trainer_instance
+                        mock_super.return_value = None
+
+                        step = _RepackModelStep(
+                            name="repack-step",
+                            sagemaker_session=mock_session,
+                            role="arn:aws:iam::123456789012:role/SageMakerRole",
+                            model_data="s3://bucket/model.tar.gz",
+                            entry_point=temp_entry_point,
+                            source_dir=temp_dir,
+                        )
+
+                        assert set(os.listdir(temp_dir)) == original_files
+
+                        # Serializing the step, repeatedly, must not touch it either
+                        with patch(
+                            "sagemaker.mlops.workflow._utils.TrainingStep.arguments",
+                            new_callable=PropertyMock,
+                            return_value={},
+                        ):
+                            step.arguments
+                            step.arguments
+
+                        assert set(os.listdir(temp_dir)) == original_files
+                        # the staged copy carries both helper files and the caller's code
+                        assert set(os.listdir(step._staged_source_dir)) == original_files | {
+                            REPACK_SCRIPT,
+                            REPACK_SCRIPT_LAUNCHER,
+                        }
+
+    def test_staging_happens_once(self, mock_session, temp_entry_point):
+        """Regression for #6481: repeated ``arguments`` access must not re-stage."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+                with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                    with patch(
+                        "sagemaker.mlops.workflow._utils.TrainingStep.__init__"
+                    ) as mock_super:
+                        mock_retrieve.return_value = "sklearn-image:latest"
+                        mock_trainer_instance = Mock()
+                        mock_trainer_instance.train = Mock(return_value=Mock())
+                        mock_trainer.return_value = mock_trainer_instance
+                        mock_super.return_value = None
+
+                        step = _RepackModelStep(
+                            name="repack-step",
+                            sagemaker_session=mock_session,
+                            role="arn:aws:iam::123456789012:role/SageMakerRole",
+                            model_data="s3://bucket/model.tar.gz",
+                            entry_point=temp_entry_point,
+                            source_dir=temp_dir,
+                        )
+                        staged_dir = step._staged_source_dir
+
+                        with patch(
+                            "sagemaker.mlops.workflow._utils.TrainingStep.arguments",
+                            new_callable=PropertyMock,
+                            return_value={},
+                        ):
+                            with patch.object(
+                                step, "_inject_repack_script_and_launcher"
+                            ) as mock_inject:
+                                step.arguments
+                                step.arguments
+
+                        mock_inject.assert_not_called()
+                        assert step._staged_source_dir == staged_dir
+
+    def test_s3_source_dir_staged_to_new_key(self, mock_session, temp_entry_point):
+        """Regression for #6481: an s3:// source_dir must not be overwritten.
+
+        The original archive is read, and the archive carrying the repack helper
+        files is uploaded under a new key next to it.
+        """
+        source_dir_uri = "s3://caller-bucket/caller/prefix/sourcedir.tar.gz"
+
+        def fake_download(source_dir, dest_path, session):
+            with tempfile.TemporaryDirectory() as seed:
+                seed_file = os.path.join(seed, "inference.py")
+                with open(seed_file, "w") as fh:
+                    fh.write("def model_fn(model_dir):\n    return model_dir\n")
+                with tarfile.open(dest_path, "w:gz") as t:
+                    t.add(seed_file, arcname="inference.py")
+
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
+                    with patch(
+                        "sagemaker.mlops.workflow._utils.download_file_from_url",
+                        side_effect=fake_download,
+                    ):
+                        with patch(
+                            "sagemaker.mlops.workflow._utils._save_model"
+                        ) as mock_save_model:
+                            mock_retrieve.return_value = "sklearn-image:latest"
+                            mock_trainer_instance = Mock()
+                            mock_trainer_instance.train = Mock(return_value=Mock())
+                            mock_trainer.return_value = mock_trainer_instance
+                            mock_super.return_value = None
+
+                            step = _RepackModelStep(
+                                name="repack-step",
+                                sagemaker_session=mock_session,
+                                role="arn:aws:iam::123456789012:role/SageMakerRole",
+                                model_data="s3://bucket/model.tar.gz",
+                                entry_point=temp_entry_point,
+                                source_dir=source_dir_uri,
+                            )
+
+        mock_save_model.assert_called_once()
+        upload_target = mock_save_model.call_args[0][0]
+        assert upload_target != source_dir_uri
+        assert upload_target == (
+            "s3://caller-bucket/caller/prefix/sourcedir" + STAGED_SOURCE_DIR_SUFFIX
+        )
+        assert step._staged_source_dir == upload_target
+        # the caller's URI is still what the repack script is told about
+        assert step._source_dir == source_dir_uri
 
     def test_properties_returns_parent_properties(self, mock_session, temp_entry_point):
         """Test properties returns parent class properties."""

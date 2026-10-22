@@ -1,5 +1,76 @@
 # Changelog
 
+## v3.27.0 (2026-10-21)
+
+### New Features
+
+- feat(mlops): Add ForEach pipeline step (#6473)
+- feat(mlops): Add CleanupStep pipeline step (#6468)
+
+### Bug Fixes
+
+- fix: keep the Transformer's configured session when waiting on or stopping a transform job (#6509)
+- fix: add g7e, p6-b200 and trn2 to volume size unsupported instance families (#6505)
+- fix: carry ModelTrainer checkpoint and retry config into the tuning job definition (#6511)
+- fix: discover base models by Training Sessions capability (#6506)
+- fix: don't treat SageMaker model-package ARN as a HuggingFace model ID (#6513)
+- fix: let ModelBuilder.build() tag the SageMaker Model it creates (#6510)
+- fix: make sagemaker-serve test tooling and serving backends optional (#6512)
+
+
+## v3.26.0 (2026-10-19)
+
+### New Features
+
+- Add sa-west-1 to JumpStart region_config and djl-neuronx image_uri config (#6478)
+- Add me-west-1 (RUH) JumpStart bucket info to region_config.json (#6455)
+- feat(mlops): Add run conditions to step dependencies (#6475)
+
+### Bug Fixes
+
+- fix: emit boto-style tag keys in ModelTrainer pipeline requests (#6485)
+- fix: normalize ModelTrainer Tag objects inherited by HyperparameterTuner (#6482)
+- fix: pass the configured session to ModelBuilder's Model reloads (#6487)
+- fix: preserve all core container fields in ModelBuilder CreateModel requests (#6488)
+- fix: accept core shapes and omitted content types in ModelBuilder.register (#6489)
+- fix(serve): restore JumpStart default instance type from model spec (#6045)
+- fix: put the check steps' output KMS key on ProcessingOutputConfig and send CheckJobConfig tags (#6497)
+- fix: generate repack step for ModelBuilder.register/build in ModelStep (#5828, #5829) (#6338)
+- fix: keep source_code for a pipeline-variable model URI and stop repack mutating caller source (#6490)
+
+### Tests
+
+- test(train): patch mocks at the lookup site so unit tests stop calling AWS (#6491)
+- test(serve): stop unit tests resolving IAM roles over the network (#6496)
+
+
+## v3.25.0 (2026-10-13)
+
+### New Features
+
+- feat(train): add the interactive Training Sessions client surface (#6452)
+
+### Bug Fixes
+
+- fix(core): prevent false-positive RoleValidationError under conditional access (#6029)
+- fix(core): resolve HuggingFace version alias in image URI tag (#5722)
+- fix(local): align local mode with the SageMaker service (#6317)
+- fix: make local mode health-check timeout configurable via session config (#5778)
+- fix(model-monitor): honor base_job_name for job definition names (#6372)
+- fix(processing): fix V3 shape regressions + KMS/requirements gaps in processors (#6364)
+- fix: accept CUSTOMIZATION capability in JumpStart hub documents (#6456)
+- fix(train): bound pydantic to <3.0.0 for cross-package consistency (#6363)
+- fix(train): set input_data_config to None (#6154)
+
+### Tests
+
+- chore(core): sync the bundled SageMaker service model with botocore (#6453)
+- test(train): bound capacity wait in gated JumpStart train test (#6397)
+- test(train): bound capacity wait in SMTJ SFT integ test (#6409)
+- test(train): fail fast in HyperPod SFT integ tests (#6449)
+- test(serve): fix Bedrock resource leaks in Nova integ tests (#6398)
+
+
 ## v3.24.0 (2026-10-07)
 
 ### New Features

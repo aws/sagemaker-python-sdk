@@ -25,7 +25,7 @@ from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
 from tempfile import NamedTemporaryFile
 
-from sagemaker.core.resources import TrainingJob
+from sagemaker.core.resources import Base, TrainingJob
 from sagemaker.core.shapes import (
     ResourceConfig,
     VpcConfig,
@@ -45,6 +45,7 @@ from sagemaker.core.config.config_schema import (
 )
 from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.workflow.pipeline_context import PipelineSession
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE
 from sagemaker.train.constants import (
@@ -2616,3 +2617,106 @@ def test_output_data_strips_trailing_slash_on_fallback(model_trainer):
     assert model_trainer.output_data == (
         f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}" "/my-training-job/output/output.tar.gz"
     )
+
+
+# ---------------------------------------------------------------------------
+# Tag serialization (issue #6474)
+# ---------------------------------------------------------------------------
+
+TAG = Tag(key="project", value="ml-project")
+BOTO_TAG = {"Key": "project", "Value": "ml-project"}
+
+
+def _pipeline_session():
+    """A real PipelineSession with only its outbound edges stubbed."""
+    session = PipelineSession.__new__(PipelineSession)
+    session._context = None
+    session.boto_session = MagicMock()
+    session.boto_session.region_name = DEFAULT_REGION
+    session.sagemaker_config = {}
+    session.default_bucket = lambda: DEFAULT_BUCKET
+    session.default_bucket_prefix = DEFAULT_BUCKET_PREFIX
+    return session
+
+
+def _pipeline_trainer(tags):
+    """A trainer whose session makes ``_create_training_job_args`` serialize the request."""
+    return ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        sagemaker_session=_pipeline_session(),
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+        tags=tags,
+    )
+
+
+def _train_wire_tags(trainer):
+    """The Tags CreateTrainingJob really receives, measured not derived."""
+    mock_client = MagicMock()
+    with patch.object(Base, "get_sagemaker_client", return_value=mock_client):
+        try:
+            trainer.train(wait=False)
+        except ValidationError:
+            # Building the TrainingJob resource out of a MagicMock response fails after
+            # the call. The call itself is what is under test.
+            pass
+    assert (
+        mock_client.create_training_job.call_args is not None
+    ), "create_training_job was not reached"
+    return mock_client.create_training_job.call_args.kwargs.get("Tags")
+
+
+def test_pipeline_request_uses_boto_style_tag_keys():
+    """Regression for #6474.
+
+    The service requires Tags of the form {"Key": ..., "Value": ...}. ``serialize``
+    renames the fields of Tag models but passes plain dicts through untouched, so
+    dumping the tags to dicts first left lowercase keys in the pipeline definition
+    and CreatePipeline rejected it with "Unknown Argument member 'key'".
+    """
+    args = _pipeline_trainer([TAG])._create_training_job_args()
+
+    assert args["Tags"] == [BOTO_TAG]
+
+
+def test_pipeline_request_omits_tags_when_unset():
+    """An untagged trainer must not add an empty Tags member to the request."""
+    args = _pipeline_trainer(None)._create_training_job_args()
+
+    assert "Tags" not in args
+
+
+def test_boto3_request_uses_boto_style_tag_keys(model_trainer):
+    """The boto3 payload (used by TrainingQueue) needs the same boto-style tags."""
+    model_trainer.tags = [TAG]
+
+    args = model_trainer._create_training_job_args(boto3=True)
+
+    assert args["Tags"] == [BOTO_TAG]
+
+
+def test_interactive_request_keeps_tags_training_job_create_accepts(model_trainer):
+    """The interactive request carries dicts, not Tag models.
+
+    ``TrainingJob.create`` annotates ``tags`` with ``sagemaker.core.resources.Tag``,
+    which shadows the shape of the same name, so a ``sagemaker.core.shapes.Tag``
+    instance fails its validation. The dicts are revalidated into that model instead,
+    and come out boto-style on the wire.
+    """
+    model_trainer.tags = [TAG]
+
+    args = model_trainer._create_training_job_args()
+
+    assert args["tags"] == [{"key": "project", "value": "ml-project"}]
+    assert _train_wire_tags(model_trainer) == [BOTO_TAG]
+
+
+def test_pipeline_and_interactive_emit_identical_tags(model_trainer):
+    """Both paths must put the same tags on the request."""
+    model_trainer.tags = [TAG]
+
+    pipeline_tags = _pipeline_trainer([TAG])._create_training_job_args()["Tags"]
+
+    assert pipeline_tags == _train_wire_tags(model_trainer)

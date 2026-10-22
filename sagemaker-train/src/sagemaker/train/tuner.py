@@ -73,6 +73,25 @@ MAX_RUNTIME_IN_SECONDS = "MaxRuntimeInSeconds"
 logger = logging.getLogger(__name__)
 
 
+def _to_boto_tag(tag):
+    """Normalize a single tag into boto-style ``{"Key": ..., "Value": ...}`` form.
+
+    ``ModelTrainer`` stores tags as ``sagemaker.core.shapes.Tag`` objects, while the
+    tuner carries boto-style dictionaries, so inherited tags must be converted before
+    they are merged.
+    """
+    if isinstance(tag, dict):
+        if "key" in tag and "value" in tag and "Key" not in tag:
+            return {"Key": tag["key"], "Value": tag["value"]}
+        return tag
+
+    key = getattr(tag, "key", None)
+    if key is not None:
+        return {"Key": key, "Value": getattr(tag, "value", None)}
+
+    return tag
+
+
 class WarmStartTypes(Enum):
     """Types of warm start supported for hyperparameter tuning jobs."""
 
@@ -315,10 +334,15 @@ class HyperparameterTuner(object):
             self.model_trainer or self.model_trainer_dict[sorted(self.model_trainer_dict.keys())[0]]
         )
 
-        model_trainer_tags = getattr(model_trainer, "tags", []) or []
+        model_trainer_tags = [
+            _to_boto_tag(tag) for tag in (getattr(model_trainer, "tags", None) or [])
+        ]
 
-        if self.tags is None and len(model_trainer_tags) > 0:
-            self.tags = []
+        if self.tags is None:
+            if model_trainer_tags:
+                self.tags = []
+        else:
+            self.tags = [_to_boto_tag(tag) for tag in self.tags]
 
         for tag in model_trainer_tags:
             if tag not in self.tags:
@@ -1277,7 +1301,10 @@ class HyperparameterTuner(object):
         if self.tags:
             from sagemaker.core.shapes import Tag
 
-            tag_objects = [Tag(key=tag["Key"], value=tag["Value"]) for tag in self.tags]
+            tag_objects = [
+                Tag(key=boto_tag["Key"], value=boto_tag["Value"])
+                for boto_tag in (_to_boto_tag(tag) for tag in self.tags)
+            ]
 
         # Build tuning request
         tuning_request = {
@@ -1376,10 +1403,12 @@ class HyperparameterTuner(object):
     def _build_training_job_definition(self, inputs):
         """Build the training job definition for the tuning job."""
         from sagemaker.core.shapes import (
+            CheckpointConfig,
             HyperParameterTrainingJobDefinition,
             HyperParameterAlgorithmSpecification,
             OutputDataConfig,
             ResourceConfig,
+            RetryStrategy,
             StoppingCondition,
             DataSource,
             S3DataSource,
@@ -1523,6 +1552,20 @@ class HyperparameterTuner(object):
         # Include environment only when it's a dict (including empty).
         if isinstance(env, dict):
             definition_kwargs["environment"] = env
+
+        # Propagate the checkpoint and retry configuration from ModelTrainer.
+        # HyperParameterTrainingJobDefinition accepts both, and dropping them means
+        # a tuned job cannot resume from its configured checkpoint (sharpest on
+        # managed spot training) and ignores the configured retry count (#6500).
+        # ``retry_strategy`` is held on ModelTrainer as a private attribute that
+        # ``with_retry_strategy()`` sets, so read it with getattr.
+        checkpoint_config = getattr(model_trainer, "checkpoint_config", None)
+        if isinstance(checkpoint_config, CheckpointConfig):
+            definition_kwargs["checkpoint_config"] = checkpoint_config
+
+        retry_strategy = getattr(model_trainer, "_retry_strategy", None)
+        if isinstance(retry_strategy, RetryStrategy):
+            definition_kwargs["retry_strategy"] = retry_strategy
 
         definition = HyperParameterTrainingJobDefinition(**definition_kwargs)
 

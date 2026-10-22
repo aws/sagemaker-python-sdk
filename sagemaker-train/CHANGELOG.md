@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.27.0 (2026-10-21)
+
+### Bug Fixes
+
+- fix: carry ModelTrainer checkpoint and retry config into the tuning job definition (#6511)
+- fix: discover base models by Training Sessions capability (#6506)
+
+
+## v1.26.0 (2026-10-19)
+
+### Bug Fixes
+
+- fix: emit boto-style tag keys in ModelTrainer pipeline requests (#6485)
+- fix: normalize ModelTrainer Tag objects inherited by HyperparameterTuner (#6482)
+
+### Tests
+
+- test(train): patch mocks at the lookup site so unit tests stop calling AWS (#6491)
+
+
+## v1.25.0 (2026-10-13)
+
+### New Features
+
+- feat(train): add the interactive Training Sessions client surface (#6452)
+
+### Bug Fixes
+
+- fix(train): bound pydantic to <3.0.0 for cross-package consistency (#6363)
+- fix(train): set input_data_config to None (#6154)
+
+### Tests
+
+- test(train): bound capacity wait in gated JumpStart train test (#6397)
+- test(train): bound capacity wait in SMTJ SFT integ test (#6409)
+- test(train): fail fast in HyperPod SFT integ tests (#6449)
+
+
 ## v1.24.0 (2026-10-07)
 
 ### New Features

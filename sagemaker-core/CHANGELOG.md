@@ -1,5 +1,38 @@
 # Changelog
 
+## v2.27.0 (2026-10-21)
+
+### Bug Fixes
+
+- fix: keep the Transformer's configured session when waiting on or stopping a transform job (#6509)
+- fix: add g7e, p6-b200 and trn2 to volume size unsupported instance families (#6505)
+
+
+## v2.26.0 (2026-10-19)
+
+### New Features
+
+- Add sa-west-1 to JumpStart region_config and djl-neuronx image_uri config (#6478)
+- Add me-west-1 (RUH) JumpStart bucket info to region_config.json (#6455)
+
+
+## v2.25.0 (2026-10-13)
+
+### Bug Fixes
+
+- fix(core): prevent false-positive RoleValidationError under conditional access (#6029)
+- fix(core): resolve HuggingFace version alias in image URI tag (#5722)
+- fix(local): align local mode with the SageMaker service (#6317)
+- fix: make local mode health-check timeout configurable via session config (#5778)
+- fix(model-monitor): honor base_job_name for job definition names (#6372)
+- fix(processing): fix V3 shape regressions + KMS/requirements gaps in processors (#6364)
+- fix: accept CUSTOMIZATION capability in JumpStart hub documents (#6456)
+
+### Tests
+
+- chore(core): sync the bundled SageMaker service model with botocore (#6453)
+
+
 ## v2.24.0 (2026-10-07)
 
 ### New Features

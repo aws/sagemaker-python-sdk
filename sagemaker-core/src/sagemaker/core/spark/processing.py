@@ -39,6 +39,7 @@ from sagemaker.core import image_uris
 from sagemaker.core import s3
 from sagemaker.core.local.image import _ecr_login_if_needed, _pull_image
 from sagemaker.core.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
+from sagemaker.core.shapes import ProcessingS3Input, ProcessingS3Output
 from sagemaker.core.s3 import S3Uploader
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.network import NetworkConfig
@@ -330,9 +331,12 @@ class _SparkProcessorBase(ScriptProcessor):
             )
 
             output = ProcessingOutput(
-                source=_SparkProcessorBase._spark_event_log_default_local_path,
-                destination=spark_event_logs_s3_uri,
-                s3_upload_mode="Continuous",
+                output_name="spark-event-logs",
+                s3_output=ProcessingS3Output(
+                    s3_uri=spark_event_logs_s3_uri,
+                    local_path=_SparkProcessorBase._spark_event_log_default_local_path,
+                    s3_upload_mode="Continuous",
+                ),
             )
 
             extended_outputs.append(output)
@@ -444,9 +448,13 @@ class _SparkProcessorBase(ScriptProcessor):
         )
 
         conf_input = ProcessingInput(
-            source=s3_uri,
-            destination=f"{self._conf_container_base_path}{self._conf_container_input_name}",
             input_name=_SparkProcessorBase._conf_container_input_name,
+            s3_input=ProcessingS3Input(
+                s3_uri=s3_uri,
+                local_path=f"{self._conf_container_base_path}{self._conf_container_input_name}",
+                s3_data_type="S3Prefix",
+                s3_input_mode="File",
+            ),
         )
         return conf_input
 
@@ -473,6 +481,11 @@ class _SparkProcessorBase(ScriptProcessor):
             )
         if not input_channel_name:
             raise ValueError("input_channel_name value may not be empty.")
+        if not isinstance(submit_deps, (list, tuple)):
+            raise ValueError(
+                f"submit_deps must be a list of one or more paths, but got "
+                f"{type(submit_deps).__name__}. {self._submit_deps_error_message}"
+            )
 
         use_input_channel = False
         spark_opt_s3_uris = []
@@ -544,15 +557,20 @@ class _SparkProcessorBase(ScriptProcessor):
         # them to the Spark container  and form the spark-submit option from a
         # combination of S3 URIs and container's local input path
         if use_input_channel:
+            input_channel_local_path = f"{self._conf_container_base_path}{input_channel_name}"
             input_channel = ProcessingInput(
-                source=input_channel_s3_uri,
-                destination=f"{self._conf_container_base_path}{input_channel_name}",
                 input_name=input_channel_name,
+                s3_input=ProcessingS3Input(
+                    s3_uri=input_channel_s3_uri,
+                    local_path=input_channel_local_path,
+                    s3_data_type="S3Prefix",
+                    s3_input_mode="File",
+                ),
             )
             spark_opt = (
-                Join(on=",", values=spark_opt_s3_uris + [input_channel.destination])
+                Join(on=",", values=spark_opt_s3_uris + [input_channel_local_path])
                 if spark_opt_s3_uris_has_pipeline_var
-                else ",".join(spark_opt_s3_uris + [input_channel.destination])
+                else ",".join(spark_opt_s3_uris + [input_channel_local_path])
             )
         # If no local files were uploaded, form the spark-submit option from a list of S3 URIs
         else:
