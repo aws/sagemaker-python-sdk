@@ -1413,6 +1413,7 @@ class HyperparameterTuner(object):
             DataSource,
             S3DataSource,
         )
+        from sagemaker.core.utils.utils import Unassigned
 
         model_trainer = self.model_trainer
 
@@ -1519,6 +1520,16 @@ class HyperparameterTuner(object):
                 model_trainer.compute.volume_size_in_gb if model_trainer.compute else 30
             ),
         )
+
+        # Preserve the volume KMS key configured on the ModelTrainer's compute so that
+        # HPO child training jobs encrypt their storage volumes with the customer-managed
+        # key. Omit the field entirely when no key is configured; leaving it Unassigned
+        # keeps it out of the serialized request (issue #6521). A PipelineVariable or a
+        # plain string is passed through unchanged.
+        if model_trainer.compute:
+            volume_kms_key_id = model_trainer.compute.volume_kms_key_id
+            if volume_kms_key_id is not None and not isinstance(volume_kms_key_id, Unassigned):
+                resource_config.volume_kms_key_id = volume_kms_key_id
 
         # Build stopping condition
         stopping_condition = StoppingCondition()
