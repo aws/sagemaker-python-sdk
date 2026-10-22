@@ -15,7 +15,8 @@
 Runs Athena queries end-to-end through SageMaker Pipelines and checks that:
 
 * a valid query drives the execution to ``Succeeded`` and the result CSV is
-  written to the configured S3 output location,
+  written to the configured S3 output location, both when the query is built
+  with ``AthenaQueryConfig`` and when it is passed as a raw request dict,
 * an invalid query drives the execution to ``Failed`` with a ``FailureReason``,
 * a full ``AthenaQueryConfig``, together with ``CacheConfig`` and
   ``RetryPolicies``, is accepted by ``CreatePipeline`` and round-trips
@@ -123,6 +124,44 @@ def test_athena_step_query_succeeds_and_writes_result(sagemaker_session_for_pipe
         execution, status, athena_step = _create_and_execute(pipeline, role, output_location)
         assert status == "Succeeded", "Execution status was {}".format(status)
         assert athena_step["StepName"] == "AthenaQuery"
+        assert athena_step["StepStatus"] == "Succeeded", athena_step.get("FailureReason")
+
+        query_execution_id = athena_step["Metadata"]["Athena"]["QueryExecutionId"]
+        result_key = "{}/{}.csv".format(key_prefix, query_execution_id)
+        result_files = sagemaker_session_for_pipeline.list_s3_files(bucket, key_prefix)
+        assert result_key in result_files, "Athena result file not found: {}".format(result_files)
+    finally:
+        _cleanup(pipeline, execution, sagemaker_session_for_pipeline, bucket, key_prefix)
+
+
+def test_athena_step_raw_request_dict_succeeds(sagemaker_session_for_pipeline, role):
+    """A raw ``StartQueryExecution`` dict passed as ``query_config`` runs to ``Succeeded``."""
+    pipeline_name = unique_name_from_base("athena-step-integ")
+    bucket, key_prefix, output_location = _result_location(
+        sagemaker_session_for_pipeline, pipeline_name
+    )
+    output_location_parameter = ParameterString(name=_OUTPUT_LOCATION_PARAMETER)
+
+    step = AthenaStep(
+        name="AthenaRawQuery",
+        query_config={
+            "QueryString": "SELECT 1 AS test_result",
+            "QueryExecutionContext": {"Database": "default"},
+            "WorkGroup": "primary",
+            "ResultConfiguration": {"OutputLocation": output_location_parameter},
+        },
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[output_location_parameter],
+        steps=[step],
+        sagemaker_session=sagemaker_session_for_pipeline,
+    )
+
+    execution = None
+    try:
+        execution, status, athena_step = _create_and_execute(pipeline, role, output_location)
+        assert status == "Succeeded", "Execution status was {}".format(status)
         assert athena_step["StepStatus"] == "Succeeded", athena_step.get("FailureReason")
 
         query_execution_id = athena_step["Metadata"]["Athena"]["QueryExecutionId"]
