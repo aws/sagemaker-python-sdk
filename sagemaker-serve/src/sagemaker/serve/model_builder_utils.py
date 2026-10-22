@@ -356,6 +356,15 @@ class _ModelBuilderUtils:
                 logger.debug(f"Using JumpStart recommended instance type: {recommended_type}")
                 return recommended_type
 
+        # A SageMaker model-package ARN is not a HuggingFace repo id. Routing it
+        # to the HF metadata API 404s and produces a misleading "provide a
+        # HUGGING_FACE_HUB_TOKEN" error, so skip smart detection for ARNs.
+        elif isinstance(self.model, str) and re.match(MODEL_PACKAGE_ARN_REGEX, self.model):
+            logger.debug(
+                "Model is a SageMaker model-package ARN, not a HuggingFace model ID; "
+                "skipping HuggingFace-based instance type detection."
+            )
+
         # For HuggingFace models, use metadata to detect requirements
         elif isinstance(self.model, str):
             try:
@@ -530,6 +539,11 @@ class _ModelBuilderUtils:
             True if model appears to be a HuggingFace model ID.
         """
         if not isinstance(self.model, str):
+            return False
+
+        # A SageMaker model-package ARN contains "/" but is not a HuggingFace
+        # model ID; exclude it before the organization/model-name heuristic.
+        if re.match(MODEL_PACKAGE_ARN_REGEX, self.model):
             return False
 
         # Simple pattern matching for HuggingFace model IDs
@@ -1447,7 +1461,14 @@ class _ModelBuilderUtils:
                     "Unable to import sagemaker_mlflow, check if sagemaker_mlflow is installed"
                 )
 
-            import mlflow
+            try:
+                import mlflow
+            except ImportError:
+                raise ImportError(
+                    "Building from an MLflow model path requires the mlflow module but it was "
+                    "not found in your environment. Install it with "
+                    "'pip install sagemaker-serve[mlflow]'."
+                )
 
             mlflow.set_tracking_uri(mlflow_tracking_arn)
 
@@ -3057,9 +3078,10 @@ class _ModelBuilderUtils:
 
         except ModuleNotFoundError:
             raise ImportError(
-                "Launching Triton with ModelBuilder for a PyTorch model requires onnx module "
-                "but it was not found in your environment. "
-                "Checkout the instructions on the installation page of its repo: "
+                "Launching Triton with ModelBuilder for a PyTorch model requires the torch and "
+                "onnx modules but they were not found in your environment. "
+                "Install them with 'pip install sagemaker-serve[triton]', or checkout the "
+                "instructions on the installation page of its repo: "
                 "https://onnxruntime.ai/docs/install/ "
                 "And follow the ones that match your environment. "
                 "Please note that you may need to restart your runtime after installation."
@@ -3075,7 +3097,8 @@ class _ModelBuilderUtils:
             raise ImportError(
                 "Launching Triton with ModelBuilder requires tritonClient[http] module "
                 "but it was not found in your environment. "
-                "Checkout the instructions on the installation page of its repo: "
+                "Install it with 'pip install sagemaker-serve[triton]', or checkout the "
+                "instructions on the installation page of its repo: "
                 "https://github.com/triton-inference-server/client#getting-the-client-libraries-and-examples "
                 "And follow the ones that match your environment. "
                 "Please note that you may need to restart your runtime after installation."
@@ -3446,6 +3469,13 @@ class _ModelBuilderUtils:
                 raise ValueError(
                     "Trying to access a gated/private HuggingFace model without valid credentials. "
                     "Please provide a HUGGING_FACE_HUB_TOKEN in env_vars"
+                )
+            if "HTTP Error 404: Not Found" in str(e):
+                raise ValueError(
+                    "HuggingFace model ID %s was not found on huggingface.co. Please verify the "
+                    "model ID is a valid HuggingFace repo. If you intended to deploy a SageMaker "
+                    "model-package or other non-HuggingFace artifact, it should not be passed as a "
+                    "HuggingFace model ID." % model_id
                 )
             logger.warning(
                 "Exception encountered while trying to retrieve HuggingFace model metadata %s. "

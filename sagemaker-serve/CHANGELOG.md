@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.27.0 (2026-10-21)
+
+### Bug Fixes
+
+- fix: don't treat SageMaker model-package ARN as a HuggingFace model ID (#6513)
+- fix: let ModelBuilder.build() tag the SageMaker Model it creates (#6510)
+- fix: make sagemaker-serve test tooling and serving backends optional (#6512)
+
+
 ## v1.26.0 (2026-10-19)
 
 ### Bug Fixes

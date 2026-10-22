@@ -155,6 +155,7 @@ class Transformer(object):
         self.base_transform_job_name = base_transform_job_name
         self._current_job_name = None
         self.latest_transform_job = None
+        self._latest_transform_job_is_local = False
         self._reset_output_path = False
 
         self.sagemaker_session = sagemaker_session or Session()
@@ -412,10 +413,21 @@ class Transformer(object):
         transformed = transform_util(serialized_request, "CreateTransformJobRequest")
         # Remove tags from transformed dict as TransformJob resource doesn't accept it
         transformed.pop("tags", None)
-        self.latest_transform_job = TransformJob(**transformed)
+        # Submission went through the configured session, so bind that session and
+        # region to the resource: a session-less TransformJob builds its client from
+        # the process default session, so wait()/stop() poll the wrong account or
+        # region and fail with ResourceNotFound, NoRegionError or an authorization
+        # error even though the job was created correctly (#6503).
+        self.latest_transform_job = TransformJob(**transformed)._set_client_context(
+            session=self.sagemaker_session.boto_session,
+            region=self.sagemaker_session.boto_region_name,
+        )
+        # A local transform job runs to completion inside create_transform_job and
+        # exists only in the local session, so it must never be polled over AWS.
+        self._latest_transform_job_is_local = local_mode
 
         if wait:
-            self.latest_transform_job.wait(logs=logs)
+            self.wait(logs=logs)
 
     def delete_model(self):
         """Delete the corresponding SageMaker model for this Transformer."""
@@ -462,13 +474,26 @@ class Transformer(object):
             )
 
     def wait(self, logs=True):
-        """Placeholder docstring"""
+        """Wait for the latest transform job to reach a terminal state."""
         self._ensure_last_transform_job()
+        if self._latest_transform_job_is_local:
+            logger.info(
+                "Local transform job %s already ran to completion; nothing to wait for.",
+                self.latest_transform_job.get_name(),
+            )
+            return
         self.latest_transform_job.wait(logs=logs)
 
     def stop_transform_job(self, wait=True):
         """Stop latest running batch transform job."""
         self._ensure_last_transform_job()
+        if self._latest_transform_job_is_local:
+            logger.warning(
+                "Transform job %s ran locally and has already finished; there is nothing "
+                "to stop.",
+                self.latest_transform_job.get_name(),
+            )
+            return
         self.latest_transform_job.stop()
         if wait:
             self.latest_transform_job.wait()
@@ -495,17 +520,20 @@ class Transformer(object):
         """
         sagemaker_session = sagemaker_session or Session()
 
+        # TransformJob.get() builds its client from a boto3 session, so pass the
+        # session's boto_session rather than the sagemaker Session itself, and keep
+        # the resource that describe returned instead of describing it a second time.
         transform_job = TransformJob.get(
-            transform_job_name=transform_job_name, session=sagemaker_session
+            transform_job_name=transform_job_name,
+            session=sagemaker_session.boto_session,
+            region=sagemaker_session.boto_region_name,
         )
         if not transform_job:
             raise ValueError(f"Transform job {transform_job_name} not found")
         job_details = transform_job.__dict__
         init_params = cls._prepare_init_params_from_job_description(job_details)
         transformer = cls(sagemaker_session=sagemaker_session, **init_params)
-        transformer.latest_transform_job = TransformJob.get(
-            transform_job_name=init_params["base_transform_job_name"], session=sagemaker_session
-        )
+        transformer.latest_transform_job = transform_job
 
         return transformer
 

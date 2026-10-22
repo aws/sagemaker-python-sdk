@@ -23,31 +23,56 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "sagemaker-core>=2.26.0",
-    "sagemaker-train>=1.26.0",
+    "sagemaker-core>=2.27.0",
+    "sagemaker-train>=1.27.0",
     "boto3>=1.42.2,<2.0",
     "botocore>=1.35.75,<2.0",
     "deepdiff",
-    "mlflow",
     "sagemaker_schema_inference_artifacts",
-    "pytest",
     "tqdm",
     "psutil",
+]
+
+# Framework-specific serving backends are optional: the base package must only
+# carry what every serving path needs. The code paths that use them import them
+# lazily and raise an ImportError naming the extra to install.
+[project.optional-dependencies]
+torch = [
+    "torch>=2.0.0",
+]
+onnx = [
+    "onnx",
+    "onnxruntime",
+]
+triton = [
     "tritonclient[http]",
     "onnx",
     "onnxruntime",
-    "torch>=2.0.0"
+    "torch>=2.0.0",
 ]
-
-[project.optional-dependencies]
+mlflow = [
+    "mlflow",
+]
+all = [
+    "mlflow",
+    "onnx",
+    "onnxruntime",
+    "torch>=2.0.0",
+    "tritonclient[http]",
+]
 test = [
     "pytest",
     "pytest-cov",
     "mock",
+    "mlflow",
+    "onnx",
+    "onnxruntime",
+    "torch>=2.0.0",
+    "tritonclient[http]",
 ]
 dev = [
     "pytest",
-    "pytest-cov", 
+    "pytest-cov",
     "mock",
     "black",
     "flake8",

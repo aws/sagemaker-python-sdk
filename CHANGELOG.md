@@ -1,5 +1,23 @@
 # Changelog
 
+## v3.27.0 (2026-10-21)
+
+### New Features
+
+- feat(mlops): Add ForEach pipeline step (#6473)
+- feat(mlops): Add CleanupStep pipeline step (#6468)
+
+### Bug Fixes
+
+- fix: keep the Transformer's configured session when waiting on or stopping a transform job (#6509)
+- fix: add g7e, p6-b200 and trn2 to volume size unsupported instance families (#6505)
+- fix: carry ModelTrainer checkpoint and retry config into the tuning job definition (#6511)
+- fix: discover base models by Training Sessions capability (#6506)
+- fix: don't treat SageMaker model-package ARN as a HuggingFace model ID (#6513)
+- fix: let ModelBuilder.build() tag the SageMaker Model it creates (#6510)
+- fix: make sagemaker-serve test tooling and serving backends optional (#6512)
+
+
 ## v3.26.0 (2026-10-19)
 
 ### New Features
