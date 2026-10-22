@@ -71,6 +71,7 @@ class StepTypeEnum(Enum):
     JOB = "Job"
     CLEANUP = "Cleanup"
     FOR_EACH = "ForEach"
+    ATHENA = "Athena"
 
 
 class Step(Entity):
