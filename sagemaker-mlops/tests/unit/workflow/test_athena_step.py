@@ -115,27 +115,18 @@ def test_step_with_query_config_emits_built_request():
 # ---------------------------------------------------------------------------
 
 
-def test_raw_arguments_passed_through_unchanged():
-    arguments = {
+def test_raw_request_dict_passed_through_unchanged():
+    request = {
         "QueryString": "SELECT 1",
         "EngineConfiguration": {"MaxConcurrentDpus": 4},
     }
-    step = AthenaStep(name="RunQuery", arguments=arguments)
-    assert step.arguments == arguments
+    step = AthenaStep(name="RunQuery", query_config=request)
+    assert step.arguments == request
 
 
-def test_requires_query_config_or_arguments():
-    with pytest.raises(ValueError, match="must have either query_config or arguments"):
+def test_query_config_is_required():
+    with pytest.raises(TypeError):
         AthenaStep(name="RunQuery")
-
-
-def test_rejects_both_query_config_and_arguments():
-    with pytest.raises(ValueError, match="cannot have both query_config and arguments"):
-        AthenaStep(
-            name="RunQuery",
-            query_config=AthenaQueryConfig(query_string="SELECT 1"),
-            arguments={"QueryString": "SELECT 1"},
-        )
 
 
 def test_caller_mutations_do_not_leak_into_step_state():
@@ -144,7 +135,7 @@ def test_caller_mutations_do_not_leak_into_step_state():
         "ResultConfiguration": {"EncryptionConfiguration": {"EncryptionOption": "SSE_S3"}},
         "ExecutionParameters": ["1"],
     }
-    step = AthenaStep(name="RunQuery", arguments=arguments)
+    step = AthenaStep(name="RunQuery", query_config=arguments)
 
     arguments["QueryString"] = "MUTATED"
     arguments["ResultConfiguration"]["EncryptionConfiguration"]["EncryptionOption"] = "MUTATED"

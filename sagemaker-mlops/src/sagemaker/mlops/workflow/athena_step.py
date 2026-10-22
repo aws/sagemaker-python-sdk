@@ -32,9 +32,9 @@ Athena ``StartQueryExecution`` request that becomes the step's ``Arguments``::
         ),
     )
 
-For ``StartQueryExecution`` fields that ``AthenaQueryConfig`` does not cover,
-pass the full request as a dict through ``arguments`` instead; it is emitted
-unchanged.
+Prefer ``AthenaQueryConfig``. For ``StartQueryExecution`` fields it does not
+cover, pass the full request as a dict to ``query_config`` instead; the dict
+is emitted unchanged.
 
 The SageMaker Pipelines service validates the request at ``CreatePipeline``
 time, not this module:
@@ -178,23 +178,13 @@ def _drop_none(values: Dict[str, Any]) -> Dict[str, Any]:
     return {key: value for key, value in values.items() if value is not None}
 
 
-ERR_STR_WITH_BOTH_QUERY_CONFIG_AND_ARGUMENTS = (
-    "AthenaStep {step_name} cannot have both query_config and arguments."
-)
-
-ERR_STR_WITHOUT_QUERY_CONFIG_AND_ARGUMENTS = (
-    "AthenaStep {step_name} must have either query_config or arguments."
-)
-
-
 class AthenaStep(ConfigurableRetryStep):
     """Runs an Amazon Athena query as part of a SageMaker Pipeline."""
 
     def __init__(
         self,
         name: str,
-        query_config: Optional[AthenaQueryConfig] = None,
-        arguments: Optional[Dict[str, Any]] = None,
+        query_config: Union[AthenaQueryConfig, Dict[str, Any]],
         display_name: Optional[str] = None,
         description: Optional[str] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
@@ -203,14 +193,13 @@ class AthenaStep(ConfigurableRetryStep):
     ):  # pylint: disable=too-many-positional-arguments
         """Construct an ``AthenaStep``.
 
-        Exactly one of ``query_config`` and ``arguments`` must be given.
-
         Args:
             name: The name of the step.
-            query_config: The Athena query to run.
-            arguments: The full Athena ``StartQueryExecution`` request as a dict
-                (PascalCase keys), emitted unchanged. Use it for request fields
-                that ``AthenaQueryConfig`` does not cover.
+            query_config: The Athena query to run. Prefer an
+                ``AthenaQueryConfig``. Pass the full ``StartQueryExecution``
+                request as a dict (PascalCase keys) only when you need a field
+                ``AthenaQueryConfig`` does not cover; the dict is emitted
+                unchanged.
             display_name: Optional display name.
             description: Optional description.
             depends_on: Optional explicit step dependencies. Wrap an entry in
@@ -228,14 +217,12 @@ class AthenaStep(ConfigurableRetryStep):
             retry_policies=retry_policies,
         )
 
-        if query_config is None and arguments is None:
-            raise ValueError(ERR_STR_WITHOUT_QUERY_CONFIG_AND_ARGUMENTS.format(step_name=name))
-        if query_config is not None and arguments is not None:
-            raise ValueError(ERR_STR_WITH_BOTH_QUERY_CONFIG_AND_ARGUMENTS.format(step_name=name))
-
         # Copy so caller-side mutations after construction do not leak into the
         # compiled pipeline definition.
-        request = query_config.to_request() if query_config is not None else arguments
+        if isinstance(query_config, AthenaQueryConfig):
+            request = query_config.to_request()
+        else:
+            request = query_config
         self.args: Dict[str, Any] = copy.deepcopy(request)
         self.cache_config = cache_config
         self._properties = Properties(
