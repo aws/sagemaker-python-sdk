@@ -82,6 +82,7 @@ def _mock_model_trainer(**overrides):
     trainer.stopping_condition = MagicMock()
     trainer.stopping_condition.max_runtime_in_seconds = 3600
     trainer.input_data_config = None
+    trainer.checkpoint_config = None
     trainer.base_job_name = "test-tuning"
     trainer.distributed = None
     trainer.environment = None
