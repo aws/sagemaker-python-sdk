@@ -480,6 +480,7 @@ class AIBenchmarkJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a AIBenchmarkJob resource.
@@ -487,10 +488,11 @@ class AIBenchmarkJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -522,6 +524,13 @@ class AIBenchmarkJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="AIBenchmarkJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="AIBenchmarkJob",
                             status=current_status,
@@ -940,6 +949,7 @@ class AIRecommendationJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a AIRecommendationJob resource.
@@ -947,10 +957,11 @@ class AIRecommendationJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -982,6 +993,13 @@ class AIRecommendationJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="AIRecommendationJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="AIRecommendationJob",
                             status=current_status,
@@ -3918,6 +3936,7 @@ class AutoMLJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a AutoMLJob resource.
@@ -3925,10 +3944,11 @@ class AutoMLJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -3960,6 +3980,13 @@ class AutoMLJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="AutoMLJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="AutoMLJob",
                             status=current_status,
@@ -4408,6 +4435,7 @@ class AutoMLJobV2(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a AutoMLJobV2 resource.
@@ -4415,10 +4443,11 @@ class AutoMLJobV2(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -4450,6 +4479,13 @@ class AutoMLJobV2(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="AutoMLJobV2",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="AutoMLJobV2",
                             status=current_status,
@@ -6442,6 +6478,7 @@ class CompilationJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a CompilationJob resource.
@@ -6449,10 +6486,11 @@ class CompilationJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -6484,6 +6522,13 @@ class CompilationJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="CompilationJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="CompilationJob",
                             status=current_status,
@@ -10035,6 +10080,7 @@ class EdgePackagingJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a EdgePackagingJob resource.
@@ -10042,10 +10088,11 @@ class EdgePackagingJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -10077,6 +10124,13 @@ class EdgePackagingJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="EdgePackagingJob",
+                            status=current_status,
+                            reason=self.edge_packaging_job_status_message,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="EdgePackagingJob",
                             status=current_status,
@@ -15404,6 +15458,7 @@ class HyperParameterTuningJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a HyperParameterTuningJob resource.
@@ -15411,10 +15466,11 @@ class HyperParameterTuningJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -15446,6 +15502,13 @@ class HyperParameterTuningJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="HyperParameterTuningJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="HyperParameterTuningJob",
                             status=current_status,
@@ -18113,6 +18176,7 @@ class InferenceRecommendationsJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a InferenceRecommendationsJob resource.
@@ -18120,10 +18184,11 @@ class InferenceRecommendationsJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -18155,6 +18220,13 @@ class InferenceRecommendationsJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="InferenceRecommendationsJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="InferenceRecommendationsJob",
                             status=current_status,
@@ -18685,6 +18757,7 @@ class Job(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a Job resource.
@@ -18692,10 +18765,11 @@ class Job(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -18727,6 +18801,11 @@ class Job(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="Job", status=current_status, reason=self.failure_reason
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="Job", status=current_status, reason=self.failure_reason
                         )
@@ -19191,6 +19270,7 @@ class LabelingJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a LabelingJob resource.
@@ -19198,10 +19278,11 @@ class LabelingJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -19233,6 +19314,13 @@ class LabelingJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="LabelingJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="LabelingJob",
                             status=current_status,
@@ -22236,6 +22324,7 @@ class ModelCardExportJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a ModelCardExportJob resource.
@@ -22243,10 +22332,11 @@ class ModelCardExportJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -22278,6 +22368,13 @@ class ModelCardExportJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="ModelCardExportJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="ModelCardExportJob",
                             status=current_status,
@@ -26660,6 +26757,7 @@ class OptimizationJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
     ) -> None:
         """
         Wait for a OptimizationJob resource.
@@ -26667,10 +26765,11 @@ class OptimizationJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -26702,6 +26801,13 @@ class OptimizationJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="OptimizationJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="OptimizationJob",
                             status=current_status,
@@ -29374,6 +29480,7 @@ class ProcessingJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
         logs: Optional[bool] = False,
     ) -> None:
         """
@@ -29382,11 +29489,12 @@ class ProcessingJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
             logs: Whether to print logs while waiting.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -29438,6 +29546,13 @@ class ProcessingJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="ProcessingJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="ProcessingJob",
                             status=current_status,
@@ -31872,6 +31987,7 @@ class TrainingJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
         logs: Optional[bool] = False,
     ) -> None:
         """
@@ -31880,11 +31996,12 @@ class TrainingJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
             logs: Whether to print logs while waiting.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -31948,6 +32065,13 @@ class TrainingJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="TrainingJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="TrainingJob",
                             status=current_status,
@@ -33201,6 +33325,7 @@ class TransformJob(Base):
         self,
         poll: int = 5,
         timeout: Optional[int] = None,
+        raise_on_stopped: bool = False,
         logs: Optional[bool] = False,
     ) -> None:
         """
@@ -33209,11 +33334,12 @@ class TransformJob(Base):
         Parameters:
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
+            raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
             logs: Whether to print logs while waiting.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
+            FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
             WaiterError: Raised when an error occurs while waiting.
 
         """
@@ -33265,6 +33391,13 @@ class TransformJob(Base):
                     logger.info(f"Final Resource Status: [bold]{current_status}")
 
                     if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="TransformJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    if raise_on_stopped and "stopped" in current_status.lower():
                         raise FailedStatusError(
                             resource_type="TransformJob",
                             status=current_status,

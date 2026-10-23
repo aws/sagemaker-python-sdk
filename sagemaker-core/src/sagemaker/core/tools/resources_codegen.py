@@ -71,6 +71,7 @@ from sagemaker.core.tools.templates import (
     CREATE_METHOD_TEMPLATE_WITHOUT_DEFAULTS,
     IMPORT_METHOD_TEMPLATE,
     FAILED_STATUS_ERROR_TEMPLATE,
+    STOPPED_STATUS_ERROR_TEMPLATE,
     GET_NAME_METHOD_TEMPLATE,
     GET_ALL_METHOD_NO_ARGS_TEMPLATE,
     GET_ALL_METHOD_WITH_ARGS_TEMPLATE,
@@ -1882,6 +1883,10 @@ if not isinstance(self.resource_config, Unassigned):
             resource_name=resource_name, reason=failure_reason
         )
         formatted_failed_block = add_indent(formatted_failed_block, 16)
+        formatted_stopped_block = STOPPED_STATUS_ERROR_TEMPLATE.format(
+            resource_name=resource_name, reason=failure_reason
+        )
+        formatted_stopped_block = add_indent(formatted_stopped_block, 16)
 
         logs_arg = ""
         logs_arg_doc = ""
@@ -1904,6 +1909,7 @@ if not isinstance(self.resource_config, Unassigned):
             terminal_resource_states=terminal_resource_states,
             status_key_path=status_key_path,
             failed_error_block=formatted_failed_block,
+            stopped_error_block=formatted_stopped_block,
             resource_name=resource_name,
             logs_arg=logs_arg,
             logs_arg_doc=logs_arg_doc,
