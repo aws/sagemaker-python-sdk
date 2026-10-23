@@ -120,7 +120,35 @@ class BaseTrainer(ABC):
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
     environment: Optional[Dict[str, str]] = None
     training_image: Optional[str] = None
-    latest_training_job: Optional[TrainingJob] = None
+
+    @property
+    def latest_training_job(self) -> Optional[TrainingJob]:
+        """The ``TrainingJob`` created by the most recent ``train()`` call.
+
+        ``None`` until ``train()`` has submitted a job (a ``dry_run`` or a
+        ``PipelineSession`` capture submits nothing). The resource is bound to the
+        trainer's session and region, so ``refresh()``, ``wait()``, ``stop()`` and the
+        ``training_job_name`` / ``training_job_arn`` attributes work without a second
+        lookup. ``show_metrics()`` and ``stream_logs()`` read this same job.
+
+        Assign a ``TrainingJob`` to re-attach a trainer to a job it did not create::
+
+            trainer.latest_training_job = TrainingJob.get("my-job")
+
+        Returns:
+            Optional[TrainingJob]: The latest created training job, or ``None``.
+        """
+        return getattr(self, "_latest_training_job", None)
+
+    @latest_training_job.setter
+    def latest_training_job(self, training_job: Optional[TrainingJob]) -> None:
+        if training_job is not None and not isinstance(training_job, TrainingJob):
+            raise TypeError(
+                "latest_training_job must be a sagemaker.core.resources.TrainingJob or None, "
+                f"got {type(training_job).__name__}. Use TrainingJob.get(<name>) to attach "
+                "an existing job."
+            )
+        self._latest_training_job = training_job
 
     @classmethod
     @_telemetry_emitter(
@@ -186,6 +214,7 @@ class BaseTrainer(ABC):
         self.disable_output_compression = disable_output_compression
         self.notification_rule_arn = None
         self.source_code = None
+        self._latest_training_job: Optional[TrainingJob] = None
 
         # Set up notifications if configured
         if notifications:
@@ -518,17 +547,17 @@ class BaseTrainer(ABC):
             ValueError: If no training job has been run yet, no logs/metrics
                 are found, or MLflow is not configured for OSS models.
         """
-        # Resolve the job reference. Prefer _latest_training_job (CreateTrainingJob),
+        # Resolve the job reference. Prefer latest_training_job (CreateTrainingJob),
         # fall back to _latest_job (generic CreateJob API used by MTRL).
-        resolved_job = getattr(self, "_latest_training_job", None)
+        resolved_job = self.latest_training_job
         if resolved_job is None:
             latest_job = getattr(self, "_latest_job", None)
             if latest_job is None:
                 raise ValueError(
                     "No training job found. Call .train() first, then call .show_metrics() "
-                    "to view training metrics. If training has already completed, set the "
-                    "job name directly via trainer._latest_training_job = '<job-name>' or "
-                    "trainer._latest_job = '<job-name>'."
+                    "to view training metrics. If training has already completed, attach "
+                    "the job with trainer.latest_training_job = TrainingJob.get('<job-name>') "
+                    "or trainer._latest_job = '<job-name>'."
                 )
             # For AgentRFTJob (MTRL), delegate to its own get_training_metrics()
             # which fetches metrics from MLflow via the Job API (not TrainingJob).
@@ -787,17 +816,17 @@ class BaseTrainer(ABC):
         Raises:
             ValueError: If no training job has been run yet.
         """
-        # Resolve the job reference. Prefer _latest_training_job (CreateTrainingJob),
+        # Resolve the job reference. Prefer latest_training_job (CreateTrainingJob),
         # fall back to _latest_job (generic CreateJob API used by MTRL).
-        resolved_job = getattr(self, "_latest_training_job", None)
+        resolved_job = self.latest_training_job
         if resolved_job is None:
             latest_job = getattr(self, "_latest_job", None)
             if latest_job is None:
                 raise ValueError(
                     "No training job found. Call .train(wait=False) first, "
                     "then call .stream_logs() to stream logs in real-time. "
-                    "If training has already completed, set the job name directly via "
-                    "trainer._latest_training_job = '<job-name>' or "
+                    "If training has already completed, attach the job with "
+                    "trainer.latest_training_job = TrainingJob.get('<job-name>') or "
                     "trainer._latest_job = '<job-name>'."
                 )
             # For AgentRFTJob (MTRL), delegate to its own stream_logs which

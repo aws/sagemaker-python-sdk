@@ -434,7 +434,7 @@ Provide an ordered list of candidate instance types and the platform launches th
 
 .. code-block:: python
 
-   training_job = model_trainer._latest_training_job
+   training_job = model_trainer.latest_training_job
    training_job.refresh()
 
    resource_config = training_job.resource_config
