@@ -16,10 +16,16 @@ Before this property the only handle was the private ``_latest_training_job``, s
 that needed the job name or ARN after ``train(wait=False)`` had to read the private
 attribute or page ``ListTrainingJobs`` by name prefix. ``ModelTrainer.train()`` also
 returned ``None``, so the job could not be chained from the call that created it.
+
+``on_submit`` hands the created job to the caller as soon as the service accepts it and
+before any wait, so a long ``train(wait=True)`` can record the job name or ARN without the
+private ``trainer_wait.wait`` import that ``wait=False`` plus a hand-rolled wait needed.
 """
 
 from __future__ import absolute_import
 
+import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -118,7 +124,15 @@ def test_model_trainer_latest_training_job_setter_rejects_a_job_name(model_train
 class _StubTrainer(BaseTrainer):
     """Minimal concrete trainer: BaseTrainer is abstract on ``train``."""
 
-    def train(self, input_data_config=None, wait=True, logs=True, wait_timeout=None, dry_run=False):
+    def train(
+        self,
+        input_data_config=None,
+        wait=True,
+        logs=True,
+        wait_timeout=None,
+        dry_run=False,
+        on_submit=None,
+    ):
         return None
 
 
@@ -213,3 +227,124 @@ def test_serverless_trainers_expose_the_created_job(trainer_cls, module):
     finally:
         for active in patches:
             active.stop()
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_model_trainer_on_submit_sees_the_job_before_the_wait(mock_training_job, model_trainer):
+    created = Mock(spec=TrainingJob)
+    created.training_job_name = "created-job"
+    mock_training_job.create.return_value = created
+    order = []
+    created.wait.side_effect = lambda **_: order.append("wait")
+
+    model_trainer.train(wait=True, logs=False, on_submit=lambda job: order.append(job))
+
+    assert order == [created, "wait"]
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_model_trainer_dry_run_skips_on_submit(mock_training_job, model_trainer):
+    callback = Mock()
+
+    model_trainer.train(wait=False, dry_run=True, on_submit=callback)
+
+    callback.assert_not_called()
+    mock_training_job.create.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "trainer_cls, module",
+    [
+        (SFTTrainer, "sagemaker.train.sft_trainer"),
+        (DPOTrainer, "sagemaker.train.dpo_trainer"),
+    ],
+)
+def test_serverless_trainers_call_on_submit_before_the_wait(trainer_cls, module):
+    options = Mock()
+    options.to_dict.return_value = {"learning_rate": "0.001"}
+    created = Mock(spec=TrainingJob)
+    created.training_job_name = "test-job-name"
+    order = []
+    patches = _serverless_trainer_patches(module) + [
+        patch(
+            f"{module}._get_fine_tuning_options_and_model_arn", return_value=(options, "arn", False)
+        ),
+        patch("sagemaker.core.resources.TrainingJob.create", return_value=created),
+        patch(
+            "sagemaker.train.common_utils.trainer_wait.wait",
+            side_effect=lambda job, **_: order.append("wait"),
+        ),
+    ]
+    for active in patches:
+        active.start()
+    try:
+        trainer = trainer_cls(
+            model="test-model",
+            training_type=TrainingType.LORA,
+            model_package_group="test-group",
+            training_dataset="s3://bucket/train",
+        )
+
+        returned = trainer.train(wait=True, on_submit=lambda job: order.append(job))
+
+        assert order == [created, "wait"]
+        assert returned is created
+        assert trainer.latest_training_job is created
+    finally:
+        for active in patches:
+            active.stop()
+
+
+def _hyperpod_sft_trainer():
+    trainer = SFTTrainer.__new__(SFTTrainer)
+    trainer.sagemaker_session = MagicMock()
+    trainer.compute = SimpleNamespace(
+        cluster_name="my-cluster",
+        namespace="kubeflow",
+        instance_type="ml.p5.48xlarge",
+        node_count=2,
+    )
+    trainer._model_name = "amazon.nova-lite-v2"
+    trainer._customization_technique = "SFT"
+    trainer.training_type = "LORA"
+    trainer.training_image = "123.dkr.ecr.us-west-2.amazonaws.com/img:latest"
+    trainer.base_job_name = None
+    trainer.training_dataset = None
+    trainer.validation_dataset = None
+    trainer.s3_output_path = "s3://bucket/out/"
+    trainer.hyperparameters = None
+    trainer._recipe_path = "recipe-name"
+    trainer._overrides = None
+    return trainer
+
+
+@patch("sagemaker.train.base_trainer.subprocess")
+@patch("sagemaker.train.base_trainer.TrainDefaults.verify_hyperpod_caller_permissions")
+@patch("sagemaker.train.base_trainer.validate_hyperpod_compute")
+@patch("sagemaker.train.base_trainer.TrainDefaults.get_sagemaker_session")
+@patch("sagemaker.train.base_trainer.get_hyperpod_recipe_path", return_value="recipes/test")
+@patch("sagemaker.train.base_trainer.flatten_resolved_recipe", return_value={})
+def test_hyperpod_train_calls_on_submit_with_the_submitted_job(
+    mock_flatten,
+    mock_get_recipe_path,
+    mock_get_session,
+    mock_validate,
+    mock_verify,
+    mock_subprocess,
+):
+    mock_get_session.return_value = MagicMock()
+    mock_subprocess.run.return_value = SimpleNamespace(stdout="NAME: my-job-123\n", stderr="")
+    trainer = _hyperpod_sft_trainer()
+    submitted = []
+
+    with (
+        patch("sagemaker.train.common_utils.finetune_utils.get_training_image", return_value=None),
+        patch.object(trainer, "get_resolved_recipe", return_value={"training_config": {}}),
+    ):
+        job_name = trainer._train_hyperpod(wait=False, on_submit=submitted.append)
+
+    assert job_name == "my-job-123"
+    assert [job.training_job_name for job in submitted] == ["my-job-123"]
+    assert trainer.latest_training_job is submitted[0]
+    start_cmd = mock_subprocess.run.call_args_list[-1].args[0]
+    assert json.loads(start_cmd[start_cmd.index("--override-parameters") + 1])

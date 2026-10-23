@@ -21,7 +21,7 @@ import re
 import shlex
 import shutil
 from tempfile import TemporaryDirectory
-from typing import Optional, List, Union, Dict, Any, ClassVar
+from typing import Optional, List, Union, Dict, Any, Callable, ClassVar
 import yaml
 
 from botocore.exceptions import ClientError, NoCredentialsError, NoRegionError
@@ -944,6 +944,7 @@ class ModelTrainer(BaseModel):
         wait: Optional[bool] = True,
         logs: Optional[bool] = True,
         dry_run: bool = False,
+        on_submit: Optional[Callable[[resources.TrainingJob], None]] = None,
     ) -> Optional[resources.TrainingJob]:
         """Train a model using AWS SageMaker.
 
@@ -963,6 +964,10 @@ class ModelTrainer(BaseModel):
                 If True, runs all validation (configuration, input resolution, hyperparameters)
                 without submitting a job. Returns None on success, raises on validation failure.
                 Defaults to False.
+            on_submit (Optional[Callable[[TrainingJob], None]]):
+                Called once with the created ``TrainingJob`` as soon as the service accepts
+                it, before any wait. Use it to record the job name or ARN of a long run. Not
+                called for a ``dry_run``, a ``PipelineSession`` capture, or local mode.
 
         Returns:
             Optional[TrainingJob]: The created ``sagemaker.core.resources.TrainingJob`` for a
@@ -1011,6 +1016,8 @@ class ModelTrainer(BaseModel):
                 )
                 raise
             self._latest_training_job = training_job
+            if on_submit is not None:
+                on_submit(training_job)
 
             if wait:
                 training_job.wait(logs=logs)
