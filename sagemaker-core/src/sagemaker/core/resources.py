@@ -45,6 +45,7 @@ from sagemaker.core.utils.exceptions import *
 from typing import ClassVar
 from sagemaker.core.serializers.base import BaseSerializer
 from sagemaker.core.deserializers.base import BaseDeserializer
+from sagemaker.core.endpoint import EndpointMixin
 from sagemaker.core.hub_content import HubContentMixin
 from sagemaker.core.model_package_group import ModelPackageGroupMixin
 
@@ -10228,7 +10229,7 @@ class EdgePackagingJob(Base):
         )
 
 
-class Endpoint(Base):
+class Endpoint(EndpointMixin, Base):
     """
     Class representing resource Endpoint
 

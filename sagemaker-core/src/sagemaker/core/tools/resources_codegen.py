@@ -122,6 +122,7 @@ LIST_SUMMARY_EXTRA_ATTRIBUTES = {
 # generated API methods on the one public class, and the hand-written code stays in its
 # own module where it can be tested without regenerating resources.py.
 RESOURCE_MIXINS = {
+    "Endpoint": ("sagemaker.core.endpoint", "EndpointMixin"),
     "HubContent": ("sagemaker.core.hub_content", "HubContentMixin"),
     "ModelPackageGroup": ("sagemaker.core.model_package_group", "ModelPackageGroupMixin"),
 }
