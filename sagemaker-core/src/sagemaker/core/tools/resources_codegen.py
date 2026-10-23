@@ -122,6 +122,7 @@ LIST_SUMMARY_EXTRA_ATTRIBUTES = {
 # own module where it can be tested without regenerating resources.py.
 RESOURCE_MIXINS = {
     "HubContent": ("sagemaker.core.hub_content", "HubContentMixin"),
+    "ModelPackageGroup": ("sagemaker.core.model_package_group", "ModelPackageGroupMixin"),
 }
 
 # Some List APIs take an input member that the resource's Describe input requires but the

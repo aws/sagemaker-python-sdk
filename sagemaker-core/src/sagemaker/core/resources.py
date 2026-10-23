@@ -46,6 +46,7 @@ from typing import ClassVar
 from sagemaker.core.serializers.base import BaseSerializer
 from sagemaker.core.deserializers.base import BaseDeserializer
 from sagemaker.core.hub_content import HubContentMixin
+from sagemaker.core.model_package_group import ModelPackageGroupMixin
 
 
 logger = get_textual_rich_logger(__name__)
@@ -23470,7 +23471,7 @@ class ModelPackage(Base):
         return BatchDescribeModelPackageOutput(**transformed_response)
 
 
-class ModelPackageGroup(Base):
+class ModelPackageGroup(ModelPackageGroupMixin, Base):
     """
     Class representing resource ModelPackageGroup
 
