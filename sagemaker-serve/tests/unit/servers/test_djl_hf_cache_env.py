@@ -1,10 +1,10 @@
 """Tests for DJL builder HF cache environment variables and HF_MODEL_ID handling.
 
 Verifies that _build_for_djl() correctly:
-- Sets HF_HOME and HUGGINGFACE_HUB_CACHE to /tmp for writable cache
+- Sets HF_HOME, HUGGINGFACE_HUB_CACHE and TRANSFORMERS_CACHE to /tmp for writable cache
 - Preserves user-provided HF_MODEL_ID values (uses setdefault)
 - Sets HF_MODEL_ID from model param when not provided by user
-- Preserves user-provided HF_HOME and HUGGINGFACE_HUB_CACHE values
+- Preserves user-provided HF cache directory values
 """
 
 import pytest
@@ -103,12 +103,13 @@ class TestDjlHfCacheAndModelId:
             p.stop()
 
     def test_sets_hf_cache_env_vars_to_tmp(self, tmp_path):
-        """HF_HOME and HUGGINGFACE_HUB_CACHE should be /tmp in endpoint mode."""
+        """The HF cache env vars should all be /tmp in endpoint mode."""
         builder = _create_djl_builder(tmp_path)
         builder._build_for_djl()
 
         assert builder.env_vars["HF_HOME"] == "/tmp"
         assert builder.env_vars["HUGGINGFACE_HUB_CACHE"] == "/tmp"
+        assert builder.env_vars["TRANSFORMERS_CACHE"] == "/tmp"
 
     def test_preserves_user_provided_hf_model_id(self, tmp_path):
         """User-provided HF_MODEL_ID must NOT be overridden by model param."""
@@ -125,18 +126,20 @@ class TestDjlHfCacheAndModelId:
         assert builder.env_vars["HF_MODEL_ID"] == "test-org/test-model"
 
     def test_preserves_user_provided_hf_cache_dirs(self, tmp_path):
-        """User-provided HF_HOME and HUGGINGFACE_HUB_CACHE should be preserved."""
+        """User-provided HF cache dirs should be preserved."""
         builder = _create_djl_builder(
             tmp_path,
             env_vars={
                 "HF_HOME": "/my/custom/cache",
                 "HUGGINGFACE_HUB_CACHE": "/my/custom/hub",
+                "TRANSFORMERS_CACHE": "/my/custom/transformers",
             },
         )
         builder._build_for_djl()
 
         assert builder.env_vars["HF_HOME"] == "/my/custom/cache"
         assert builder.env_vars["HUGGINGFACE_HUB_CACHE"] == "/my/custom/hub"
+        assert builder.env_vars["TRANSFORMERS_CACHE"] == "/my/custom/transformers"
 
     def test_local_mode_sets_hf_hub_offline(self, tmp_path):
         """HF_HUB_OFFLINE=1 should be set in LOCAL_CONTAINER mode."""
@@ -152,7 +155,7 @@ def test_endpoint_build_hf_cache_is_tmp_with_real_prepare_for_mode(tmp_path):
     """The DJL server defaults merged by _prepare_for_mode must not win over /tmp.
 
     The tests above mock _prepare_for_mode; here it runs for real (only the S3 upload is
-    mocked), since it merges the DJL server's HF_HOME=/opt/ml/model/ defaults into env_vars.
+    mocked), since it merges the DJL server's /opt/ml/model/ defaults into env_vars.
     """
     builder = ModelBuilder(
         model="test-org/test-model",
@@ -202,3 +205,4 @@ def test_endpoint_build_hf_cache_is_tmp_with_real_prepare_for_mode(tmp_path):
 
     assert envs_at_create[-1]["HF_HOME"] == "/tmp"
     assert envs_at_create[-1]["HUGGINGFACE_HUB_CACHE"] == "/tmp"
+    assert envs_at_create[-1]["TRANSFORMERS_CACHE"] == "/tmp"

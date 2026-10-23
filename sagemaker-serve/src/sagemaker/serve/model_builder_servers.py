@@ -548,8 +548,12 @@ class _ModelBuilderServers(object):
         # read-only when source_code artifacts are mounted there. This must happen before
         # _prepare_for_mode, which merges the DJL server defaults (HF_HOME=/opt/ml/model/)
         # into env_vars with setdefault.
+        # TRANSFORMERS_CACHE is included because transformers uses it as the default
+        # explicit cache_dir for from_pretrained, which overrides HF_HUB_CACHE: leaving it
+        # at the DJL default of /opt/ml/model/ keeps the read-only writes going.
         self.env_vars.setdefault("HF_HOME", "/tmp")
         self.env_vars.setdefault("HUGGINGFACE_HUB_CACHE", "/tmp")
+        self.env_vars.setdefault("TRANSFORMERS_CACHE", "/tmp")
 
         if not self._optimizing:
             if self.mode in LOCAL_MODES:
