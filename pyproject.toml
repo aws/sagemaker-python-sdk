@@ -45,6 +45,15 @@ serve = ["sagemaker-serve"]
 mlops = ["sagemaker-mlops"]
 all = ["sagemaker-train", "sagemaker-serve", "sagemaker-mlops"]
 
+# sagemaker-serve's framework backends are optional, so pass its extras through
+# to let callers write 'pip install sagemaker[torch]' instead of having to name
+# the subpackage. 'all' is deliberately left as the subpackage list: installing
+# every backend is 'pip install sagemaker-serve[all]'.
+torch = ["sagemaker-serve[torch]"]
+onnx = ["sagemaker-serve[onnx]"]
+triton = ["sagemaker-serve[triton]"]
+mlflow = ["sagemaker-serve[mlflow]"]
+
 [project.urls]
 Homepage = "https://github.com/aws/sagemaker-python-sdk"
 
