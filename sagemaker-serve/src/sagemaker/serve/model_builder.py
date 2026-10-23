@@ -1944,7 +1944,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         code_path = Path(self.model_path).joinpath("code")
 
         if self.inference_spec:
-            save_pkl(code_path, (self.inference_spec, self.schema_builder))
+            if isinstance(self.inference_spec, (CustomOrchestrator, AsyncCustomOrchestrator)):
+                # The SMD orchestrator entrypoint discards the second element of the
+                # tuple, and a SchemaBuilder pickles with references to sagemaker.core
+                # modules that an older sagemaker in the serving container cannot
+                # import. Leave it out so serve.pkl stays loadable there.
+                save_pkl(code_path, (self.inference_spec, None))
+            else:
+                save_pkl(code_path, (self.inference_spec, self.schema_builder))
         elif self.model:
             if isinstance(self.model, str):
                 self.framework = None
