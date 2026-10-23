@@ -35,6 +35,13 @@ _EVALUATOR_JUDGE_DOCS_URL = (
     "evaluation-judge.html#evaluation-judge-supported"
 )
 
+# Limits of the Bedrock LLM-as-Judge custom-metric format:
+# https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation-custom-metrics-prompt-formats.html
+CUSTOM_METRICS_MAX_COUNT = 10
+CUSTOM_METRIC_INSTRUCTIONS_MAX_CHARS = 5000
+CUSTOM_METRIC_DEFINITION_MAX_CHARS = 100
+CUSTOM_METRIC_PLACEHOLDERS = ("{{prompt}}", "{{prediction}}")
+
 # S3 key of the service-maintained supported-judge-models list, mirrored per region
 # under the JumpStart cache bucket. This file is the source of truth for which
 # Bedrock models are supported as LLM-as-Judge evaluators (kept current by the
@@ -134,6 +141,82 @@ def _resolve_bedrock_model_id(base_model_name: str, region: str) -> Optional[str
     return f"{prefix}.{base_id}"
 
 
+def _rating_value_type(value: Any) -> Optional[str]:
+    """Return ``float`` or ``string`` for a rating value that sets exactly one of the two keys."""
+    if not isinstance(value, dict):
+        return None
+    has_float = value.get("floatValue") is not None
+    has_string = value.get("stringValue") is not None
+    if has_float == has_string:
+        return None
+    return "float" if has_float else "string"
+
+
+def _validate_rating_scale(prefix: str, rating_scale: Any) -> List[str]:
+    """Return the violations of one ``ratingScale`` list."""
+    if not isinstance(rating_scale, list):
+        return [f"{prefix}: ratingScale must be a list."]
+    messages: List[str] = []
+    value_types = set()
+    for index, entry in enumerate(rating_scale):
+        entry_prefix = f"{prefix}: ratingScale[{index}]"
+        if not isinstance(entry, dict):
+            messages.append(f"{entry_prefix} must be an object.")
+            continue
+        definition = entry.get("definition")
+        if not isinstance(definition, str):
+            messages.append(f"{entry_prefix}.definition must be a string.")
+        elif len(definition) > CUSTOM_METRIC_DEFINITION_MAX_CHARS:
+            messages.append(
+                f"{entry_prefix}.definition is {len(definition)} characters, "
+                f"the limit is {CUSTOM_METRIC_DEFINITION_MAX_CHARS}."
+            )
+        value_type = _rating_value_type(entry.get("value"))
+        if value_type is None:
+            messages.append(
+                f"{entry_prefix}.value must set exactly one of floatValue or stringValue."
+            )
+        else:
+            value_types.add(value_type)
+    if len(value_types) > 1:
+        messages.append(f"{prefix}: ratingScale mixes floatValue and stringValue. Use one type.")
+    return messages
+
+
+def _validate_instructions(prefix: str, instructions: Any) -> List[str]:
+    """Return the violations of one ``instructions`` string."""
+    if not isinstance(instructions, str):
+        return [f"{prefix}: instructions must be a string."]
+    messages: List[str] = []
+    if len(instructions) > CUSTOM_METRIC_INSTRUCTIONS_MAX_CHARS:
+        messages.append(
+            f"{prefix}: instructions is {len(instructions)} characters, "
+            f"the limit is {CUSTOM_METRIC_INSTRUCTIONS_MAX_CHARS}."
+        )
+    if not any(placeholder in instructions for placeholder in CUSTOM_METRIC_PLACEHOLDERS):
+        messages.append(
+            f"{prefix}: instructions must contain {' or '.join(CUSTOM_METRIC_PLACEHOLDERS)}."
+        )
+    return messages
+
+
+def _validate_custom_metric(prefix: str, item: Any) -> List[str]:
+    """Return the violations of one ``{"customMetricDefinition": {...}}`` item."""
+    if not isinstance(item, dict) or "customMetricDefinition" not in item:
+        return [f"{prefix} must be an object with a customMetricDefinition key."]
+    definition = item["customMetricDefinition"]
+    if not isinstance(definition, dict):
+        return [f"{prefix}: customMetricDefinition must be an object."]
+    messages: List[str] = []
+    if not isinstance(definition.get("name"), str):
+        messages.append(f"{prefix}: name must be a string.")
+    messages.extend(_validate_instructions(prefix, definition.get("instructions")))
+    rating_scale = definition.get("ratingScale")
+    if rating_scale is not None:
+        messages.extend(_validate_rating_scale(prefix, rating_scale))
+    return messages
+
+
 class LLMAsJudgeEvaluator(BaseEvaluator):
     r"""LLM-as-judge evaluation job.
 
@@ -160,7 +243,8 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             removed if present. Examples: ['Correctness', 'Faithfulness'] or
             ['Builtin.Correctness', 'Builtin.Faithfulness']. Optional.
         custom_metrics (Optional[str]): JSON string containing array of custom metric definitions.
-            Optional. For format details, see:
+            Optional. ``validate_custom_metrics`` checks the format before the job starts.
+            For format details, see:
             https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation-custom-metrics-prompt-formats.html
         mlflow_resource_arn (Optional[str]): ARN of the MLflow tracking server for experiment tracking.
             Optional. If not provided, the system will attempt to resolve it using the default
@@ -456,6 +540,41 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
 
         return processed_metrics
 
+    @staticmethod
+    def validate_custom_metrics(custom_metrics: Any) -> List[str]:
+        """Return every violation of the Bedrock LLM-as-Judge custom-metric format.
+
+        The rules: an array of 1 to 10 metrics, each an object with a ``customMetricDefinition``
+        that has a string ``name`` and string ``instructions`` of at most 5000 characters that
+        contain ``{{prompt}}`` or ``{{prediction}}``. An optional ``ratingScale`` is a list of
+        entries with a ``definition`` of at most 100 characters and a ``value`` that sets exactly
+        one of ``floatValue`` or ``stringValue``, with one value type across the scale.
+
+        Args:
+            custom_metrics: The metric definitions as a list, or as the JSON string of that list.
+
+        Returns:
+            List[str]: One message per violation. An empty list means the metrics are valid.
+        """
+        if isinstance(custom_metrics, str):
+            try:
+                custom_metrics = json.loads(custom_metrics)
+            except json.JSONDecodeError as e:
+                return [f"Invalid JSON: {e}"]
+        if not isinstance(custom_metrics, list):
+            return ["custom_metrics must be a JSON array of metric definitions."]
+        if len(custom_metrics) == 0:
+            return ["custom_metrics is empty. Define at least one metric."]
+        if len(custom_metrics) > CUSTOM_METRICS_MAX_COUNT:
+            return [
+                f"custom_metrics has {len(custom_metrics)} metrics, "
+                f"the maximum is {CUSTOM_METRICS_MAX_COUNT}."
+            ]
+        messages: List[str] = []
+        for index, item in enumerate(custom_metrics):
+            messages.extend(_validate_custom_metric(f"Metric [{index}]", item))
+        return messages
+
     def _validate_custom_metrics_json(self, custom_metrics_json: Optional[str]) -> Optional[str]:
         """Validate custom metrics JSON string if provided.
 
@@ -466,16 +585,20 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             Optional[str]: Validated JSON string or None
 
         Raises:
-            ValueError: If JSON is invalid
+            ValueError: If the JSON is invalid or the metrics violate the custom-metric format
         """
         if not custom_metrics_json:
             return None
 
         try:
-            json.loads(custom_metrics_json)  # Validate JSON
-            return custom_metrics_json
+            parsed_metrics = json.loads(custom_metrics_json)
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in custom_metrics: {e}")
+
+        violations = self.validate_custom_metrics(parsed_metrics)
+        if violations:
+            raise ValueError("Invalid custom_metrics:\n  - " + "\n  - ".join(violations))
+        return custom_metrics_json
 
     def _resolve_llmaj_proxy_model_arn(self, region: str) -> str:
         """Resolve a non-Nova model ARN for the LLMAJEvaluation judging step.
