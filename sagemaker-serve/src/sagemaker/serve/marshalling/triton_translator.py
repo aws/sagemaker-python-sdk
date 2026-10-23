@@ -14,7 +14,13 @@ class TorchTensorTranslator:
     """Translate torch.Tensor from and to numpy.ndarray"""
 
     def __init__(self) -> None:
-        import torch
+        try:
+            import torch
+        except ImportError as e:
+            raise ImportError(
+                "Translating to torch.Tensor requires the torch module but it was not found "
+                "in your environment. Install it with 'pip install sagemaker-serve[torch]'."
+            ) from e
 
         self.convert_from_numpy = torch.from_numpy  # pylint: disable=E1101
         self.CONTENT_TYPE = "tensor/pt"
