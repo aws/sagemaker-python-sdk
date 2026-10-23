@@ -37,6 +37,8 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.train import ModelTrainer
 from sagemaker.train.configs import Compute
 
+from ..capacity import wait_for_training_job_with_capacity_timeout
+
 logger = logging.getLogger(__name__)
 
 # A trainable classical-ML model keeps these tests fast/cheap on CPU.
@@ -50,6 +52,13 @@ TRAINABLE_MODEL_ID = "catboost-regression-model"
 # SupportedTrainingInstanceTypes and raises if it is not in the list, so
 # resolving the model's own default is safer than hardcoding one here.
 GATED_TRAINABLE_MODEL_ID = "meta-textgeneration-llama-3-2-1b"
+# In CI the gated job has acquired its default GPU (ml.g5.2xlarge) after ~17 min
+# when capacity exists; a job still waiting after an hour is treated as a
+# capacity shortage. The total bound covers that wait plus the job's own
+# MaxRuntimeInSeconds (3600) and instance setup, so the test can never outlive
+# the job and leave it queued behind a killed build.
+GATED_TRAINING_PENDING_TIMEOUT_SECONDS = 3600
+GATED_TRAINING_MAX_WAIT_SECONDS = 2 * 3600 + 900
 HUB_NAME_PREFIX = "sdk-integ-train-hub"
 ALIASED_REFERENCE_NAME = "sdk-integ-aliased-catboost"
 PRIVATE_MODEL_NAME = "sdk-integ-private-catboost"
@@ -361,7 +370,24 @@ def test_jumpstart_train_from_gated_reference(private_hub, sagemaker_session):
     # Train on the SDK-resolved channels (no explicit training channel), so the
     # hub-aware, gated channel construction under test is actually exercised
     # end-to-end against a real training job.
-    model_trainer.train()
+    #
+    # The gated model's default GPU instance can sit in "waiting for capacity"
+    # indefinitely, and train(wait=True) has no bound on that wait, so submit
+    # without waiting and poll with a bounded capacity wait. On a capacity
+    # shortage the job is stopped (releasing the instance quota) and the test is
+    # skipped; the channel assertions above have already run.
+    model_trainer.train(wait=False)
+    training_job = model_trainer._latest_training_job
+    status = wait_for_training_job_with_capacity_timeout(
+        training_job,
+        max_wait_time=GATED_TRAINING_MAX_WAIT_SECONDS,
+        pending_timeout=GATED_TRAINING_PENDING_TIMEOUT_SECONDS,
+        capacity_label=model_trainer.compute.instance_type,
+    )
+    assert status == "Completed", (
+        f"Training job {training_job.training_job_name} ended with status {status}: "
+        f"{training_job.failure_reason}"
+    )
 
 
 def test_jumpstart_train_from_aliased_reference(private_hub, sagemaker_session):

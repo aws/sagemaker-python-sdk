@@ -158,6 +158,109 @@ class TestModelRegistry:
             "ModelCardStatus": "Approved",
         }
 
+    def test_get_model_package_args_with_core_shape_model_metrics(self):
+        """Core shapes.ModelMetrics is serialized with the core serializer.
+
+        The public ModelBuilder.register() signature declares model_metrics as
+        sagemaker.core.shapes.ModelMetrics, which has no _to_request_dict().
+        """
+        from sagemaker.core.shapes import MetricsSource, ModelMetrics, ModelQuality
+
+        model_metrics = ModelMetrics(
+            model_quality=ModelQuality(
+                statistics=MetricsSource(
+                    content_type="application/json",
+                    s3_uri="s3://bucket/evaluation.json",
+                )
+            )
+        )
+
+        args = get_model_package_args(
+            image_uri="test-image:latest",
+            model_metrics=model_metrics,
+        )
+
+        assert args["model_metrics"] == {
+            "ModelQuality": {
+                "Statistics": {
+                    "ContentType": "application/json",
+                    "S3Uri": "s3://bucket/evaluation.json",
+                }
+            }
+        }
+
+    def test_get_model_package_args_with_compatibility_model_metrics(self):
+        """The older compatibility class keeps using its own _to_request_dict()."""
+        from sagemaker.core.model_metrics import MetricsSource, ModelMetrics
+
+        model_metrics = ModelMetrics(
+            model_statistics=MetricsSource(
+                content_type="application/json",
+                s3_uri="s3://bucket/evaluation.json",
+            )
+        )
+
+        args = get_model_package_args(
+            image_uri="test-image:latest",
+            model_metrics=model_metrics,
+        )
+
+        assert args["model_metrics"]["ModelQuality"] == {
+            "Statistics": {
+                "ContentType": "application/json",
+                "S3Uri": "s3://bucket/evaluation.json",
+            }
+        }
+
+    def test_get_model_package_args_with_core_shape_drift_check_baselines(self):
+        """Core shapes.DriftCheckBaselines is serialized with the core serializer."""
+        from sagemaker.core.shapes import (
+            DriftCheckBaselines,
+            DriftCheckModelQuality,
+            MetricsSource,
+        )
+
+        drift_check_baselines = DriftCheckBaselines(
+            model_quality=DriftCheckModelQuality(
+                statistics=MetricsSource(
+                    content_type="application/json",
+                    s3_uri="s3://bucket/statistics.json",
+                )
+            )
+        )
+
+        args = get_model_package_args(
+            image_uri="test-image:latest",
+            drift_check_baselines=drift_check_baselines,
+        )
+
+        assert args["drift_check_baselines"] == {
+            "ModelQuality": {
+                "Statistics": {
+                    "ContentType": "application/json",
+                    "S3Uri": "s3://bucket/statistics.json",
+                }
+            }
+        }
+
+    def test_get_model_package_args_with_dict_model_metrics(self):
+        """A dict already in request form is passed through unchanged."""
+        model_metrics = {
+            "ModelQuality": {
+                "Statistics": {
+                    "ContentType": "application/json",
+                    "S3Uri": "s3://bucket/evaluation.json",
+                }
+            }
+        }
+
+        args = get_model_package_args(
+            image_uri="test-image:latest",
+            model_metrics=model_metrics,
+        )
+
+        assert args["model_metrics"] == model_metrics
+
     def test_get_create_model_package_request_minimal(self):
         """Test get_create_model_package_request with minimal parameters"""
         request = get_create_model_package_request(

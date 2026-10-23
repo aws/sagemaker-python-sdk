@@ -1,5 +1,3 @@
-"""JSON schema definition for the SageMaker Python SDK configuration file."""
-
 SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -501,7 +499,10 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 },
                                 "MlflowApp": {
                                     "type": "object",
-                                    "properties": {"role_arn": {"type": "string"}},
+                                    "properties": {
+                                        "role_arn": {"type": "string"},
+                                        "kms_key_id": {"type": "string"},
+                                    },
                                 },
                                 "MlflowTrackingServer": {
                                     "type": "object",
@@ -871,6 +872,27 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                             "s3_output_path": {"type": "string"}
                                         },
                                         "profiler_config": {"s3_output_path": {"type": "string"}},
+                                    },
+                                },
+                                "TrainingSession": {
+                                    "type": "object",
+                                    "properties": {
+                                        "training_session_detail": {
+                                            "vpc_config": {
+                                                "security_group_ids": {
+                                                    "type": "array",
+                                                    "items": {"type": "string"},
+                                                },
+                                                "subnets": {
+                                                    "type": "array",
+                                                    "items": {"type": "string"},
+                                                },
+                                            },
+                                            "role_arn": {"type": "string"},
+                                            "output_config": {
+                                                "s3_location": {"kms_key_arn": {"type": "string"}}
+                                            },
+                                        }
                                     },
                                 },
                                 "TransformJob": {

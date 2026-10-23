@@ -30,6 +30,7 @@ Example:
 from __future__ import absolute_import, annotations
 
 # Standard library imports
+from collections.abc import Mapping
 from enum import Enum
 from typing import Dict, Set, Tuple
 
@@ -122,17 +123,49 @@ class Framework(Enum):
 # Framework Serialization Mapping
 # ========================================
 
-DEFAULT_SERIALIZERS_BY_FRAMEWORK: Dict[Framework, Tuple] = {
-    Framework.XGBOOST: (LibSVMSerializer(), CSVDeserializer()),
-    Framework.LDA: (RecordSerializer(), RecordDeserializer()),
-    Framework.PYTORCH: (TorchTensorSerializer(), JSONDeserializer()),
-    Framework.TENSORFLOW: (NumpySerializer(), JSONDeserializer()),
-    Framework.MXNET: (RecordSerializer(), JSONDeserializer()),
-    Framework.CHAINER: (NumpySerializer(), JSONDeserializer()),
-    Framework.SKLEARN: (NumpySerializer(), NumpyDeserializer()),
-    Framework.HUGGINGFACE: (JSONSerializer(), JSONDeserializer()),
-    Framework.DJL: (JSONSerializer(), JSONDeserializer()),
-    Framework.SPARKML: (NumpySerializer(), JSONDeserializer()),
-    Framework.NTM: (RecordSerializer(), JSONDeserializer()),
-    Framework.SMD: (JSONSerializer(), JSONDeserializer()),
-}
+
+class _LazySerializerRegistry(Mapping):
+    """Framework -> (serializer, deserializer), instantiated on first lookup.
+
+    ``TorchTensorSerializer.__init__`` imports torch, which is an optional
+    backend (``sagemaker-serve[torch]``). Instantiating every pair at import
+    time therefore made ``import sagemaker.serve`` fail without torch
+    installed, so the pairs are built on access and cached (#6502).
+    """
+
+    def __init__(self, factories: Dict[Framework, Tuple]):
+        self._factories = factories
+        self._instances: Dict[Framework, Tuple] = {}
+
+    def __getitem__(self, framework: Framework) -> Tuple:
+        """Return the (serializer, deserializer) pair, building it on first use."""
+        if framework not in self._instances:
+            serializer_cls, deserializer_cls = self._factories[framework]
+            self._instances[framework] = (serializer_cls(), deserializer_cls())
+        return self._instances[framework]
+
+    def __iter__(self):
+        """Iterate over the frameworks that have a default pair."""
+        return iter(self._factories)
+
+    def __len__(self) -> int:
+        """Return how many frameworks have a default pair."""
+        return len(self._factories)
+
+
+DEFAULT_SERIALIZERS_BY_FRAMEWORK: Mapping[Framework, Tuple] = _LazySerializerRegistry(
+    {
+        Framework.XGBOOST: (LibSVMSerializer, CSVDeserializer),
+        Framework.LDA: (RecordSerializer, RecordDeserializer),
+        Framework.PYTORCH: (TorchTensorSerializer, JSONDeserializer),
+        Framework.TENSORFLOW: (NumpySerializer, JSONDeserializer),
+        Framework.MXNET: (RecordSerializer, JSONDeserializer),
+        Framework.CHAINER: (NumpySerializer, JSONDeserializer),
+        Framework.SKLEARN: (NumpySerializer, NumpyDeserializer),
+        Framework.HUGGINGFACE: (JSONSerializer, JSONDeserializer),
+        Framework.DJL: (JSONSerializer, JSONDeserializer),
+        Framework.SPARKML: (NumpySerializer, JSONDeserializer),
+        Framework.NTM: (RecordSerializer, JSONDeserializer),
+        Framework.SMD: (JSONSerializer, JSONDeserializer),
+    }
+)

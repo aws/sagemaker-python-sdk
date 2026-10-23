@@ -391,7 +391,10 @@ def test_passing_different_pipeline_variables_to_function(
             step_status="Succeeded",
             step_result_type=tuple,
             step_result_value=(3, True, 2.0, "string", "Completed", 3),
-            wait_duration=600,
+            # 3 chained jobs (ScriptProcessor ProcessingStep + 2 function steps) need
+            # more than 10 min to finish once instance provisioning is included; 600s
+            # was too low and left func_2 still "Executing" at the deadline.
+            wait_duration=1500,
         )
 
     finally:

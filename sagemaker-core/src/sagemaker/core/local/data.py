@@ -357,15 +357,19 @@ class MultiRecordStrategy(BatchStrategy):
         Returns:
             generator of records
         """
-        buffer = ""
+        buffer = None
         for element in self.splitter.split(file):
+            if buffer is None:
+                # Match the buffer type to the record type so binary inputs
+                # concatenate correctly instead of raising a TypeError.
+                buffer = b"" if isinstance(element, bytes) else ""
             if _payload_size_within_limit(buffer + element, size):
                 buffer += element
             else:
                 tmp = buffer
                 buffer = element
                 yield tmp
-        if _validate_payload_size(buffer, size):
+        if buffer is not None and _validate_payload_size(buffer, size):
             yield buffer
 
 
