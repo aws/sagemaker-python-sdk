@@ -22,6 +22,7 @@ from __future__ import absolute_import
 import ast
 import asyncio
 import hashlib
+import importlib
 import importlib.util
 import json
 import os
@@ -33,11 +34,10 @@ from unittest.mock import patch
 
 import cloudpickle
 
-from sagemaker.serve.spec.inference_base import CustomOrchestrator
+from sagemaker.serve.spec.inference_base import AsyncCustomOrchestrator, CustomOrchestrator
 
-INFERENCE_SOURCE_PATH = Path(
-    importlib.util.find_spec("sagemaker.serve.model_server.smd.custom_execution_inference").origin
-)
+MODULE_NAME = "sagemaker.serve.model_server.smd.custom_execution_inference"
+INFERENCE_SOURCE_PATH = Path(importlib.util.find_spec(MODULE_NAME).origin)
 
 
 class EchoOrchestrator(CustomOrchestrator):
@@ -45,6 +45,13 @@ class EchoOrchestrator(CustomOrchestrator):
 
     def handle(self, data, context=None):
         return {"echo": data}
+
+
+class AsyncEchoOrchestrator(AsyncCustomOrchestrator):
+    """Minimal async orchestrator, to exercise the awaited handler branch."""
+
+    async def handle(self, data, context=None):
+        return {"async_echo": data}
 
 
 class _Request:
@@ -62,15 +69,16 @@ def _write_artifacts(code_dir: Path, obj=None):
     )
 
 
-def _exec_inference(code_dir: Path) -> dict:
-    """Exec the entrypoint the way the container does and return its namespace."""
-    namespace = {"__name__": "inference", "__file__": str(INFERENCE_SOURCE_PATH)}
+def _load_inference(code_dir: Path):
+    """Import the entrypoint against code_dir, running its import-time preflight.
+
+    The model server imports this file as ``inference``; importing the module for real
+    (rather than exec-ing its source) keeps the import-time work attributable to the
+    module under test.
+    """
     with patch.dict(os.environ, {"SAGEMAKER_INFERENCE_CODE_DIRECTORY": str(code_dir)}):
-        exec(  # noqa: S102 - mirrors how the model server imports inference.py
-            compile(INFERENCE_SOURCE_PATH.read_text(), str(INFERENCE_SOURCE_PATH), "exec"),
-            namespace,
-        )
-    return namespace
+        module = importlib.import_module(MODULE_NAME)
+        return importlib.reload(module)
 
 
 class TestCustomExecutionInferenceIsSelfContained(unittest.TestCase):
@@ -106,18 +114,18 @@ class TestCodeDirectoryResolution(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.code_dir = Path(self.temp_dir) / "code"
         _write_artifacts(self.code_dir)
-        self.namespace = _exec_inference(self.code_dir)
+        self.module = _load_inference(self.code_dir)
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_uses_env_var_when_set(self):
         with patch.dict(os.environ, {"SAGEMAKER_INFERENCE_CODE_DIRECTORY": "/some/code"}):
-            self.assertEqual(str(self.namespace["_get_code_directory"]()), "/some/code")
+            self.assertEqual(str(self.module._get_code_directory()), "/some/code")
 
     def test_falls_back_to_default(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(str(self.namespace["_get_code_directory"]()), "/opt/ml/model/code")
+            self.assertEqual(str(self.module._get_code_directory()), "/opt/ml/model/code")
 
 
 class TestPerformIntegrityCheck(unittest.TestCase):
@@ -127,8 +135,8 @@ class TestPerformIntegrityCheck(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.code_dir = Path(self.temp_dir) / "code"
         _write_artifacts(self.code_dir)
-        self.namespace = _exec_inference(self.code_dir)
-        self.check = self.namespace["_perform_integrity_check"]
+        self.module = _load_inference(self.code_dir)
+        self.check = self.module._perform_integrity_check
         self.metadata_path = self.code_dir / "metadata.json"
         self.buffer = (self.code_dir / "serve.pkl").read_bytes()
 
@@ -179,11 +187,20 @@ class TestEntrypointStartup(unittest.TestCase):
     def test_startup_and_handle(self):
         _write_artifacts(self.code_dir)
 
-        namespace = _exec_inference(self.code_dir)
+        module = _load_inference(self.code_dir)
 
-        self.assertIsInstance(namespace["custom_orchestrator"], EchoOrchestrator)
-        result = asyncio.run(namespace["handler"](_Request(b"hello")))
+        self.assertIsInstance(module.custom_orchestrator, EchoOrchestrator)
+        result = asyncio.run(module.handler(_Request(b"hello")))
         self.assertEqual(result, {"echo": b"hello"})
+
+    def test_startup_and_handle_async(self):
+        _write_artifacts(self.code_dir, obj=(AsyncEchoOrchestrator(), None))
+
+        module = _load_inference(self.code_dir)
+
+        self.assertIsInstance(module.custom_orchestrator, AsyncEchoOrchestrator)
+        result = asyncio.run(module.handler(_Request(b"hello")))
+        self.assertEqual(result, {"async_echo": b"hello"})
 
     def test_startup_fails_on_tampered_pickle(self):
         _write_artifacts(self.code_dir)
@@ -191,7 +208,7 @@ class TestEntrypointStartup(unittest.TestCase):
         serve_pkl.write_bytes(serve_pkl.read_bytes() + b"x")
 
         with self.assertRaises(ValueError):
-            _exec_inference(self.code_dir)
+            _load_inference(self.code_dir)
 
 
 if __name__ == "__main__":
