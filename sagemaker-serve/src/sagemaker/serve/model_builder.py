@@ -104,6 +104,7 @@ from sagemaker.core.jumpstart.enums import JumpStartModelType
 from sagemaker.core.jumpstart.configs import JumpStartConfig
 from sagemaker.core.jumpstart.utils import add_jumpstart_uri_tags
 from sagemaker.core.jumpstart.artifacts.kwargs import _retrieve_model_deploy_kwargs
+from sagemaker.core.instance_types import describe_instance_type
 
 from sagemaker.core.inference_config import AsyncInferenceConfig, ServerlessInferenceConfig
 from sagemaker.core.model_monitor.data_capture_config import DataCaptureConfig
@@ -999,22 +1000,26 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return hosting_configs
 
     def _get_instance_resources(self, instance_type: str) -> tuple:
-        """Get CPU and memory for an instance type by querying EC2."""
+        """Get CPU and memory for an instance type by querying EC2.
+
+        Args:
+            instance_type: The SageMaker instance type (for example 'ml.g5.12xlarge')
+
+        Returns:
+            A ``(vcpus, memory_mib)`` tuple, or ``(None, None)`` when EC2 does not know the
+            instance type or the call fails
+        """
         try:
-            ec2_client = self.sagemaker_session.boto_session.client("ec2")
-            ec2_instance_type = instance_type.replace("ml.", "")
-            response = ec2_client.describe_instance_types(InstanceTypes=[ec2_instance_type])
-            if response["InstanceTypes"]:
-                instance_info = response["InstanceTypes"][0]
-                cpus = instance_info["VCpuInfo"]["DefaultVCpus"]
-                memory_mb = instance_info["MemoryInfo"]["SizeInMiB"]
-                return cpus, memory_mb
+            spec = describe_instance_type(
+                instance_type, session=self.sagemaker_session.boto_session
+            )
         except Exception as e:
             logger.warning(
                 f"Could not query instance type {instance_type}: {e}. "
                 f"Unable to validate CPU requirements. Proceeding with recipe defaults."
             )
-        return None, None
+            return None, None
+        return spec.vcpus, spec.memory_mib
 
     def _resolve_compute_requirements(
         self, instance_type: str, user_resource_requirements: Optional[ResourceRequirements] = None
@@ -1198,23 +1203,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """Infer the number of accelerator devices by querying EC2 instance type info.
 
         Args:
-            instance_type: The EC2 instance type (e.g., 'ml.g5.12xlarge')
+            instance_type: The SageMaker instance type (for example 'ml.g5.12xlarge')
 
         Returns:
-            Number of accelerator devices, or None if cannot be determined
+            Number of accelerator devices, or None for a CPU instance, an instance type EC2
+            does not know, or a failed call
         """
         try:
-            ec2_client = self.sagemaker_session.boto_session.client("ec2")
-            ec2_instance_type = instance_type.replace("ml.", "")
-            response = ec2_client.describe_instance_types(InstanceTypes=[ec2_instance_type])
-            if response["InstanceTypes"]:
-                gpu_info = response["InstanceTypes"][0].get("GpuInfo")
-                if gpu_info and gpu_info.get("Gpus"):
-                    total_gpus = sum(g.get("Count", 0) for g in gpu_info["Gpus"])
-                    if total_gpus > 0:
-                        return total_gpus
+            spec = describe_instance_type(
+                instance_type, session=self.sagemaker_session.boto_session
+            )
         except Exception as e:
             logger.warning(f"Could not query GPU count for {instance_type}: {e}.")
+            return None
+        if spec.gpu_count > 0:
+            return spec.gpu_count
         return None
 
     def _is_gpu_instance(self, instance_type: str) -> bool:

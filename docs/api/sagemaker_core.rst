@@ -52,6 +52,10 @@ Utilities
    :members:
    :undoc-members:
 
+.. automodule:: sagemaker.core.instance_types
+   :members:
+   :undoc-members:
+
 Exceptions
 ----------
 

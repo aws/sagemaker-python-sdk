@@ -342,7 +342,13 @@ class ModelCustomizationTest(unittest.TestCase):
         """Test getting instance resources from EC2."""
         mock_ec2 = Mock()
         mock_ec2.describe_instance_types.return_value = {
-            "InstanceTypes": [{"VCpuInfo": {"DefaultVCpus": 8}, "MemoryInfo": {"SizeInMiB": 32768}}]
+            "InstanceTypes": [
+                {
+                    "InstanceType": "g5.2xlarge",
+                    "VCpuInfo": {"DefaultVCpus": 8},
+                    "MemoryInfo": {"SizeInMiB": 32768},
+                }
+            ]
         }
         self.mock_session.boto_session.client.return_value = mock_ec2
 
@@ -355,6 +361,7 @@ class ModelCustomizationTest(unittest.TestCase):
         cpus, memory = builder._get_instance_resources("ml.g5.2xlarge")
         self.assertEqual(cpus, 8)
         self.assertEqual(memory, 32768)
+        mock_ec2.describe_instance_types.assert_called_once_with(InstanceTypes=["g5.2xlarge"])
 
     @patch("sagemaker.serve.model_builder.InferenceComponent")
     @patch("sagemaker.core.resources.Tag")
