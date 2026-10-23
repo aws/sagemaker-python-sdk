@@ -122,22 +122,14 @@ def __getattr__(name):
         from sagemaker.train.common_utils.metrics_visualizer import get_available_metrics
 
         return get_available_metrics
-    elif name == "get_studio_url":
-        from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
+    elif name == "get_metric_history":
+        from sagemaker.train.common_utils.metrics_visualizer import get_metric_history
 
-        return get_studio_url
-    elif name == "get_mlflow_url":
-        from sagemaker.train.common_utils.trainer_wait import get_mlflow_url
+        return get_metric_history
+    elif name == "MetricPoint":
+        from sagemaker.train.common_utils.metrics_visualizer import MetricPoint
 
-        return get_mlflow_url
-    elif name == "plot_training_metrics":
-        from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
-
-        return plot_training_metrics
-    elif name == "get_available_metrics":
-        from sagemaker.train.common_utils.metrics_visualizer import get_available_metrics
-
-        return get_available_metrics
+        return MetricPoint
     elif name == "get_studio_url":
         from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
 
