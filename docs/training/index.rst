@@ -299,6 +299,31 @@ Train pre-configured models from the SageMaker JumpStart hub using ``ModelTraine
    # Complex queries with filters
    text_gen = search_public_hub_models(query="@task:text-generation")
 
+**Reading the Catalog Metadata of a Hub Model:**
+
+.. code-block:: python
+
+   from sagemaker.core.jumpstart.hub.catalog import HubModelCatalogEntry
+   from sagemaker.core.resources import HubContent
+
+   # Every text-generation model of the public hub, as typed catalog entries
+   entries = [
+       HubModelCatalogEntry.from_hub_content(content)
+       for content in search_public_hub_models(query="@task:text-generation")
+   ]
+   small_sft_models = [
+       entry.hub_content_name
+       for entry in entries
+       if entry.supports_technique("sft") and entry.model_size in ("<1b", "1b-10b")
+   ]
+
+   # One model, read from DescribeHubContent (the document fills fields the keyword cap dropped)
+   content = HubContent.get(
+       hub_name="SageMakerPublicHub", hub_content_type="Model", hub_content_name="meta-textgeneration-llama-3-2-1b"
+   )
+   entry = HubModelCatalogEntry.from_hub_content(content)
+   print(entry.license, entry.provider, entry.tasks, entry.fine_tuning_techniques())
+
 Key points:
 
 - ``from_jumpstart_config()`` auto-configures training image, instance type, and default hyperparameters
@@ -306,6 +331,7 @@ Key points:
 - JumpStart provides built-in datasets so you can start training immediately
 - Supports HuggingFace, XGBoost, CatBoost, LightGBM, and many more frameworks
 - Use ``list_jumpstart_models()`` and ``search_public_hub_models()`` to discover available models
+- Use ``HubModelCatalogEntry`` to read a model's task, license, provider, size, context window, languages, modalities, capabilities, and recipes without parsing ``HubContentSearchKeywords`` by hand
 
 :doc:`Full example notebook <../v3-examples/training-examples/jumpstart-training-example>`
 
