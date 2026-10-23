@@ -116,6 +116,14 @@ LIST_SUMMARY_EXTRA_ATTRIBUTES = {
     "HubContent": {"OriginalCreationTime": "Optional[datetime.datetime] = Unassigned()"},
 }
 
+# Hand-written behavior for a generated resource class. The generator emits
+# ``class <Resource>(<mixin>, Base)`` so the mixin's properties and methods sit beside the
+# generated API methods on the one public class, and the hand-written code stays in its
+# own module where it can be tested without regenerating resources.py.
+RESOURCE_MIXINS = {
+    "HubContent": ("sagemaker.core.hub_content", "HubContentMixin"),
+}
+
 # Some List APIs take an input member that the resource's Describe input requires but the
 # list summary does not return (ListHubContents takes HubName, HubContentInfo omits it).
 # get_all() cannot build a resource from such a summary unless the list argument is
@@ -227,6 +235,9 @@ class ResourcesCodeGen:
             "from sagemaker.core.serializers.base import BaseSerializer",
             "from sagemaker.core.deserializers.base import BaseDeserializer",
         ]
+        imports.extend(
+            f"from {module} import {mixin}" for module, mixin in sorted(RESOURCE_MIXINS.values())
+        )
 
         formated_imports = "\n".join(imports)
         formated_imports += "\n\n"
@@ -380,7 +391,7 @@ class ResourcesCodeGen:
             )
 
             # Start defining the class
-            resource_class = f"class {resource_name}(Base):\n"
+            resource_class = f"class {resource_name}({self._resource_bases(resource_name)}):\n"
 
             class_documentation_string = f"Class representing resource {resource_name}\n\n"
             class_documentation_string += "Attributes:\n"
@@ -480,7 +491,7 @@ class ResourcesCodeGen:
         else:
             # If there's no 'get' or 'list' or 'create' method, generate a class with no attributes
             resource_attributes = []
-            resource_class = f"class {resource_name}(Base):\n"
+            resource_class = f"class {resource_name}({self._resource_bases(resource_name)}):\n"
             class_documentation_string = f"Class representing resource {resource_name}\n"
             resource_class += add_indent(f'"""\n{class_documentation_string}\n"""\n', 4)
 
@@ -1974,6 +1985,12 @@ if not isinstance(self.resource_config, Unassigned):
             resource_name=resource_name,
         )
         return formatted_method
+
+    @staticmethod
+    def _resource_bases(resource_name: str) -> str:
+        """Return the base-class list of a generated resource class."""
+        mixin = RESOURCE_MIXINS.get(resource_name)
+        return f"{mixin[1]}, Base" if mixin else "Base"
 
     def _list_summary_shape(self, resource_name: str) -> str:
         """Return the summary shape name of the resource's List API output."""

@@ -45,6 +45,7 @@ from sagemaker.core.utils.exceptions import *
 from typing import ClassVar
 from sagemaker.core.serializers.base import BaseSerializer
 from sagemaker.core.deserializers.base import BaseDeserializer
+from sagemaker.core.hub_content import HubContentMixin
 
 
 logger = get_textual_rich_logger(__name__)
@@ -13805,7 +13806,7 @@ class Hub(Base):
         )
 
 
-class HubContent(Base):
+class HubContent(HubContentMixin, Base):
     """
     Class representing resource HubContent
 
