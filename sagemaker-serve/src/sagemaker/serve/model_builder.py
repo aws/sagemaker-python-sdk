@@ -25,7 +25,7 @@ import copy
 import logging
 import uuid
 import platform
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, Set
 from botocore.exceptions import ClientError
@@ -49,15 +49,18 @@ from sagemaker.core.shapes import (
     InferenceComponentSpecification,
     InferenceComponentContainerSpecification,
     InferenceComponentRuntimeConfig,
+    InstancePool,
     ProductionVariant,
 )
+from sagemaker.core.shapes import DataCaptureConfig as DataCaptureConfigShape
 from sagemaker.core.resources import (
     ModelPackage,
     ModelPackageGroup,
     ModelCard,
     ModelPackageModelCard,
 )
-from sagemaker.core.utils.utils import logger
+from sagemaker.core.utils.utils import Unassigned, logger, serialize
+from sagemaker.core.utils.code_injection.codec import transform
 from sagemaker.core.exceptions import CapacityError, UnexpectedStatusException
 from sagemaker.core.helper import session_helper
 from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
@@ -103,6 +106,7 @@ from sagemaker.core.jumpstart.utils import add_jumpstart_uri_tags
 from sagemaker.core.jumpstart.artifacts.kwargs import _retrieve_model_deploy_kwargs
 
 from sagemaker.core.inference_config import AsyncInferenceConfig, ServerlessInferenceConfig
+from sagemaker.core.model_monitor.data_capture_config import DataCaptureConfig
 from sagemaker.serve.batch_inference.batch_transform_inference_config import (
     BatchTransformInferenceConfig,
 )
@@ -173,6 +177,35 @@ if TYPE_CHECKING:
     from sagemaker.serve.ai_inference_recommender.workload import Workload
 
 _LOWEST_MMS_VERSION = "1.2"
+# Keyword arguments that deploy() forwards to the model-server wrappers, the core endpoint
+# path, and the inference-component path. A name outside this set raises TypeError, so a
+# misspelled option fails at the call instead of deploying an endpoint without it.
+DEPLOY_KWARGS = frozenset(
+    (
+        "accelerator_type",
+        "accept_eula",
+        "async_inference_config",
+        "built_model",
+        "container_startup_health_check_timeout",
+        "deserializer",
+        "endpoint_logging",
+        "explainer_config",
+        "inference_ami_version",
+        "inference_recommendation_id",
+        "kms_key",
+        "managed_instance_scaling",
+        "mode",
+        "model_data_download_timeout",
+        "resources",
+        "role",
+        "routing_config",
+        "serializer",
+        "serverless_inference_config",
+        "volume_size",
+    )
+)
+# InstancePools takes 1 to 5 entries, the primary instance type included.
+MAX_FALLBACK_INSTANCE_TYPES = 4
 SCRIPT_PARAM_NAME = "sagemaker_program"
 DIR_PARAM_NAME = "sagemaker_submit_directory"
 CONTAINER_LOG_LEVEL_PARAM_NAME = "sagemaker_container_log_level"
@@ -180,6 +213,182 @@ JOB_NAME_PARAM_NAME = "sagemaker_job_name"
 MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
 SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
 SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
+
+
+@dataclass(frozen=True)
+class _EndpointOptions:
+    """Endpoint-configuration options of ``deploy()`` that each deploy path reads by name.
+
+    ``deploy()`` validates the options once against ``inference_config``, then each path
+    applies the ones it supports and raises ``ValueError`` for the ones it cannot apply,
+    so no option is dropped on the floor.
+    """
+
+    data_capture_config: Optional[DataCaptureConfig] = None
+    tracing_config: Optional[Any] = None
+    fallback_instance_types: Optional[List[str]] = None
+    endpoint_type: Optional[EndpointType] = None
+    inference_component_name: Optional[str] = None
+
+    def validate(self, inference_config: Optional[Any]) -> None:
+        """Reject a type or a combination with ``inference_config`` that no path can apply."""
+        is_serverless = isinstance(inference_config, ServerlessInferenceConfig)
+        is_inference_component = isinstance(inference_config, ResourceRequirements)
+        if self.data_capture_config is not None and not isinstance(
+            self.data_capture_config, DataCaptureConfig
+        ):
+            raise TypeError(
+                "data_capture_config must be a "
+                "sagemaker.core.model_monitor.data_capture_config.DataCaptureConfig, got "
+                f"{type(self.data_capture_config).__name__}."
+            )
+        if self.data_capture_config is not None and is_inference_component:
+            raise ValueError(
+                "SageMaker rejects data capture on an inference-component endpoint. Drop "
+                "data_capture_config or deploy without a ResourceRequirements inference_config."
+            )
+        if self.endpoint_type is not None and not isinstance(self.endpoint_type, EndpointType):
+            raise TypeError(
+                "endpoint_type must be a sagemaker.core.enums.EndpointType, got "
+                f"{type(self.endpoint_type).__name__}."
+            )
+        if self.endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED and not (
+            is_inference_component
+        ):
+            raise ValueError(
+                "endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED requires "
+                "inference_config=ResourceRequirements(...)."
+            )
+        if self.endpoint_type == EndpointType.MODEL_BASED and is_inference_component:
+            raise ValueError(
+                "endpoint_type=EndpointType.MODEL_BASED conflicts with a ResourceRequirements "
+                "inference_config, which deploys an inference component."
+            )
+        self._validate_fallback_instance_types(is_serverless)
+
+    def _validate_fallback_instance_types(self, is_serverless: bool) -> None:
+        if self.fallback_instance_types is None:
+            return
+        if is_serverless:
+            raise ValueError("fallback_instance_types does not apply to a serverless endpoint.")
+        is_name_list = isinstance(self.fallback_instance_types, list) and all(
+            isinstance(name, str) and name for name in self.fallback_instance_types
+        )
+        if not is_name_list:
+            raise TypeError(
+                "fallback_instance_types must be a list of instance type names such as "
+                f"['ml.g6.2xlarge'], got {self.fallback_instance_types!r}."
+            )
+        if len(self.fallback_instance_types) > MAX_FALLBACK_INSTANCE_TYPES:
+            raise ValueError(
+                f"fallback_instance_types takes at most {MAX_FALLBACK_INSTANCE_TYPES} instance "
+                f"types (InstancePools holds 5 with the primary type), got "
+                f"{len(self.fallback_instance_types)}."
+            )
+        if len(set(self.fallback_instance_types)) != len(self.fallback_instance_types):
+            raise ValueError(
+                f"fallback_instance_types repeats an instance type: {self.fallback_instance_types}."
+            )
+
+    def set_names(self) -> List[str]:
+        """Return the names of the options the caller set."""
+        return [option.name for option in fields(self) if getattr(self, option.name) is not None]
+
+    def reject_for(self, path_description: str) -> None:
+        """Raise ``ValueError`` when any option is set, for a path that applies none of them."""
+        set_names = self.set_names()
+        if set_names:
+            raise ValueError(
+                f"{', '.join(set_names)} cannot be applied by {path_description}. "
+                "Drop the option or deploy through a path that supports it."
+            )
+
+    def require_model_based(self, path_description: str) -> None:
+        """Raise ``ValueError`` for options that fit only an inference-component endpoint."""
+        if self.endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
+            raise ValueError(
+                f"{path_description} places the model on the production variant, so "
+                "endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED cannot be applied."
+            )
+        if self.inference_component_name is not None:
+            raise ValueError(
+                f"{path_description} creates no inference component, so "
+                "inference_component_name cannot be applied."
+            )
+
+    def require_inference_component_based(self, path_description: str) -> None:
+        """Raise ``ValueError`` for options that fit only a model-on-variant endpoint."""
+        if self.endpoint_type == EndpointType.MODEL_BASED:
+            raise ValueError(
+                f"{path_description} hosts the model as an inference component, so "
+                "endpoint_type=EndpointType.MODEL_BASED cannot be applied."
+            )
+        if self.data_capture_config is not None:
+            raise ValueError(
+                f"SageMaker rejects data capture on an inference-component endpoint, which "
+                f"{path_description} creates. Drop data_capture_config."
+            )
+
+    def as_deploy_kwargs(self) -> Dict[str, Any]:
+        """Return the set options as the keyword arguments ``_deploy_core_endpoint`` reads."""
+        return {name: getattr(self, name) for name in self.set_names()}
+
+
+def _instance_pools(instance_type: Optional[str], fallback_instance_types: List[str]) -> List[Dict]:
+    """Build ``InstancePools`` with ``instance_type`` at priority 1 and the fallbacks after it."""
+    if not instance_type:
+        raise ValueError(
+            "fallback_instance_types requires an instance_type: the primary type is priority 1 "
+            "and the fallbacks follow it."
+        )
+    ordered = [instance_type] + [name for name in fallback_instance_types if name != instance_type]
+    return [
+        {"InstanceType": name, "Priority": priority}
+        for priority, name in enumerate(ordered, start=1)
+    ]
+
+
+def _instance_pool_shapes(instance_type: Optional[str], fallback_instance_types: List[str]):
+    """Return the ``InstancePool`` shapes for a ``sagemaker.core.shapes.ProductionVariant``."""
+    return [
+        InstancePool(instance_type=pool["InstanceType"], priority=pool["Priority"])
+        for pool in _instance_pools(instance_type, fallback_instance_types)
+    ]
+
+
+def _with_instance_pools(
+    variant: ProductionVariant, fallback_instance_types: Optional[List[str]]
+) -> ProductionVariant:
+    """Move a variant from ``instance_type`` to ``instance_pools`` when fallbacks are set.
+
+    The service takes ``InstancePools`` in place of ``InstanceType``, so the primary type
+    becomes the priority-1 pool and ``instance_type`` is left unassigned.
+    """
+    if not fallback_instance_types:
+        return variant
+    pools = _instance_pool_shapes(variant.instance_type, fallback_instance_types)
+    return variant.model_copy(update={"instance_pools": pools, "instance_type": Unassigned()})
+
+
+def _tracing_config_to_request_dict(tracing_config: Optional[Any]) -> Optional[Dict[str, Any]]:
+    """Return ``tracing_config`` in service form, from a dict, a config object, or a shape."""
+    if tracing_config is None:
+        return None
+    if isinstance(tracing_config, dict):
+        return dict(tracing_config)
+    if hasattr(tracing_config, "_to_request_dict"):
+        return tracing_config._to_request_dict()
+    return serialize(tracing_config)
+
+
+def _data_capture_config_shape(
+    data_capture_config: Optional[DataCaptureConfig],
+) -> Optional[DataCaptureConfigShape]:
+    """Convert a Model Monitor ``DataCaptureConfig`` to the shape ``EndpointConfig.create`` takes."""
+    if data_capture_config is None:
+        return None
+    request = data_capture_config._to_request_dict()
+    return DataCaptureConfigShape(**transform(request, "DataCaptureConfig"))
 
 
 @dataclass
@@ -3989,6 +4198,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self._deserializer = deserializer
 
         data_capture_config = kwargs.get("data_capture_config", None)
+        tracing_config_dict = _tracing_config_to_request_dict(kwargs.get("tracing_config"))
+        fallback_instance_types = kwargs.get("fallback_instance_types", None)
         volume_size = kwargs.get("volume_size", getattr(self, "volume_size", None))
         inference_recommendation_id = kwargs.get("inference_recommendation_id", None)
         explainer_config = kwargs.get("explainer_config", None)
@@ -4162,6 +4373,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     managed_instance_scaling=managed_instance_scaling_config,
                     routing_config=routing_config,
                     inference_ami_version=inference_ami_version,
+                    instance_pools=(
+                        _instance_pools(instance_type, fallback_instance_types)
+                        if fallback_instance_types
+                        else None
+                    ),
                 )
 
                 self.sagemaker_session.endpoint_from_production_variants(
@@ -4174,6 +4390,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     role=self.role_arn,
                     live_logging=False,  # TODO: enable when IC supports this
                     wait=False,
+                    tracing_config_dict=tracing_config_dict,
                 )
                 # An IC-based endpoint hosts no model itself, so it never gets an
                 # endpoint log group to stream: wait on its status only.
@@ -4248,6 +4465,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 container_startup_health_check_timeout=container_startup_health_check_timeout,
                 routing_config=routing_config,
                 inference_ami_version=inference_ami_version,
+                instance_pools=(
+                    _instance_pools(instance_type, fallback_instance_types)
+                    if fallback_instance_types and not is_serverless
+                    else None
+                ),
             )
             if endpoint_name:
                 self.endpoint_name = endpoint_name
@@ -4281,22 +4503,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             if update_endpoint:
                 endpoint_config_name = self.sagemaker_session.create_endpoint_config(
-                    name=self.model_name,
-                    model_name=self.model_name,
-                    initial_instance_count=initial_instance_count,
-                    instance_type=instance_type,
-                    accelerator_type=accelerator_type,
+                    name=unique_name_from_base(self.model_name),
+                    production_variants=[production_variant],
                     tags=tags,
                     kms_key=kms_key,
                     data_capture_config_dict=data_capture_config_dict,
-                    volume_size=volume_size,
-                    model_data_download_timeout=model_data_download_timeout,
-                    container_startup_health_check_timeout=container_startup_health_check_timeout,
                     explainer_config_dict=explainer_config_dict,
                     async_inference_config_dict=async_inference_config_dict,
-                    serverless_inference_config_dict=serverless_inference_config_dict,
-                    routing_config=routing_config,
-                    inference_ami_version=inference_ami_version,
+                    tracing_config_dict=tracing_config_dict,
                 )
                 self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
             else:
@@ -4310,6 +4524,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     explainer_config_dict=explainer_config_dict,
                     async_inference_config_dict=async_inference_config_dict,
                     live_logging=endpoint_logging,
+                    tracing_config_dict=tracing_config_dict,
                 )
                 self._wait_for_endpoint(endpoint=self.endpoint_name, show_progress=True, wait=wait)
 
@@ -6076,6 +6291,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         model_name: Optional[str] = None,
         endpoint_config_name: Optional[str] = None,
         tags: Optional[Tags] = None,
+        data_capture_config: Optional[DataCaptureConfig] = None,
+        tracing_config: Optional[Any] = None,
+        fallback_instance_types: Optional[List[str]] = None,
+        endpoint_type: Optional[EndpointType] = None,
+        inference_component_name: Optional[str] = None,
         **kwargs,
     ) -> Union[Endpoint, LocalEndpoint, Transformer]:
         """Deploy the built model to an ``Endpoint``.
@@ -6158,12 +6378,43 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 objects. The same tags apply on every deploy path: a built model, a fine-tuned
                 model package, a Nova model, an inference component, and a recommendation.
                 (Default: None).
+            data_capture_config (Optional[DataCaptureConfig]): Model Monitor data capture for
+                the endpoint configuration this call creates. Applies to a single-model
+                endpoint, a serverless endpoint, an async endpoint, and the fine-tuned and Nova
+                model-on-variant paths. SageMaker rejects data capture on an inference-component
+                endpoint, so that path raises ``ValueError``. (Default: None).
+            tracing_config (optional): A ``sagemaker.core.shapes.TracingConfig`` for the
+                endpoint configuration this call creates. The installed botocore service model
+                must know the ``TracingConfig`` member of ``CreateEndpointConfig``, otherwise
+                ``ValueError`` is raised instead of the member vanishing from the request.
+                (Default: None).
+            fallback_instance_types (Optional[List[str]]): Up to 4 instance types, in priority
+                order, that SageMaker provisions from when ``instance_type`` has no capacity.
+                The production variant carries ``InstancePools`` with ``instance_type`` at
+                priority 1 and these at priorities 2 and up. Instance-based endpoints only:
+                serverless, inference-component, and recommendation deploys raise
+                ``ValueError``. (Default: None).
+            endpoint_type (Optional[EndpointType]): ``EndpointType.MODEL_BASED`` places the
+                model on the production variant, ``EndpointType.INFERENCE_COMPONENT_BASED``
+                hosts it as an inference component. The default follows ``inference_config``:
+                inference-component based for a ``ResourceRequirements``, model based
+                otherwise. (Default: None).
+            inference_component_name (Optional[str]): Name of the inference component an
+                inference-component deploy creates, or that a fine-tuned model deploy creates
+                or reuses. Auto-generated when omitted. (Default: None).
+            **kwargs: Options forwarded to the deploy path, one of ``DEPLOY_KWARGS``
+                (``accelerator_type``, ``async_inference_config``, ``explainer_config``,
+                ``kms_key``, ``volume_size``, ``serializer``, ``deserializer``, ...). Raises
+                ``TypeError`` for a name outside that set.
         Returns:
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
                 or a ``Transformer`` for batch transform inference.
 
         Raises:
+            TypeError: If ``kwargs`` holds a name outside ``DEPLOY_KWARGS``.
+            ValueError: If an option does not fit the deploy path, for example
+                ``fallback_instance_types`` on a serverless endpoint or more than 4 of them.
             UnexpectedStatusException: If ``wait`` is True and the endpoint finishes in a
                 state other than ``InService`` (``CapacityError`` for capacity failures).
                 Model customization and recommendation deployments raise
@@ -6182,6 +6433,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "Please create a new ModelBuilder instance for additional deployments."
             )
         self._deployed = True
+
+        unknown_kwargs = sorted(set(kwargs) - DEPLOY_KWARGS)
+        if unknown_kwargs:
+            raise TypeError(
+                f"deploy() got an unexpected keyword argument {unknown_kwargs[0]!r}. "
+                f"Options forwarded to the deploy path are: {', '.join(sorted(DEPLOY_KWARGS))}."
+            )
+        endpoint_options = _EndpointOptions(
+            data_capture_config=data_capture_config,
+            tracing_config=tracing_config,
+            fallback_instance_types=fallback_instance_types,
+            endpoint_type=endpoint_type,
+            inference_component_name=inference_component_name,
+        )
+        endpoint_options.validate(inference_config)
 
         # Normalize the caller's tags once, in boto form, and merge them into the
         # builder's accumulated tags. Every deploy path below reads self._tags, so a
@@ -6225,6 +6491,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "or recommendation_spec_name= instead."
                 )
         if has_recommendation and use_recommendation is not False:
+            endpoint_options.reject_for("a recommendation deploy")
             return self._deploy_recommendation(
                 recommendation_index=recommendation_index,
                 recommendation_spec_name=recommendation_spec_name,
@@ -6312,10 +6579,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return self._deploy_model_customization(
                 endpoint_name=endpoint_name,
                 initial_instance_count=initial_instance_count,
-                inference_component_name=kwargs.pop("inference_component_name", None),
+                inference_component_name=inference_component_name,
                 wait=wait,
                 container_timeout_in_seconds=container_timeout_in_seconds,
                 inference_config=inference_config_param,
+                endpoint_options=endpoint_options,
                 **kwargs,
             )
 
@@ -6334,10 +6602,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "update_endpoint": update_endpoint,
                     "container_timeout_in_seconds": container_timeout_in_seconds,
                     "wait": wait,
-                    "endpoint_type": EndpointType.MODEL_BASED,
+                    "endpoint_type": endpoint_type or EndpointType.MODEL_BASED,
                 }
 
                 deploy_kwargs.update(kwargs)
+                deploy_kwargs.update(endpoint_options.as_deploy_kwargs())
                 return self._deploy(**deploy_kwargs)
 
             if isinstance(inference_config, ServerlessInferenceConfig):
@@ -6347,10 +6616,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "update_endpoint": update_endpoint,
                     "container_timeout_in_seconds": container_timeout_in_seconds,
                     "wait": wait,
-                    "endpoint_type": EndpointType.MODEL_BASED,
+                    "endpoint_type": endpoint_type or EndpointType.MODEL_BASED,
                 }
 
                 deploy_kwargs.update(kwargs)
+                deploy_kwargs.update(endpoint_options.as_deploy_kwargs())
                 return self._deploy(**deploy_kwargs)
 
             if isinstance(inference_config, AsyncInferenceConfig):
@@ -6362,10 +6632,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "update_endpoint": update_endpoint,
                     "container_timeout_in_seconds": container_timeout_in_seconds,
                     "wait": wait,
-                    "endpoint_type": EndpointType.MODEL_BASED,
+                    "endpoint_type": endpoint_type or EndpointType.MODEL_BASED,
                 }
 
                 deploy_kwargs.update(kwargs)
+                deploy_kwargs.update(endpoint_options.as_deploy_kwargs())
                 return self._deploy(**deploy_kwargs)
 
             if isinstance(inference_config, BatchTransformInferenceConfig):
@@ -6383,7 +6654,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             deploy_kwargs = {
                 "instance_type": self.instance_type,
                 "mode": Mode.SAGEMAKER_ENDPOINT,
-                "endpoint_type": EndpointType.INFERENCE_COMPONENT_BASED,
+                "endpoint_type": endpoint_type or EndpointType.INFERENCE_COMPONENT_BASED,
                 "resources": inference_config,
                 "initial_instance_count": initial_instance_count,
                 "role": self.role_arn,
@@ -6393,9 +6664,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             }
 
             deploy_kwargs.update(kwargs)
+            deploy_kwargs.update(endpoint_options.as_deploy_kwargs())
             return self._deploy(**deploy_kwargs)
 
         if hasattr(self, "_deployables") and self._deployables:
+            endpoint_options.reject_for("a modelbuilder_list deploy")
             endpoints = []
             for ic in self._deployables.get("InferenceComponents", []):
                 endpoints.append(self._deploy_for_ic(ic_data=ic, endpoint_name=endpoint_name))
@@ -6459,12 +6732,50 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             for tag in format_tags(getattr(self, "_tags", None) or [])
         ]
 
+    def _create_endpoint_config(
+        self,
+        endpoint_config_name: str,
+        production_variant: ProductionVariant,
+        endpoint_options: _EndpointOptions,
+        **create_kwargs,
+    ) -> None:
+        """Create the endpoint configuration of a core-resource deploy path.
+
+        Applies the ``data_capture_config`` and ``tracing_config`` of ``deploy()``. The
+        generated ``EndpointConfig.create`` has no ``tracing_config`` parameter until
+        sagemaker-core is regenerated from a service model that has the member, so tracing
+        goes through the session, which checks the installed service model first.
+        """
+        tracing_config_dict = _tracing_config_to_request_dict(endpoint_options.tracing_config)
+        if tracing_config_dict is not None:
+            self.sagemaker_session.create_endpoint_config(
+                name=endpoint_config_name,
+                production_variants=[serialize(production_variant)],
+                tags=format_tags(getattr(self, "_tags", None)),
+                data_capture_config_dict=(
+                    endpoint_options.data_capture_config._to_request_dict()
+                    if endpoint_options.data_capture_config is not None
+                    else None
+                ),
+                enable_network_isolation=create_kwargs.get("enable_network_isolation"),
+                role=create_kwargs.get("execution_role_arn"),
+                tracing_config_dict=tracing_config_dict,
+            )
+            return
+        EndpointConfig.create(
+            endpoint_config_name=endpoint_config_name,
+            production_variants=[production_variant],
+            data_capture_config=_data_capture_config_shape(endpoint_options.data_capture_config),
+            **create_kwargs,
+        )
+
     def _deploy_model_customization(
         self,
         endpoint_name: str,
         initial_instance_count: int = 1,
         inference_component_name: Optional[str] = None,
         inference_config: Optional[ResourceRequirements] = None,
+        endpoint_options: Optional[_EndpointOptions] = None,
         **kwargs,
     ) -> Endpoint:
         """Deploy a model customization (fine-tuned) model to an endpoint with inference components.
@@ -6480,12 +6791,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             inference_component_name (Optional[str]): Name for the inference component
             inference_config (Optional[ResourceRequirements]): Inference configuration including
                 resource requirements (accelerator count, memory, CPU cores)
+            endpoint_options (Optional[_EndpointOptions]): The endpoint-configuration options
+                of ``deploy()`` (data capture, tracing, fallback instance types).
             **kwargs: Additional deployment parameters
 
         Returns:
             Endpoint: The deployed sagemaker.core.resources.Endpoint
         """
         from sagemaker.core.resources import Tag as CoreTag
+
+        endpoint_options = endpoint_options or _EndpointOptions()
 
         # An inference_config of ResourceRequirements requests an inference
         # component deployment; otherwise the model is placed directly on the
@@ -6499,10 +6814,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # image, escrow artifacts, and env.
         is_nova = self._is_nova_model()
         if is_nova and not is_ic_deploy:
+            endpoint_options.require_model_based("a Nova model deploy")
             return self._deploy_nova_model(
                 endpoint_name=endpoint_name,
                 initial_instance_count=initial_instance_count,
                 wait=kwargs.get("wait", True),
+                endpoint_options=endpoint_options,
             )
 
         # The model package may be absent (e.g. a Nova CPTTrainer or raw-S3
@@ -6515,18 +6832,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
 
         if not is_ic_deploy and is_restricted_model_package(model_package):
+            endpoint_options.require_model_based("a restricted model package deploy")
             if not endpoint_name:
                 endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
-            EndpointConfig.create(
-                endpoint_config_name=endpoint_name,
-                production_variants=[
-                    ProductionVariant(
-                        variant_name="AllTraffic",
-                        model_name=self.built_model.model_name,
-                        instance_type=self.instance_type,
-                        initial_instance_count=initial_instance_count or 1,
-                    )
-                ],
+            variant = ProductionVariant(
+                variant_name="AllTraffic",
+                model_name=self.built_model.model_name,
+                instance_type=self.instance_type,
+                initial_instance_count=initial_instance_count or 1,
+            )
+            self._create_endpoint_config(
+                endpoint_name,
+                _with_instance_pools(variant, endpoint_options.fallback_instance_types),
+                endpoint_options,
             )
             endpoint = Endpoint.create(
                 endpoint_name=endpoint_name,
@@ -6601,19 +6919,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             or self._enable_network_isolation
         )
 
+        endpoint_options.require_inference_component_based("a fine-tuned model deploy")
+
         # Check if endpoint exists
         is_existing_endpoint = self._does_endpoint_exist(endpoint_name)
 
         if not is_existing_endpoint:
-            EndpointConfig.create(
-                endpoint_config_name=endpoint_name,
-                production_variants=[
-                    ProductionVariant(
-                        variant_name=endpoint_name,
-                        instance_type=self.instance_type,
-                        initial_instance_count=initial_instance_count or 1,
-                    )
-                ],
+            variant = ProductionVariant(
+                variant_name=endpoint_name,
+                instance_type=self.instance_type,
+                initial_instance_count=initial_instance_count or 1,
+            )
+            self._create_endpoint_config(
+                endpoint_name,
+                _with_instance_pools(variant, endpoint_options.fallback_instance_types),
+                endpoint_options,
                 execution_role_arn=self.role_arn,
                 enable_network_isolation=enable_network_isolation,
             )
@@ -6813,6 +7133,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         endpoint_name: str,
         initial_instance_count: int = 1,
         wait: bool = True,
+        endpoint_options: Optional[_EndpointOptions] = None,
     ) -> Endpoint:
         """Deploy a Nova model directly to an endpoint without inference components.
 
@@ -6821,19 +7142,20 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         - No InferenceComponents are created
         - EnableNetworkIsolation is set on the Model (during build)
         """
+        endpoint_options = endpoint_options or _EndpointOptions()
         if not endpoint_name:
             endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
 
-        EndpointConfig.create(
-            endpoint_config_name=endpoint_name,
-            production_variants=[
-                ProductionVariant(
-                    variant_name="AllTraffic",
-                    model_name=self.built_model.model_name,
-                    instance_type=self.instance_type,
-                    initial_instance_count=initial_instance_count,
-                )
-            ],
+        variant = ProductionVariant(
+            variant_name="AllTraffic",
+            model_name=self.built_model.model_name,
+            instance_type=self.instance_type,
+            initial_instance_count=initial_instance_count,
+        )
+        self._create_endpoint_config(
+            endpoint_name,
+            _with_instance_pools(variant, endpoint_options.fallback_instance_types),
+            endpoint_options,
         )
 
         # The jumpstart-model-id tag always applies (resolved from the model
