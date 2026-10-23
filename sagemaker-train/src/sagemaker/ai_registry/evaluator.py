@@ -246,6 +246,7 @@ class Evaluator(AIRHubEntity):
         role: Optional[str] = None,
         domain_id: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
+        runtime: Optional[str] = None,
     ) -> "Evaluator":
         """Create a new Evaluator entity in the AI Registry.
 
@@ -259,6 +260,8 @@ class Evaluator(AIRHubEntity):
                 is visible in Studio. If not provided, it is auto-detected from the Studio
                 environment; supply it explicitly when creating evaluators outside Studio
                 (e.g. from a laptop or CI) so they still appear in the target domain.
+            runtime: Lambda runtime of the function created from a local file. Defaults to
+                ``EVALUATOR_DEFAULT_RUNTIME`` (``python3.12``). Ignored for a Lambda ARN.
 
         Returns:
             Evaluator: Newly created Evaluator instance
@@ -284,7 +287,7 @@ class Evaluator(AIRHubEntity):
         if type == REWARD_PROMPT:
             reference = cls._handle_reward_prompt(name, source)
         elif type == REWARD_FUNCTION:
-            method, reference = cls._handle_reward_function(name, source, role)
+            method, reference = cls._handle_reward_function(name, source, role, runtime)
         else:
             raise ValueError(f"Unsupported evaluator type: {type}")
 
@@ -381,13 +384,15 @@ class Evaluator(AIRHubEntity):
 
     @classmethod
     def _handle_reward_function(
-        cls, name: str, source: Optional[str], role: Optional[str]
+        cls, name: str, source: Optional[str], role: Optional[str], runtime: Optional[str] = None
     ) -> tuple[EvaluatorMethod, str]:
         """Handle creation of reward function evaluator.
 
         Args:
             name: Name of the evaluator
             source: Lambda ARN or local file path
+            role: IAM role ARN of the Lambda function created from a local file
+            runtime: Lambda runtime of the function created from a local file
 
         Returns:
             Tuple of (method, reference)
@@ -400,17 +405,19 @@ class Evaluator(AIRHubEntity):
             return EvaluatorMethod.LAMBDA, source
         else:
             # BYOC - create Lambda function from local file
-            return cls._create_lambda_function(name, source, role)
+            return cls._create_lambda_function(name, source, role, runtime)
 
     @classmethod
     def _create_lambda_function(
-        cls, name: str, source_file: str, role: Optional[str]
+        cls, name: str, source_file: str, role: Optional[str], runtime: Optional[str] = None
     ) -> tuple[EvaluatorMethod, str]:
         """Create Lambda function from local Python file.
 
         Args:
             name: Name of the evaluator
             source_file: Path to local Python file
+            role: IAM role ARN of the Lambda function
+            runtime: Lambda runtime. Defaults to ``EVALUATOR_DEFAULT_RUNTIME``.
 
         Returns:
             Tuple of (EvaluatorMethod.BYOC, lambda_arn)
@@ -434,7 +441,7 @@ class Evaluator(AIRHubEntity):
         try:
             lambda_response = lambda_client.create_function(
                 FunctionName=function_name,
-                Runtime=EVALUATOR_DEFAULT_RUNTIME,
+                Runtime=runtime or EVALUATOR_DEFAULT_RUNTIME,
                 Role=role,
                 Handler=handler_name,
                 Code={"ZipFile": zip_buffer.read()},

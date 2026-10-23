@@ -16,7 +16,8 @@
 import json
 import logging
 import re
-from typing import Any, Dict, List, Literal, Optional, Union
+from dataclasses import dataclass, fields
+from typing import Any, Callable, Dict, List, Literal, Optional, Type, Union
 
 import boto3
 from botocore.exceptions import ClientError
@@ -29,6 +30,85 @@ logger = logging.getLogger(__name__)
 LAMBDA_ARN_REGEX = re.compile(
     r"^arn:aws[a-zA-Z-]*:lambda:[a-z0-9-]+:\d{12}:function:[A-Za-z0-9-_]+$"
 )
+
+RewardEnvelope = Literal["oss", "nova", "eval_oss", "eval_nova"]
+
+
+class RewardSample(BaseModel):
+    """One training sample sent to an RLVR reward function.
+
+    The ``oss`` and ``nova`` envelopes send a list of these in one invocation.
+    ``reference_answer`` is a plain string or a ``{"text": ...}`` object, as the
+    dataset provides it.
+    """
+
+    id: str
+    messages: List[Dict[str, Any]]
+    reference_answer: Optional[Union[str, Dict[str, Any]]] = None
+
+
+class EvalRewardSample(BaseModel):
+    """One evaluation sample sent to a custom-scorer reward function.
+
+    The ``eval_oss`` and ``eval_nova`` envelopes send one invocation per sample, each
+    with a list that holds that one sample.
+    """
+
+    id: str
+    model_response: str
+    query: Optional[str] = None
+    response: Optional[str] = None
+    reference_answer: Optional[Union[str, Dict[str, Any]]] = None
+
+
+@dataclass(frozen=True)
+class RewardVerificationOptions:
+    """Options of ``verify_reward_function``.
+
+    Attributes:
+        validate_format: Validate each result against ``RewardFunctionOutput``.
+        compute: Compute of the training job. A ``HyperPodCompute`` with a Nova model
+            makes the Lambda function name contain ``SageMaker``.
+        is_nova: Response format when ``envelope`` is None. True expects a bare list,
+            False expects ``{statusCode: 200, body: json.dumps(results)}``.
+        envelope: Request and response contract. ``oss`` and ``nova`` send every sample
+            in one invocation and validate the samples as ``RewardSample``. ``eval_oss``
+            and ``eval_nova`` send one invocation per sample and validate the samples as
+            ``EvalRewardSample``. ``nova`` expects a bare list back, the other three
+            expect the ``statusCode`` and ``body`` envelope. None keeps the ``is_nova``
+            behavior and does not validate the samples.
+    """
+
+    validate_format: bool = True
+    compute: Optional[Union[TrainingJobCompute, HyperPodCompute]] = None
+    is_nova: bool = True
+    envelope: Optional[RewardEnvelope] = None
+
+
+@dataclass(frozen=True)
+class _EnvelopeSpec:
+    """How one envelope shapes the request, the response, and the sample model."""
+
+    sample_model: Optional[Type[BaseModel]]
+    per_sample: bool
+    nova_model: bool
+    bare_list_response: bool
+
+
+_ENVELOPE_SPECS: Dict[str, _EnvelopeSpec] = {
+    "oss": _EnvelopeSpec(
+        sample_model=RewardSample, per_sample=False, nova_model=False, bare_list_response=False
+    ),
+    "nova": _EnvelopeSpec(
+        sample_model=RewardSample, per_sample=False, nova_model=True, bare_list_response=True
+    ),
+    "eval_oss": _EnvelopeSpec(
+        sample_model=EvalRewardSample, per_sample=True, nova_model=False, bare_list_response=False
+    ),
+    "eval_nova": _EnvelopeSpec(
+        sample_model=EvalRewardSample, per_sample=True, nova_model=True, bare_list_response=False
+    ),
+}
 
 
 class RewardMetric(BaseModel):
@@ -100,12 +180,92 @@ def _unwrap_response(payload: Any, is_nova: bool) -> Any:
     return body
 
 
+def _resolve_options(
+    options: Optional[RewardVerificationOptions], option_fields: Dict[str, Any]
+) -> RewardVerificationOptions:
+    """Build the options from the ``options`` object or from its fields passed as keywords."""
+    if options is not None and option_fields:
+        known = ", ".join(field.name for field in fields(RewardVerificationOptions))
+        raise ValueError(f"Pass 'options' or the keyword arguments {known}, not the two together.")
+    if options is not None:
+        return options
+    return RewardVerificationOptions(**option_fields)
+
+
+def _resolve_envelope(options: RewardVerificationOptions) -> _EnvelopeSpec:
+    """Return the envelope spec, with ``is_nova`` as the fallback when no envelope is set."""
+    if options.envelope is None:
+        return _EnvelopeSpec(
+            sample_model=None,
+            per_sample=False,
+            nova_model=options.is_nova,
+            bare_list_response=options.is_nova,
+        )
+    return _ENVELOPE_SPECS[options.envelope]
+
+
+def _validate_samples(sample_data: List[Dict[str, Any]], sample_model: Type[BaseModel]) -> None:
+    """Validate every sample against the envelope's sample model.
+
+    Raises:
+        ValueError: If a sample does not match, with one line per field error.
+    """
+    errors: List[str] = []
+    for idx, sample in enumerate(sample_data):
+        try:
+            sample_model.model_validate(sample)
+        except ValidationError as e:
+            errors.extend(
+                f"Sample {idx}: {'.'.join(str(p) for p in err['loc'])} - {err['msg']}"
+                for err in e.errors()
+            )
+    if errors:
+        raise ValueError(
+            f"Sample data does not match the {sample_model.__name__} contract:\n  - "
+            + "\n  - ".join(errors)
+        )
+
+
+def _invoke_batches(
+    invoke: Callable[[List[Dict[str, Any]]], Any],
+    sample_data: List[Dict[str, Any]],
+    spec: _EnvelopeSpec,
+) -> List[Any]:
+    """Return one raw response per invocation.
+
+    A batch envelope sends every sample in one invocation. A per-sample envelope sends
+    one invocation per sample.
+    """
+    if not spec.per_sample:
+        return [invoke(sample_data)]
+    return [invoke([sample]) for sample in sample_data]
+
+
+def _unwrap_batches(raw_responses: List[Any], spec: _EnvelopeSpec) -> Any:
+    """Unwrap each raw response. A per-sample envelope joins the per-sample lists.
+
+    Raises:
+        ValueError: If a response does not match the envelope.
+    """
+    unwrapped = [_unwrap_response(raw, spec.bare_list_response) for raw in raw_responses]
+    if not spec.per_sample:
+        return unwrapped[0]
+    results: List[Any] = []
+    for item in unwrapped:
+        if not isinstance(item, list):
+            raise ValueError(
+                "Reward function must return a list with one result for each sample, "
+                f"got {type(item).__name__}"
+            )
+        results.extend(item)
+    return results
+
+
 def verify_reward_function(
     reward_function: str,
     sample_data: List[Dict[str, Any]],
-    validate_format: bool = True,
-    compute: Optional[Union[TrainingJobCompute, HyperPodCompute]] = None,
-    is_nova: bool = True,
+    options: Optional[RewardVerificationOptions] = None,
+    **option_fields: Any,
 ) -> Dict[str, Any]:
     """Verify a reward function with sample data before using it in RLVR training or evaluation.
 
@@ -117,15 +277,17 @@ def verify_reward_function(
                         or a path to a local Python file containing the reward function.
         sample_data: List of conversation samples to test. Each sample should be a dict
                     with 'id', 'messages', and optionally 'reference_answer' keys.
-        validate_format: If True, validates that the output matches expected format
-                        (default: True).
-        compute: Compute configuration (TrainingJobCompute or HyperPodCompute). Required
-                 when using Lambda ARN with Nova models. When set to HyperPodCompute,
-                 validates that Lambda ARN contains 'SageMaker' in the function name as
-                 required by SageMaker HyperPod. Optional for local files.
-        is_nova: If True (default), expects Nova format where the reward function returns
-                 a list of results directly. If False, expects OSS format where the function
-                 returns {statusCode: 200, headers: {...}, body: json.dumps(results)}.
+        options: ``RewardVerificationOptions`` with ``validate_format``, ``compute``,
+                 ``is_nova``, and ``envelope``.
+        **option_fields: The fields of ``RewardVerificationOptions`` as keyword arguments,
+                 as an alternative to ``options``. ``validate_format`` (default True)
+                 validates each result against ``RewardFunctionOutput``. ``compute``
+                 (``TrainingJobCompute`` or ``HyperPodCompute``) with a Nova model makes
+                 the Lambda function name contain 'SageMaker', as SageMaker HyperPod
+                 demands. ``is_nova`` (default True) expects a bare list back, False
+                 expects {statusCode: 200, headers: {...}, body: json.dumps(results)}.
+                 ``envelope`` selects the request and response contract, see
+                 ``RewardVerificationOptions``.
 
     Returns:
         Dict containing:
@@ -137,7 +299,8 @@ def verify_reward_function(
 
     Raises:
         ValueError: If any validation errors are encountered, with a detailed error message
-                   listing all issues found.
+                   listing all issues found, or if a sample does not match the envelope's
+                   sample model.
 
     Example:
         >>> # Test training reward function with Lambda ARN
@@ -177,12 +340,26 @@ def verify_reward_function(
         ...     sample_data=[...],
         ...     compute=HyperPodCompute(cluster_name="my-cluster")
         ... )
+
+        >>> # Test an evaluation custom scorer for an OSS model, one invocation per sample
+        >>> result = verify_reward_function(
+        ...     reward_function="./my_scorer.py",
+        ...     sample_data=[{"id": "s1", "model_response": "4", "query": "2+2?"}],
+        ...     envelope="eval_oss",
+        ... )
     """
+    resolved_options = _resolve_options(options, option_fields)
+    validate_format = resolved_options.validate_format
+    compute = resolved_options.compute
+    spec = _resolve_envelope(resolved_options)
+    if spec.sample_model is not None:
+        _validate_samples(sample_data, spec.sample_model)
+
     # Determine if it's a Lambda ARN or local file
     is_lambda = bool(LAMBDA_ARN_REGEX.match(reward_function))
 
     # Validate Lambda ARN format for HyperPod compute
-    if is_nova and isinstance(compute, HyperPodCompute):
+    if spec.nova_model and isinstance(compute, HyperPodCompute):
         if is_lambda:
             # Extract function name from ARN: arn:aws[-*]:lambda:region:account:function:function-name
             function_name_match = re.search(
@@ -227,19 +404,19 @@ def verify_reward_function(
             logger.info(f"Invoking Lambda: {reward_function}")
             logger.info(f"Number of samples: {len(sample_data)}")
 
-            # Invoke Lambda with all samples at once (Lambda expects array)
-            response = lambda_client.invoke(
-                FunctionName=reward_function,
-                InvocationType="RequestResponse",
-                Payload=json.dumps(sample_data),
-            )
+            def invoke_lambda(batch: List[Dict[str, Any]]) -> Any:
+                response = lambda_client.invoke(
+                    FunctionName=reward_function,
+                    InvocationType="RequestResponse",
+                    Payload=json.dumps(batch),
+                )
+                return json.loads(response["Payload"].read())
 
-            # Parse response
-            payload = json.loads(response["Payload"].read())
+            raw_responses = _invoke_batches(invoke_lambda, sample_data, spec)
 
             # Unwrap based on output format (Nova vs OSS)
             try:
-                payload = _unwrap_response(payload, is_nova)
+                payload = _unwrap_batches(raw_responses, spec)
             except ValueError as e:
                 # Unwrap failure means the response format is wrong
                 error_msg = str(e)
@@ -361,13 +538,13 @@ def verify_reward_function(
 
             handler = namespace["lambda_handler"]
 
-            # Call handler with all samples at once (matches Lambda behavior)
+            # Call handler per the envelope (matches Lambda behavior)
             try:
-                result = handler(sample_data, {})
+                raw_responses = _invoke_batches(lambda batch: handler(batch, {}), sample_data, spec)
 
                 # Unwrap based on output format (Nova vs OSS)
                 try:
-                    result = _unwrap_response(result, is_nova)
+                    result = _unwrap_batches(raw_responses, spec)
                 except ValueError as e:
                     error_msg = str(e)
                     for idx in range(len(sample_data)):

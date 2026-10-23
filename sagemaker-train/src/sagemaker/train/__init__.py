@@ -114,6 +114,26 @@ def __getattr__(name):
         from sagemaker.train.custom_agent_lambda import CustomAgentLambda
 
         return CustomAgentLambda
+    elif name == "verify_reward_function":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
+
+        return verify_reward_function
+    elif name == "RewardVerificationOptions":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import RewardVerificationOptions
+
+        return RewardVerificationOptions
+    elif name == "RewardFunctionOutput":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import RewardFunctionOutput
+
+        return RewardFunctionOutput
+    elif name == "RewardSample":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import RewardSample
+
+        return RewardSample
+    elif name == "EvalRewardSample":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import EvalRewardSample
+
+        return EvalRewardSample
     elif name == "plot_training_metrics":
         from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
 
