@@ -3935,8 +3935,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.endpoint_name = endpoint_name
 
         tags = kwargs.get("tags", getattr(self, "_tags", None))
-        if "tags" in kwargs:
-            self._tags = tags
+        if "tags" in kwargs and tags is not None:
+            self.add_tags(tags)
+            tags = self._tags
 
         kms_key = kwargs.get("kms_key", getattr(self, "kms_key", None))
         if "kms_key" in kwargs:
@@ -4564,14 +4565,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Tag the Model resource that build() creates. Without this the only way to
         # set _tags was deploy(), so every model built without an endpoint -- a
         # pipeline ModelStep, batch transform, evaluation, an inference pipeline --
-        # was created untagged with no public way to fix it (#6501).
-        # format_tags() expands the {key: value} mapping form; serialize() turns
-        # sagemaker.core.shapes.Tag objects into the boto-style {"Key", "Value"}
-        # dicts the CreateModel request needs, so both representations are accepted.
+        # was created untagged with no public way to fix it (#6501). add_tags()
+        # normalizes every accepted representation to the boto-style {"Key", "Value"}
+        # dicts the CreateModel request needs.
         if tags is not None:
-            from sagemaker.core.utils.utils import serialize
-
-            self.add_tags(serialize(format_tags(tags)))
+            self.add_tags(tags)
 
         if hasattr(self, "built_model") and self.built_model is not None:
             logger.warning(
@@ -6077,6 +6075,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         role: Optional[str] = None,
         model_name: Optional[str] = None,
         endpoint_config_name: Optional[str] = None,
+        tags: Optional[Tags] = None,
         **kwargs,
     ) -> Union[Endpoint, LocalEndpoint, Transformer]:
         """Deploy the built model to an ``Endpoint``.
@@ -6152,6 +6151,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             endpoint_config_name (str, optional): Recommendation deploy only. Name for the created
                 EndpointConfig; auto-generated if omitted. Ignored when deploying a normally-built
                 model.
+            tags (Optional[Tags]): Tags to attach to the endpoint and endpoint config this call
+                creates, merged with any added through ``add_tags()`` or ``build(tags=...)``.
+                Accepts a ``{key: value}`` mapping, boto-style ``{"Key": ..., "Value": ...}``
+                dicts, ``{"key": ..., "value": ...}`` dicts, or ``sagemaker.core.shapes.Tag``
+                objects. The same tags apply on every deploy path: a built model, a fine-tuned
+                model package, a Nova model, an inference component, and a recommendation.
+                (Default: None).
         Returns:
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
@@ -6176,6 +6182,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "Please create a new ModelBuilder instance for additional deployments."
             )
         self._deployed = True
+
+        # Normalize the caller's tags once, in boto form, and merge them into the
+        # builder's accumulated tags. Every deploy path below reads self._tags, so a
+        # tag passed here reaches the endpoint whichever path the model takes.
+        if tags is not None:
+            self.add_tags(tags)
 
         # Recommendation-mode deploy: when a recommendation job is attached
         # (from a prior generate_deployment_recommendations call, or because the
@@ -6223,7 +6235,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 role=role,
                 instance_type=instance_type,
                 initial_instance_count=initial_instance_count,
-                tags=kwargs.get("tags"),
+                tags=format_tags(getattr(self, "_tags", None)),
                 wait=wait,
                 auto_approve=auto_approve,
             )
@@ -6436,6 +6448,17 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         raise ValueError("Deployment Options not supported")
 
+    def _core_endpoint_tags(self) -> List[Dict[str, str]]:
+        """Return the builder's accumulated tags in the form ``Endpoint.create`` takes.
+
+        ``add_tags`` stores tags in boto form (``{"Key": ..., "Value": ...}``); the
+        ``sagemaker.core.resources`` classes take ``{"key": ..., "value": ...}``.
+        """
+        return [
+            {"key": tag["Key"], "value": tag["Value"]}
+            for tag in format_tags(getattr(self, "_tags", None) or [])
+        ]
+
     def _deploy_model_customization(
         self,
         endpoint_name: str,
@@ -6506,7 +6529,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ],
             )
             endpoint = Endpoint.create(
-                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
+                endpoint_name=endpoint_name,
+                endpoint_config_name=endpoint_name,
+                tags=self._core_endpoint_tags() or None,
             )
             if kwargs.get("wait", True):
                 endpoint.wait_for_status("InService")
@@ -6593,18 +6618,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 enable_network_isolation=enable_network_isolation,
             )
             logger.info("Endpoint core call starting")
-            # Apply tags accumulated via add_tags (e.g. the model-source reuse
-            # tag) to the endpoint so it is discoverable. Stored tags are in
-            # {"Key":..,"Value":..} form; normalize to the key/value form the
-            # core resource expects.
-            endpoint_tags = [
-                {"key": tag["Key"], "value": tag["Value"]}
-                for tag in format_tags(getattr(self, "_tags", None) or [])
-            ]
+            # Apply tags accumulated via add_tags (the caller's deploy(tags=...),
+            # build(tags=...), and the model-source reuse tag) to the endpoint so it
+            # is discoverable.
             endpoint = Endpoint.create(
                 endpoint_name=endpoint_name,
                 endpoint_config_name=endpoint_name,
-                tags=endpoint_tags or None,
+                tags=self._core_endpoint_tags() or None,
             )
             endpoint.wait_for_status("InService")
         else:
@@ -6828,15 +6848,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if base_model is not None and base_model.recipe_name:
                 tags.append({"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name})
 
-        # Merge tags accumulated via add_tags (e.g. the model-source reuse tag).
-        # Those are stored in {"Key": ..., "Value": ...} form, so normalize to the
-        # {"key": ..., "value": ...} form Endpoint.create expects and de-duplicate.
+        # Merge tags accumulated via add_tags (the caller's deploy(tags=...),
+        # build(tags=...), and the model-source reuse tag) and de-duplicate by key.
         existing_keys = {tag["key"] for tag in tags}
-        for tag in format_tags(getattr(self, "_tags", None) or []):
-            key = tag["Key"]
-            if key not in existing_keys:
-                tags.append({"key": key, "value": tag["Value"]})
-                existing_keys.add(key)
+        for tag in self._core_endpoint_tags():
+            if tag["key"] not in existing_keys:
+                tags.append(tag)
+                existing_keys.add(tag["key"])
 
         endpoint = Endpoint.create(
             endpoint_name=endpoint_name,

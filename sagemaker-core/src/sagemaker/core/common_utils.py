@@ -1688,12 +1688,53 @@ def create_paginator_config(max_items: int = None, page_size: int = None) -> Dic
     }
 
 
-def format_tags(tags: Tags) -> List[TagsDict]:
-    """Process tags to turn them into the expected format for Sagemaker."""
-    if isinstance(tags, dict):
-        return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
+def _normalize_tag(tag: Any) -> TagsDict:
+    """Return one tag as a boto-style ``{"Key": ..., "Value": ...}`` dict.
 
-    return tags
+    Accepts the boto form, the ``{"key": ..., "value": ...}`` form that the
+    ``sagemaker.core.resources`` classes take, and a ``Tag`` shape object (anything
+    with ``key`` and ``value`` attributes). Any other input raises ``TypeError`` so a
+    malformed tag fails at the call site instead of as a ``KeyError`` deep in a
+    deploy path.
+    """
+    if isinstance(tag, dict):
+        if "Key" in tag:
+            return {"Key": tag["Key"], "Value": tag.get("Value")}
+        if "key" in tag:
+            return {"Key": tag["key"], "Value": tag.get("value")}
+        raise TypeError(
+            "A tag dict must have a 'Key' (or 'key') entry, "
+            f"got {sorted(tag)}. Pass a {{key: value}} mapping to set many tags at once."
+        )
+    if hasattr(tag, "key") and hasattr(tag, "value"):
+        return {"Key": tag.key, "Value": tag.value}
+    raise TypeError(
+        "A tag must be a {'Key': ..., 'Value': ...} dict, a {'key': ..., 'value': ...} dict, "
+        f"or a Tag object, got {type(tag).__name__}."
+    )
+
+
+def format_tags(tags: Tags) -> List[TagsDict]:
+    """Process tags to turn them into the expected format for Sagemaker.
+
+    Every accepted representation comes out as a list of boto-style
+    ``{"Key": ..., "Value": ...}`` dicts:
+
+    * a ``{key: value}`` mapping, one tag per entry;
+    * a single tag dict or ``Tag`` object;
+    * a list of tag dicts in either casing, ``Tag`` objects, or a mix.
+
+    ``None`` is returned unchanged.
+    """
+    if tags is None:
+        return tags
+    if isinstance(tags, dict):
+        if "Key" in tags or "key" in tags:
+            return [_normalize_tag(tags)]
+        return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
+    if isinstance(tags, (list, tuple)):
+        return [_normalize_tag(tag) for tag in tags]
+    return [_normalize_tag(tags)]
 
 
 def _get_resolved_path(path):
@@ -2124,8 +2165,9 @@ def tag_exists(tag: TagsDict, curr_tags: Optional[Tags]) -> bool:
     if curr_tags is None:
         return False
 
-    for curr_tag in curr_tags:
-        if tag["Key"] == curr_tag["Key"]:
+    key = _normalize_tag(tag)["Key"]
+    for curr_tag in format_tags(curr_tags):
+        if key == curr_tag["Key"]:
             return True
 
     return False
@@ -2141,21 +2183,18 @@ def _validate_new_tags(new_tags: Optional[Tags], curr_tags: Optional[Tags]) -> O
     Returns:
         Optional[Tags]: The updated tags.
     """
+    if new_tags is None:
+        return format_tags(curr_tags) if curr_tags is not None else None
+
     if curr_tags is None:
-        return new_tags
+        return format_tags(new_tags)
 
-    if curr_tags and isinstance(curr_tags, dict):
-        curr_tags = [curr_tags]
+    merged = format_tags(curr_tags)
+    for new_tag in format_tags(new_tags):
+        if not tag_exists(new_tag, merged):
+            merged.append(new_tag)
 
-    if isinstance(new_tags, dict):
-        if not tag_exists(new_tags, curr_tags):
-            curr_tags.append(new_tags)
-    elif isinstance(new_tags, list):
-        for new_tag in new_tags:
-            if not tag_exists(new_tag, curr_tags):
-                curr_tags.append(new_tag)
-
-    return curr_tags
+    return merged
 
 
 def remove_tag_with_key(key: str, tags: Optional[Tags]) -> Optional[Tags]:
@@ -2170,11 +2209,9 @@ def remove_tag_with_key(key: str, tags: Optional[Tags]) -> Optional[Tags]:
     """
     if tags is None:
         return tags
-    if isinstance(tags, dict):
-        tags = [tags]
 
     updated_tags = []
-    for tag in tags:
+    for tag in format_tags(tags):
         if tag["Key"] != key:
             updated_tags.append(tag)
 
