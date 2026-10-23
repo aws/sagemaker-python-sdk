@@ -320,6 +320,17 @@ Train pre-configured models from the SageMaker JumpStart hub using ``ModelTraine
    )
    print(content.license, content.provider, content.tasks, content.fine_tuning_techniques())
 
+   # Server-side search on the document fields, paged for you
+   from sagemaker.core.hub_content import HubContentFilter
+
+   apache_meta_models = HubContent.search(
+       "SageMakerPublicHub",
+       filters=[
+           HubContentFilter.metadata("license", "apache-2.0"),
+           HubContentFilter.metadata("provider", "Meta"),
+       ],
+   )
+
 Key points:
 
 - ``from_jumpstart_config()`` auto-configures training image, instance type, and default hyperparameters
@@ -328,6 +339,7 @@ Key points:
 - Supports HuggingFace, XGBoost, CatBoost, LightGBM, and many more frameworks
 - Use ``list_jumpstart_models()`` and ``search_public_hub_models()`` to discover available models
 - ``HubContent`` exposes ``tasks``, ``license``, ``provider``, ``model_size``, ``context_window``, ``languages``, ``capabilities``, and ``recipes`` read from its search keywords and document, so no caller parses ``HubContentSearchKeywords`` by hand
+- ``HubContent.search()`` filters a hub server side on ``Metadata.<Field>`` through ``HubContentFilter``, inside the 20-filter and 1024-character service limits
 
 :doc:`Full example notebook <../v3-examples/training-examples/jumpstart-training-example>`
 

@@ -27,13 +27,19 @@ document fills in only what the keyword cap dropped. The mixin keeps no state, s
 works on a resource from ``HubContent.get`` (document, no ``OriginalCreationTime``), from
 ``HubContent.get_all`` (keywords and, after the per-item refresh, the document), and on a
 ``HubContent`` built by hand from a boto response.
+
+``HubContent.search`` runs the service-side ``Search`` API with ``Resource="HubContent"``.
+The service indexes the document fields as ``Metadata.<Field>`` (``Metadata.Task``,
+``Metadata.License``, ``Metadata.Provider``, ``Metadata.ModelSize``, ...), so a filter such
+as ``HubContentFilter.metadata("license", "apache-2.0")`` narrows the public hub without
+listing it. Each result record is a full ``HubContent`` with its keywords and document.
 """
 
 from __future__ import absolute_import
 
 import json
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Optional
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Union
 
 KEYWORD_PREFIXES = {
     "tasks": "@task:",
@@ -70,6 +76,28 @@ DOCUMENT_FIELDS = {
 LIST_FIELDS = frozenset(
     ("tasks", "languages", "data_types", "input_modalities", "output_modalities")
 )
+
+# Search indexes the hub content document as ``Metadata.<Field>``. The two extra names are
+# document fields that have no search keyword.
+METADATA_FIELDS = dict(DOCUMENT_FIELDS, capabilities="Capabilities", recipes="RecipeCollection")
+SEARCH_OPERATORS = frozenset(
+    (
+        "Equals",
+        "NotEquals",
+        "GreaterThan",
+        "GreaterThanOrEqualTo",
+        "LessThan",
+        "LessThanOrEqualTo",
+        "Contains",
+        "Exists",
+        "NotExists",
+        "In",
+    )
+)
+# Service limits of a SearchExpression: 20 filters per expression, 1024 characters per value.
+MAX_SEARCH_FILTERS = 20
+MAX_SEARCH_FILTER_VALUE_LENGTH = 1024
+SEARCH_PAGE_SIZE = 100
 
 
 @dataclass(frozen=True)
@@ -110,6 +138,66 @@ class HubContentRecipe:
             technique=str(technique).lower(),
             strategy=str(strategy).lower() if strategy else None,
         )
+
+
+@dataclass(frozen=True)
+class HubContentFilter:
+    """One ``Filter`` of a ``Search(Resource="HubContent")`` expression.
+
+    ``name`` is a search property such as ``HubContentName``, ``HubContentSearchKeywords``,
+    or ``Metadata.License``. ``operator`` is one of ``SEARCH_OPERATORS``. ``value`` is the
+    filter value, or a sequence of values for ``In`` (joined with commas, as the service
+    expects). ``Exists`` and ``NotExists`` take no value.
+    """
+
+    name: str
+    operator: str = "Equals"
+    value: Optional[Union[str, Sequence[str]]] = None
+
+    @classmethod
+    def metadata(
+        cls, attribute: str, value: Union[str, Sequence[str]], operator: str = "Equals"
+    ) -> "HubContentFilter":
+        """Build a ``Metadata.<Field>`` filter from a ``HubContent`` attribute name.
+
+        ``HubContentFilter.metadata("license", "apache-2.0")`` is
+        ``HubContentFilter("Metadata.License", "Equals", "apache-2.0")``. A sequence of
+        values selects the ``In`` operator.
+        """
+        if attribute not in METADATA_FIELDS:
+            raise ValueError(
+                f"{attribute!r} is not a hub content metadata attribute. "
+                f"Choose one of: {', '.join(sorted(METADATA_FIELDS))}."
+            )
+        if not isinstance(value, str) and operator == "Equals":
+            operator = "In"
+        return cls(name=f"Metadata.{METADATA_FIELDS[attribute]}", operator=operator, value=value)
+
+    @classmethod
+    def keyword(cls, keyword: str) -> "HubContentFilter":
+        """Match a hub content whose search keywords hold ``keyword``, such as ``@task:summarization``."""
+        return cls(name="HubContentSearchKeywords", operator="Equals", value=keyword)
+
+    def to_request(self) -> Dict[str, str]:
+        """Return the filter in the service form, after a check of the operator and value."""
+        if self.operator not in SEARCH_OPERATORS:
+            raise ValueError(
+                f"{self.operator!r} is not a Search operator. "
+                f"Choose one of: {', '.join(sorted(SEARCH_OPERATORS))}."
+            )
+        request = {"Name": self.name, "Operator": self.operator}
+        if self.operator in ("Exists", "NotExists"):
+            return request
+        if self.value is None:
+            raise ValueError(f"A {self.operator} filter on {self.name} takes a value.")
+        value = self.value if isinstance(self.value, str) else ",".join(self.value)
+        if not value or len(value) > MAX_SEARCH_FILTER_VALUE_LENGTH:
+            raise ValueError(
+                f"A Search filter value holds 1 to {MAX_SEARCH_FILTER_VALUE_LENGTH} characters, "
+                f"the value for {self.name} has {len(value)}."
+            )
+        request["Value"] = value
+        return request
 
 
 class HubContentMixin:
@@ -212,6 +300,76 @@ class HubContentMixin:
                     recipes.append(recipe)
         return recipes
 
+    @classmethod
+    def search(
+        cls,
+        hub_name: str,
+        filters: Optional[Sequence[HubContentFilter]] = None,
+        hub_content_type: str = "Model",
+        session: Optional[Any] = None,
+        region: Optional[str] = None,
+    ) -> Iterator["HubContentMixin"]:
+        """Search a hub server side and yield each matching ``HubContent``.
+
+        Runs ``Search(Resource="HubContent")`` with an ``And`` expression of ``HubName``,
+        ``HubContentType``, and ``filters``, sorted by ``HubContentName`` so the pages are
+        stable, and pages until the service returns no ``NextToken``. Each result is a full
+        ``HubContent`` bound to ``session`` and ``region``, with its search keywords and
+        document, so ``content.license`` and ``content.recipes`` work without a second call.
+
+        Args:
+            hub_name (str): The hub to search, for example ``SageMakerPublicHub``.
+            filters (Optional[Sequence[HubContentFilter]]): Up to 18 extra filters, for
+                example ``[HubContentFilter.metadata("license", "apache-2.0")]``.
+            hub_content_type (str): ``Model``, ``Notebook``, ``ModelReference``, or another
+                hub content type (default: ``Model``).
+            session (Optional[boto3.session.Session]): Boto3 session.
+            region (Optional[str]): Region name.
+
+        Returns:
+            Iterator[HubContent]: The matching hub content, one page at a time.
+
+        Raises:
+            ValueError: If more than ``MAX_SEARCH_FILTERS`` filters result, or a filter has an
+                unknown operator or an out-of-range value.
+        """
+        expression = _search_expression(hub_name, hub_content_type, filters or ())
+        client = cls.get_sagemaker_client(session=session, region_name=region)
+        next_token = None
+        while True:
+            request = {
+                "Resource": "HubContent",
+                "SearchExpression": expression,
+                "SortBy": "HubContentName",
+                "SortOrder": "Ascending",
+                "MaxResults": SEARCH_PAGE_SIZE,
+            }
+            if next_token:
+                request["NextToken"] = next_token
+            response = client.search(**request)
+            for record in response.get("Results", []):
+                content = cls._from_search_record(record.get("HubContent", {}), hub_name)
+                if content is not None:
+                    yield content._set_client_context(session=session, region=region)
+            page_token = response.get("NextToken")
+            if not page_token or page_token == next_token:
+                return
+            next_token = page_token
+
+    @classmethod
+    def _from_search_record(
+        cls, record: Mapping[str, Any], hub_name: str
+    ) -> Optional["HubContentMixin"]:
+        """Build a ``HubContent`` from one ``SearchRecord.HubContent`` dict."""
+        if not record:
+            return None
+        from sagemaker.core.utils.code_injection.codec import transform
+
+        transformed = transform(dict(record), "HubContent")
+        transformed.setdefault("hub_name", hub_name)
+        known = {name: value for name, value in transformed.items() if name in cls.model_fields}
+        return cls(**known)
+
     def fine_tuning_techniques(self) -> List[str]:
         """The techniques of the model's FineTuning recipes (``sft``, ``dpo``, ...), sorted."""
         return sorted(
@@ -254,6 +412,23 @@ def _assigned(value: Any) -> Any:
     if value is None or type(value).__name__ == "Unassigned":
         return None
     return value
+
+
+def _search_expression(
+    hub_name: str, hub_content_type: str, filters: Sequence[HubContentFilter]
+) -> Dict[str, Any]:
+    """Build the ``And`` expression of a hub content search, inside the service limits."""
+    request_filters = [
+        HubContentFilter("HubName", "Equals", hub_name).to_request(),
+        HubContentFilter("HubContentType", "Equals", hub_content_type).to_request(),
+    ]
+    request_filters.extend(search_filter.to_request() for search_filter in filters)
+    if len(request_filters) > MAX_SEARCH_FILTERS:
+        raise ValueError(
+            f"A SearchExpression holds at most {MAX_SEARCH_FILTERS} filters, HubName and "
+            f"HubContentType included. Got {len(request_filters)}."
+        )
+    return {"Operator": "And", "Filters": request_filters}
 
 
 def _parse_document(document: Any) -> Dict[str, Any]:
