@@ -13830,6 +13830,7 @@ class HubContent(Base):
         hub_content_dependencies: The location of any dependencies that the hub content has, such as scripts, model artifacts, datasets, or notebooks.
         failure_reason: The failure reason if importing hub content failed.
         last_modified_time: The last modified time of the hub content.
+        original_creation_time: The date and time when the hub content was originally created, before any updates or revisions.
 
     """
 
@@ -13854,6 +13855,7 @@ class HubContent(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     hub_name: Optional[str] = Unassigned()
+    original_creation_time: Optional[datetime.datetime] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -14210,6 +14212,85 @@ class HubContent(Base):
             region=region,
         )
 
+    @classmethod
+    @Base.add_validate_call
+    def get_all(
+        cls,
+        hub_name: StrPipeVar,
+        hub_content_type: StrPipeVar,
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        max_schema_version: Optional[StrPipeVar] = Unassigned(),
+        creation_time_before: Optional[datetime.datetime] = Unassigned(),
+        creation_time_after: Optional[datetime.datetime] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> ResourceIterator["HubContent"]:
+        """
+        Get all HubContent resources
+
+        Parameters:
+            hub_name: The name of the hub to list the contents of.
+            hub_content_type: The type of hub content to list.
+            name_contains: Only list hub content if the name contains the specified string.
+            max_schema_version: The upper bound of the hub content schema verion.
+            creation_time_before: Only list hub content that was created before the time specified.
+            creation_time_after: Only list hub content that was created after the time specified.
+            sort_by: Sort hub content versions by either name or creation time.
+            sort_order: Sort hubs by ascending or descending order.
+            max_results: The maximum amount of hub content to list.
+            next_token: If the response to a previous ListHubContents request was truncated, the response includes a NextToken. To retrieve the next set of hub content, use the token in the next request.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            Iterator for listed HubContent resources.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "HubName": hub_name,
+            "HubContentType": hub_content_type,
+            "NameContains": name_contains,
+            "MaxSchemaVersion": max_schema_version,
+            "CreationTimeBefore": creation_time_before,
+            "CreationTimeAfter": creation_time_after,
+            "SortBy": sort_by,
+            "SortOrder": sort_order,
+        }
+
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        return ResourceIterator(
+            client=client,
+            session=session,
+            region=region,
+            list_method="list_hub_contents",
+            summaries_key="HubContentSummaries",
+            summary_name="HubContentInfo",
+            resource_cls=HubContent,
+            extra_init_data={"hub_name": hub_name},
+            list_method_kwargs=operation_input_args,
+        )
+
     @Base.add_validate_call
     def get_all_versions(
         self,
@@ -14279,6 +14360,7 @@ class HubContent(Base):
             summary_name="HubContentInfo",
             resource_cls=HubContent,
             list_method_kwargs=operation_input_args,
+            extra_init_data={"hub_name": self.hub_name},
         )
 
 

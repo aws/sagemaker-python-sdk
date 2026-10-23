@@ -106,6 +106,25 @@ REFRESH_IDENTIFIER_FALLBACKS = {
     "ModelPackage": {"ModelPackageName": "model_package_arn"},
 }
 
+# Some List APIs return a summary member that the Describe API does not. A resource class
+# is generated from the Describe output, so ResourceIterator drops such members when it
+# builds the resource from the summary (`extra="forbid"` leaves no other option). This
+# maps a resource to the summary members it keeps as optional attributes. ListHubContents
+# returns OriginalCreationTime, the model-level catalog date, while DescribeHubContent
+# returns only the version-level CreationTime.
+LIST_SUMMARY_EXTRA_ATTRIBUTES = {
+    "HubContent": {"OriginalCreationTime": "Optional[datetime.datetime] = Unassigned()"},
+}
+
+# Some List APIs take an input member that the resource's Describe input requires but the
+# list summary does not return (ListHubContents takes HubName, HubContentInfo omits it).
+# get_all() cannot build a resource from such a summary unless the list argument is
+# copied onto every resource. This maps a resource to the list-input members to copy, as
+# {summary-less member: resource attribute}.
+GET_ALL_INPUT_ATTRIBUTES = {
+    "HubContent": {"HubName": "hub_name"},
+}
+
 
 class ResourcesCodeGen:
     """A class for generating resources based on a service JSON file.
@@ -535,8 +554,15 @@ class ResourcesCodeGen:
                 class_attributes["hub_name"] = "Optional[str] = Unassigned()"
                 class_attributes_string = class_attributes_string.replace("hub_name: str", "")
                 class_attributes_string = (
-                    class_attributes_string + "hub_name: Optional[str] = Unassigned()"
+                    class_attributes_string + "hub_name: Optional[str] = Unassigned()\n"
                 )
+            for member, annotation in LIST_SUMMARY_EXTRA_ATTRIBUTES.get(resource_name, {}).items():
+                attribute = convert_to_snake_case(member)
+                class_attributes[attribute] = annotation
+                class_attributes_string += f"{attribute}: {annotation}\n"
+                attributes_and_documentation[member] = self.shapes_extractor.combined_shapes[
+                    self._list_summary_shape(resource_name)
+                ]["members"][member].get("documentation")
             if resource_name == "Endpoint":
                 class_attributes["serializer"] = "Optional[BaseSerializer] = None"
                 class_attributes_string = class_attributes_string.replace(
@@ -1714,6 +1740,21 @@ class ResourcesCodeGen:
             "list_method_kwargs=operation_input_args",
         ]
 
+        # An object method lists resources of its own type under its own identifiers
+        # (ListHubContentVersions lists the versions of one HubContent). The summaries
+        # omit the identifiers the list call was made with, so copy them onto every
+        # resource or the first refresh() fails with a missing required parameter.
+        if (
+            method.method_type == MethodType.OBJECT.value
+            and method.return_type == method.resource_name
+        ):
+            input_attributes = GET_ALL_INPUT_ATTRIBUTES.get(method.resource_name, {})
+            if input_attributes:
+                extra_init = ", ".join(
+                    f"'{attribute}': self.{attribute}" for attribute in input_attributes.values()
+                )
+                resource_iterator_args_list.append(f"extra_init_data={{{extra_init}}}")
+
         resource_iterator_args = ",\n".join(resource_iterator_args_list)
         resource_iterator_args = add_indent(resource_iterator_args, 8)
         serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
@@ -1934,6 +1975,14 @@ if not isinstance(self.resource_config, Unassigned):
         )
         return formatted_method
 
+    def _list_summary_shape(self, resource_name: str) -> str:
+        """Return the summary shape name of the resource's List API output."""
+        operation_name = "List" + resource_name + "s"
+        output_shape = self.operations[operation_name]["output"]["shape"]
+        output_members = self.shapes[output_shape]["members"]
+        summaries_key = next(key for key in output_members if key != "NextToken")
+        return self.shapes[output_members[summaries_key]["shape"]]["member"]["shape"]
+
     def generate_get_all_method(self, resource_name: str) -> str:
         """Auto-Generate 'get_all' class Method [list API] for a resource.
 
@@ -1974,7 +2023,13 @@ if not isinstance(self.resource_config, Unassigned):
             get_operation_required_input = []
 
         custom_key_mapping_str = ""
-        if any(member not in summary_members for member in get_operation_required_input):
+        input_attributes = GET_ALL_INPUT_ATTRIBUTES.get(resource_name, {})
+        missing_members = [
+            member
+            for member in get_operation_required_input
+            if member not in summary_members and member not in input_attributes
+        ]
+        if missing_members:
             if "MonitoringJobDefinitionSummary" == summary_name:
                 custom_key_mapping = {
                     "monitoring_job_definition_name": "job_definition_name",
@@ -2001,6 +2056,13 @@ if not isinstance(self.resource_config, Unassigned):
 
         if custom_key_mapping_str:
             resource_iterator_args_list.append("custom_key_mapping=custom_key_mapping")
+
+        if input_attributes:
+            extra_init = ", ".join(
+                f"'{attribute}': {convert_to_snake_case(member)}"
+                for member, attribute in input_attributes.items()
+            )
+            resource_iterator_args_list.append(f"extra_init_data={{{extra_init}}}")
 
         exclude_list = ["next_token", "max_results"]
         get_all_args = self._generate_method_args(operation_input_shape_name, exclude_list)

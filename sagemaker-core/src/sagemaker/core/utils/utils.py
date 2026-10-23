@@ -546,6 +546,7 @@ class ResourceIterator(Generic[T]):
         custom_key_mapping: dict = None,
         session=None,
         region: Optional[str] = None,
+        extra_init_data: dict = None,
     ):
         """Initialize a ResourceIterator object
 
@@ -563,6 +564,9 @@ class ResourceIterator(Generic[T]):
                 Each returned resource is bound to it, so its refresh and other object methods
                 use the same account. Defaults to None (the process default client).
             region (str, optional): The region the list call was made in. Defaults to None.
+            extra_init_data (dict, optional): Attributes set on every resource in addition to
+                the summary, for a list argument the summary does not echo back (for example
+                the ``hub_name`` a ``ListHubContents`` call was made with). Defaults to None.
         """
         self.summaries_key = summaries_key
         self.summary_name = summary_name
@@ -572,6 +576,7 @@ class ResourceIterator(Generic[T]):
         self.custom_key_mapping = custom_key_mapping
         self.session = session
         self.region = region
+        self.extra_init_data = extra_init_data or {}
 
         self.resource_cls = resource_cls
         self.index = 0
@@ -605,6 +610,8 @@ class ResourceIterator(Generic[T]):
                 # Filter out the fields that are not in the resource class
                 fields = self.resource_cls.__annotations__
                 init_data = {k: v for k, v in init_data.items() if k in fields}
+                for key, value in self.extra_init_data.items():
+                    init_data.setdefault(key, value)
 
                 resource_object = self.resource_cls(**init_data)
 
