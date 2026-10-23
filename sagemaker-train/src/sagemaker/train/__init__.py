@@ -53,6 +53,10 @@ def __getattr__(name):
         from sagemaker.train.cpt_trainer import CPTTrainer
 
         return CPTTrainer
+    elif name in ("FineTuningSweep", "SweepConfig", "SweepTrial"):
+        from sagemaker.train import fine_tuning_sweep
+
+        return getattr(fine_tuning_sweep, name)
     elif name == "DataMixingConfig":
         from sagemaker.train.data_mixing_config import DataMixingConfig
 
