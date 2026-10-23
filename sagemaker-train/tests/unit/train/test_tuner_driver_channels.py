@@ -79,6 +79,7 @@ def _mock_model_trainer(**overrides):
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
     trainer.compute.volume_size_in_gb = 30
+    trainer.compute.volume_kms_key_id = None
     trainer.stopping_condition = MagicMock()
     trainer.stopping_condition.max_runtime_in_seconds = 3600
     trainer.input_data_config = None
