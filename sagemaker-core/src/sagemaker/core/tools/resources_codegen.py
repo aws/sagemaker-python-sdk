@@ -1789,7 +1789,7 @@ class ResourcesCodeGen:
             operation_input_shape_name=operation_input_shape_name,
             include_session_region=True,
             return_string=return_string,
-            exclude_resource_attrs=exclude_resource_attrs,
+            exclude_resource_attrs=exclude_list + (exclude_resource_attrs or []),
         )
 
         return GENERIC_METHOD_TEMPLATE.format(
@@ -2113,7 +2113,8 @@ if not isinstance(self.resource_config, Unassigned):
         resource_iterator_args = ",\n".join(resource_iterator_args_list)
         resource_iterator_args = add_indent(resource_iterator_args, 8)
 
-        # generate docstring
+        # generate docstring. The paging members are not parameters: ResourceIterator
+        # pages for the caller, so they stay out of the docstring too.
         docstring = self._generate_docstring(
             title=f"Get all {resource_name} resources",
             operation_name=operation_name,
@@ -2122,6 +2123,7 @@ if not isinstance(self.resource_config, Unassigned):
             include_session_region=True,
             include_return_resource_docstring=False,
             return_string=f"Returns:\n" f"    Iterator for listed {resource_name} resources.\n",
+            exclude_resource_attrs=exclude_list,
         )
 
         formatted_method = GET_ALL_METHOD_WITH_ARGS_TEMPLATE.format(

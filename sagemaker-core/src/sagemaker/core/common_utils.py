@@ -1716,7 +1716,7 @@ def _normalize_tag(tag: Any) -> TagsDict:
     )
 
 
-def format_tags(tags: Tags) -> List[TagsDict]:
+def format_tags(tags: Optional[Tags]) -> Optional[List[TagsDict]]:
     """Process tags to turn them into the expected format for Sagemaker.
 
     Every accepted representation comes out as a list of boto-style

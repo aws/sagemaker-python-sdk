@@ -4146,10 +4146,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if "endpoint_name" in kwargs:
             self.endpoint_name = endpoint_name
 
-        tags = kwargs.get("tags", getattr(self, "_tags", None))
-        if "tags" in kwargs and tags is not None:
-            self.add_tags(tags)
-            tags = self._tags
+        # Merge the caller's tags into the builder's list once. Every request below reads
+        # the merged list, so no second merge is necessary.
+        if kwargs.get("tags") is not None:
+            self.add_tags(kwargs["tags"])
+        tags = format_tags(getattr(self, "_tags", None))
 
         kms_key = kwargs.get("kms_key", getattr(self, "kms_key", None))
         if "kms_key" in kwargs:
@@ -4212,12 +4213,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         routing_config = kwargs.get("routing_config", None)
         update_endpoint = kwargs.get("update_endpoint", False)
         wait = kwargs.get("wait", True)
-
-        if tags:
-            self.add_tags(tags)
-            tags = format_tags(self._tags)
-        else:
-            tags = format_tags(self._tags)
 
         routing_config = _resolve_routing_config(routing_config)
 

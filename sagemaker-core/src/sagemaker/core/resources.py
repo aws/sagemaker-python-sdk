@@ -565,8 +565,6 @@ class AIBenchmarkJob(Base):
         Get all AIBenchmarkJob resources
 
         Parameters:
-            max_results: The maximum number of benchmark jobs to return in the response.
-            next_token: If the previous call to ListAIBenchmarkJobs didn't return the full set of jobs, the call returns a token for getting the next set.
             name_contains: A string in the job name. This filter returns only jobs whose name contains the specified string.
             status_equals: A filter that returns only benchmark jobs with the specified status.
             creation_time_after: A filter that returns only jobs created after the specified time.
@@ -1034,8 +1032,6 @@ class AIRecommendationJob(Base):
         Get all AIRecommendationJob resources
 
         Parameters:
-            max_results: The maximum number of recommendation jobs to return in the response.
-            next_token: If the previous call to ListAIRecommendationJobs didn't return the full set of jobs, the call returns a token for getting the next set.
             name_contains: A string in the job name. This filter returns only jobs whose name contains the specified string.
             status_equals: A filter that returns only recommendation jobs with the specified status.
             creation_time_after: A filter that returns only jobs created after the specified time.
@@ -1336,8 +1332,6 @@ class AIWorkloadConfig(Base):
         Get all AIWorkloadConfig resources
 
         Parameters:
-            max_results: The maximum number of AI workload configurations to return in the response.
-            next_token: If the previous call to ListAIWorkloadConfigs didn't return the full set of configurations, the call returns a token for getting the next set of configurations.
             name_contains: A string in the configuration name. This filter returns only configurations whose name contains the specified string.
             creation_time_after: A filter that returns only configurations created after the specified time.
             creation_time_before: A filter that returns only configurations created before the specified time.
@@ -1718,8 +1712,6 @@ class Action(Base):
             created_before: A filter that returns only actions created on or before the specified time.
             sort_by: The property used to sort results. The default value is CreationTime.
             sort_order: The sort order. The default value is Descending.
-            next_token: If the previous call to ListActions didn't return the full set of actions, the call returns a token for getting the next set of actions.
-            max_results: The maximum number of actions to return in the response. The default value is 10.
             session: Boto3 session.
             region: Region name.
 
@@ -2168,9 +2160,7 @@ class Algorithm(Base):
         Parameters:
             creation_time_after: A filter that returns only algorithms created after the specified time (timestamp).
             creation_time_before: A filter that returns only algorithms created before the specified time (timestamp).
-            max_results: The maximum number of algorithms to return in the response.
             name_contains: A string in the algorithm name. This filter returns only algorithms whose name contains the specified string.
-            next_token: If the response to a previous ListAlgorithms request was truncated, the response includes a NextToken. To retrieve the next set of algorithms, use the token in the next request.
             sort_by: The parameter by which to sort the results. The default is CreationTime.
             sort_order: The sort order for the results. The default is Ascending.
             session: Boto3 session.
@@ -2641,8 +2631,6 @@ class App(Base):
         Get all App resources
 
         Parameters:
-            next_token: If the previous response was truncated, you will receive this token. Use it in your next request to receive the next set of results.
-            max_results: This parameter defines the maximum number of results that can be return in a single response. The MaxResults parameter is an upper bound, not a target. If there are more results available than the value specified, a NextToken is provided in the response. The NextToken indicates that the user should get the next set of results by providing this token as a part of a subsequent call. The default value for MaxResults is 10.
             sort_order: The sort order for the results. The default is Ascending.
             sort_by: The parameter by which to sort the results. The default is CreationTime.
             domain_id_equals: A parameter to search for the domain ID.
@@ -2991,8 +2979,6 @@ class AppImageConfig(Base):
         Get all AppImageConfig resources
 
         Parameters:
-            max_results: The total number of items to return in the response. If the total number of items available is more than the value specified, a NextToken is provided in the response. To resume pagination, provide the NextToken value in the as part of a subsequent call. The default value is 10.
-            next_token: If the previous call to ListImages didn't return the full set of AppImageConfigs, the call returns a token for getting the next set of AppImageConfigs.
             name_contains: A filter that returns only AppImageConfigs whose name contains the specified string.
             creation_time_before: A filter that returns only AppImageConfigs created on or before the specified time.
             creation_time_after: A filter that returns only AppImageConfigs created on or after the specified time.
@@ -3366,8 +3352,6 @@ class Artifact(Base):
             created_before: A filter that returns only artifacts created on or before the specified time.
             sort_by: The property used to sort results. The default value is CreationTime.
             sort_order: The sort order. The default value is Descending.
-            next_token: If the previous call to ListArtifacts didn't return the full set of artifacts, the call returns a token for getting the next set of artifacts.
-            max_results: The maximum number of artifacts to return in the response. The default value is 10.
             session: Boto3 session.
             region: Region name.
 
@@ -3522,8 +3506,6 @@ class Association(Base):
             created_before: A filter that returns only associations created on or before the specified time.
             sort_by: The property used to sort results. The default value is CreationTime.
             sort_order: The sort order. The default value is Descending.
-            next_token: If the previous call to ListAssociations didn't return the full set of associations, the call returns a token for getting the next set of associations.
-            max_results: The maximum number of associations to return in the response. The default value is 10.
             session: Boto3 session.
             region: Region name.
 
@@ -4031,8 +4013,6 @@ class AutoMLJob(Base):
             status_equals: Request a list of jobs, using a filter for status.
             sort_order: The sort order for the results. The default is Descending.
             sort_by: The parameter by which to sort the results. The default is Name.
-            max_results: Request a list of jobs up to a specified limit.
-            next_token: If the previous response was truncated, you receive this token. Use it in your next request to receive the next set of results.
             session: Boto3 session.
             region: Region name.
 
@@ -4099,8 +4079,6 @@ class AutoMLJob(Base):
             candidate_name_equals: List the candidates for the job and filter by candidate name.
             sort_order: The sort order for the results. The default is Ascending.
             sort_by: The parameter by which to sort the results. The default is Descending.
-            max_results: List the job's candidates up to a specified limit.
-            next_token: If the previous response was truncated, you receive this token. Use it in your next request to receive the next set of results.
             session: Boto3 session.
             region: Region name.
 
@@ -5016,9 +4994,7 @@ class Cluster(Base):
         Parameters:
             creation_time_after: Set a start time for the time range during which you want to list SageMaker HyperPod clusters. Timestamps are formatted according to the ISO 8601 standard.  Acceptable formats include:    YYYY-MM-DDThh:mm:ss.sssTZD (UTC), for example, 2014-10-01T20:30:00.000Z     YYYY-MM-DDThh:mm:ss.sssTZD (with offset), for example, 2014-10-01T12:30:00.000-08:00     YYYY-MM-DD, for example, 2014-10-01    Unix time in seconds, for example, 1412195400. This is also referred to as Unix Epoch time and represents the number of seconds since midnight, January 1, 1970 UTC.   For more information about the timestamp format, see Timestamp in the Amazon Web Services Command Line Interface User Guide.
             creation_time_before: Set an end time for the time range during which you want to list SageMaker HyperPod clusters. A filter that returns nodes in a SageMaker HyperPod cluster created before the specified time. The acceptable formats are the same as the timestamp formats for CreationTimeAfter. For more information about the timestamp format, see Timestamp in the Amazon Web Services Command Line Interface User Guide.
-            max_results: Specifies the maximum number of clusters to evaluate for the operation (not necessarily the number of matching items). After SageMaker processes the number of clusters up to MaxResults, it stops the operation and returns the matching clusters up to that point. If all the matching clusters are desired, SageMaker will go through all the clusters until NextToken is empty.
             name_contains: Set the maximum number of instances to print in the list.
-            next_token: Set the next token to retrieve the list of SageMaker HyperPod clusters.
             sort_by: The field by which to sort results. The default value is CREATION_TIME.
             sort_order: The sort order for results. The default value is Ascending.
             training_plan_arn: The Amazon Resource Name (ARN); of the training plan to filter clusters by. For more information about reserving GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see  CreateTrainingPlan .
@@ -5138,8 +5114,6 @@ class Cluster(Base):
             creation_time_after: A filter that returns nodes in a SageMaker HyperPod cluster created after the specified time. Timestamps are formatted according to the ISO 8601 standard.  Acceptable formats include:    YYYY-MM-DDThh:mm:ss.sssTZD (UTC), for example, 2014-10-01T20:30:00.000Z     YYYY-MM-DDThh:mm:ss.sssTZD (with offset), for example, 2014-10-01T12:30:00.000-08:00     YYYY-MM-DD, for example, 2014-10-01    Unix time in seconds, for example, 1412195400. This is also referred to as Unix Epoch time and represents the number of seconds since midnight, January 1, 1970 UTC.   For more information about the timestamp format, see Timestamp in the Amazon Web Services Command Line Interface User Guide.
             creation_time_before: A filter that returns nodes in a SageMaker HyperPod cluster created before the specified time. The acceptable formats are the same as the timestamp formats for CreationTimeAfter. For more information about the timestamp format, see Timestamp in the Amazon Web Services Command Line Interface User Guide.
             instance_group_name_contains: A filter that returns the instance groups whose name contain a specified string.
-            max_results: The maximum number of nodes to return in the response.
-            next_token: If the result of the previous ListClusterNodes request was truncated, the response includes a NextToken. To retrieve the next set of cluster nodes, use the token in the next request.
             sort_by: The field by which to sort results. The default value is CREATION_TIME.
             sort_order: The sort order for results. The default value is Ascending.
             include_node_logical_ids: Specifies whether to include nodes that are still being provisioned in the response. When set to true, the response includes all nodes regardless of their provisioning status. When set to False (default), only nodes with assigned InstanceIds are returned.
@@ -5768,8 +5742,6 @@ class ClusterSchedulerConfig(Base):
             status: Filter for status.
             sort_by: Filter for sorting the list by a given value. For example, sort by name, creation time, or status.
             sort_order: The order of the list. By default, listed in Descending order according to by SortBy. To change the list order, you can specify SortOrder to be Ascending.
-            next_token: If the previous response was truncated, you will receive this token. Use it in your next request to receive the next set of results.
-            max_results: The maximum number of cluster policies to list.
             session: Boto3 session.
             region: Region name.
 
@@ -6101,9 +6073,7 @@ class CodeRepository(Base):
             creation_time_before: A filter that returns only Git repositories that were created before the specified time.
             last_modified_time_after: A filter that returns only Git repositories that were last modified after the specified time.
             last_modified_time_before: A filter that returns only Git repositories that were last modified before the specified time.
-            max_results: The maximum number of Git repositories to return in the response.
             name_contains: A string in the Git repositories name. This filter returns only repositories whose name contains the specified string.
-            next_token: If the result of a ListCodeRepositoriesOutput request was truncated, the response includes a NextToken. To get the next set of Git repositories, use the token in the next request.
             sort_by: The field to sort results by. The default is Name.
             sort_order: The sort order for results. The default is Ascending.
             session: Boto3 session.
@@ -6565,8 +6535,6 @@ class CompilationJob(Base):
         Get all CompilationJob resources
 
         Parameters:
-            next_token: If the result of the previous ListCompilationJobs request was truncated, the response includes a NextToken. To retrieve the next set of model compilation jobs, use the token in the next request.
-            max_results: The maximum number of model compilation jobs to return in the response.
             creation_time_after: A filter that returns the model compilation jobs that were created after a specified time.
             creation_time_before: A filter that returns the model compilation jobs that were created before a specified time.
             last_modified_time_after: A filter that returns the model compilation jobs that were modified after a specified time.
@@ -7102,8 +7070,6 @@ class ComputeQuota(Base):
             cluster_arn: Filter for ARN of the cluster.
             sort_by: Filter for sorting the list by a given value. For example, sort by name, creation time, or status.
             sort_order: The order of the list. By default, listed in Descending order according to by SortBy. To change the list order, you can specify SortOrder to be Ascending.
-            next_token: If the previous response was truncated, you will receive this token. Use it in your next request to receive the next set of results.
-            max_results: The maximum number of compute allocation definitions to list.
             session: Boto3 session.
             region: Region name.
 
@@ -7469,8 +7435,6 @@ class Context(Base):
             created_before: A filter that returns only contexts created on or before the specified time.
             sort_by: The property used to sort results. The default value is CreationTime.
             sort_order: The sort order. The default value is Descending.
-            next_token: If the previous call to ListContexts didn't return the full set of contexts, the call returns a token for getting the next set of contexts.
-            max_results: The maximum number of contexts to return in the response. The default value is 10.
             session: Boto3 session.
             region: Region name.
 
@@ -7834,8 +7798,6 @@ class DataQualityJobDefinition(Base):
             endpoint_name: A filter that lists the data quality job definitions associated with the specified endpoint.
             sort_by: The field to sort results by. The default is CreationTime.
             sort_order: Whether to sort the results in Ascending or Descending order. The default is Descending.
-            next_token: If the result of the previous ListDataQualityJobDefinitions request was truncated, the response includes a NextToken. To retrieve the next set of transform jobs, use the token in the next request.&gt;
-            max_results: The maximum number of data quality monitoring job definitions to return in the response.
             name_contains: A string in the data quality monitoring job definition name. This filter returns only data quality monitoring job definitions whose name contains the specified string.
             creation_time_before: A filter that returns only data quality monitoring job definitions created before the specified time.
             creation_time_after: A filter that returns only data quality monitoring job definitions created after the specified time.
@@ -8048,8 +8010,6 @@ class Device(Base):
         Get all Device resources
 
         Parameters:
-            next_token: The response from the last list when returning a list large enough to need tokening.
-            max_results: Maximum number of results to select.
             latest_heartbeat_after: Select fleets where the job was updated after X
             model_name: A filter that searches devices that contains this name in any of their models.
             device_fleet_name: Filter for fleets containing this name in their device fleet name.
@@ -8427,8 +8387,6 @@ class DeviceFleet(Base):
         Get all DeviceFleet resources
 
         Parameters:
-            next_token: The response from the last list when returning a list large enough to need tokening.
-            max_results: The maximum number of results to select.
             creation_time_after: Filter fleets where packaging job was created after specified time.
             creation_time_before: Filter fleets where the edge packaging job was created before specified time.
             last_modified_time_after: Select fleets where the job was updated after X
@@ -9522,8 +9480,6 @@ class EdgeDeploymentPlan(Base):
         Get all EdgeDeploymentPlan resources
 
         Parameters:
-            next_token: The response from the last list when returning a list large enough to need tokening.
-            max_results: The maximum number of results to select (50 by default).
             creation_time_after: Selects edge deployment plans created after this time.
             creation_time_before: Selects edge deployment plans created before this time.
             last_modified_time_after: Selects edge deployment plans that were last updated after this time.
@@ -9757,7 +9713,6 @@ class EdgeDeploymentPlan(Base):
 
         Parameters:
             stage_name: The name of the stage in the deployment.
-            max_results: The maximum number of requests to select.
             exclude_devices_deployed_in_other_stage: Toggle for excluding devices deployed in other stages.
             session: Boto3 session.
             region: Region name.
@@ -10168,8 +10123,6 @@ class EdgePackagingJob(Base):
         Get all EdgePackagingJob resources
 
         Parameters:
-            next_token: The response from the last list when returning a list large enough to need tokening.
-            max_results: Maximum number of results to select.
             creation_time_after: Select jobs where the job was created after specified time.
             creation_time_before: Select jobs where the job was created before specified time.
             last_modified_time_after: Select jobs where the job was updated after specified time.
@@ -10704,8 +10657,6 @@ class Endpoint(EndpointMixin, Base):
         Parameters:
             sort_by: Sorts the list of results. The default is CreationTime.
             sort_order: The sort order for results. The default is Descending.
-            next_token: If the result of a ListEndpoints request was truncated, the response includes a NextToken. To retrieve the next set of endpoints, use the token in the next request.
-            max_results: The maximum number of endpoints to return in the response. This value defaults to 10.
             name_contains: A string in endpoint names. This filter returns only endpoints whose name contains the specified string.
             creation_time_before: A filter that returns only endpoints that were created before the specified time (timestamp).
             creation_time_after: A filter that returns only endpoints with a creation time greater than or equal to the specified time (timestamp).
@@ -11376,8 +11327,6 @@ class EndpointConfig(Base):
         Parameters:
             sort_by: The field to sort results by. The default is CreationTime.
             sort_order: The sort order for results. The default is Descending.
-            next_token: If the result of the previous ListEndpointConfig request was truncated, the response includes a NextToken. To retrieve the next set of endpoint configurations, use the token in the next request.
-            max_results: The maximum number of training jobs to return in the response.
             name_contains: A string in the endpoint configuration name. This filter returns only endpoint configurations whose name contains the specified string.
             creation_time_before: A filter that returns only endpoint configurations created before the specified time (timestamp).
             creation_time_after: A filter that returns only endpoint configurations with a creation time greater than or equal to the specified time (timestamp).
@@ -11725,8 +11674,6 @@ class Experiment(Base):
             created_before: A filter that returns only experiments created before the specified time.
             sort_by: The property used to sort results. The default value is CreationTime.
             sort_order: The sort order. The default value is Descending.
-            next_token: If the previous call to ListExperiments didn't return the full set of experiments, the call returns a token for getting the next set of experiments.
-            max_results: The maximum number of experiments to return in the response. The default value is 10.
             session: Boto3 session.
             region: Region name.
 
@@ -12268,8 +12215,6 @@ class FeatureGroup(Base):
             creation_time_before: Use this parameter to search for FeatureGroupss created before a specific date and time.
             sort_order: The order in which feature groups are listed.
             sort_by: The value on which the feature group list is sorted.
-            max_results: The maximum number of results returned by ListFeatureGroups.
-            next_token: A token to resume pagination of ListFeatureGroups results.
             session: Boto3 session.
             region: Region name.
 
@@ -13309,8 +13254,6 @@ class FlowDefinition(Base):
             creation_time_after: A filter that returns only flow definitions with a creation time greater than or equal to the specified timestamp.
             creation_time_before: A filter that returns only flow definitions that were created before the specified timestamp.
             sort_order: An optional value that specifies whether you want the results sorted in Ascending or Descending order.
-            next_token: A token to resume pagination.
-            max_results: The total number of items to return. If the total number of available items is more than the value specified in MaxResults, then a NextToken will be provided in the output that you can use to resume pagination.
             session: Boto3 session.
             region: Region name.
 
@@ -13812,8 +13755,6 @@ class Hub(Base):
             last_modified_time_after: Only list hubs that were last modified after the time specified.
             sort_by: Sort hubs by either name or creation time.
             sort_order: Sort hubs by ascending or descending order.
-            max_results: The maximum number of hubs to list.
-            next_token: If the response to a previous ListHubs request was truncated, the response includes a NextToken. To retrieve the next set of hubs, use the token in the next request.
             session: Boto3 session.
             region: Region name.
 
@@ -14296,8 +14237,6 @@ class HubContent(HubContentMixin, Base):
             creation_time_after: Only list hub content that was created after the time specified.
             sort_by: Sort hub content versions by either name or creation time.
             sort_order: Sort hubs by ascending or descending order.
-            max_results: The maximum amount of hub content to list.
-            next_token: If the response to a previous ListHubContents request was truncated, the response includes a NextToken. To retrieve the next set of hub content, use the token in the next request.
             session: Boto3 session.
             region: Region name.
 
@@ -14370,8 +14309,6 @@ class HubContent(HubContentMixin, Base):
             creation_time_after: Only list hub content versions that were created after the time specified.
             sort_by: Sort hub content versions by either name or creation time.
             sort_order: Sort hub content versions by ascending or descending order.
-            max_results: The maximum number of hub content versions to list.
-            next_token: If the response to a previous ListHubContentVersions request was truncated, the response includes a NextToken. To retrieve the next set of hub content versions, use the token in the next request.
             session: Boto3 session.
             region: Region name.
 
@@ -15080,8 +15017,6 @@ class HumanTaskUi(Base):
             creation_time_after: A filter that returns only human task user interfaces with a creation time greater than or equal to the specified timestamp.
             creation_time_before: A filter that returns only human task user interfaces that were created before the specified timestamp.
             sort_order: An optional value that specifies whether you want the results sorted in Ascending or Descending order.
-            next_token: A token to resume pagination.
-            max_results: The total number of items to return. If the total number of available items is more than the value specified in MaxResults, then a NextToken will be provided in the output that you can use to resume pagination.
             session: Boto3 session.
             region: Region name.
 
@@ -15608,8 +15543,6 @@ class HyperParameterTuningJob(Base):
         Get all HyperParameterTuningJob resources
 
         Parameters:
-            next_token: If the result of the previous ListHyperParameterTuningJobs request was truncated, the response includes a NextToken. To retrieve the next set of tuning jobs, use the token in the next request.
-            max_results: The maximum number of tuning jobs to return. The default value is 10.
             sort_by: The field to sort results by. The default is Name.
             sort_order: The sort order for results. The default is Ascending.
             name_contains: A string in the tuning job name. This filter returns only tuning jobs whose name contains the specified string.
@@ -15679,8 +15612,6 @@ class HyperParameterTuningJob(Base):
         Gets a list of TrainingJobSummary objects that describe the training jobs that a hyperparameter tuning job launched.
 
         Parameters:
-            next_token: If the result of the previous ListTrainingJobsForHyperParameterTuningJob request was truncated, the response includes a NextToken. To retrieve the next set of training jobs, use the token in the next request.
-            max_results: The maximum number of training jobs to return. The default value is 10.
             status_equals: A filter that returns only training jobs with the specified status.
             sort_by: The field to sort results by. The default is Name. If the value of this field is FinalObjectiveMetricValue, any training jobs that did not return an objective metric are not listed.
             sort_order: The sort order for results. The default is Ascending.
@@ -16188,9 +16119,7 @@ class Image(Base):
             creation_time_before: A filter that returns only images created on or before the specified time.
             last_modified_time_after: A filter that returns only images modified on or after the specified time.
             last_modified_time_before: A filter that returns only images modified on or before the specified time.
-            max_results: The maximum number of images to return in the response. The default value is 10.
             name_contains: A filter that returns only images whose name contains the specified string.
-            next_token: If the previous call to ListImages didn't return the full set of images, the call returns a token for getting the next set of images.
             sort_by: The property used to sort results. The default value is CREATION_TIME.
             sort_order: The sort order. The default value is DESCENDING.
             session: Boto3 session.
@@ -16254,8 +16183,6 @@ class Image(Base):
         Parameters:
             alias: The alias of the image version.
             version: The version of the image. If image version is not specified, the aliases of all versions of the image are listed.
-            max_results: The maximum number of aliases to return.
-            next_token: If the previous call to ListAliases didn't return the full set of aliases, the call returns a token for retrieving the next set of aliases.
             session: Boto3 session.
             region: Region name.
 
@@ -17230,8 +17157,6 @@ class InferenceComponent(Base):
         Parameters:
             sort_by: The field by which to sort the inference components in the response. The default is CreationTime.
             sort_order: The sort order for results. The default is Descending.
-            next_token: A token that you use to get the next set of results following a truncated response. If the response to the previous request was truncated, that response provides the value for this token.
-            max_results: The maximum number of inference components to return in the response. This value defaults to 10.
             name_contains: Filters the results to only those inference components with a name that contains the specified string.
             creation_time_before: Filters the results to only those inference components that were created before the specified time.
             creation_time_after: Filters the results to only those inference components that were created after the specified time.
@@ -17843,8 +17768,6 @@ class InferenceExperiment(Base):
             last_modified_time_before: Selects inference experiments which were last modified before this timestamp.
             sort_by: The column by which to sort the listed inference experiments.
             sort_order: The direction of sorting (ascending or descending).
-            next_token:  The response from the last list when returning a list large enough to need tokening.
-            max_results: The maximum number of results to select.
             session: Boto3 session.
             region: Region name.
 
@@ -18340,8 +18263,6 @@ class InferenceRecommendationsJob(Base):
             status_equals: A filter that retrieves only inference recommendations jobs with a specific status.
             sort_by: The parameter by which to sort the results.
             sort_order: The sort order for the results.
-            next_token: If the response to a previous ListInferenceRecommendationsJobsRequest request was truncated, the response includes a NextToken. To retrieve the next set of recommendations, use the token in the next request.
-            max_results: The maximum number of recommendations to return in the response.
             model_name_equals: A filter that returns only jobs that were created for this model.
             model_package_version_arn_equals: A filter that returns only jobs that were created for this versioned model package.
             session: Boto3 session.
@@ -18406,8 +18327,6 @@ class InferenceRecommendationsJob(Base):
 
         Parameters:
             step_type: A filter to return details about the specified type of subtask.  BENCHMARK: Evaluate the performance of your model on different instance types.
-            max_results: The maximum number of results to return.
-            next_token: A token that you can specify to return more results from the list. Specify this field if you have a token that was returned from a previous request.
             session: Boto3 session.
             region: Region name.
 
@@ -18903,8 +18822,6 @@ class Job(Base):
 
         Parameters:
             job_category: The category of jobs to list.
-            next_token: If the previous response was truncated, this token retrieves the next set of results.
-            max_results: The maximum number of jobs to return in the response. The default value is 50.
             creation_time_after: A filter that returns only jobs created after the specified time.
             creation_time_before: A filter that returns only jobs created before the specified time.
             last_modified_time_after: A filter that returns only jobs modified after the specified time.
@@ -19361,8 +19278,6 @@ class LabelingJob(Base):
             creation_time_before: A filter that returns only labeling jobs created before the specified time (timestamp).
             last_modified_time_after: A filter that returns only labeling jobs modified after the specified time (timestamp).
             last_modified_time_before: A filter that returns only labeling jobs modified before the specified time (timestamp).
-            max_results: The maximum number of labeling jobs to return in each page of the response.
-            next_token: If the result of the previous ListLabelingJobs request was truncated, the response includes a NextToken. To retrieve the next set of labeling jobs, use the token in the next request.
             name_contains: A string in the labeling job name. This filter returns only labeling jobs whose name contains the specified string.
             sort_by: The field to sort results by. The default is CreationTime.
             sort_order: The sort order for results. The default is Ascending.
@@ -19565,8 +19480,6 @@ class LineageGroup(Base):
             created_before: A timestamp to filter against lineage groups created before a certain point in time.
             sort_by: The parameter by which to sort the results. The default is CreationTime.
             sort_order: The sort order for the results. The default is Ascending.
-            next_token: If the response is truncated, SageMaker returns this token. To retrieve the next set of algorithms, use it in the subsequent request.
-            max_results: The maximum number of endpoints to return in the response. This value defaults to 10.
             session: Boto3 session.
             region: Region name.
 
@@ -20149,8 +20062,6 @@ class MlflowApp(Base):
             account_default_status: Filter for MLflow Apps with the specified AccountDefaultStatus.
             sort_by: Filter for MLflow Apps sorting by name, creation time, or creation status.
             sort_order: Change the order of the listed MLflow Apps. By default, MLflow Apps are listed in Descending order by creation time. To change the list order, specify SortOrder to be Ascending.
-            next_token: If the previous response was truncated, use this token in your next request to receive the next set of results.
-            max_results: The maximum number of MLflow Apps to list.
             session: Boto3 session.
             region: Region name.
 
@@ -20781,8 +20692,6 @@ class MlflowTrackingServer(Base):
             mlflow_version: Filter for tracking servers using the specified MLflow version.
             sort_by: Filter for trackings servers sorting by name, creation time, or creation status.
             sort_order: Change the order of the listed tracking servers. By default, tracking servers are listed in Descending order by creation time. To change the list order, you can specify SortOrder to be Ascending.
-            next_token: If the previous response was truncated, you will receive this token. Use it in your next request to receive the next set of results.
-            max_results: The maximum number of tracking servers to list.
             session: Boto3 session.
             region: Region name.
 
@@ -21121,8 +21030,6 @@ class Model(Base):
         Parameters:
             sort_by: Sorts the list of results. The default is CreationTime.
             sort_order: The sort order for results. The default is Descending.
-            next_token: If the response to a previous ListModels request was truncated, the response includes a NextToken. To retrieve the next set of models, use the token in the next request.
-            max_results: The maximum number of models to return in the response.
             name_contains: A string in the model name. This filter returns only models whose name contains the specified string.
             creation_time_before: A filter that returns only models created before the specified time (timestamp).
             creation_time_after: A filter that returns only models with a creation time greater than or equal to the specified time (timestamp).
@@ -21183,8 +21090,6 @@ class Model(Base):
 
         Parameters:
             search_expression: One or more filters that searches for the specified resource or resources in a search. All resource objects that satisfy the expression's condition are included in the search results. Specify the Framework, FrameworkVersion, Domain or Task to filter supported. Filter names and values are case-sensitive.
-            next_token: If the response to a previous ListModelMetadataResponse request was truncated, the response includes a NextToken. To retrieve the next set of model metadata, use the token in the next request.
-            max_results: The maximum number of models to return in the response.
             session: Boto3 session.
             region: Region name.
 
@@ -21539,8 +21444,6 @@ class ModelBiasJobDefinition(Base):
             endpoint_name: Name of the endpoint to monitor for model bias.
             sort_by: Whether to sort results by the Name or CreationTime field. The default is CreationTime.
             sort_order: Whether to sort the results in Ascending or Descending order. The default is Descending.
-            next_token: The token returned if the response is truncated. To retrieve the next set of job executions, use it in the next request.
-            max_results: The maximum number of model bias jobs to return in the response. The default value is 10.
             name_contains: Filter for model bias jobs whose name contains a specified string.
             creation_time_before: A filter that returns only model bias jobs created before a specified time.
             creation_time_after: A filter that returns only model bias jobs created after a specified time.
@@ -21978,10 +21881,8 @@ class ModelCard(Base):
         Parameters:
             creation_time_after: Only list model cards that were created after the time specified.
             creation_time_before: Only list model cards that were created before the time specified.
-            max_results: The maximum number of model cards to list.
             name_contains: Only list model cards with names that contain the specified string.
             model_card_status: Only list model cards with the specified approval status.
-            next_token: If the response to a previous ListModelCards request was truncated, the response includes a NextToken. To retrieve the next set of model cards, use the token in the next request.
             sort_by: Sort model cards by either name or creation time. Sorts by creation time by default.
             sort_order: Sort model cards by ascending or descending order.
             session: Boto3 session.
@@ -22046,8 +21947,6 @@ class ModelCard(Base):
         Parameters:
             creation_time_after: Only list model card versions that were created after the time specified.
             creation_time_before: Only list model card versions that were created before the time specified.
-            max_results: The maximum number of model card versions to list.
-            next_token: If the response to a previous ListModelCardVersions request was truncated, the response includes a NextToken. To retrieve the next set of model card versions, use the token in the next request.
             sort_by: Sort listed model card versions by version. Sorts by version by default.
             sort_order: Sort model card versions by ascending or descending order.
             session: Boto3 session.
@@ -22419,8 +22318,6 @@ class ModelCardExportJob(Base):
             status_equals: Only list model card export jobs with the specified status.
             sort_by: Sort model card export jobs by either name or creation time. Sorts by creation time by default.
             sort_order: Sort model card export jobs by ascending or descending order.
-            next_token: If the response to a previous ListModelCardExportJobs request was truncated, the response includes a NextToken. To retrieve the next set of model card export jobs, use the token in the next request.
-            max_results: The maximum number of model card export jobs to list.
             session: Boto3 session.
             region: Region name.
 
@@ -22791,8 +22688,6 @@ class ModelExplainabilityJobDefinition(Base):
             endpoint_name: Name of the endpoint to monitor for model explainability.
             sort_by: Whether to sort results by the Name or CreationTime field. The default is CreationTime.
             sort_order: Whether to sort the results in Ascending or Descending order. The default is Descending.
-            next_token: The token returned if the response is truncated. To retrieve the next set of job executions, use it in the next request.
-            max_results: The maximum number of jobs to return in the response. The default value is 10.
             name_contains: Filter for model explainability jobs whose name contains a specified string.
             creation_time_before: A filter that returns only model explainability jobs created before a specified time.
             creation_time_after: A filter that returns only model explainability jobs created after a specified time.
@@ -23466,12 +23361,10 @@ class ModelPackage(Base):
         Parameters:
             creation_time_after: A filter that returns only model packages created after the specified time (timestamp).
             creation_time_before: A filter that returns only model packages created before the specified time (timestamp).
-            max_results: The maximum number of model packages to return in the response.
             name_contains: A string in the model package name. This filter returns only model packages whose name contains the specified string.
             model_approval_status: A filter that returns only the model packages with the specified approval status.
             model_package_group_name: A filter that returns only model versions that belong to the specified model group.
             model_package_type: A filter that returns only the model packages of the specified type. This can be one of the following values.    UNVERSIONED - List only unversioined models. This is the default value if no ModelPackageType is specified.    VERSIONED - List only versioned models.    BOTH - List both versioned and unversioned models.
-            next_token: If the response to a previous ListModelPackages request was truncated, the response includes a NextToken. To retrieve the next set of model packages, use the token in the next request.
             sort_by: The parameter by which to sort the results. The default is CreationTime.
             sort_order: The sort order for the results. The default is Ascending.
             session: Boto3 session.
@@ -23940,9 +23833,7 @@ class ModelPackageGroup(ModelPackageGroupMixin, Base):
         Parameters:
             creation_time_after: A filter that returns only model groups created after the specified time.
             creation_time_before: A filter that returns only model groups created before the specified time.
-            max_results: The maximum number of results to return in the response.
             name_contains: A string in the model group name. This filter returns only model groups whose name contains the specified string.
-            next_token: If the result of the previous ListModelPackageGroups request was truncated, the response includes a NextToken. To retrieve the next set of model groups, use the token in the next request.
             sort_by: The field to sort results by. The default is CreationTime.
             sort_order: The sort order for results. The default is Ascending.
             cross_account_filter_option: A filter that returns either model groups shared with you or model groups in your own account. When the value is CrossAccount, the results show the resources made discoverable to you from other accounts. When the value is SameAccount or null, the results show resources from your account. The default is SameAccount.
@@ -24431,8 +24322,6 @@ class ModelQualityJobDefinition(Base):
             endpoint_name: A filter that returns only model quality monitoring job definitions that are associated with the specified endpoint.
             sort_by: The field to sort results by. The default is CreationTime.
             sort_order: Whether to sort the results in Ascending or Descending order. The default is Descending.
-            next_token: If the result of the previous ListModelQualityJobDefinitions request was truncated, the response includes a NextToken. To retrieve the next set of model quality monitoring job definitions, use the token in the next request.
-            max_results: The maximum number of results to return in a call to ListModelQualityJobDefinitions.
             name_contains: A string in the transform job name. This filter returns only model quality monitoring job definitions whose name contains the specified string.
             creation_time_before: A filter that returns only model quality monitoring job definitions created before the specified time.
             creation_time_after: A filter that returns only model quality monitoring job definitions created after the specified time.
@@ -24590,8 +24479,6 @@ class MonitoringAlert(Base):
 
         Parameters:
             monitoring_schedule_name: The name of a monitoring schedule.
-            next_token: If the result of the previous ListMonitoringAlerts request was truncated, the response includes a NextToken. To retrieve the next set of alerts in the history, use the token in the next request.
-            max_results: The maximum number of results to display. The default is 100.
             session: Boto3 session.
             region: Region name.
 
@@ -24777,8 +24664,6 @@ class MonitoringExecution(Base):
             endpoint_name: Name of a specific endpoint to fetch jobs for.
             sort_by: Whether to sort the results by the Status, CreationTime, or ScheduledTime field. The default is CreationTime.
             sort_order: Whether to sort the results in Ascending or Descending order. The default is Descending.
-            next_token: The token returned if the response is truncated. To retrieve the next set of job executions, use it in the next request.
-            max_results: The maximum number of jobs to return in the response. The default value is 10.
             scheduled_time_before: Filter for jobs scheduled before a specified time.
             scheduled_time_after: Filter for jobs scheduled after a specified time.
             creation_time_before: A filter that returns only jobs created before a specified time.
@@ -25316,8 +25201,6 @@ class MonitoringSchedule(Base):
             endpoint_name: Name of a specific endpoint to fetch schedules for.
             sort_by: Whether to sort the results by the Status, CreationTime, or ScheduledTime field. The default is CreationTime.
             sort_order: Whether to sort the results in Ascending or Descending order. The default is Descending.
-            next_token: The token returned if the response is truncated. To retrieve the next set of job executions, use it in the next request.
-            max_results: The maximum number of jobs to return in the response. The default value is 10.
             name_contains: Filter for monitoring schedules whose name contains a specified string.
             creation_time_before: A filter that returns only monitoring schedules created before a specified time.
             creation_time_after: A filter that returns only monitoring schedules created after a specified time.
@@ -26005,8 +25888,6 @@ class NotebookInstance(Base):
         Get all NotebookInstance resources
 
         Parameters:
-            next_token:  If the previous call to the ListNotebookInstances is truncated, the response includes a NextToken. You can use this token in your subsequent ListNotebookInstances request to fetch the next set of notebook instances.   You might specify a filter or a sort order in your request. When response is truncated, you must use the same values for the filer and sort order in the next request.
-            max_results: The maximum number of notebook instances to return.
             sort_by: The field to sort results by. The default is Name.
             sort_order: The sort order for results.
             name_contains: A string in the notebook instances' name. This filter returns only notebook instances whose name contains the specified string.
@@ -26362,8 +26243,6 @@ class NotebookInstanceLifecycleConfig(Base):
         Get all NotebookInstanceLifecycleConfig resources
 
         Parameters:
-            next_token: If the result of a ListNotebookInstanceLifecycleConfigs request was truncated, the response includes a NextToken. To get the next set of lifecycle configurations, use the token in the next request.
-            max_results: The maximum number of lifecycle configurations to return in the response.
             sort_by: Sorts the list of results. The default is CreationTime.
             sort_order: The sort order for results.
             name_contains: A string in the lifecycle configuration name. This filter returns only lifecycle configurations whose name contains the specified string.
@@ -26845,8 +26724,6 @@ class OptimizationJob(Base):
         Get all OptimizationJob resources
 
         Parameters:
-            next_token: A token that you use to get the next set of results following a truncated response. If the response to the previous request was truncated, that response provides the value for this token.
-            max_results: The maximum number of optimization jobs to return in the response. The default is 50.
             creation_time_after: Filters the results to only those optimization jobs that were created after the specified time.
             creation_time_before: Filters the results to only those optimization jobs that were created before the specified time.
             last_modified_time_after: Filters the results to only those optimization jobs that were updated after the specified time.
@@ -28008,8 +27885,6 @@ class Pipeline(Base):
             created_before: A filter that returns the pipelines that were created before a specified time.
             sort_by: The field by which to sort results. The default is CreatedTime.
             sort_order: The sort order for results.
-            next_token: If the result of the previous ListPipelines request was truncated, the response includes a NextToken. To retrieve the next set of pipelines, use the token in the next request.
-            max_results: The maximum number of pipelines to return in the response.
             session: Boto3 session.
             region: Region name.
 
@@ -28417,8 +28292,6 @@ class PipelineExecution(Base):
             created_before: A filter that returns the pipeline executions that were created before a specified time.
             sort_by: The field by which to sort results. The default is CreatedTime.
             sort_order: The sort order for results.
-            next_token: If the result of the previous ListPipelineExecutions request was truncated, the response includes a NextToken. To retrieve the next set of pipeline executions, use the token in the next request.
-            max_results: The maximum number of pipeline executions to return in the response.
             session: Boto3 session.
             region: Region name.
 
@@ -28521,8 +28394,6 @@ class PipelineExecution(Base):
         Gets a list of PipeLineExecutionStep objects.
 
         Parameters:
-            next_token: If the result of the previous ListPipelineExecutionSteps request was truncated, the response includes a NextToken. To retrieve the next set of pipeline execution steps, use the token in the next request.
-            max_results: The maximum number of pipeline execution steps to return in the response.
             sort_order: The field by which to sort results. The default is CreatedTime.
             session: Boto3 session.
             region: Region name.
@@ -28574,8 +28445,6 @@ class PipelineExecution(Base):
         Gets a list of parameters for a pipeline execution.
 
         Parameters:
-            next_token: If the result of the previous ListPipelineParametersForExecution request was truncated, the response includes a NextToken. To retrieve the next set of parameters, use the token in the next request.
-            max_results: The maximum number of parameters to return in the response.
             session: Boto3 session.
             region: Region name.
 
@@ -29597,8 +29466,6 @@ class ProcessingJob(Base):
             status_equals: A filter that retrieves only processing jobs with a specific status.
             sort_by: The field to sort results by. The default is CreationTime.
             sort_order: The sort order for results. The default is Ascending.
-            next_token: If the result of the previous ListProcessingJobs request was truncated, the response includes a NextToken. To retrieve the next set of processing jobs, use the token in the next request.
-            max_results: The maximum number of processing jobs to return in the response.
             session: Boto3 session.
             region: Region name.
 
@@ -30033,9 +29900,7 @@ class Project(Base):
         Parameters:
             creation_time_after: A filter that returns the projects that were created after a specified time.
             creation_time_before: A filter that returns the projects that were created before a specified time.
-            max_results: The maximum number of projects to return in the response.
             name_contains: A filter that returns the projects whose name contains a specified string.
-            next_token: If the result of the previous ListProjects request was truncated, the response includes a NextToken. To retrieve the next set of projects, use the token in the next request.
             sort_by: The field by which to sort results. The default is CreationTime.
             sort_order: The sort order for results. The default is Ascending.
             session: Boto3 session.
@@ -30138,8 +30003,6 @@ class ResourceCatalog(Base):
             creation_time_before:  Use this parameter to search for ResourceCatalogs created before a specific date and time.
             sort_order:  The order in which the resource catalogs are listed.
             sort_by:  The value on which the resource catalog list is sorted.
-            max_results:  The maximum number of results returned by ListResourceCatalogs.
-            next_token:  A token to resume pagination of ListResourceCatalogs results.
             session: Boto3 session.
             region: Region name.
 
@@ -30750,8 +30613,6 @@ class Space(Base):
         Get all Space resources
 
         Parameters:
-            next_token: If the previous response was truncated, you will receive this token. Use it in your next request to receive the next set of results.
-            max_results: This parameter defines the maximum number of results that can be return in a single response. The MaxResults parameter is an upper bound, not a target. If there are more results available than the value specified, a NextToken is provided in the response. The NextToken indicates that the user should get the next set of results by providing this token as a part of a subsequent call. The default value for MaxResults is 10.
             sort_order: The sort order for the results. The default is Ascending.
             sort_by: The parameter by which to sort the results. The default is CreationTime.
             domain_id_equals: A parameter to search for the domain ID.
@@ -31052,8 +30913,6 @@ class StudioLifecycleConfig(Base):
         Get all StudioLifecycleConfig resources
 
         Parameters:
-            max_results: The total number of items to return in the response. If the total number of items available is more than the value specified, a NextToken is provided in the response. To resume pagination, provide the NextToken value in the as part of a subsequent call. The default value is 10.
-            next_token: If the previous call to ListStudioLifecycleConfigs didn't return the full set of Lifecycle Configurations, the call returns a token for getting the next set of Lifecycle Configurations.
             name_contains: A string in the Lifecycle Configuration name. This filter returns only Lifecycle Configurations whose name contains the specified string.
             app_type_equals: A parameter to search for the App Type to which the Lifecycle Configuration is attached.
             creation_time_before: A filter that returns only Lifecycle Configurations created on or before the specified time.
@@ -31240,8 +31099,6 @@ class SubscribedWorkteam(Base):
 
         Parameters:
             name_contains: A string in the work team name. This filter returns only work teams whose name contains the specified string.
-            next_token: If the result of the previous ListSubscribedWorkteams request was truncated, the response includes a NextToken. To retrieve the next set of labeling jobs, use the token in the next request.
-            max_results: The maximum number of work teams to return in each page of the response.
             session: Boto3 session.
             region: Region name.
 
@@ -31326,8 +31183,6 @@ class Tag(Base):
 
         Parameters:
             resource_arn: The Amazon Resource Name (ARN) of the resource whose tags you want to retrieve.
-            next_token:  If the response to the previous ListTags request is truncated, SageMaker returns this token. To retrieve the next set of tags, use it in the subsequent request.
-            max_results: Maximum number of tags to return.
             session: Boto3 session.
             region: Region name.
 
@@ -32173,8 +32028,6 @@ class TrainingJob(Base):
         Get all TrainingJob resources
 
         Parameters:
-            next_token: If the result of the previous ListTrainingJobs request was truncated, the response includes a NextToken. To retrieve the next set of training jobs, use the token in the next request.
-            max_results: The maximum number of training jobs to return in the response.
             creation_time_after: A filter that returns only training jobs created after the specified time (timestamp).
             creation_time_before: A filter that returns only training jobs created before the specified time (timestamp).
             last_modified_time_after: A filter that returns only training jobs modified after the specified time (timestamp).
@@ -32530,8 +32383,6 @@ class TrainingPlan(Base):
         Get all TrainingPlan resources
 
         Parameters:
-            next_token: A token to continue pagination if more results are available.
-            max_results: The maximum number of results to return in the response.
             start_time_after: Filter to list only training plans with an actual start time after this date.
             start_time_before: Filter to list only training plans with an actual start time before this date.
             sort_by: The training plan field to sort the results by (e.g., StartTime, Status).
@@ -33442,8 +33293,6 @@ class TransformJob(Base):
             status_equals: A filter that retrieves only transform jobs with a specific status.
             sort_by: The field to sort results by. The default is CreationTime.
             sort_order: The sort order for results. The default is Descending.
-            next_token: If the result of the previous ListTransformJobs request was truncated, the response includes a NextToken. To retrieve the next set of transform jobs, use the token in the next request.
-            max_results: The maximum number of transform jobs to return in the response. The default value is 10.
             session: Boto3 session.
             region: Region name.
 
@@ -33799,8 +33648,6 @@ class Trial(Base):
             created_before: A filter that returns only trials created before the specified time.
             sort_by: The property used to sort results. The default value is CreationTime.
             sort_order: The sort order. The default value is Descending.
-            max_results: The maximum number of trials to return in the response. The default value is 10.
-            next_token: If the previous call to ListTrials didn't return the full set of trials, the call returns a token for getting the next set of trials.
             session: Boto3 session.
             region: Region name.
 
@@ -34268,8 +34115,6 @@ class TrialComponent(Base):
             created_before: A filter that returns only components created before the specified time.
             sort_by: The property used to sort results. The default value is CreationTime.
             sort_order: The sort order. The default value is Descending.
-            max_results: The maximum number of components to return in the response. The default value is 10.
-            next_token: If the previous call to ListTrialComponents didn't return the full set of components, the call returns a token for getting the next set of components.
             session: Boto3 session.
             region: Region name.
 
@@ -34993,8 +34838,6 @@ class UserProfile(Base):
         Get all UserProfile resources
 
         Parameters:
-            next_token: If the previous response was truncated, you will receive this token. Use it in your next request to receive the next set of results.
-            max_results: This parameter defines the maximum number of results that can be return in a single response. The MaxResults parameter is an upper bound, not a target. If there are more results available than the value specified, a NextToken is provided in the response. The NextToken indicates that the user should get the next set of results by providing this token as a part of a subsequent call. The default value for MaxResults is 10.
             sort_order: The sort order for the results. The default is Ascending.
             sort_by: The parameter by which to sort the results. The default is CreationTime.
             domain_id_equals: A parameter by which to filter the results.
@@ -35478,8 +35321,6 @@ class Workforce(Base):
             sort_by: Sort workforces using the workforce name or creation date.
             sort_order: Sort workforces in ascending or descending order.
             name_contains: A filter you can use to search for workforces using part of the workforce name.
-            next_token: A token to resume pagination.
-            max_results: The maximum number of workforces returned in the response.
             session: Boto3 session.
             region: Region name.
 
@@ -35822,8 +35663,6 @@ class Workteam(Base):
             sort_by: The field to sort results by. The default is CreationTime.
             sort_order: The sort order for results. The default is Ascending.
             name_contains: A string in the work team's name. This filter returns only work teams whose name contains the specified string.
-            next_token: If the result of the previous ListWorkteams request was truncated, the response includes a NextToken. To retrieve the next set of labeling jobs, use the token in the next request.
-            max_results: The maximum number of work teams to return in each page of the response.
             session: Boto3 session.
             region: Region name.
 
@@ -35884,8 +35723,6 @@ class Workteam(Base):
 
         Parameters:
             workteam_arn: The Amazon Resource Name (ARN) of the work team for which you want to see labeling jobs for.
-            max_results: The maximum number of labeling jobs to return in each page of the response.
-            next_token: If the result of the previous ListLabelingJobsForWorkteam request was truncated, the response includes a NextToken. To retrieve the next set of labeling jobs, use the token in the next request.
             creation_time_after: A filter that returns only labeling jobs created after the specified time (timestamp).
             creation_time_before: A filter that returns only labeling jobs created before the specified time (timestamp).
             job_reference_code_contains: A filter the limits jobs to only the ones whose job reference code contains the specified string.
