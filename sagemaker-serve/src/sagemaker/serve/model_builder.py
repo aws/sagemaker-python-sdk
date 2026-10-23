@@ -3429,7 +3429,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 raise ValueError(
                     "The trainer passed to ModelBuilder does not have a completed training job. "
                     "Either call trainer.train() first, or manually set "
-                    "trainer._latest_training_job = TrainingJob.get(training_job_name='<job-name>') "
+                    "trainer.latest_training_job = TrainingJob.get(training_job_name='<job-name>') "
                     "to attach a previously completed job."
                 )
 
