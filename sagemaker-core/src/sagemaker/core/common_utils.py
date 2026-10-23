@@ -1692,10 +1692,10 @@ def _normalize_tag(tag: Any) -> TagsDict:
     """Return one tag as a boto-style ``{"Key": ..., "Value": ...}`` dict.
 
     Accepts the boto form, the ``{"key": ..., "value": ...}`` form that the
-    ``sagemaker.core.resources`` classes take, and a ``Tag`` shape object (anything
-    with ``key`` and ``value`` attributes). Any other input raises ``TypeError`` so a
-    malformed tag fails at the call site instead of as a ``KeyError`` deep in a
-    deploy path.
+    ``sagemaker.core.resources`` classes take, a ``(key, value)`` pair, and a ``Tag``
+    shape object (anything with ``key`` and ``value`` attributes). Any other input
+    raises ``TypeError`` so a malformed tag fails at the call site instead of as a
+    ``KeyError`` deep in a deploy path.
     """
     if isinstance(tag, dict):
         if "Key" in tag:
@@ -1706,11 +1706,13 @@ def _normalize_tag(tag: Any) -> TagsDict:
             "A tag dict must have a 'Key' (or 'key') entry, "
             f"got {sorted(tag)}. Pass a {{key: value}} mapping to set many tags at once."
         )
+    if isinstance(tag, (tuple, list)) and len(tag) == 2:
+        return {"Key": tag[0], "Value": tag[1]}
     if hasattr(tag, "key") and hasattr(tag, "value"):
         return {"Key": tag.key, "Value": tag.value}
     raise TypeError(
         "A tag must be a {'Key': ..., 'Value': ...} dict, a {'key': ..., 'value': ...} dict, "
-        f"or a Tag object, got {type(tag).__name__}."
+        f"a (key, value) pair, or a Tag object, got {type(tag).__name__}."
     )
 
 
@@ -1722,7 +1724,7 @@ def format_tags(tags: Tags) -> List[TagsDict]:
 
     * a ``{key: value}`` mapping, one tag per entry;
     * a single tag dict or ``Tag`` object;
-    * a list of tag dicts in either casing, ``Tag`` objects, or a mix.
+    * a list of tag dicts in either casing, ``(key, value)`` pairs, ``Tag`` objects, or a mix.
 
     ``None`` is returned unchanged.
     """

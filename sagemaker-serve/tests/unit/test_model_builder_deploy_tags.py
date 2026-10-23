@@ -83,6 +83,7 @@ class TestTagNormalization(unittest.TestCase):
         self.assertEqual(format_tags([BOTO_TAG]), expected)
         self.assertEqual(format_tags([CORE_TAG]), expected)
         self.assertEqual(format_tags([Tag(key="project", value="example")]), expected)
+        self.assertEqual(format_tags([("project", "example")]), expected)
         self.assertEqual(
             format_tags([BOTO_TAG, {"key": "team", "value": "ml"}]),
             [BOTO_TAG, {"Key": "team", "Value": "ml"}],
@@ -140,9 +141,11 @@ class TestDeployTagsParameter(unittest.TestCase):
             seen["kwargs_tags"] = kwargs.get("tags")
             return Mock(spec=Endpoint)
 
-        with patch.object(ModelBuilder, "_deploy", side_effect=_capture), patch.object(
-            ModelBuilder, "_is_model_customization", return_value=False
-        ), patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None):
+        with (
+            patch.object(ModelBuilder, "_deploy", side_effect=_capture),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None),
+        ):
             builder.deploy(endpoint_name="ep", tags=[CORE_TAG])
 
         self.assertEqual(seen["tags"], [{"Key": "team", "Value": "ml"}, BOTO_TAG])
@@ -161,13 +164,13 @@ class TestDeployTagsParameter(unittest.TestCase):
             return "ep"
 
         builder.sagemaker_session.endpoint_from_production_variants = Mock(side_effect=_capture)
-        with patch(
-            "sagemaker.serve.model_builder.session_helper.production_variant",
-            return_value={"VariantName": "AllTraffic"},
-        ), patch(
-            "sagemaker.serve.model_builder.Endpoint.get", return_value=Mock(spec=Endpoint)
-        ), patch.object(
-            builder, "_wait_for_endpoint"
+        with (
+            patch(
+                "sagemaker.serve.model_builder.session_helper.production_variant",
+                return_value={"VariantName": "AllTraffic"},
+            ),
+            patch("sagemaker.serve.model_builder.Endpoint.get", return_value=Mock(spec=Endpoint)),
+            patch.object(builder, "_wait_for_endpoint"),
         ):
             builder._deploy_core_endpoint(
                 instance_type="ml.g5.xlarge",
@@ -216,15 +219,15 @@ class TestDeployTagsParameter(unittest.TestCase):
             endpoint.wait_for_status = Mock()
             return endpoint
 
-        with patch.object(ModelBuilder, "_is_nova_model", return_value=False), patch.object(
-            ModelBuilder, "_fetch_model_package", return_value=Mock()
-        ), patch(
-            "sagemaker.serve.utils.model_package_utils.is_restricted_model_package",
-            return_value=True,
-        ), patch(
-            "sagemaker.serve.model_builder.EndpointConfig.create"
-        ), patch(
-            "sagemaker.serve.model_builder.Endpoint.create", side_effect=_create_endpoint
+        with (
+            patch.object(ModelBuilder, "_is_nova_model", return_value=False),
+            patch.object(ModelBuilder, "_fetch_model_package", return_value=Mock()),
+            patch(
+                "sagemaker.serve.utils.model_package_utils.is_restricted_model_package",
+                return_value=True,
+            ),
+            patch("sagemaker.serve.model_builder.EndpointConfig.create"),
+            patch("sagemaker.serve.model_builder.Endpoint.create", side_effect=_create_endpoint),
         ):
             builder.add_tags([CORE_TAG])
             builder._deploy_model_customization(endpoint_name="ep", wait=False)
@@ -240,12 +243,11 @@ class TestDeployTagsParameter(unittest.TestCase):
             created.update(kwargs)
             return Mock(spec=Endpoint)
 
-        with patch.object(
-            ModelBuilder, "_base_model_name", return_value="nova-micro"
-        ), patch.object(ModelBuilder, "_fetch_model_package", return_value=None), patch(
-            "sagemaker.serve.model_builder.EndpointConfig.create"
-        ), patch(
-            "sagemaker.serve.model_builder.Endpoint.create", side_effect=_create_endpoint
+        with (
+            patch.object(ModelBuilder, "_base_model_name", return_value="nova-micro"),
+            patch.object(ModelBuilder, "_fetch_model_package", return_value=None),
+            patch("sagemaker.serve.model_builder.EndpointConfig.create"),
+            patch("sagemaker.serve.model_builder.Endpoint.create", side_effect=_create_endpoint),
         ):
             builder.add_tags([CORE_TAG, {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "x"}])
             builder._deploy_nova_model(endpoint_name="ep", wait=False)
