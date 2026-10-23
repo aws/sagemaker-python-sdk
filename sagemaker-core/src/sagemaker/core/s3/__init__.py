@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from sagemaker.core.s3.client import (  # noqa: F401
     S3Uploader,
     S3Downloader,
+    S3ObjectHead,
     parse_s3_url,
     is_s3_url,
     s3_path_join,
@@ -35,6 +36,7 @@ from sagemaker.core.s3.utils import (  # noqa: F401
 __all__ = [
     "S3Uploader",
     "S3Downloader",
+    "S3ObjectHead",
     "parse_s3_url",
     "is_s3_url",
     "s3_path_join",

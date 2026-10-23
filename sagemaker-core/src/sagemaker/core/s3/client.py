@@ -17,14 +17,73 @@ from __future__ import print_function, absolute_import
 import logging
 import io
 
-from typing import Union
+from dataclasses import dataclass
+from datetime import datetime
 from functools import reduce
-from typing import Optional
+from typing import Iterator, Optional, Tuple, Union
 
 from six.moves.urllib.parse import urlparse
 from sagemaker.core.helper.session_helper import Session
 
 logger = logging.getLogger("sagemaker")
+
+
+@dataclass(frozen=True)
+class S3ObjectHead:
+    """Object metadata from ``HeadObject``.
+
+    Attributes:
+        content_length (int): Object size in bytes.
+        last_modified (datetime): Last modification time.
+        etag (str): The entity tag as S3 returns it, quotes included.
+        content_type (Optional[str]): The MIME type, or ``None`` when S3 returns none.
+    """
+
+    content_length: int
+    last_modified: datetime
+    etag: str
+    content_type: Optional[str]
+
+
+def _s3_client(sagemaker_session):
+    """Return the session's S3 client, or create one from its boto session.
+
+    ``Session.s3_client`` is ``None`` for a session built without ``_initialize``. This is
+    the same fallback ``Session.read_s3_file`` uses.
+    """
+    if sagemaker_session.s3_client is not None:
+        return sagemaker_session.s3_client
+    return sagemaker_session.boto_session.client(
+        "s3", region_name=sagemaker_session.boto_region_name
+    )
+
+
+def _expected_owner_args(sagemaker_session, bucket) -> dict:
+    """Return ``{"ExpectedBucketOwner": <account>}`` for the SDK-generated default bucket.
+
+    Spot check: enforce ownership only on the session's default bucket. Cross-account reads
+    (JumpStart, shared buckets) stay untouched.
+    """
+    expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket)
+    if expected_owner:
+        return {"ExpectedBucketOwner": expected_owner}
+    return {}
+
+
+def _range_header(byte_range: Tuple[int, int]) -> str:
+    """Return the HTTP ``Range`` header for an inclusive ``(start, end)`` byte range."""
+    start, end = byte_range
+    if start < 0 or end < start:
+        raise ValueError(
+            "byte_range must satisfy 0 <= start <= end, got ({}, {}).".format(start, end)
+        )
+    return "bytes={}-{}".format(start, end)
+
+
+def _decode_lines(body, encoding: str) -> Iterator[str]:
+    """Yield the decoded lines of a streaming ``GetObject`` body without their line ends."""
+    for raw_line in body.iter_lines():
+        yield raw_line.decode(encoding)
 
 
 class S3Uploader(object):
@@ -184,7 +243,9 @@ class S3Downloader(object):
         return sagemaker_session.read_s3_file(bucket=bucket, key_prefix=object_key)
 
     @staticmethod
-    def read_bytes(s3_uri, sagemaker_session=None) -> bytes:
+    def read_bytes(
+        s3_uri, sagemaker_session=None, byte_range: Optional[Tuple[int, int]] = None
+    ) -> bytes:
         """Static method that returns the contents of a s3 object as bytes.
 
         Args:
@@ -193,27 +254,81 @@ class S3Downloader(object):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created
                 using the default AWS configuration chain.
+            byte_range (Optional[Tuple[int, int]]): Inclusive ``(start, end)`` offsets, as in
+                an HTTP ``Range`` header. ``(0, 1023)`` reads the first 1024 bytes through
+                ``GetObject``. ``None`` downloads the whole object.
 
         Returns:
-            bytes: The body of the file.
+            bytes: The body of the file, or the requested part of it.
+
+        Raises:
+            ValueError: If ``start`` is negative or ``end`` is less than ``start``.
         """
         sagemaker_session = sagemaker_session or Session()
-
         bucket, object_key = parse_s3_url(s3_uri)
+        extra_args = _expected_owner_args(sagemaker_session, bucket)
 
-        # Spot check: enforce ownership only when reading from the session's default
-        # bucket. Cross-account reads (e.g. JumpStart) are left untouched.
-        extra_args = None
-        expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket)
-        if expected_owner:
-            extra_args = {"ExpectedBucketOwner": expected_owner}
+        if byte_range is not None:
+            range_header = _range_header(byte_range)
+            response = _s3_client(sagemaker_session).get_object(
+                Bucket=bucket, Key=object_key, Range=range_header, **extra_args
+            )
+            return response["Body"].read()
 
         bytes_io = io.BytesIO()
         sagemaker_session.s3_resource.Bucket(bucket).download_fileobj(
-            object_key, bytes_io, ExtraArgs=extra_args
+            object_key, bytes_io, ExtraArgs=extra_args or None
         )
         bytes_io.seek(0)
         return bytes_io.read()
+
+    @staticmethod
+    def iter_lines(s3_uri, sagemaker_session=None, encoding: str = "utf-8") -> Iterator[str]:
+        """Static method that streams the lines of a text object one at a time.
+
+        The body streams through ``GetObject``. The whole object is never held in memory.
+
+        Args:
+            s3_uri (str): An S3 uri that refers to a s3 object.
+            sagemaker_session (sagemaker.core.helper.session_helper.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and other AWS services. If not
+                specified, one is created from the default AWS configuration chain.
+            encoding (str): The text encoding of the object. Defaults to ``utf-8``.
+
+        Returns:
+            Iterator[str]: The lines of the object without their line ends.
+        """
+        sagemaker_session = sagemaker_session or Session()
+        bucket, object_key = parse_s3_url(s3_uri)
+        response = _s3_client(sagemaker_session).get_object(
+            Bucket=bucket, Key=object_key, **_expected_owner_args(sagemaker_session, bucket)
+        )
+        return _decode_lines(response["Body"], encoding)
+
+    @staticmethod
+    def head(s3_uri, sagemaker_session=None) -> S3ObjectHead:
+        """Static method that returns the metadata of a s3 object through ``HeadObject``.
+
+        Args:
+            s3_uri (str): An S3 uri that refers to a s3 object.
+            sagemaker_session (sagemaker.core.helper.session_helper.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and other AWS services. If not
+                specified, one is created from the default AWS configuration chain.
+
+        Returns:
+            S3ObjectHead: Size, last modification time, entity tag, and content type.
+        """
+        sagemaker_session = sagemaker_session or Session()
+        bucket, object_key = parse_s3_url(s3_uri)
+        response = _s3_client(sagemaker_session).head_object(
+            Bucket=bucket, Key=object_key, **_expected_owner_args(sagemaker_session, bucket)
+        )
+        return S3ObjectHead(
+            content_length=response["ContentLength"],
+            last_modified=response["LastModified"],
+            etag=response["ETag"],
+            content_type=response.get("ContentType"),
+        )
 
     @staticmethod
     def list(s3_uri, sagemaker_session=None):
