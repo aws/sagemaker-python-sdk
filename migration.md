@@ -559,8 +559,7 @@ compute = Compute(
     instance_type="ml.m5.xlarge",
     instance_count=1,
     volume_size_in_gb=30,
-    use_spot_instances=True,
-    max_wait_time_in_seconds=7200
+    enable_managed_spot_training=True
 )
 networking = Networking(
     subnets=["subnet-12345"],
@@ -568,7 +567,8 @@ networking = Networking(
     enable_inter_container_traffic_encryption=True
 )
 stopping_condition = StoppingCondition(
-    max_runtime_in_seconds=3600
+    max_runtime_in_seconds=3600,
+    max_wait_time_in_seconds=7200
 )
 model_trainer = ModelTrainer(
     training_image="...",
