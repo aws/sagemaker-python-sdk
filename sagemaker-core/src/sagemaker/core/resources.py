@@ -49,7 +49,6 @@ from sagemaker.core.endpoint import EndpointMixin
 from sagemaker.core.hub_content import HubContentMixin
 from sagemaker.core.model_package_group import ModelPackageGroupMixin
 
-
 logger = get_textual_rich_logger(__name__)
 
 
