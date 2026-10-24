@@ -6454,12 +6454,69 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
         endpoint_options.validate(inference_config)
 
-        # Normalize the caller's tags once, in boto form, and merge them into the
-        # builder's accumulated tags. Every deploy path below reads self._tags, so a
-        # tag passed here reaches the endpoint whichever path the model takes.
+        # Every deploy path below reads self._tags, so the caller's tags are merged into
+        # the builder for this call only. The merge is undone on exit, so a second
+        # deploy() on the same builder (a retry, another endpoint) starts from the tags
+        # build() and add_tags() set, not from the previous call's.
+        tags_before_call = format_tags(getattr(self, "_tags", None))
         if tags is not None:
             self.add_tags(tags)
+        try:
+            return self._deploy_with_options(
+                endpoint_name=endpoint_name,
+                initial_instance_count=initial_instance_count,
+                instance_type=instance_type,
+                wait=wait,
+                update_endpoint=update_endpoint,
+                container_timeout_in_seconds=container_timeout_in_seconds,
+                inference_config=inference_config,
+                custom_orchestrator_instance_type=custom_orchestrator_instance_type,
+                custom_orchestrator_initial_instance_count=custom_orchestrator_initial_instance_count,
+                reuse_resources=reuse_resources,
+                use_recommendation=use_recommendation,
+                recommendation=recommendation,
+                recommendation_index=recommendation_index,
+                recommendation_spec_name=recommendation_spec_name,
+                auto_approve=auto_approve,
+                role=role,
+                model_name=model_name,
+                endpoint_config_name=endpoint_config_name,
+                endpoint_options=endpoint_options,
+                **kwargs,
+            )
+        finally:
+            self._tags = tags_before_call
 
+    def _deploy_with_options(
+        self,
+        *,
+        endpoint_name: Optional[str],
+        initial_instance_count: Optional[int],
+        instance_type: Optional[str],
+        wait: bool,
+        update_endpoint: Optional[bool],
+        container_timeout_in_seconds: int,
+        inference_config: Optional[Any],
+        custom_orchestrator_instance_type: Optional[str],
+        custom_orchestrator_initial_instance_count: Optional[int],
+        reuse_resources: bool,
+        use_recommendation: Optional[bool],
+        recommendation: Optional[Any],
+        recommendation_index: int,
+        recommendation_spec_name: Optional[str],
+        auto_approve: bool,
+        role: Optional[str],
+        model_name: Optional[str],
+        endpoint_config_name: Optional[str],
+        endpoint_options: _EndpointOptions,
+        **kwargs,
+    ) -> Union[Endpoint, LocalEndpoint, Transformer]:
+        """Run the deploy path selection of ``deploy()`` with the validated options.
+
+        ``deploy()`` validates the arguments, merges the per-call tags, and restores them
+        afterwards. This method holds the path selection so that restore happens on every
+        return and on every raise.
+        """
         # Recommendation-mode deploy: when a recommendation job is attached
         # (from a prior generate_deployment_recommendations call, or because the
         # builder was hydrated via ModelBuilder.from_recommendation_job), deploy
@@ -6584,7 +6641,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return self._deploy_model_customization(
                 endpoint_name=endpoint_name,
                 initial_instance_count=initial_instance_count,
-                inference_component_name=inference_component_name,
+                inference_component_name=endpoint_options.inference_component_name,
                 wait=wait,
                 container_timeout_in_seconds=container_timeout_in_seconds,
                 inference_config=inference_config_param,
@@ -6607,7 +6664,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "update_endpoint": update_endpoint,
                     "container_timeout_in_seconds": container_timeout_in_seconds,
                     "wait": wait,
-                    "endpoint_type": endpoint_type or EndpointType.MODEL_BASED,
+                    "endpoint_type": endpoint_options.endpoint_type or EndpointType.MODEL_BASED,
                 }
 
                 deploy_kwargs.update(kwargs)
@@ -6621,7 +6678,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "update_endpoint": update_endpoint,
                     "container_timeout_in_seconds": container_timeout_in_seconds,
                     "wait": wait,
-                    "endpoint_type": endpoint_type or EndpointType.MODEL_BASED,
+                    "endpoint_type": endpoint_options.endpoint_type or EndpointType.MODEL_BASED,
                 }
 
                 deploy_kwargs.update(kwargs)
@@ -6637,7 +6694,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "update_endpoint": update_endpoint,
                     "container_timeout_in_seconds": container_timeout_in_seconds,
                     "wait": wait,
-                    "endpoint_type": endpoint_type or EndpointType.MODEL_BASED,
+                    "endpoint_type": endpoint_options.endpoint_type or EndpointType.MODEL_BASED,
                 }
 
                 deploy_kwargs.update(kwargs)
@@ -6659,7 +6716,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             deploy_kwargs = {
                 "instance_type": self.instance_type,
                 "mode": Mode.SAGEMAKER_ENDPOINT,
-                "endpoint_type": endpoint_type or EndpointType.INFERENCE_COMPONENT_BASED,
+                "endpoint_type": (
+                    endpoint_options.endpoint_type or EndpointType.INFERENCE_COMPONENT_BASED
+                ),
                 "resources": inference_config,
                 "initial_instance_count": initial_instance_count,
                 "role": self.role_arn,

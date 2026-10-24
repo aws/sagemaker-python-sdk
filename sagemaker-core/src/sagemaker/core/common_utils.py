@@ -1688,28 +1688,41 @@ def create_paginator_config(max_items: int = None, page_size: int = None) -> Dic
     }
 
 
+def _tag_text(value: Any) -> Union[str, PipelineVariable]:
+    """Return a tag key or value as the service string, keeping a pipeline variable intact."""
+    if value is None or is_pipeline_variable(value):
+        return value
+    return str(value)
+
+
+def _tag_dict(key: Any, value: Any) -> TagsDict:
+    return {"Key": _tag_text(key), "Value": _tag_text(value)}
+
+
 def _normalize_tag(tag: Any) -> TagsDict:
-    """Return one tag as a boto-style ``{"Key": ..., "Value": ...}`` dict.
+    """Return one tag as a boto-style ``{"Key": ..., "Value": ...}`` dict of strings.
 
     Accepts the boto form, the ``{"key": ..., "value": ...}`` form that the
     ``sagemaker.core.resources`` classes take, a ``(key, value)`` pair, and a ``Tag``
-    shape object (anything with ``key`` and ``value`` attributes). Any other input
-    raises ``TypeError`` so a malformed tag fails at the call site instead of as a
-    ``KeyError`` deep in a deploy path.
+    shape object (anything with ``key`` and ``value`` attributes). The key and the value
+    come out as ``str`` whatever the input representation, except a ``PipelineVariable``,
+    which the request serializer resolves later. Any other input raises ``TypeError`` so a
+    malformed tag fails at the call site instead of as a ``KeyError`` deep in a deploy
+    path.
     """
     if isinstance(tag, dict):
         if "Key" in tag:
-            return {"Key": tag["Key"], "Value": tag.get("Value")}
+            return _tag_dict(tag["Key"], tag.get("Value"))
         if "key" in tag:
-            return {"Key": tag["key"], "Value": tag.get("value")}
+            return _tag_dict(tag["key"], tag.get("value"))
         raise TypeError(
             "A tag dict must have a 'Key' (or 'key') entry, "
             f"got {sorted(tag)}. Pass a {{key: value}} mapping to set many tags at once."
         )
     if isinstance(tag, (tuple, list)) and len(tag) == 2:
-        return {"Key": tag[0], "Value": tag[1]}
+        return _tag_dict(tag[0], tag[1])
     if hasattr(tag, "key") and hasattr(tag, "value"):
-        return {"Key": tag.key, "Value": tag.value}
+        return _tag_dict(tag.key, tag.value)
     raise TypeError(
         "A tag must be a {'Key': ..., 'Value': ...} dict, a {'key': ..., 'value': ...} dict, "
         f"a (key, value) pair, or a Tag object, got {type(tag).__name__}."
@@ -1720,7 +1733,7 @@ def format_tags(tags: Optional[Tags]) -> Optional[List[TagsDict]]:
     """Process tags to turn them into the expected format for Sagemaker.
 
     Every accepted representation comes out as a list of boto-style
-    ``{"Key": ..., "Value": ...}`` dicts:
+    ``{"Key": ..., "Value": ...}`` dicts with string keys and values:
 
     * a ``{key: value}`` mapping, one tag per entry;
     * a single tag dict or ``Tag`` object;
@@ -1733,7 +1746,7 @@ def format_tags(tags: Optional[Tags]) -> Optional[List[TagsDict]]:
     if isinstance(tags, dict):
         if "Key" in tags or "key" in tags:
             return [_normalize_tag(tags)]
-        return [{"Key": str(k), "Value": str(v)} for k, v in tags.items()]
+        return [_tag_dict(key, value) for key, value in tags.items()]
     if isinstance(tags, (list, tuple)):
         return [_normalize_tag(tag) for tag in tags]
     return [_normalize_tag(tags)]
@@ -2175,15 +2188,22 @@ def tag_exists(tag: TagsDict, curr_tags: Optional[Tags]) -> bool:
     return False
 
 
-def _validate_new_tags(new_tags: Optional[Tags], curr_tags: Optional[Tags]) -> Optional[Tags]:
-    """Validates new tags against existing tags.
+def _validate_new_tags(
+    new_tags: Optional[Tags], curr_tags: Optional[Tags]
+) -> Optional[List[TagsDict]]:
+    """Merge new tags into the current tags, without a duplicate key.
+
+    The two inputs take any representation ``format_tags`` accepts. The result is the
+    merged list in boto form, so a caller that stores it (``ModelBuilder.add_tags``)
+    holds one shape whatever shape it received. ``None`` comes back only when the two
+    inputs are ``None``.
 
     Args:
         new_tags (Optional[Tags]): The new tags.
         curr_tags (Optional[Tags]): The current tags.
 
     Returns:
-        Optional[Tags]: The updated tags.
+        Optional[List[TagsDict]]: The merged tags in boto form.
     """
     if new_tags is None:
         return format_tags(curr_tags) if curr_tags is not None else None

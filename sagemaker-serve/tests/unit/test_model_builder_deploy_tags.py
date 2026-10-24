@@ -16,6 +16,9 @@ Before this change ``tags`` reached ``deploy()`` only through ``**kwargs``, so
 ``inspect.signature`` could not validate it, the fine-tuned (model customization) and
 Nova paths ignored it, and ``add_tags`` raised ``KeyError: 'Key'`` on the
 ``{"key": ..., "value": ...}`` form that the ``sagemaker.core.resources`` classes use.
+Every representation now comes out with string keys and values, and the tags a call
+passes are merged for that call only, so a second ``deploy()`` on the same builder does
+not carry the first call's tags.
 """
 
 from __future__ import absolute_import
@@ -84,6 +87,12 @@ class TestTagNormalization(unittest.TestCase):
         self.assertEqual(format_tags([CORE_TAG]), expected)
         self.assertEqual(format_tags([Tag(key="project", value="example")]), expected)
         self.assertEqual(format_tags([("project", "example")]), expected)
+        self.assertEqual(
+            format_tags({"n": 1}),
+            format_tags([("n", 1)]),
+            format_tags([{"key": "n", "value": 1}]),
+        )
+        self.assertEqual(format_tags([("n", 1)]), [{"Key": "n", "Value": "1"}])
         self.assertEqual(
             format_tags([BOTO_TAG, {"key": "team", "value": "ml"}]),
             [BOTO_TAG, {"Key": "team", "Value": "ml"}],
@@ -256,3 +265,39 @@ class TestDeployTagsParameter(unittest.TestCase):
             created["tags"],
             [{"key": "sagemaker-sdk:jumpstart-model-id", "value": "nova-micro"}, CORE_TAG],
         )
+
+    def test_deploy_tags_do_not_outlive_the_call(self):
+        builder = _make_builder()
+        builder.add_tags({"team": "ml"})
+        seen = {}
+
+        def _capture(**kwargs):
+            seen["tags"] = list(builder._tags)
+            return Mock(spec=Endpoint)
+
+        with (
+            patch.object(ModelBuilder, "_deploy", side_effect=_capture),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_resolve_model_source_id", return_value="s3://b/m"),
+        ):
+            builder.deploy(endpoint_name="ep", tags={"run": "1"})
+
+        self.assertEqual(
+            [tag["Key"] for tag in seen["tags"]],
+            ["team", "run", "sagemaker.amazonaws.com/model-source"],
+        )
+        self.assertEqual(builder._tags, [{"Key": "team", "Value": "ml"}])
+
+    def test_deploy_tags_are_restored_when_the_path_raises(self):
+        builder = _make_builder()
+        builder.add_tags({"team": "ml"})
+
+        with (
+            patch.object(ModelBuilder, "_deploy", side_effect=RuntimeError("boom")),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None),
+        ):
+            with pytest.raises(RuntimeError, match="boom"):
+                builder.deploy(endpoint_name="ep", tags={"run": "1"})
+
+        self.assertEqual(builder._tags, [{"Key": "team", "Value": "ml"}])
