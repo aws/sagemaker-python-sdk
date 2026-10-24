@@ -20,6 +20,7 @@ import json
 import multiprocessing
 import os
 import pathlib
+import shlex
 import shutil
 import subprocess
 import sys
@@ -527,7 +528,8 @@ def set_env(
 
     with open(output_file, "w") as f:
         for key, value in env_vars.items():
-            f.write(f"export {key}='{safe_serialize(value)}'\n")
+            # The file is consumed with `source`, so the value must be shell-quoted.
+            f.write(f"export {key}={shlex.quote(safe_serialize(value))}\n")
 
     logger.info("Environment Variables:")
     log_env_variables(env_vars_dict=env_vars)
