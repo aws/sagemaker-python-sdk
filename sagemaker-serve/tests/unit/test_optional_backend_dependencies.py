@@ -40,6 +40,7 @@ from sagemaker.serve.constants import (
 )
 
 PYPROJECT = Path(__file__).resolve().parents[2] / "pyproject.toml"
+ROOT_PYPROJECT = Path(__file__).resolve().parents[3] / "pyproject.toml"
 OPTIONAL_BACKENDS = {"torch", "onnx", "onnxruntime", "tritonclient", "mlflow"}
 # Modules that must not be imported just by importing the package.
 MUST_NOT_IMPORT = sorted(OPTIONAL_BACKENDS | {"pytest"})
@@ -82,6 +83,20 @@ class TestDeclaredDependencies:
 
         assert OPTIONAL_BACKENDS <= names
 
+    @pytest.mark.parametrize("extra", ["torch", "onnx", "triton", "mlflow"])
+    def test_top_level_package_passes_the_backend_extras_through(self, extra):
+        """``pip install sagemaker[torch]`` must work, not just ``sagemaker-serve[torch]``."""
+        if tomllib is None:
+            pytest.skip("tomllib requires Python 3.11+")
+        if not ROOT_PYPROJECT.exists():
+            pytest.skip("top-level pyproject.toml is not available outside the repo")
+
+        with open(ROOT_PYPROJECT, "rb") as handle:
+            root = tomllib.load(handle)["project"]
+
+        assert root["name"] == "sagemaker"
+        assert root["optional-dependencies"][extra] == [f"sagemaker-serve[{extra}]"]
+
 
 class TestNoEagerBackendImport:
     def test_importing_sagemaker_serve_needs_no_optional_backend(self):
@@ -108,6 +123,99 @@ class TestNoEagerBackendImport:
 
             leaked = sorted(m for m in sys.modules if m.split(".")[0] in blocked)
             assert not leaked, leaked
+            """)
+
+        result = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, text=True, check=False
+        )
+
+        assert result.returncode == 0, result.stderr
+
+
+class TestPyTorchDefaultsWithoutTorch:
+    def test_pytorch_default_pair_is_selectable_without_torch(self):
+        """Deploying a prebuilt PyTorch container needs no local torch: the framework is
+        detected from the image URI, so picking its default pair must not require the
+        backend. Subprocess so blocking torch cannot leak into the session."""
+        script = textwrap.dedent("""
+            import sys
+
+            class Blocker:
+                def find_spec(self, name, path=None, target=None):
+                    if name.split(".")[0] == "torch":
+                        raise ImportError("torch is blocked for this test")
+                    return None
+
+            sys.meta_path.insert(0, Blocker())
+
+            from sagemaker.serve.constants import DEFAULT_SERIALIZERS_BY_FRAMEWORK, Framework
+
+            serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
+
+            assert type(serializer).__name__ == "TorchTensorSerializer"
+            assert serializer.CONTENT_TYPE == "tensor/pt"
+            assert "torch" not in sys.modules
+            """)
+
+        result = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, text=True, check=False
+        )
+
+        assert result.returncode == 0, result.stderr
+
+    def test_serializer_rejects_non_tensors_without_torch(self):
+        """The no-torch path must stay a type error, not an ImportError."""
+        script = textwrap.dedent("""
+            import sys
+
+            class Blocker:
+                def find_spec(self, name, path=None, target=None):
+                    if name.split(".")[0] == "torch":
+                        raise ImportError("torch is blocked for this test")
+                    return None
+
+            sys.meta_path.insert(0, Blocker())
+
+            from sagemaker.core.serializers import TorchTensorSerializer
+
+            try:
+                TorchTensorSerializer().serialize([1.0, 2.0, 3.0])
+            except ValueError as e:
+                assert "not a torch.Tensor" in str(e), str(e)
+            else:
+                raise AssertionError("expected ValueError")
+            """)
+
+        result = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, text=True, check=False
+        )
+
+        assert result.returncode == 0, result.stderr
+
+
+class TestMissingBackendErrors:
+    def test_triton_translator_names_the_extra(self):
+        """A bare ``import torch`` here surfaced a raw ModuleNotFoundError that left the
+        caller no idea which extra to install. Subprocess so blocking torch is contained."""
+        script = textwrap.dedent("""
+            import sys
+
+            class Blocker:
+                def find_spec(self, name, path=None, target=None):
+                    if name.split(".")[0] == "torch":
+                        raise ImportError("torch is blocked for this test")
+                    return None
+
+            sys.meta_path.insert(0, Blocker())
+
+            from sagemaker.serve.marshalling.triton_translator import TorchTensorTranslator
+
+            try:
+                TorchTensorTranslator()
+            except ImportError as e:
+                assert "sagemaker-serve[torch]" in str(e), str(e)
+            else:
+                raise AssertionError("expected ImportError")
             """)
 
         result = subprocess.run(
@@ -148,3 +256,19 @@ class TestLazySerializerRegistry:
 
         assert serializer.CONTENT_TYPE == "application/x-npy"
         assert deserializer is not None
+
+    def test_membership_does_not_build_the_pair(self):
+        """``Mapping.__contains__`` answers via ``__getitem__``, which would both
+        defeat the laziness and raise a backend's ImportError out of an ``in`` test."""
+        built = []
+
+        class Boom:
+            def __init__(self):
+                built.append("built")
+                raise ImportError("backend missing")
+
+        registry = _LazySerializerRegistry({Framework.PYTORCH: (Boom, Boom)})
+
+        assert Framework.PYTORCH in registry
+        assert Framework.SKLEARN not in registry
+        assert built == []
