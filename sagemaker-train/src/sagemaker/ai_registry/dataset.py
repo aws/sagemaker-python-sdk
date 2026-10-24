@@ -35,9 +35,11 @@ from sagemaker.ai_registry.air_constants import (
     DATASET_DEFAULT_CONVERSATION_ID,
     DATASET_DEFAULT_CHECKPOINT_ID,
     DATASET_DOCUMENT_SCHEMA_VERSION,
+    DATASET_SUPPORTED_SCHEMA_VERSIONS,
     DATASET_DEFAULT_METHOD,
     DATASET_MAX_FILE_SIZE_BYTES,
     DATASET_SUPPORTED_EXTENSIONS,
+    DatasetFileFormat,
     TAG_KEY_METHOD,
     TAG_KEY_CUSTOMIZATION_TECHNIQUE,
     TAG_KEY_DOMAIN_ID,
@@ -52,6 +54,7 @@ from sagemaker.ai_registry.air_constants import (
     RESPONSE_KEY_LAST_MODIFIED_TIME,
     DOC_KEY_DATASET_S3_BUCKET,
     DOC_KEY_DATASET_S3_PREFIX,
+    DOC_KEY_DATASET_S3_URI,
 )
 from sagemaker.ai_registry.air_hub_entity import AIRHubEntity
 from sagemaker.ai_registry.dataset_utils import (
@@ -120,6 +123,17 @@ class DataSet(AIRHubEntity):
         self.source = source
         self.customization_technique = customization_technique
         self.method = method
+        self.job_arn: Optional[str] = None
+        """ARN of the Data Preparation job that produced this dataset.
+
+        Populated when the dataset is returned from ``DataPreparer.generate()``,
+        ``DataPreparer.evaluate()``, ``DataPreparer.transform()``, or
+        ``DataPreparer.attach()``. Use this to re-attach after a kernel restart::
+
+            job_arn = dataset.job_arn
+            # later...
+            dataset = DataPreparer.attach(job_arn)
+        """
 
     def refresh(self):
         """Load full dataset details from API."""
@@ -142,7 +156,10 @@ class DataSet(AIRHubEntity):
         self.name = response[RESPONSE_KEY_HUB_CONTENT_NAME]
         self.arn = response[RESPONSE_KEY_HUB_CONTENT_ARN]
         self.version = response[RESPONSE_KEY_HUB_CONTENT_VERSION]
-        self.source = f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}"
+        self.source = (
+            doc.get(DOC_KEY_DATASET_S3_URI)
+            or f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}"
+        )
         self.status = response[RESPONSE_KEY_HUB_CONTENT_STATUS]
         self.description = response.get(RESPONSE_KEY_HUB_CONTENT_DESCRIPTION, "")
         self.customization_technique = (
@@ -214,15 +231,24 @@ class DataSet(AIRHubEntity):
                 )
 
     @classmethod
-    def _validate_dataset_format(cls, file_path: str) -> None:
+    def _validate_dataset_format(
+        cls, file_path: str, dataset_file_format: Optional[str] = None
+    ) -> None:
         """Validate dataset format using DatasetFormatDetector.
 
         Args:
             file_path: Path to the dataset file (local path)
+            dataset_file_format: The format declared by the caller. "Custom" skips
+                validation entirely -- the caller brings an arbitrary schema and
+                DataTransformation supports arbitrary input/output formats, so a
+                Custom dataset is registered without format checks. Any other
+                value (or None) is validated against the known schemas.
 
         Raises:
             ValueError: If dataset format cannot be detected
         """
+        if dataset_file_format == DatasetFileFormat.CUSTOM.value:
+            return
         detector = DatasetFormatDetector()
         format_name = detector.validate_dataset(file_path)
         if format_name is False:
@@ -232,13 +258,34 @@ class DataSet(AIRHubEntity):
 
     @classmethod
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="DataSet.get")
-    def get(cls, name: str, sagemaker_session=None) -> "DataSet":
-        """Get dataset by name."""
+    def get(
+        cls,
+        name: str,
+        sagemaker_session=None,
+        hub_name: Optional[str] = None,
+        version: Optional[str] = None,
+    ) -> "DataSet":
+        """Get dataset by name.
+
+        Args:
+            name: Hub content name of the dataset.
+            sagemaker_session: Session to use.
+            hub_name: Hub to look in. Defaults to the derived AI Registry hub.
+            version: Exact version to fetch. Defaults to the latest version.
+
+        ``hub_name`` and ``version`` let a caller holding a full hub-content ARN
+        resolve exactly the content that ARN names. The ARN carries both, a
+        dataset in another hub is not reachable from the derived one, and
+        resolving by name alone silently returns whichever version is latest at
+        call time rather than the one that was asked for.
+        """
         sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
         response = AIRHub.describe_hub_content(
             hub_content_type=DATASET_HUB_CONTENT_TYPE,
             hub_content_name=name,
+            hub_content_version=version,
             session=sagemaker_session,
+            hub_name=hub_name,
         )
         doc = json.loads(response[RESPONSE_KEY_HUB_CONTENT_DOCUMENT])
         try:
@@ -253,7 +300,8 @@ class DataSet(AIRHubEntity):
             name=response[RESPONSE_KEY_HUB_CONTENT_NAME],
             arn=response[RESPONSE_KEY_HUB_CONTENT_ARN],
             version=response[RESPONSE_KEY_HUB_CONTENT_VERSION],
-            source=f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}",
+            source=doc.get(DOC_KEY_DATASET_S3_URI)
+            or f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}",
             status=response[RESPONSE_KEY_HUB_CONTENT_STATUS],
             description=response.get(RESPONSE_KEY_HUB_CONTENT_DESCRIPTION, ""),
             customization_technique=(
@@ -278,8 +326,12 @@ class DataSet(AIRHubEntity):
         tags: Optional[List[Tuple[str, str]]] = None,
         role: Optional[str] = None,
         domain_id: Optional[str] = None,
+        dataset_file_format: Optional[str] = None,
+        document_schema_version: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         content_metadata: Optional[dict] = None,
+        hub_name: Optional[str] = None,
+        validation_role_arn: Optional[str] = None,
     ) -> "DataSet":
         """Create a new DataSet Hub AIR entity.
 
@@ -293,22 +345,107 @@ class DataSet(AIRHubEntity):
             wait: Whether to wait for the dataset to be available
             description: Description of the dataset
             tags: Optional list of (key, value) tag tuples
-            role: Optional IAM role ARN. If not provided, uses default execution role.
+            role: Optional IAM role ARN, used only when ``document_schema_version`` is
+                "2.0.0", which records it in the document as ``DatasetRoleArn``. The v3,
+                v4, and v5 document schemas have no role field and ImportHubContent takes
+                no role, so the role is ignored on those versions -- the import runs as
+                the caller's credentials. If not provided, uses default execution role.
             domain_id: Optional SageMaker Studio domain ID used to tag the dataset so it is
                 visible in Studio. If not provided, it is auto-detected from the Studio
                 environment; supply it explicitly when creating datasets outside Studio
                 (e.g. from a laptop or CI) so they still appear in the target domain.
+            dataset_file_format: Format of the dataset file. Accepts a
+                :class:`~sagemaker.ai_registry.air_constants.DatasetFileFormat`
+                member or its string value (e.g. "Bedrock_Converse",
+                "HF_Prompt_Completion", "HF_Preference", "Verl", "Nova_PPO",
+                "Nova_CPT", "OpenAI_Messages", "SageMaker_Eval", "Nova_RLVR",
+                "Custom"). Defaults to "Custom" when not provided. A known format
+                is validated against its schema on ingest; "Custom" is registered
+                without format validation, since DataTransformation supports
+                arbitrary input and output formats.
+            document_schema_version: Optional schema version for the hub content document.
+                Defaults to "5.0.0". Valid values: "2.0.0", "3.0.0", "4.0.0", "5.0.0".
             sagemaker_session: Optional SageMaker session. If not provided, uses default session.
             content_metadata: Optional metadata dict (PascalCase keys) to include in the
                 HubContent document. Used by Feature Store lineage to pass source FG ARNs.
-                When provided, file format validation is skipped.
+                Emitted as ``ContentMetadata`` for every supported document_schema_version,
+                including the default 5.0.0 (expected keys: SourceFeatureGroups (required),
+                ExtractionMethod, AthenaQueryExecutionId). When provided, file format
+                validation is skipped.
+            hub_name: Optional hub to register the dataset into. Defaults to the
+                derived AI Registry hub. A caller-supplied hub is created on demand
+                if it does not exist.
+            validation_role_arn: Optional IAM role ARN authorizing the Hub Service to
+                run data validation on this dataset version. When supplied, the value
+                is placed on the outgoing HubContentDocument as ``"ValidationRoleArn"``
+                and Hub Service routes the import through the data-validation pipeline.
+                When omitted, Hub Service marks the version as opted out of data
+                validation. This kwarg is intentionally distinct from ``role`` -- the
+                SDK does not silently reuse the ``role`` value here. Only supported on
+                document_schema_version "4.0.0" and "5.0.0"; passing this kwarg with
+                any other schema version raises ValueError, because v2/v3 schemas
+                have no field to carry it and silently dropping it would let a
+                caller's data-validation opt-in vanish without notice.
 
         Returns:
             DataSet: The created dataset instance
 
         Raises:
-            ValueError: If validation fails or required parameters are missing
+            ValueError: If validation fails, required parameters are missing,
+                validation_role_arn is supplied with an unsupported
+                document_schema_version, or dataset_file_format is a known
+                (non-"Custom") format on a v4/v5 schema but validation_role_arn
+                is omitted.
         """
+        # Validate and resolve document_schema_version
+        if document_schema_version is None:
+            document_schema_version = DATASET_DOCUMENT_SCHEMA_VERSION
+        elif document_schema_version not in DATASET_SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError(
+                f"Invalid document_schema_version: '{document_schema_version}'. "
+                f"Supported versions: {DATASET_SUPPORTED_SCHEMA_VERSIONS}"
+            )
+
+        # Validate: validation_role_arn is a v4/v5-only field. Reject it up-front on
+        # unsupported schemas so callers who typo'd the schema version see the mistake
+        # at call time instead of silently getting a non-validated dataset.
+        if validation_role_arn is not None and document_schema_version not in ("4.0.0", "5.0.0"):
+            raise ValueError(
+                f"validation_role_arn is only supported on document_schema_version "
+                f"'4.0.0' and '5.0.0', got '{document_schema_version}'. Either upgrade "
+                f"the document schema version or remove the validation_role_arn kwarg."
+            )
+
+        # Validate and resolve dataset_file_format
+        valid_formats = [fmt.value for fmt in DatasetFileFormat]
+        if dataset_file_format is None:
+            dataset_file_format = DatasetFileFormat.CUSTOM.value
+        elif dataset_file_format not in valid_formats:
+            raise ValueError(
+                f"Invalid dataset_file_format: '{dataset_file_format}'. "
+                f"Valid formats: {valid_formats}"
+            )
+
+        # Validate: on the v4/v5 schemas, a known (non-Custom) dataset_file_format routes
+        # the import through Hub Service's data-validation pipeline, which needs an IAM role
+        # to read and validate the dataset. "Custom" opts out of format validation, so no
+        # role is required there. Reject the missing role up-front rather than letting the
+        # import fail server-side with a less obvious error.
+        if (
+            document_schema_version in ("4.0.0", "5.0.0")
+            and dataset_file_format != DatasetFileFormat.CUSTOM.value
+            and validation_role_arn is None
+        ):
+            raise ValueError(
+                f"validation_role_arn is required when dataset_file_format is "
+                f"'{dataset_file_format}' (any format other than "
+                f"'{DatasetFileFormat.CUSTOM.value}') on document_schema_version "
+                f"'{document_schema_version}', because a known format is validated by "
+                f"Hub Service's data-validation pipeline, which requires an IAM role. "
+                f"Either supply validation_role_arn or use dataset_file_format="
+                f"'{DatasetFileFormat.CUSTOM.value}' to skip format validation."
+            )
+
         # Get or create session for domain ID extraction
         if sagemaker_session is None:
             sagemaker_session = Session()
@@ -354,7 +491,7 @@ class DataSet(AIRHubEntity):
 
             try:
                 AIRHub.download_from_s3(source, local_path)
-                cls._validate_dataset_format(local_path)
+                cls._validate_dataset_format(local_path, dataset_file_format)
             finally:
                 if os.path.exists(local_path):
                     os.remove(local_path)
@@ -364,24 +501,43 @@ class DataSet(AIRHubEntity):
             s3_prefix = _get_default_s3_prefix(name)
             method = DataSetMethod.UPLOADED
 
-            cls._validate_dataset_format(source)
+            cls._validate_dataset_format(source, dataset_file_format)
             AIRHub.upload_to_s3(bucket_name, s3_prefix, source)
 
-        # Create hub content document
-        # TODO: Clean up hardcoded values - should come from intelligent defaults
-        hub_content_document = DataSetHubContentDocument(
-            dataset_s3_bucket=bucket_name,
-            dataset_s3_prefix=s3_prefix,
-            dataset_context_s3_uri='""',
-            dataset_type=DATASET_DEFAULT_TYPE,
-            dataset_role_arn=role,
-            conversation_id=DATASET_DEFAULT_CONVERSATION_ID,  # Required for now, needs cleanup
-            conversation_checkpoint_id=DATASET_DEFAULT_CHECKPOINT_ID,
-            dependencies=[],
-            content_metadata=content_metadata,
-        )
+        # Build hub content document based on schema version
+        if document_schema_version in ("3.0.0", "4.0.0", "5.0.0"):
+            # v3/v4/v5 schema: requires DatasetFileFormat, does not allow legacy fields
+            content = {
+                "DatasetType": "BYOD",
+                "DatasetFileFormat": dataset_file_format,
+                "DatasetS3Bucket": bucket_name,
+                "DatasetS3Prefix": s3_prefix,
+            }
 
-        document_str = hub_content_document.to_json()
+            # ContentMetadata (Feature Store lineage) is part of the v5.0.0 schema:
+            # an object with SourceFeatureGroups (required), ExtractionMethod and
+            # AthenaQueryExecutionId. Emit it only when the caller supplies it.
+            if content_metadata:
+                content["ContentMetadata"] = content_metadata
+            # Emit ValidationRoleArn when supplied; absence signals opt-out to Hub.
+            # The early raise above rules out v3 with a non-None value here.
+            if validation_role_arn is not None:
+                content["ValidationRoleArn"] = validation_role_arn
+            document_str = json.dumps(content)
+        else:
+            # v2.0.0 schema: legacy format with ConversationId, Dependencies, etc.
+            hub_content_document = DataSetHubContentDocument(
+                dataset_s3_bucket=bucket_name,
+                dataset_s3_prefix=s3_prefix,
+                dataset_context_s3_uri='""',
+                dataset_type=DATASET_DEFAULT_TYPE,
+                dataset_role_arn=role,
+                conversation_id=DATASET_DEFAULT_CONVERSATION_ID,  # Required for now, needs cleanup
+                conversation_checkpoint_id=DATASET_DEFAULT_CHECKPOINT_ID,
+                dependencies=[],
+                content_metadata=content_metadata,
+            )
+            document_str = hub_content_document.to_json(schema_version=document_schema_version)
 
         # Prepare tags for SearchKeywords
         if tags is None:
@@ -402,10 +558,11 @@ class DataSet(AIRHubEntity):
             hub_content_type=DATASET_HUB_CONTENT_TYPE,
             hub_content_name=name,
             hub_content_version=new_version,
-            document_schema_version=DATASET_DOCUMENT_SCHEMA_VERSION,
+            document_schema_version=document_schema_version,
             hub_content_document=document_str,
             tags=tags,
             session=sagemaker_session,
+            hub_name=hub_name,
         )
 
         # Get the created dataset details
@@ -413,6 +570,7 @@ class DataSet(AIRHubEntity):
             hub_content_type=DATASET_HUB_CONTENT_TYPE,
             hub_content_name=name,
             session=sagemaker_session,
+            hub_name=hub_name,
         )
 
         dataset = cls(
@@ -464,7 +622,8 @@ class DataSet(AIRHubEntity):
                     name=response[RESPONSE_KEY_HUB_CONTENT_NAME],
                     arn=response[RESPONSE_KEY_HUB_CONTENT_ARN],
                     version=response[RESPONSE_KEY_HUB_CONTENT_VERSION],
-                    source=f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET)}/{doc.get(DOC_KEY_DATASET_S3_PREFIX)}",
+                    source=doc.get(DOC_KEY_DATASET_S3_URI)
+                    or f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}",
                     status=response[RESPONSE_KEY_HUB_CONTENT_STATUS],
                     description=response.get(RESPONSE_KEY_HUB_CONTENT_DESCRIPTION, ""),
                     customization_technique=(
