@@ -442,6 +442,7 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
     # Do this first, in case the object has broader permissions than the bucket.
     if not prefix.endswith("/"):
         try:
+            os.makedirs(target, exist_ok=True)
             file_destination = os.path.join(target, os.path.basename(prefix))
             s3.Object(bucket_name, prefix).download_file(file_destination, ExtraArgs=extra_args)
             return
