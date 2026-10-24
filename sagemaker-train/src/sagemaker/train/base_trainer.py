@@ -10,7 +10,7 @@ import tempfile
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime as _datetime
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, Callable, List, Union
 from urllib.parse import urlparse
 
 import boto3
@@ -120,7 +120,49 @@ class BaseTrainer(ABC):
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
     environment: Optional[Dict[str, str]] = None
     training_image: Optional[str] = None
-    latest_training_job: Optional[TrainingJob] = None
+
+    @property
+    def latest_training_job(self) -> Optional[TrainingJob]:
+        """The ``TrainingJob`` created by the most recent ``train()`` call.
+
+        ``None`` until ``train()`` has submitted a job (a ``dry_run`` or a
+        ``PipelineSession`` capture submits nothing). The resource is bound to the
+        trainer's session and region, so ``refresh()``, ``wait()``, ``stop()`` and the
+        ``training_job_name`` / ``training_job_arn`` attributes work without a second
+        lookup. ``show_metrics()`` and ``stream_logs()`` read this same job.
+
+        Assign a ``TrainingJob`` to re-attach a trainer to a job it did not create::
+
+            trainer.latest_training_job = TrainingJob.get("my-job")
+
+        Returns:
+            Optional[TrainingJob]: The latest created training job, or ``None``.
+        """
+        return getattr(self, "_latest_training_job", None)
+
+    @latest_training_job.setter
+    def latest_training_job(self, training_job: Optional[TrainingJob]) -> None:
+        if training_job is not None and not isinstance(training_job, TrainingJob):
+            raise TypeError(
+                "latest_training_job must be a sagemaker.core.resources.TrainingJob or None, "
+                f"got {type(training_job).__name__}. Use TrainingJob.get(<name>) to attach "
+                "an existing job."
+            )
+        self._latest_training_job = training_job
+
+    def _record_submitted_job(
+        self,
+        training_job: TrainingJob,
+        on_submit: Optional[Callable[[TrainingJob], None]] = None,
+    ) -> None:
+        """Store the job the service accepted and hand it to ``on_submit`` before any wait.
+
+        A ``PipelineSession`` capture submits no job, so the handle is ``None`` and the
+        callback is skipped.
+        """
+        self._latest_training_job = training_job
+        if on_submit is not None and training_job is not None:
+            on_submit(training_job)
 
     @classmethod
     @_telemetry_emitter(
@@ -186,6 +228,7 @@ class BaseTrainer(ABC):
         self.disable_output_compression = disable_output_compression
         self.notification_rule_arn = None
         self.source_code = None
+        self._latest_training_job: Optional[TrainingJob] = None
 
         # Set up notifications if configured
         if notifications:
@@ -518,17 +561,17 @@ class BaseTrainer(ABC):
             ValueError: If no training job has been run yet, no logs/metrics
                 are found, or MLflow is not configured for OSS models.
         """
-        # Resolve the job reference. Prefer _latest_training_job (CreateTrainingJob),
+        # Resolve the job reference. Prefer latest_training_job (CreateTrainingJob),
         # fall back to _latest_job (generic CreateJob API used by MTRL).
-        resolved_job = getattr(self, "_latest_training_job", None)
+        resolved_job = self.latest_training_job
         if resolved_job is None:
             latest_job = getattr(self, "_latest_job", None)
             if latest_job is None:
                 raise ValueError(
                     "No training job found. Call .train() first, then call .show_metrics() "
-                    "to view training metrics. If training has already completed, set the "
-                    "job name directly via trainer._latest_training_job = '<job-name>' or "
-                    "trainer._latest_job = '<job-name>'."
+                    "to view training metrics. If training has already completed, attach "
+                    "the job with trainer.latest_training_job = TrainingJob.get('<job-name>') "
+                    "or trainer._latest_job = '<job-name>'."
                 )
             # For AgentRFTJob (MTRL), delegate to its own get_training_metrics()
             # which fetches metrics from MLflow via the Job API (not TrainingJob).
@@ -787,17 +830,17 @@ class BaseTrainer(ABC):
         Raises:
             ValueError: If no training job has been run yet.
         """
-        # Resolve the job reference. Prefer _latest_training_job (CreateTrainingJob),
+        # Resolve the job reference. Prefer latest_training_job (CreateTrainingJob),
         # fall back to _latest_job (generic CreateJob API used by MTRL).
-        resolved_job = getattr(self, "_latest_training_job", None)
+        resolved_job = self.latest_training_job
         if resolved_job is None:
             latest_job = getattr(self, "_latest_job", None)
             if latest_job is None:
                 raise ValueError(
                     "No training job found. Call .train(wait=False) first, "
                     "then call .stream_logs() to stream logs in real-time. "
-                    "If training has already completed, set the job name directly via "
-                    "trainer._latest_training_job = '<job-name>' or "
+                    "If training has already completed, attach the job with "
+                    "trainer.latest_training_job = TrainingJob.get('<job-name>') or "
                     "trainer._latest_job = '<job-name>'."
                 )
             # For AgentRFTJob (MTRL), delegate to its own stream_logs which
@@ -964,8 +1007,14 @@ class BaseTrainer(ABC):
         logs: bool = True,
         wait_timeout: Optional[int] = None,
         dry_run: bool = False,
+        on_submit: Optional[Callable[[TrainingJob], None]] = None,
     ):
-        """Common training method that calls the specific implementation."""
+        """Common training method that calls the specific implementation.
+
+        ``on_submit`` is called once with the created ``TrainingJob`` as soon as the
+        service accepts the job and before any wait, so a caller can record the job
+        name or ARN of a long run without ``wait=False`` plus a second lookup.
+        """
 
     def _get_extra_smtj_hyperparameters(self) -> Dict[str, Any]:
         """Return extra hyperparameters to inject for SMTJ training.
@@ -986,6 +1035,7 @@ class BaseTrainer(ABC):
         wait_timeout=None,
         poll=5,
         dry_run=False,
+        on_submit=None,
     ):
         """Execute training on serverful SageMaker Training Job (SMTJ) compute.
 
@@ -1373,14 +1423,12 @@ class BaseTrainer(ABC):
             logger.info("Dry-run validation passed. No job submitted.")
             return None
 
-        # Execute training
-        model_trainer.train(
-            wait=wait,
-            logs=wait,
-        )
-
-        # Store latest training job reference
-        self._latest_training_job = model_trainer._latest_training_job
+        # Execute training. The job is submitted first and waited on afterwards, so the
+        # callback sees it before the wait starts.
+        model_trainer.train(wait=False, logs=False)
+        self._record_submitted_job(model_trainer.latest_training_job, on_submit)
+        if wait and self._latest_training_job is not None:
+            self._latest_training_job.wait(logs=True)
 
         if wait:
             job_name = None
@@ -1496,6 +1544,7 @@ class BaseTrainer(ABC):
         wait_timeout=None,
         poll=5,
         dry_run=False,
+        on_submit=None,
     ):
         """Execute training on a SageMaker HyperPod cluster.
 
@@ -1696,6 +1745,7 @@ class BaseTrainer(ABC):
         logger.info(f"HyperPod job submitted: {job_name}")
 
         training_job = TrainingJob(training_job_name=job_name)
+        self._record_submitted_job(training_job, on_submit)
         if wait:
             try:
                 checkpoint_path = self._resolve_checkpoint_from_manifest(
@@ -1709,6 +1759,5 @@ class BaseTrainer(ABC):
                     )
             except Exception as e:
                 logger.warning("Could not resolve checkpoint from manifest for %s: %s", job_name, e)
-        self._latest_training_job = training_job
 
         return job_name

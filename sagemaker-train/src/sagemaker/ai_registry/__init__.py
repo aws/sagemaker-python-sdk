@@ -10,3 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""AI Registry: datasets, evaluators, and dataset format detection."""
+
+from sagemaker.ai_registry.dataset_format_detector import (  # noqa: F401
+    FormatDetectionOptions,
+    FormatDetectionResult,
+    detect_dataset_format,
+)
+
+__all__ = [
+    "FormatDetectionOptions",
+    "FormatDetectionResult",
+    "detect_dataset_format",
+]

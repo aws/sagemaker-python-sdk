@@ -12,12 +12,12 @@
 # language governing permissions and limitations under the License.
 """CPTTrainer — Continued Pre-Training on foundation models using SageMaker HyperPod."""
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 import logging
 
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique
-from sagemaker.core.resources import ModelPackageGroup, ModelPackage
+from sagemaker.core.resources import ModelPackageGroup, ModelPackage, TrainingJob
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.configs import StoppingCondition
@@ -209,6 +209,7 @@ class CPTTrainer(BaseTrainer):
         wait_timeout: Optional[int] = None,
         poll: int = 5,
         dry_run: bool = False,
+        on_submit: Optional[Callable[[TrainingJob], None]] = None,
     ):
         """Execute the CPT training job on HyperPod.
 
@@ -227,6 +228,9 @@ class CPTTrainer(BaseTrainer):
                 If True, runs validation without submitting a job.
                 Returns None on success, raises on validation failure.
                 Defaults to False.
+            on_submit (Optional[Callable[[TrainingJob], None]]):
+                Called once with a ``TrainingJob`` handle for the submitted HyperPod job,
+                before any wait. Not called for a ``dry_run``.
 
         Returns:
             str: The HyperPod job name, or None if dry_run=True.
@@ -280,4 +284,5 @@ class CPTTrainer(BaseTrainer):
             wait_timeout=wait_timeout,
             poll=poll,
             dry_run=dry_run,
+            on_submit=on_submit,
         )

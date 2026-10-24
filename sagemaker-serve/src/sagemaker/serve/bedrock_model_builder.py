@@ -23,6 +23,7 @@ from typing import Optional, Dict, Any, Union
 from urllib.parse import urlparse
 
 from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
+from sagemaker.serve.bedrock_deployment import BedrockDeployment
 from sagemaker.serve.model_reuse import (
     build_source_tag,
     find_active_bedrock_deployment_for_model,
@@ -112,6 +113,14 @@ class BedrockModelBuilder:
         logging a warning rather than raising. To avoid redeploying the same
         model artifacts, opt into resource reuse with ``reuse_resources=True``.
 
+    Deployment handle:
+        Every successful ``deploy()`` sets ``deployment`` to a
+        :class:`~sagemaker.serve.bedrock_deployment.BedrockDeployment` that holds the
+        model ARN, plus the custom model deployment ARN on the Nova path.
+        ``latest_deployment()`` returns that handle and raises ``ValueError`` before the
+        first successful ``deploy()``. Call ``deployment.wait_until_ready()``, then
+        ``deployment.invoke(body)`` or ``deployment.converse(messages)``.
+
     Args:
         model: The model to deploy. Can be a ModelTrainer, BaseTrainer
             (SFTTrainer, DPOTrainer, RLVRTrainer, RLAIFTrainer, etc.),
@@ -144,6 +153,7 @@ class BedrockModelBuilder:
         self._bedrock_client = None
         self._sagemaker_client = None
         self._imported_model_id = None
+        self.deployment: Optional[BedrockDeployment] = None
         self.sagemaker_session = Session()
         self.boto_session = self.sagemaker_session.boto_session
 
@@ -393,10 +403,12 @@ class BedrockModelBuilder:
                             model_arn,
                             existing_deployment,
                         )
-                        return {
+                        response = {
                             "modelArn": model_arn,
                             "customModelDeploymentArn": existing_deployment,
                         }
+                        self._record_deployment(response)
+                        return response
                     logger.info(
                         "Reusing existing custom model %s (matched model-source tag); "
                         "creating a new deployment on it. Pass reuse_resources=False to "
@@ -408,6 +420,7 @@ class BedrockModelBuilder:
                         model_arn=model_arn, deployment_name=deploy_name
                     )
                     response.setdefault("modelArn", model_arn)
+                    self._record_deployment(response)
                     return response
 
             if self._is_rmp:
@@ -445,6 +458,7 @@ class BedrockModelBuilder:
             deploy_name = deployment_name or f"{custom_model_name}-deployment"
             response = self.create_deployment(model_arn=model_arn, deployment_name=deploy_name)
             response.setdefault("modelArn", model_arn)
+            self._record_deployment(response)
             return response
         else:
             # Resolve and validate the Bedrock role: the provided role_arn if given,
@@ -495,6 +509,7 @@ class BedrockModelBuilder:
                         modelIdentifier=model_arn
                     )
                     self._imported_model_id = model_details.get("modelName")
+                    self._record_deployment(model_details)
                     return model_details
 
                 # 2. Otherwise, an import job may already be running for this
@@ -515,6 +530,7 @@ class BedrockModelBuilder:
                         jobIdentifier=job_arn
                     )
                     self._imported_model_id = job_details.get("importedModelName")
+                    self._record_deployment(job_details)
                     return job_details
 
             # If artifacts are a tar.gz, extract to S3 first (Bedrock requires uncompressed format)
@@ -575,7 +591,48 @@ class BedrockModelBuilder:
             # Return the completed job details and store imported model ID
             job_details = self._get_bedrock_client().get_model_import_job(jobIdentifier=job_arn)
             self._imported_model_id = job_details.get("importedModelName")
+            self._record_deployment(job_details)
             return job_details
+
+    def latest_deployment(self) -> BedrockDeployment:
+        """Return the handle that the most recent successful ``deploy()`` set.
+
+        Returns:
+            The :class:`~sagemaker.serve.bedrock_deployment.BedrockDeployment` for the
+            imported model or the Nova custom model deployment.
+
+        Raises:
+            ValueError: When ``deploy()`` has not run, or its response had no model ARN.
+        """
+        if self.deployment is None:
+            raise ValueError(
+                "No Bedrock deployment is available. Call deploy() first, then "
+                "latest_deployment()."
+            )
+        return self.deployment
+
+    def _record_deployment(self, response: Dict[str, Any]) -> None:
+        """Set ``self.deployment`` from the response that ``deploy()`` returns.
+
+        Args:
+            response: The ``get_model_import_job`` response (``importedModelArn``), the
+                ``get_imported_model`` response (``modelArn``), or the Nova response
+                (``modelArn`` and ``customModelDeploymentArn``). A response with no model
+                ARN resets ``self.deployment`` to None and logs a warning.
+        """
+        model_arn = response.get("importedModelArn") or response.get("modelArn")
+        if not model_arn:
+            logger.warning(
+                "The Bedrock response carries no model ARN, so latest_deployment() is "
+                "unavailable until the next deploy() call."
+            )
+            self.deployment = None
+            return
+        self.deployment = BedrockDeployment(
+            model_arn=model_arn,
+            boto_session=self.boto_session,
+            deployment_arn=response.get("customModelDeploymentArn"),
+        )
 
     def create_deployment(
         self,

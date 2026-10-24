@@ -154,6 +154,7 @@ Key Features
 
     # Re-attach (HyperPod — needs cluster name for log group resolution)
     from sagemaker.train import SFTTrainer
+    from sagemaker.core.resources import TrainingJob
     from sagemaker.core.training.configs import HyperPodCompute
 
     trainer = SFTTrainer(
@@ -161,7 +162,7 @@ Key Features
         training_dataset="s3://unused",
         compute=HyperPodCompute(cluster_name="my-cluster", instance_type="ml.p5.48xlarge")
     )
-    trainer._latest_training_job = "my-hp-job"
+    trainer.latest_training_job = TrainingJob.get("my-hp-job")
     df = trainer.show_metrics()
 
 **Monitoring: stream_logs()**

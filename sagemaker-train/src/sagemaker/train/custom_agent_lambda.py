@@ -23,6 +23,8 @@ from typing import Optional
 
 import boto3
 
+from sagemaker.ai_registry.air_constants import EVALUATOR_DEFAULT_RUNTIME
+
 S3_URI_PATTERN = re.compile(r"^s3://[^/]+(/.*)?$")
 
 
@@ -50,7 +52,7 @@ class CustomAgentLambda:
         source: str,
         function_name: Optional[str] = None,
         role: Optional[str] = None,
-        runtime: str = "python3.12",
+        runtime: str = EVALUATOR_DEFAULT_RUNTIME,
         handler: str = "lambda_function.handler",
         timeout: int = 900,
         memory_size: int = 256,
@@ -72,7 +74,7 @@ class CustomAgentLambda:
             function_name: Lambda function name. If not provided, a unique name
                 is generated automatically.
             role: IAM role ARN for the Lambda execution role.
-            runtime: Lambda runtime (default: ``"python3.12"``).
+            runtime: Lambda runtime (default: ``EVALUATOR_DEFAULT_RUNTIME``, ``"python3.12"``).
             handler: Lambda handler (default: ``"lambda_function.handler"``).
             timeout: Lambda timeout in seconds (default: 900).
             memory_size: Lambda memory in MB (default: 256).

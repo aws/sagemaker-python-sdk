@@ -2,12 +2,92 @@
 
 import io
 import base64
+import importlib.util
 import logging
-from typing import Optional, List
+from dataclasses import dataclass
+from typing import Dict, List, Mapping, Optional, Sequence, Set, Union
 
 from sagemaker.core.resources import TrainingJob
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_METRIC_ALIASES: Mapping[str, Sequence[str]] = {
+    "loss": ("total_loss", "train/loss", "loss"),
+    "val_loss": ("val_eval_total_loss", "val/loss", "eval_loss"),
+}
+
+
+@dataclass(frozen=True)
+class MetricPoint:
+    """One logged value of a training metric.
+
+    Attributes:
+        step: Training step the value was logged at.
+        value: Logged metric value.
+        timestamp: Log time in epoch milliseconds, as MLflow returns it.
+    """
+
+    step: int
+    value: float
+    timestamp: int
+
+
+def _resolve_training_job(training_job: Union[str, TrainingJob]) -> TrainingJob:
+    """Return the TrainingJob for a job object or a job name."""
+    if isinstance(training_job, str):
+        return TrainingJob.get(training_job_name=training_job)
+    return training_job
+
+
+def _connect_mlflow_run(training_job: TrainingJob) -> Optional[str]:
+    """Point MLflow at the job's tracking server and return the job's run id.
+
+    Returns:
+        The MLflow run id, or None when the job has no MLflow config or no run id.
+    """
+    import mlflow
+
+    mlflow_config = getattr(training_job, "mlflow_config", None)
+    mlflow_details = getattr(training_job, "mlflow_details", None)
+    if not mlflow_config or not mlflow_details or not mlflow_details.mlflow_run_id:
+        return None
+    mlflow.set_tracking_uri(mlflow_config.mlflow_resource_arn)
+    return mlflow_details.mlflow_run_id
+
+
+def _logged_metric_names(run_id: str) -> List[str]:
+    """Return the names of the metrics logged on an MLflow run."""
+    import mlflow
+
+    run = mlflow.get_run(run_id)
+    return list(run.data.metrics.keys())
+
+
+def _resolve_metric_names(
+    requested: Sequence[str], logged: Set[str], aliases: Mapping[str, Sequence[str]]
+) -> Dict[str, str]:
+    """Map each requested name to the first alias candidate the run logged.
+
+    The requested name itself is the last candidate.
+
+    Raises:
+        ValueError: If a requested name matches no logged metric.
+    """
+    resolved: Dict[str, str] = {}
+    missing: List[str] = []
+    for name in requested:
+        candidates = (*aliases.get(name, ()), name)
+        matches = [candidate for candidate in candidates if candidate in logged]
+        if matches:
+            resolved[name] = matches[0]
+        else:
+            missing.append(f"{name} (candidates: {' / '.join(candidates)})")
+    if missing:
+        raise ValueError(
+            f"Metrics not logged on the MLflow run: {', '.join(missing)}. "
+            f"Available metrics: {', '.join(sorted(logged))}"
+        )
+    return resolved
 
 
 def _is_in_studio() -> bool:
@@ -203,7 +283,9 @@ def display_job_links_html(rows: list, as_html: bool = False):
 
 
 def plot_training_metrics(
-    training_job: TrainingJob, metrics: Optional[List[str]] = None, figsize: tuple = (12, 6)
+    training_job: Union[str, TrainingJob],
+    metrics: Optional[List[str]] = None,
+    figsize: tuple = (12, 6),
 ) -> None:
     """Plot training metrics from MLflow for a completed training job.
 
@@ -213,23 +295,21 @@ def plot_training_metrics(
         figsize: Figure size as (width, height)
     """
     import matplotlib.pyplot as plt
-    import mlflow
     from mlflow.tracking import MlflowClient
     from IPython.display import display
 
     logging.getLogger("botocore.credentials").setLevel(logging.WARNING)
 
-    if isinstance(training_job, str):
-        training_job = TrainingJob.get(training_job_name=training_job)
+    training_job = _resolve_training_job(training_job)
+    run_id = _connect_mlflow_run(training_job)
+    if run_id is None:
+        logger.warning(
+            "Training job %s has no MLflow run. Nothing to plot.", training_job.training_job_name
+        )
+        return
 
-    run_id = training_job.mlflow_details.mlflow_run_id
-
-    mlflow.set_tracking_uri(training_job.mlflow_config.mlflow_resource_arn)
     client = MlflowClient()
-
-    run = mlflow.get_run(run_id)
-    available_metrics = list(run.data.metrics.keys())
-    metrics_to_plot = metrics if metrics else available_metrics
+    metrics_to_plot = metrics if metrics else _logged_metric_names(run_id)
 
     # Fetch metric histories
     metric_data = {}
@@ -291,7 +371,7 @@ def plot_training_metrics(
     )
 
 
-def get_available_metrics(training_job: TrainingJob) -> List[str]:
+def get_available_metrics(training_job: Union[str, TrainingJob]) -> List[str]:
     """Get list of available metrics for a training job.
 
     Args:
@@ -300,24 +380,64 @@ def get_available_metrics(training_job: TrainingJob) -> List[str]:
     Returns:
         List of metric names
     """
-    try:
-        import mlflow
-    except ImportError:
+    if importlib.util.find_spec("mlflow") is None:
         logger.error("mlflow package not installed")
         return []
 
-    # Handle string input
-    if isinstance(training_job, str):
-        training_job = TrainingJob.get(training_job_name=training_job)
-
-    if not hasattr(training_job, "mlflow_config") or not training_job.mlflow_config:
+    training_job = _resolve_training_job(training_job)
+    run_id = _connect_mlflow_run(training_job)
+    if run_id is None:
         return []
+    return _logged_metric_names(run_id)
 
-    mlflow_details = training_job.mlflow_details
-    if not mlflow_details or not mlflow_details.mlflow_run_id:
-        return []
 
-    mlflow.set_tracking_uri(training_job.mlflow_config.mlflow_resource_arn)
-    run = mlflow.get_run(mlflow_details.mlflow_run_id)
+def get_metric_history(
+    training_job: Union[str, TrainingJob],
+    metrics: Optional[Sequence[str]] = None,
+    aliases: Optional[Mapping[str, Sequence[str]]] = None,
+) -> Dict[str, List[MetricPoint]]:
+    """Get the MLflow metric history of a training job as data.
 
-    return list(run.data.metrics.keys())
+    Args:
+        training_job: SageMaker TrainingJob object or job name string
+        metrics: Names to return. A name is a key of ``aliases`` or a metric name the run
+            logged. If None, returns every metric the run logged under its own name.
+        aliases: Caller name to candidate run metric names, first logged candidate wins.
+            Defaults to ``DEFAULT_METRIC_ALIASES``, which maps ``loss`` and ``val_loss`` to
+            the LLMFT and Verl recipe metric names.
+
+    Returns:
+        Dict keyed by the requested name. Each value is the list of MetricPoint sorted by step.
+
+    Raises:
+        ValueError: If the job has no MLflow run, or a requested metric matches no metric
+            the run logged. The message lists the metrics the run has.
+
+    Example:
+        >>> from sagemaker.train import get_metric_history
+        >>> history = get_metric_history("my-training-job", metrics=["loss"])
+        >>> history["loss"][-1].value
+    """
+    from mlflow.tracking import MlflowClient
+
+    training_job = _resolve_training_job(training_job)
+    run_id = _connect_mlflow_run(training_job)
+    if run_id is None:
+        raise ValueError(f"Training job {training_job.training_job_name} has no MLflow run.")
+
+    logged = set(_logged_metric_names(run_id))
+    if metrics is None:
+        resolved = {name: name for name in sorted(logged)}
+    else:
+        alias_map = DEFAULT_METRIC_ALIASES if aliases is None else aliases
+        resolved = _resolve_metric_names(list(metrics), logged, alias_map)
+
+    client = MlflowClient()
+    history: Dict[str, List[MetricPoint]] = {}
+    for name, run_metric in resolved.items():
+        points = [
+            MetricPoint(step=entry.step, value=entry.value, timestamp=entry.timestamp)
+            for entry in client.get_metric_history(run_id, run_metric)
+        ]
+        history[name] = sorted(points, key=lambda point: point.step)
+    return history

@@ -1,0 +1,3 @@
+{"system": "You are an English major.", "query": "What symbol ends a question?", "response": "?", "category": "Grammar"}
+{"system": "You are a science teacher.", "query": "What planet is closest to the sun?", "response": "Mercury is the closest planet to the sun.", "category": "Astronomy"}
+{"query": "What is the capital of France?", "response": "Paris is the capital of France."}

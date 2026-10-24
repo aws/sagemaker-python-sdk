@@ -1,3 +1,5 @@
+"""Generated dependency graph of the service shapes, used for serialization."""
+
 SHAPE_DAG = {
     "AIAdapterModelPackageEntry": {
         "members": [

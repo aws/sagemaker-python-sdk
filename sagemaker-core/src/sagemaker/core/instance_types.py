@@ -10,12 +10,22 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Accessors to retrieve instance types."""
+"""Accessors to retrieve instance types.
+
+``retrieve`` and ``retrieve_default`` read the instance types a JumpStart model supports.
+``list_instance_types``, ``describe_instance_type``, and ``describe_instance_types`` read the
+SageMaker hosting instance-type names from the installed botocore model and their hardware
+from EC2 ``DescribeInstanceTypes``.
+"""
 
 from __future__ import absolute_import
 
 import logging
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Sequence
+
+import boto3
+from botocore.exceptions import ClientError
 
 from sagemaker.core.jumpstart import utils as jumpstart_utils
 from sagemaker.core.jumpstart import artifacts
@@ -24,6 +34,33 @@ from sagemaker.core.jumpstart.enums import JumpStartModelType
 from sagemaker.core.helper.session_helper import Session
 
 logger = logging.getLogger(__name__)
+
+SAGEMAKER_INSTANCE_TYPE_PREFIX = "ml."
+PRODUCTION_VARIANT_INSTANCE_TYPE_SHAPE = "ProductionVariantInstanceType"
+# ``RequestInstanceTypeList`` in the EC2 service model allows 100 names per request.
+DESCRIBE_INSTANCE_TYPES_BATCH_SIZE = 100
+INVALID_INSTANCE_TYPE_ERROR_CODE = "InvalidInstanceType"
+
+
+@dataclass(frozen=True)
+class InstanceSpec:
+    """Hardware of one SageMaker instance type as EC2 ``DescribeInstanceTypes`` reports it.
+
+    Attributes:
+        name: The SageMaker instance type, for example ``ml.g5.xlarge``.
+        vcpus: The default vCPU count, or ``None`` when EC2 does not know the type.
+        memory_mib: The instance memory in MiB, or ``None`` when EC2 does not know the type.
+        gpu_count: The number of GPUs. ``0`` for a CPU instance and for an unknown type.
+        gpu_memory_mib: The GPU memory in MiB summed over all GPUs, or ``None`` without GPUs.
+        gpu_name: The GPU model name, for example ``A10G``, or ``None`` without GPUs.
+    """
+
+    name: str
+    vcpus: Optional[int]
+    memory_mib: Optional[int]
+    gpu_count: int
+    gpu_memory_mib: Optional[int]
+    gpu_name: Optional[str]
 
 
 def retrieve_default(
@@ -162,3 +199,178 @@ def retrieve(
         sagemaker_session=sagemaker_session,
         training_instance_type=training_instance_type,
     )
+
+
+def _boto_session(session: Optional[boto3.Session]) -> boto3.Session:
+    """Returns the given session, or a new default session."""
+    if session is not None:
+        return session
+    return boto3.Session()
+
+
+def _ec2_instance_type(instance_type: str) -> str:
+    """Returns the EC2 name of a SageMaker instance type (``ml.g5.xlarge`` to ``g5.xlarge``)."""
+    if instance_type.startswith(SAGEMAKER_INSTANCE_TYPE_PREFIX):
+        return instance_type[len(SAGEMAKER_INSTANCE_TYPE_PREFIX) :]
+    return instance_type
+
+
+def _unknown_spec(instance_type: str) -> InstanceSpec:
+    """Returns the spec of an instance type that EC2 does not know, and logs a warning."""
+    logger.warning(
+        "EC2 DescribeInstanceTypes does not know instance type %s. "
+        "Its InstanceSpec has gpu_count=0 and no other hardware.",
+        instance_type,
+    )
+    return InstanceSpec(
+        name=instance_type,
+        vcpus=None,
+        memory_mib=None,
+        gpu_count=0,
+        gpu_memory_mib=None,
+        gpu_name=None,
+    )
+
+
+def _spec_from_ec2(instance_type: str, instance_info: Dict[str, Any]) -> InstanceSpec:
+    """Builds an ``InstanceSpec`` from one EC2 ``InstanceTypeInfo`` element."""
+    gpus = instance_info.get("GpuInfo", {}).get("Gpus", [])
+    gpu_count = sum(gpu.get("Count", 0) for gpu in gpus)
+    first_gpu = gpus[0] if gpus else {}
+    memory_per_gpu_mib = first_gpu.get("MemoryInfo", {}).get("SizeInMiB")
+    gpu_memory_mib = None
+    if gpu_count > 0 and memory_per_gpu_mib is not None:
+        gpu_memory_mib = memory_per_gpu_mib * gpu_count
+    return InstanceSpec(
+        name=instance_type,
+        vcpus=instance_info.get("VCpuInfo", {}).get("DefaultVCpus"),
+        memory_mib=instance_info.get("MemoryInfo", {}).get("SizeInMiB"),
+        gpu_count=gpu_count,
+        gpu_memory_mib=gpu_memory_mib,
+        gpu_name=first_gpu.get("Name"),
+    )
+
+
+def _describe_ec2_instance_types(
+    ec2_client: Any, instance_types: List[str]
+) -> Dict[str, Dict[str, Any]]:
+    """Calls EC2 ``DescribeInstanceTypes`` for the names and reads every page of the response."""
+    request: Dict[str, Any] = {
+        "InstanceTypes": [_ec2_instance_type(instance_type) for instance_type in instance_types]
+    }
+    described: Dict[str, Dict[str, Any]] = {}
+    while True:
+        response = ec2_client.describe_instance_types(**request)
+        for instance_info in response.get("InstanceTypes", []):
+            described[instance_info["InstanceType"]] = instance_info
+        next_token = response.get("NextToken")
+        # A real token is a non-empty string. The type check also stops a client stub
+        # whose ``get`` returns a truthy Mock from looping forever.
+        if not isinstance(next_token, str) or not next_token:
+            return described
+        request["NextToken"] = next_token
+
+
+def _describe_known(ec2_client: Any, instance_types: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Returns the EC2 ``InstanceTypeInfo`` of each name that EC2 knows, keyed by EC2 name.
+
+    EC2 answers ``InvalidInstanceType`` for the whole request when one name does not exist.
+    The function then asks for each name alone, so one unknown name hides no other.
+    """
+    try:
+        return _describe_ec2_instance_types(ec2_client, instance_types)
+    except ClientError as error:
+        if error.response.get("Error", {}).get("Code") != INVALID_INSTANCE_TYPE_ERROR_CODE:
+            raise
+    if len(instance_types) == 1:
+        return {}
+    described: Dict[str, Dict[str, Any]] = {}
+    for instance_type in instance_types:
+        described.update(_describe_known(ec2_client, [instance_type]))
+    return described
+
+
+def _describe_batch(ec2_client: Any, instance_types: List[str]) -> Dict[str, InstanceSpec]:
+    """Describes one request of at most 100 instance types and maps each name to a spec."""
+    described = _describe_known(ec2_client, instance_types)
+    specs: Dict[str, InstanceSpec] = {}
+    for instance_type in instance_types:
+        instance_info = described.get(_ec2_instance_type(instance_type))
+        if instance_info is None:
+            specs[instance_type] = _unknown_spec(instance_type)
+        else:
+            specs[instance_type] = _spec_from_ec2(instance_type, instance_info)
+    return specs
+
+
+def list_instance_types(
+    region: Optional[str] = None, session: Optional[boto3.Session] = None
+) -> List[str]:
+    """Lists the SageMaker hosting instance types that the loaded service model knows.
+
+    The names come from the ``ProductionVariantInstanceType`` enum of the SageMaker service
+    model that the session loads, so the call makes no request. The list holds the
+    service-wide set and keeps types the region does not offer.
+
+    Args:
+        region (str): The region of the SageMaker client. Defaults to the session region.
+        session (boto3.Session): The session that creates the client. Defaults to a new session.
+
+    Returns:
+        list[str]: The instance type names in model order, for example ``ml.t2.medium`` first.
+
+    Raises:
+        botocore.exceptions.NoRegionError: If neither ``region`` nor the session has a region.
+    """
+    sagemaker_client = _boto_session(session).client("sagemaker", region_name=region)
+    shape = sagemaker_client.meta.service_model.shape_for(PRODUCTION_VARIANT_INSTANCE_TYPE_SHAPE)
+    return list(shape.enum)
+
+
+def describe_instance_types(
+    instance_types: Sequence[str], session: Optional[boto3.Session] = None
+) -> Dict[str, InstanceSpec]:
+    """Describes the hardware of SageMaker instance types through EC2 ``DescribeInstanceTypes``.
+
+    The function strips the ``ml.`` prefix before the EC2 call and sends 100 names per request,
+    the EC2 limit. EC2 rejects a whole request when one name does not exist, so the function
+    then describes each name of that request alone. An instance type that EC2 does not know
+    (a retired type, or a type the region does not offer) gets an ``InstanceSpec`` with
+    ``gpu_count=0`` and ``None`` in every other field. The function logs a warning for it.
+
+    Args:
+        instance_types (Sequence[str]): The SageMaker instance types, for example
+            ``["ml.g5.xlarge", "ml.m5.large"]``.
+        session (boto3.Session): The session that creates the EC2 client. Defaults to a new
+            session.
+
+    Returns:
+        dict[str, InstanceSpec]: One ``InstanceSpec`` per requested name, keyed by that name.
+
+    Raises:
+        botocore.exceptions.ClientError: If EC2 rejects a request for a reason other than an
+            unknown instance type, for example missing ``ec2:DescribeInstanceTypes`` permission.
+    """
+    ec2_client = _boto_session(session).client("ec2")
+    specs: Dict[str, InstanceSpec] = {}
+    for start in range(0, len(instance_types), DESCRIBE_INSTANCE_TYPES_BATCH_SIZE):
+        batch = list(instance_types[start : start + DESCRIBE_INSTANCE_TYPES_BATCH_SIZE])
+        specs.update(_describe_batch(ec2_client, batch))
+    return specs
+
+
+def describe_instance_type(
+    instance_type: str, session: Optional[boto3.Session] = None
+) -> InstanceSpec:
+    """Describes the hardware of one SageMaker instance type through EC2.
+
+    Args:
+        instance_type (str): The SageMaker instance type, for example ``ml.g5.xlarge``.
+        session (boto3.Session): The session that creates the EC2 client. Defaults to a new
+            session.
+
+    Returns:
+        InstanceSpec: The hardware. An instance type that EC2 does not know gets
+        ``gpu_count=0`` and ``None`` in every other field. See :func:`describe_instance_types`.
+    """
+    return describe_instance_types([instance_type], session=session)[instance_type]

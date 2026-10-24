@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
@@ -419,6 +419,7 @@ class RLVRTrainer(BaseTrainer):
         wait_timeout: Optional[int] = None,
         poll: int = 5,
         dry_run: bool = False,
+        on_submit: Optional[Callable[[TrainingJob], None]] = None,
     ):
         """Execute the RLVR training job.
 
@@ -440,6 +441,10 @@ class RLVRTrainer(BaseTrainer):
                 If True, runs all validation (IAM, hyperparameters, infrastructure, data paths)
                 without submitting a job. Returns None on success, raises on validation failure.
                 Defaults to False.
+            on_submit (Optional[Callable[[TrainingJob], None]]):
+                Called once with the created ``TrainingJob`` as soon as the service accepts
+                it, before any wait. Use it to record the job name or ARN of a long run.
+                Not called for a ``dry_run``.
 
         Returns:
             TrainingJob: The SageMaker training job object, or None if dry_run=True.
@@ -468,6 +473,7 @@ class RLVRTrainer(BaseTrainer):
                 wait_timeout=wait_timeout,
                 poll=poll,
                 dry_run=dry_run,
+                on_submit=on_submit,
             )
         if isinstance(self.compute, TrainingJobCompute):
             return self._train_serverful_smtj(
@@ -477,6 +483,7 @@ class RLVRTrainer(BaseTrainer):
                 wait_timeout=wait_timeout,
                 poll=poll,
                 dry_run=dry_run,
+                on_submit=on_submit,
             )
 
         # Default: serverless compute (None)
@@ -627,6 +634,7 @@ class RLVRTrainer(BaseTrainer):
         except Exception as e:
             logger.error("Error: %s", e)
             raise e
+        self._record_submitted_job(training_job, on_submit)
 
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
@@ -641,7 +649,6 @@ class RLVRTrainer(BaseTrainer):
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 
-        self._latest_training_job = training_job
         return training_job
 
     def _get_extra_smtj_hyperparameters(self) -> Dict[str, Any]:

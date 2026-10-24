@@ -1,6 +1,6 @@
 """SFT (Supervised Fine-Tuning) trainer for SageMaker fine-tuning."""
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
@@ -290,6 +290,7 @@ class SFTTrainer(BaseTrainer):
         wait_timeout: Optional[int] = None,
         poll: int = 5,
         dry_run: bool = False,
+        on_submit: Optional[Callable[[TrainingJob], None]] = None,
     ):
         """Execute the SFT training job.
 
@@ -311,6 +312,10 @@ class SFTTrainer(BaseTrainer):
                 If True, runs all validation (IAM, hyperparameters, infrastructure, data paths)
                 without submitting a job. Returns None on success, raises on validation failure.
                 Defaults to False.
+            on_submit (Optional[Callable[[TrainingJob], None]]):
+                Called once with the created ``TrainingJob`` as soon as the service accepts
+                it, before any wait. Use it to record the job name or ARN of a long run.
+                Not called for a ``dry_run``.
 
         Returns:
             TrainingJob: The SageMaker training job object, or None if dry_run=True.
@@ -349,6 +354,7 @@ class SFTTrainer(BaseTrainer):
                 wait_timeout=wait_timeout,
                 poll=poll,
                 dry_run=dry_run,
+                on_submit=on_submit,
             )
         if isinstance(self.compute, TrainingJobCompute):
             if self.data_mixing_config is not None:
@@ -360,6 +366,7 @@ class SFTTrainer(BaseTrainer):
                 wait_timeout=wait_timeout,
                 poll=poll,
                 dry_run=dry_run,
+                on_submit=on_submit,
             )
 
         # Default: serverless compute (None)
@@ -491,6 +498,7 @@ class SFTTrainer(BaseTrainer):
         except Exception as e:
             logger.error("Error: %s", e)
             raise e
+        self._record_submitted_job(training_job, on_submit)
 
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
@@ -505,5 +513,4 @@ class SFTTrainer(BaseTrainer):
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 
-        self._latest_training_job = training_job
         return training_job

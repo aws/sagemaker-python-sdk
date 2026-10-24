@@ -718,7 +718,20 @@ class Processor(object):
         transformed = transform(serialized_request, "CreateProcessingJobRequest")
         # Remove tags from transformed dict as ProcessingJob resource doesn't accept it
         transformed.pop("tags", None)
-        return ProcessingJob(**transformed)
+        job = ProcessingJob(**transformed)
+        if isinstance(self.sagemaker_session, LocalSession):
+            # A local job exists only in the session's LocalSagemakerClient, so a
+            # describe over AWS would fail. run() polls it through that client.
+            return job
+        # The create request carries no ARN and no status, and a session-less
+        # ProcessingJob builds its client from the process default session, so
+        # latest_job.refresh() polled the default region (#5796). Bind the session
+        # the job was submitted with, then describe once to fill the ARN and status.
+        job._set_client_context(
+            session=self.sagemaker_session.boto_session,
+            region=self.sagemaker_session.boto_region_name,
+        )
+        return job.refresh()
 
     def _get_process_args(self, inputs, outputs, experiment_config):
         """Gets a dict of arguments for a new Amazon SageMaker processing job."""

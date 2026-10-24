@@ -21,7 +21,7 @@ import re
 import shlex
 import shutil
 from tempfile import TemporaryDirectory
-from typing import Optional, List, Union, Dict, Any, ClassVar
+from typing import Optional, List, Union, Dict, Any, Callable, ClassVar
 import yaml
 
 from botocore.exceptions import ClientError, NoCredentialsError, NoRegionError
@@ -351,6 +351,35 @@ class ModelTrainer(BaseModel):
     }
 
     config_mgr: SageMakerConfig = SageMakerConfig()
+
+    @property
+    def latest_training_job(self) -> Optional[resources.TrainingJob]:
+        """The ``TrainingJob`` created by the most recent ``train()`` call.
+
+        ``None`` until ``train()`` has submitted a job (a ``dry_run`` or a
+        ``PipelineSession`` capture submits nothing). The resource is bound to the
+        session and region the job was created with, so ``refresh()``, ``wait()``,
+        ``stop()`` and the ``training_job_name`` / ``training_job_arn`` attributes
+        work without a second lookup.
+
+        Assign a ``TrainingJob`` to re-attach a trainer to a job it did not create::
+
+            trainer.latest_training_job = TrainingJob.get("my-job")
+
+        Returns:
+            Optional[TrainingJob]: The latest created training job, or ``None``.
+        """
+        return self._latest_training_job
+
+    @latest_training_job.setter
+    def latest_training_job(self, training_job: Optional[resources.TrainingJob]) -> None:
+        if training_job is not None and not isinstance(training_job, resources.TrainingJob):
+            raise TypeError(
+                "latest_training_job must be a sagemaker.core.resources.TrainingJob or None, "
+                f"got {type(training_job).__name__}. Use TrainingJob.get(<name>) to attach "
+                "an existing job."
+            )
+        self._latest_training_job = training_job
 
     @property
     def output_data(self) -> str:
@@ -923,7 +952,8 @@ class ModelTrainer(BaseModel):
         wait: Optional[bool] = True,
         logs: Optional[bool] = True,
         dry_run: bool = False,
-    ):
+        on_submit: Optional[Callable[[resources.TrainingJob], None]] = None,
+    ) -> Optional[resources.TrainingJob]:
         """Train a model using AWS SageMaker.
 
         Args:
@@ -942,6 +972,17 @@ class ModelTrainer(BaseModel):
                 If True, runs all validation (configuration, input resolution, hyperparameters)
                 without submitting a job. Returns None on success, raises on validation failure.
                 Defaults to False.
+            on_submit (Optional[Callable[[TrainingJob], None]]):
+                Called once with the created ``TrainingJob`` as soon as the service accepts
+                it, before any wait. Use it to record the job name or ARN of a long run. Not
+                called for a ``dry_run``, a ``PipelineSession`` capture, or local mode.
+
+        Returns:
+            Optional[TrainingJob]: The created ``sagemaker.core.resources.TrainingJob`` for a
+                SageMaker training job, bound to the trainer's session and region. ``None`` for
+                a ``dry_run``, a ``PipelineSession`` capture (the step runs the job later), and
+                local-mode training. The same object is available afterwards as
+                ``latest_training_job``.
         """
         training_request = self._create_training_job_args(input_data_config=input_data_config)
 
@@ -983,12 +1024,14 @@ class ModelTrainer(BaseModel):
                 )
                 raise
             self._latest_training_job = training_job
+            if on_submit is not None:
+                on_submit(training_job)
 
             if wait:
                 training_job.wait(logs=logs)
             if logs and not wait:
                 logger.warning(
-                    "Not displaing the training container logs as 'wait' is set to False."
+                    "Not displaying the training container logs as 'wait' is set to False."
                 )
 
         else:
@@ -1015,6 +1058,9 @@ class ModelTrainer(BaseModel):
             local_container.train(wait)
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
+        if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
+            return self._latest_training_job
+        return None
 
     def _resolve_staging_bucket(self) -> tuple[str, str]:
         """Resolve the S3 bucket and key prefix for staging training artifacts.

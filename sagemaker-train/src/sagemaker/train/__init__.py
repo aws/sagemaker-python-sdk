@@ -53,6 +53,10 @@ def __getattr__(name):
         from sagemaker.train.cpt_trainer import CPTTrainer
 
         return CPTTrainer
+    elif name in ("FineTuningSweep", "SweepConfig", "SweepTrial"):
+        from sagemaker.train import fine_tuning_sweep
+
+        return getattr(fine_tuning_sweep, name)
     elif name == "DataMixingConfig":
         from sagemaker.train.data_mixing_config import DataMixingConfig
 
@@ -114,6 +118,26 @@ def __getattr__(name):
         from sagemaker.train.custom_agent_lambda import CustomAgentLambda
 
         return CustomAgentLambda
+    elif name == "verify_reward_function":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
+
+        return verify_reward_function
+    elif name == "RewardVerificationOptions":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import RewardVerificationOptions
+
+        return RewardVerificationOptions
+    elif name == "RewardFunctionOutput":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import RewardFunctionOutput
+
+        return RewardFunctionOutput
+    elif name == "RewardSample":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import RewardSample
+
+        return RewardSample
+    elif name == "EvalRewardSample":
+        from sagemaker.train.common_utils.rlvr_reward_verifier import EvalRewardSample
+
+        return EvalRewardSample
     elif name == "plot_training_metrics":
         from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
 
@@ -122,22 +146,14 @@ def __getattr__(name):
         from sagemaker.train.common_utils.metrics_visualizer import get_available_metrics
 
         return get_available_metrics
-    elif name == "get_studio_url":
-        from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
+    elif name == "get_metric_history":
+        from sagemaker.train.common_utils.metrics_visualizer import get_metric_history
 
-        return get_studio_url
-    elif name == "get_mlflow_url":
-        from sagemaker.train.common_utils.trainer_wait import get_mlflow_url
+        return get_metric_history
+    elif name == "MetricPoint":
+        from sagemaker.train.common_utils.metrics_visualizer import MetricPoint
 
-        return get_mlflow_url
-    elif name == "plot_training_metrics":
-        from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
-
-        return plot_training_metrics
-    elif name == "get_available_metrics":
-        from sagemaker.train.common_utils.metrics_visualizer import get_available_metrics
-
-        return get_available_metrics
+        return MetricPoint
     elif name == "get_studio_url":
         from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
 

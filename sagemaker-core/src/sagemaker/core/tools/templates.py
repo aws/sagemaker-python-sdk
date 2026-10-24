@@ -272,6 +272,11 @@ if "failed" in current_status.lower():
     raise FailedStatusError(resource_type="{resource_name}", status=current_status, reason={reason})
 """
 
+STOPPED_STATUS_ERROR_TEMPLATE = """
+if raise_on_stopped and "stopped" in current_status.lower():
+    raise FailedStatusError(resource_type="{resource_name}", status=current_status, reason={reason})
+"""
+
 INIT_WAIT_LOGS_TEMPLATE = """
 instance_count = {get_instance_count}
 if logs:
@@ -303,6 +308,7 @@ def wait(
     self,
     poll: int = 5,
     timeout: Optional[int] = None,
+    raise_on_stopped: bool = False,
     {logs_arg}
 ) -> None:
     """
@@ -311,10 +317,11 @@ def wait(
     Parameters:
         poll: The number of seconds to wait between each poll.
         timeout: The maximum number of seconds to wait before timing out.
+        raise_on_stopped: Whether to raise FailedStatusError when the resource stops instead of completing.
         {logs_arg_doc}
     Raises:
         TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-        FailedStatusError:   If the resource reaches a failed state.
+        FailedStatusError:   If the resource reaches a failed state, or a stopped state when raise_on_stopped is True.
         WaiterError: Raised when an error occurs while waiting.
 
     """
@@ -346,6 +353,7 @@ def wait(
             if current_status in terminal_states:
                 logger.info(f"Final Resource Status: [bold]{{current_status}}")
 {failed_error_block}
+{stopped_error_block}
                 return
 
             if timeout is not None and time.time() - start_time >= timeout:

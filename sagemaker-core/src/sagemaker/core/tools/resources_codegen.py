@@ -71,6 +71,7 @@ from sagemaker.core.tools.templates import (
     CREATE_METHOD_TEMPLATE_WITHOUT_DEFAULTS,
     IMPORT_METHOD_TEMPLATE,
     FAILED_STATUS_ERROR_TEMPLATE,
+    STOPPED_STATUS_ERROR_TEMPLATE,
     GET_NAME_METHOD_TEMPLATE,
     GET_ALL_METHOD_NO_ARGS_TEMPLATE,
     GET_ALL_METHOD_WITH_ARGS_TEMPLATE,
@@ -104,6 +105,35 @@ GLOBAL_DEFAULTS = "GlobalDefaults"
 # falls back to the ARN attribute when the name identifier is Unassigned. See issue #5606.
 REFRESH_IDENTIFIER_FALLBACKS = {
     "ModelPackage": {"ModelPackageName": "model_package_arn"},
+}
+
+# Some List APIs return a summary member that the Describe API does not. A resource class
+# is generated from the Describe output, so ResourceIterator drops such members when it
+# builds the resource from the summary (`extra="forbid"` leaves no other option). This
+# maps a resource to the summary members it keeps as optional attributes. ListHubContents
+# returns OriginalCreationTime, the model-level catalog date, while DescribeHubContent
+# returns only the version-level CreationTime.
+LIST_SUMMARY_EXTRA_ATTRIBUTES = {
+    "HubContent": {"OriginalCreationTime": "Optional[datetime.datetime] = Unassigned()"},
+}
+
+# Hand-written behavior for a generated resource class. The generator emits
+# ``class <Resource>(<mixin>, Base)`` so the mixin's properties and methods sit beside the
+# generated API methods on the one public class, and the hand-written code stays in its
+# own module where it can be tested without regenerating resources.py.
+RESOURCE_MIXINS = {
+    "Endpoint": ("sagemaker.core.endpoint", "EndpointMixin"),
+    "HubContent": ("sagemaker.core.hub_content", "HubContentMixin"),
+    "ModelPackageGroup": ("sagemaker.core.model_package_group", "ModelPackageGroupMixin"),
+}
+
+# Some List APIs take an input member that the resource's Describe input requires but the
+# list summary does not return (ListHubContents takes HubName, HubContentInfo omits it).
+# get_all() cannot build a resource from such a summary unless the list argument is
+# copied onto every resource. This maps a resource to the list-input members to copy, as
+# {summary-less member: resource attribute}.
+GET_ALL_INPUT_ATTRIBUTES = {
+    "HubContent": {"HubName": "hub_name"},
 }
 
 
@@ -208,6 +238,9 @@ class ResourcesCodeGen:
             "from sagemaker.core.serializers.base import BaseSerializer",
             "from sagemaker.core.deserializers.base import BaseDeserializer",
         ]
+        imports.extend(
+            f"from {module} import {mixin}" for module, mixin in sorted(RESOURCE_MIXINS.values())
+        )
 
         formated_imports = "\n".join(imports)
         formated_imports += "\n\n"
@@ -361,7 +394,7 @@ class ResourcesCodeGen:
             )
 
             # Start defining the class
-            resource_class = f"class {resource_name}(Base):\n"
+            resource_class = f"class {resource_name}({self._resource_bases(resource_name)}):\n"
 
             class_documentation_string = f"Class representing resource {resource_name}\n\n"
             class_documentation_string += "Attributes:\n"
@@ -461,7 +494,7 @@ class ResourcesCodeGen:
         else:
             # If there's no 'get' or 'list' or 'create' method, generate a class with no attributes
             resource_attributes = []
-            resource_class = f"class {resource_name}(Base):\n"
+            resource_class = f"class {resource_name}({self._resource_bases(resource_name)}):\n"
             class_documentation_string = f"Class representing resource {resource_name}\n"
             resource_class += add_indent(f'"""\n{class_documentation_string}\n"""\n', 4)
 
@@ -535,8 +568,15 @@ class ResourcesCodeGen:
                 class_attributes["hub_name"] = "Optional[str] = Unassigned()"
                 class_attributes_string = class_attributes_string.replace("hub_name: str", "")
                 class_attributes_string = (
-                    class_attributes_string + "hub_name: Optional[str] = Unassigned()"
+                    class_attributes_string + "hub_name: Optional[str] = Unassigned()\n"
                 )
+            for member, annotation in LIST_SUMMARY_EXTRA_ATTRIBUTES.get(resource_name, {}).items():
+                attribute = convert_to_snake_case(member)
+                class_attributes[attribute] = annotation
+                class_attributes_string += f"{attribute}: {annotation}\n"
+                attributes_and_documentation[member] = self.shapes_extractor.combined_shapes[
+                    self._list_summary_shape(resource_name)
+                ]["members"][member].get("documentation")
             if resource_name == "Endpoint":
                 class_attributes["serializer"] = "Optional[BaseSerializer] = None"
                 class_attributes_string = class_attributes_string.replace(
@@ -1714,6 +1754,21 @@ class ResourcesCodeGen:
             "list_method_kwargs=operation_input_args",
         ]
 
+        # An object method lists resources of its own type under its own identifiers
+        # (ListHubContentVersions lists the versions of one HubContent). The summaries
+        # omit the identifiers the list call was made with, so copy them onto every
+        # resource or the first refresh() fails with a missing required parameter.
+        if (
+            method.method_type == MethodType.OBJECT.value
+            and method.return_type == method.resource_name
+        ):
+            input_attributes = GET_ALL_INPUT_ATTRIBUTES.get(method.resource_name, {})
+            if input_attributes:
+                extra_init = ", ".join(
+                    f"'{attribute}': self.{attribute}" for attribute in input_attributes.values()
+                )
+                resource_iterator_args_list.append(f"extra_init_data={{{extra_init}}}")
+
         resource_iterator_args = ",\n".join(resource_iterator_args_list)
         resource_iterator_args = add_indent(resource_iterator_args, 8)
         serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
@@ -1734,7 +1789,7 @@ class ResourcesCodeGen:
             operation_input_shape_name=operation_input_shape_name,
             include_session_region=True,
             return_string=return_string,
-            exclude_resource_attrs=exclude_resource_attrs,
+            exclude_resource_attrs=exclude_list + (exclude_resource_attrs or []),
         )
 
         return GENERIC_METHOD_TEMPLATE.format(
@@ -1829,6 +1884,10 @@ if not isinstance(self.resource_config, Unassigned):
             resource_name=resource_name, reason=failure_reason
         )
         formatted_failed_block = add_indent(formatted_failed_block, 16)
+        formatted_stopped_block = STOPPED_STATUS_ERROR_TEMPLATE.format(
+            resource_name=resource_name, reason=failure_reason
+        )
+        formatted_stopped_block = add_indent(formatted_stopped_block, 16)
 
         logs_arg = ""
         logs_arg_doc = ""
@@ -1851,6 +1910,7 @@ if not isinstance(self.resource_config, Unassigned):
             terminal_resource_states=terminal_resource_states,
             status_key_path=status_key_path,
             failed_error_block=formatted_failed_block,
+            stopped_error_block=formatted_stopped_block,
             resource_name=resource_name,
             logs_arg=logs_arg,
             logs_arg_doc=logs_arg_doc,
@@ -1934,6 +1994,20 @@ if not isinstance(self.resource_config, Unassigned):
         )
         return formatted_method
 
+    @staticmethod
+    def _resource_bases(resource_name: str) -> str:
+        """Return the base-class list of a generated resource class."""
+        mixin = RESOURCE_MIXINS.get(resource_name)
+        return f"{mixin[1]}, Base" if mixin else "Base"
+
+    def _list_summary_shape(self, resource_name: str) -> str:
+        """Return the summary shape name of the resource's List API output."""
+        operation_name = "List" + resource_name + "s"
+        output_shape = self.operations[operation_name]["output"]["shape"]
+        output_members = self.shapes[output_shape]["members"]
+        summaries_key = next(key for key in output_members if key != "NextToken")
+        return self.shapes[output_members[summaries_key]["shape"]]["member"]["shape"]
+
     def generate_get_all_method(self, resource_name: str) -> str:
         """Auto-Generate 'get_all' class Method [list API] for a resource.
 
@@ -1974,7 +2048,13 @@ if not isinstance(self.resource_config, Unassigned):
             get_operation_required_input = []
 
         custom_key_mapping_str = ""
-        if any(member not in summary_members for member in get_operation_required_input):
+        input_attributes = GET_ALL_INPUT_ATTRIBUTES.get(resource_name, {})
+        missing_members = [
+            member
+            for member in get_operation_required_input
+            if member not in summary_members and member not in input_attributes
+        ]
+        if missing_members:
             if "MonitoringJobDefinitionSummary" == summary_name:
                 custom_key_mapping = {
                     "monitoring_job_definition_name": "job_definition_name",
@@ -2002,6 +2082,13 @@ if not isinstance(self.resource_config, Unassigned):
         if custom_key_mapping_str:
             resource_iterator_args_list.append("custom_key_mapping=custom_key_mapping")
 
+        if input_attributes:
+            extra_init = ", ".join(
+                f"'{attribute}': {convert_to_snake_case(member)}"
+                for member, attribute in input_attributes.items()
+            )
+            resource_iterator_args_list.append(f"extra_init_data={{{extra_init}}}")
+
         exclude_list = ["next_token", "max_results"]
         get_all_args = self._generate_method_args(operation_input_shape_name, exclude_list)
 
@@ -2026,7 +2113,8 @@ if not isinstance(self.resource_config, Unassigned):
         resource_iterator_args = ",\n".join(resource_iterator_args_list)
         resource_iterator_args = add_indent(resource_iterator_args, 8)
 
-        # generate docstring
+        # generate docstring. The paging members are not parameters: ResourceIterator
+        # pages for the caller, so they stay out of the docstring too.
         docstring = self._generate_docstring(
             title=f"Get all {resource_name} resources",
             operation_name=operation_name,
@@ -2035,6 +2123,7 @@ if not isinstance(self.resource_config, Unassigned):
             include_session_region=True,
             include_return_resource_docstring=False,
             return_string=f"Returns:\n" f"    Iterator for listed {resource_name} resources.\n",
+            exclude_resource_attrs=exclude_list,
         )
 
         formatted_method = GET_ALL_METHOD_WITH_ARGS_TEMPLATE.format(
@@ -2115,6 +2204,7 @@ if not isinstance(self.resource_config, Unassigned):
         with open(output, "w") as file:
             # Generate and write the license to the file
             file.write(
+                '"""JSON schema of the SageMaker Python SDK configuration file."""\n\n'
                 f"SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {json.dumps(combined_config_schema, indent=4)}"
             )
 

@@ -962,6 +962,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         vpc_config=None,
         enable_network_isolation=None,
         role=None,
+        tracing_config_dict=None,
     ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
@@ -996,6 +997,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role if it needs to access some AWS resources.
                 (default: None).
+            tracing_config_dict (dict): The ``TracingConfig`` member of the endpoint
+                configuration, in service form. Raises ``ValueError`` when the installed
+                botocore service model has no such member (default: None).
         Returns:
             str: The name of the created ``Endpoint``.
         """
@@ -1011,6 +1015,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             vpc_config=vpc_config,
             enable_network_isolation=enable_network_isolation,
             role=role,
+            tracing_config_dict=tracing_config_dict,
         )
         endpoint_tags = _append_project_tags(format_tags(tags))
 
@@ -1037,6 +1042,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         vpc_config=None,
         enable_network_isolation=None,
         role=None,
+        tracing_config_dict=None,
     ):
         """Build the ``CreateEndpointConfig`` request, applying config defaults.
 
@@ -1047,11 +1053,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             dict: The ``CreateEndpointConfig`` request.
         """
         supports_kms = any(
-            [
-                instance_supports_kms(production_variant["InstanceType"])
-                for production_variant in production_variants
-                if "InstanceType" in production_variant
-            ]
+            instance_supports_kms(instance_type)
+            for production_variant in production_variants
+            for instance_type in _production_variant_instance_types(production_variant)
         )
 
         update_list_of_dicts_with_values_from_config(
@@ -1128,8 +1132,28 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_options["EnableNetworkIsolation"] = enable_network_isolation
         if role is not None:
             config_options["ExecutionRoleArn"] = role
+        if tracing_config_dict is not None:
+            self._require_create_endpoint_config_member("TracingConfig")
+            config_options["TracingConfig"] = tracing_config_dict
 
         return config_options
+
+    def _require_create_endpoint_config_member(self, member_name):
+        """Raise ``ValueError`` when the installed service model lacks a request member.
+
+        botocore drops a request member its service model does not know, so a config such
+        as ``TracingConfig`` would vanish without this check.
+        """
+        operation_model = self.sagemaker_client.meta.service_model.operation_model(
+            "CreateEndpointConfig"
+        )
+        if member_name in operation_model.input_shape.members:
+            return
+        raise ValueError(
+            f"{member_name} is not a CreateEndpointConfig member in the installed botocore "
+            f"{botocore.__version__} service model, so the endpoint configuration cannot carry "
+            "it. Upgrade botocore to a release whose SageMaker model has it."
+        )
 
     def create_endpoint_config(
         self,
@@ -1143,6 +1167,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         vpc_config=None,
         enable_network_isolation=None,
         role=None,
+        tracing_config_dict=None,
     ):
         """Create an Amazon SageMaker endpoint configuration and nothing else.
 
@@ -1168,6 +1193,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 containers deployed to the endpoint.
             role (str): An execution role ARN, required when the production
                 variants carry no model name, as with inference components.
+            tracing_config_dict (dict): The ``TracingConfig`` member in service
+                form. Raises ``ValueError`` when the installed botocore service
+                model has no such member.
 
         Returns:
             str: Name of the endpoint configuration created. Under a
@@ -1185,6 +1213,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             vpc_config=vpc_config,
             enable_network_isolation=enable_network_isolation,
             role=role,
+            tracing_config_dict=tracing_config_dict,
         )
 
         def submit(request):
@@ -2859,6 +2888,13 @@ def update_args(args: Dict[str, Any], **kwargs):
             args.update({key: value})
 
 
+def _production_variant_instance_types(production_variant):
+    """Return the instance types a production variant provisions, one or the pool list."""
+    if "InstanceType" in production_variant:
+        return [production_variant["InstanceType"]]
+    return [pool["InstanceType"] for pool in production_variant.get("InstancePools", [])]
+
+
 def production_variant(
     model_name=None,
     instance_type=None,
@@ -2873,6 +2909,7 @@ def production_variant(
     managed_instance_scaling=None,
     routing_config=None,
     inference_ami_version=None,
+    instance_pools=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -2906,6 +2943,10 @@ def production_variant(
             https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html
             #your-algorithms
             -inference-algo-ping-requests
+        instance_pools (list[dict]): Ordered ``InstancePools`` entries
+            (``{"InstanceType": ..., "Priority": ...}``), the primary type first. The service
+            takes ``InstancePools`` in place of ``InstanceType``, so the variant carries the pools
+            and no ``InstanceType`` when this is set. Ignored for a serverless variant.
 
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
@@ -2928,7 +2969,10 @@ def production_variant(
     else:
         initial_instance_count = initial_instance_count or 1
         production_variant_configuration["InitialInstanceCount"] = initial_instance_count
-        production_variant_configuration["InstanceType"] = instance_type
+        if instance_pools:
+            production_variant_configuration["InstancePools"] = instance_pools
+        else:
+            production_variant_configuration["InstanceType"] = instance_type
         update_args(
             production_variant_configuration,
             VolumeSizeInGB=volume_size,

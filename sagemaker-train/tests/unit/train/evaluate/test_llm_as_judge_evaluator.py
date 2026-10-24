@@ -84,6 +84,16 @@ DEFAULT_MODEL_PACKAGE_GROUP_ARN = (
 DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"  # noqa: E501
 DEFAULT_ARTIFACT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
 DEFAULT_EVALUATOR_MODEL = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+VALID_CUSTOM_METRIC = {
+    "customMetricDefinition": {
+        "name": "TestMetric",
+        "instructions": "Rate the response. Prompt: {{prompt}} Response: {{prediction}}",
+        "ratingScale": [
+            {"definition": "Good", "value": {"floatValue": 1.0}},
+            {"definition": "Poor", "value": {"floatValue": 0.0}},
+        ],
+    }
+}
 
 
 @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
@@ -434,7 +444,7 @@ def test_llm_as_judge_evaluator_validate_custom_metrics_json_valid(mock_artifact
         sagemaker_session=mock_session,
     )
 
-    valid_json = json.dumps([{"name": "test"}])
+    valid_json = json.dumps([VALID_CUSTOM_METRIC])
     result = evaluator._validate_custom_metrics_json(valid_json)
     assert result == valid_json
 
@@ -502,7 +512,7 @@ def test_llm_as_judge_evaluator_get_llmaj_template_additions(
     mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
 
     builtin_metrics = ["Builtin.Correctness", "Helpfulness"]
-    custom_metrics = json.dumps([{"name": "test"}])
+    custom_metrics = json.dumps([VALID_CUSTOM_METRIC])
 
     evaluator = LLMAsJudgeEvaluator(
         evaluator_model=DEFAULT_EVALUATOR_MODEL,
@@ -641,7 +651,7 @@ def test_llm_as_judge_evaluator_custom_metrics_only_no_builtin(
     mock_session.boto_session = Mock()
     mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
 
-    custom_metrics_json = json.dumps([{"customMetricDefinition": {"name": "TestMetric"}}])
+    custom_metrics_json = json.dumps([VALID_CUSTOM_METRIC])
 
     evaluator = LLMAsJudgeEvaluator(
         evaluator_model=DEFAULT_EVALUATOR_MODEL,

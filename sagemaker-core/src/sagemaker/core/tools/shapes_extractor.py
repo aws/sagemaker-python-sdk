@@ -43,6 +43,9 @@ class ShapesExtractor:
 
         self.shape_dag = self.get_shapes_dag()
         with open(SHAPE_DAG_FILE_PATH, "w") as f:
+            f.write(
+                '"""Generated dependency graph of the service shapes, used for serialization."""\n\n'
+            )
             f.write("SHAPE_DAG=")
             f.write(textwrap.indent(pprint.pformat(self.shape_dag, width=1), "") + "\n")
         reformat_file_with_black(SHAPE_DAG_FILE_PATH)
