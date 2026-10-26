@@ -1,0 +1,25 @@
+# Local development, deployment, and notebook tooling -- NOT baked into the runtime Docker image.
+# Installs the runtime deps too, so one command sets up a full dev env:
+#   uv pip install -r requirements-dev.txt
+-r requirements.txt
+
+# ---- Deploy ----
+# AgentCore Starter Toolkit: the `agentcore` CLI (configure/deploy/status/invoke/destroy). Distinct
+# from the `bedrock-agentcore` runtime SDK in requirements.txt (which the agent imports).
+bedrock-agentcore-starter-toolkit
+
+# ---- Launch a training job (scripts/run_rft_training.py, 02_train.ipynb) ----
+# The launcher calls SageMaker CreateJob via MultiTurnRLTrainer.train(). Those AgentRFT ops
+# (CreateJob/DescribeJob/StopJob/ListJobs) ship in PUBLIC botocore only as of 1.43.37 (verified;
+# 1.43.13 lacked them). Flooring here -- NOT in the container -- because the deployed agent never
+# calls CreateJob. This is why AWS_DATA_PATH (bundled service model) is no longer needed.
+boto3>=1.43.37
+botocore>=1.43.37
+
+# ---- Preprocess prompts (scripts/preprocess.py) ----
+pandas
+numpy
+pyarrow          # parquet engine for pandas.to_parquet
+
+# Notebook kernel (skip if your Jupyter already provides one).
+ipykernel
