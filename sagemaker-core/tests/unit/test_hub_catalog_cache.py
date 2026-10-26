@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""``HubContent.get_all_cached`` serves a hub from the hub catalog cache.
+"""``HubContent.get_all`` serves a hub from the hub catalog cache.
 
 Before this change every list of a hub described every item: 766 ``DescribeHubContent``
 calls and 60 to 95 seconds for the public hub, on every call. ``HubCatalogCache`` follows
@@ -35,12 +35,14 @@ from sagemaker.core import hub_catalog
 from sagemaker.core.hub_catalog import (
     CACHE_FORMAT_VERSION,
     HUB_CATALOG_DEFAULT_CACHE_EXPIRATION_HORIZON,
+    HUB_CATALOG_DEFAULT_MAX_POOL_CONNECTIONS,
     HUB_CATALOG_DEFAULT_MAX_CACHE_ITEMS,
     HubCatalogAccessor,
     HubCatalogCache,
     HubCatalogFile,
     HubCatalogKey,
     HubCatalogSource,
+    catalog_client_config,
     default_cache_dir,
     reusable_entries,
 )
@@ -153,13 +155,21 @@ def _cache_payload(cache_dir, region="us-west-2", hub=HUB, content_type="Model")
 def test_first_call_describes_every_item_and_writes_the_cache_file(_isolated_cache):
     hub = _Hub({"model-a": "1.0.0", "model-b": "2.0.0", "model-c": "1.0.0"})
 
-    with _patched(hub):
-        models = HubContent.get_all_cached(HUB, region="us-west-2")
+    with _patched(hub) as get_client:
+        models = HubContent.get_all(HUB, "Model", region="us-west-2")
 
     assert [m.hub_content_name for m in models] == ["model-a", "model-b", "model-c"]
     assert sorted(hub.described) == ["model-a", "model-b", "model-c"]
     for call in hub.client.describe_hub_content.call_args_list:
-        assert call.kwargs["HubName"] == HUB
+        assert call.kwargs == {
+            "HubName": HUB,
+            "HubContentType": "Model",
+            "HubContentName": call.kwargs["HubContentName"],
+            "HubContentVersion": hub.versions[call.kwargs["HubContentName"]],
+        }
+    for call in get_client.call_args_list:
+        assert call.kwargs["config"] is HubCatalogAccessor.get_cache().client_config
+        assert call.kwargs["region_name"] == "us-west-2"
     assert models[0].original_creation_time == ORIGINAL
     assert models[0].hub_content_document == json.dumps(
         {"License": "Apache-2.0", "Version": "1.0.0"}
@@ -175,10 +185,10 @@ def test_first_call_describes_every_item_and_writes_the_cache_file(_isolated_cac
 def test_a_call_inside_the_horizon_makes_no_request():
     hub = _Hub({"model-a": "1.0.0", "model-b": "1.0.0"})
     with _patched(hub):
-        first = HubContent.get_all_cached(HUB, region="us-west-2")
+        first = HubContent.get_all(HUB, "Model", region="us-west-2")
         hub.described.clear()
         hub.lists = 0
-        second = HubContent.get_all_cached(HUB, region="us-west-2")
+        second = HubContent.get_all(HUB, "Model", region="us-west-2")
 
     assert (hub.lists, hub.described) == (0, [])
     assert [m.hub_content_name for m in second] == [m.hub_content_name for m in first]
@@ -188,7 +198,7 @@ def test_a_call_inside_the_horizon_makes_no_request():
 def test_refresh_cache_lists_again_and_describes_only_new_and_changed_items():
     hub = _Hub({"model-a": "1.0.0", "model-b": "2.0.0", "model-c": "1.0.0"})
     with _patched(hub):
-        HubContent.get_all_cached(HUB, region="us-west-2")
+        HubContent.get_all(HUB, "Model", region="us-west-2")
     hub.described.clear()
     hub.versions["model-b"] = "2.1.0"
     hub.versions["model-d"] = "1.0.0"
@@ -196,7 +206,7 @@ def test_refresh_cache_lists_again_and_describes_only_new_and_changed_items():
 
     with _patched(hub):
         refresh = HubContent.refresh_cache(HUB, region="us-west-2")
-        models = HubContent.get_all_cached(HUB, region="us-west-2")
+        models = HubContent.get_all(HUB, "Model", region="us-west-2")
 
     assert sorted(hub.described) == ["model-b", "model-d"]
     assert (refresh.listed, refresh.reused, refresh.described, refresh.removed) == (3, 1, 2, 1)
@@ -212,12 +222,12 @@ def test_an_expired_entry_lists_again_and_reuses_the_unchanged_items():
     hub = _Hub({"model-a": "1.0.0", "model-b": "1.0.0"})
     HubContent.set_cache_kwargs(cache_expiration_horizon=datetime.timedelta(milliseconds=50))
     with _patched(hub):
-        HubContent.get_all_cached(HUB, region="us-west-2")
+        HubContent.get_all(HUB, "Model", region="us-west-2")
         assert hub.lists == 1
         hub.described.clear()
         hub.versions["model-b"] = "1.1.0"
         time.sleep(0.1)
-        models = HubContent.get_all_cached(HUB, region="us-west-2")
+        models = HubContent.get_all(HUB, "Model", region="us-west-2")
 
     assert hub.lists == 2
     assert hub.described == ["model-b"]
@@ -227,12 +237,12 @@ def test_an_expired_entry_lists_again_and_reuses_the_unchanged_items():
 def test_a_new_process_starts_from_the_cache_file(_isolated_cache):
     hub = _Hub({"model-a": "1.0.0", "model-b": "1.0.0"})
     with _patched(hub):
-        HubContent.get_all_cached(HUB, region="us-west-2")
+        HubContent.get_all(HUB, "Model", region="us-west-2")
     HubCatalogAccessor.reset_cache()
     hub.described.clear()
 
     with _patched(hub):
-        models = HubContent.get_all_cached(HUB, region="us-west-2")
+        models = HubContent.get_all(HUB, "Model", region="us-west-2")
 
     assert hub.described == []
     assert [m.hub_content_name for m in models] == ["model-a", "model-b"]
@@ -242,9 +252,9 @@ def test_a_new_process_starts_from_the_cache_file(_isolated_cache):
 def test_cache_files_are_separate_per_account_region_hub_and_type(_isolated_cache):
     hub = _Hub({"model-a": "1.0.0"})
     with _patched(hub):
-        HubContent.get_all_cached(HUB, region="us-west-2")
-        HubContent.get_all_cached(HUB, region="eu-west-1")
-        HubContent.get_all_cached("my-hub", hub_content_type="Notebook", region="us-west-2")
+        HubContent.get_all(HUB, "Model", region="us-west-2")
+        HubContent.get_all(HUB, "Model", region="eu-west-1")
+        HubContent.get_all("my-hub", "Notebook", region="us-west-2")
 
     names = sorted(path.name for path in _isolated_cache.iterdir())
     assert names == [
@@ -257,13 +267,13 @@ def test_cache_files_are_separate_per_account_region_hub_and_type(_isolated_cach
 def test_clear_cache_drops_memory_and_deletes_the_file_once():
     hub = _Hub({"model-a": "1.0.0"})
     with _patched(hub):
-        HubContent.get_all_cached(HUB, region="us-west-2")
+        HubContent.get_all(HUB, "Model", region="us-west-2")
 
         assert HubContent.clear_cache(HUB, region="us-west-2") is True
         assert HubContent.clear_cache(HUB, region="us-west-2") is False
         assert HubContent.clear_cache() is False
         hub.described.clear()
-        HubContent.get_all_cached(HUB, region="us-west-2")
+        HubContent.get_all(HUB, "Model", region="us-west-2")
 
     assert hub.described == ["model-a"]
 
@@ -274,7 +284,7 @@ def test_an_unreadable_cache_file_is_ignored(_isolated_cache, caplog):
     hub = _Hub({"model-a": "1.0.0"})
 
     with _patched(hub), caplog.at_level("WARNING"):
-        models = HubContent.get_all_cached(HUB, region="us-west-2")
+        models = HubContent.get_all(HUB, "Model", region="us-west-2")
 
     assert [m.hub_content_name for m in models] == ["model-a"]
     assert "Ignoring the unreadable hub content cache" in caplog.text
@@ -292,7 +302,7 @@ def test_a_failed_describe_raises_and_keeps_the_described_items_in_the_file(_iso
     HubContent.set_cache_kwargs(max_workers=1)
     with _patched(hub):
         with pytest.raises(RuntimeError, match="describe of model-c failed"):
-            HubContent.get_all_cached(HUB, region="us-west-2")
+            HubContent.get_all(HUB, "Model", region="us-west-2")
 
     assert sorted(_cache_payload(_isolated_cache)["entries"]) == ["model-a", "model-b"]
     hub.client.describe_hub_content.side_effect = hub._describe
@@ -322,17 +332,28 @@ def test_the_cache_is_an_lru_cache_with_the_jumpstart_defaults():
     assert cache._content_cache._max_cache_items == HUB_CATALOG_DEFAULT_MAX_CACHE_ITEMS == 20
     assert cache._content_cache._expiration_horizon == HUB_CATALOG_DEFAULT_CACHE_EXPIRATION_HORIZON
     assert HUB_CATALOG_DEFAULT_CACHE_EXPIRATION_HORIZON == datetime.timedelta(hours=6)
+    assert cache._max_workers is None
 
 
-def test_get_all_cached_and_refresh_cache_emit_telemetry(telemetry_send):
+def test_the_describe_client_retries_adaptively_with_one_connection_per_worker():
+    default_config = HubCatalogCache().client_config
+    assert default_config.retries == {"max_attempts": 10, "mode": "adaptive"}
+    assert default_config.max_pool_connections == HUB_CATALOG_DEFAULT_MAX_POOL_CONNECTIONS == 32
+
+    assert catalog_client_config(max_workers=4).max_pool_connections == 32
+    assert catalog_client_config(max_workers=64).max_pool_connections == 64
+    assert HubCatalogCache(max_workers=64).client_config.max_pool_connections == 64
+
+
+def test_get_all_and_refresh_cache_emit_telemetry(telemetry_send):
     hub = _Hub({"model-a": "1.0.0"})
 
     with _patched(hub):
-        HubContent.get_all_cached(HUB, region="us-west-2")
+        HubContent.get_all(HUB, "Model", region="us-west-2")
         HubContent.refresh_cache(HUB, region="us-west-2")
 
     func_names = [call.args[5].split("&")[0] for call in telemetry_send.call_args_list]
-    assert func_names == ["HubContent.get_all_cached", "HubContent.refresh_cache"]
+    assert func_names == ["HubContent.get_all", "HubContent.refresh_cache"]
     assert all(call.args[0] == 1 for call in telemetry_send.call_args_list)
 
 

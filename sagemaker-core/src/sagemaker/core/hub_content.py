@@ -25,8 +25,8 @@ original casing and no cap. ``ListHubContents`` and ``Search`` return the keywor
 ``capabilities``, ``recipes``, and so on. A keyword, when present, is authoritative. The
 document fills in only what the keyword cap dropped. The mixin keeps no state, so it
 works on a resource from ``HubContent.get`` (document, no ``OriginalCreationTime``), from
-``HubContent.get_all`` (keywords and, after the per-item refresh, the document), and on a
-``HubContent`` built by hand from a boto response.
+``HubContent.get_all`` (keywords, document, and ``OriginalCreationTime`` from the hub
+catalog cache), and on a ``HubContent`` built by hand from a boto response.
 
 ``HubContent.search`` runs the service-side ``Search`` API with ``Resource="HubContent"``.
 The service indexes the document fields as ``Metadata.<Field>`` (``Metadata.Task``,
@@ -37,13 +37,18 @@ listing it. Each result record is a full ``HubContent`` with its keywords and do
 
 from __future__ import absolute_import
 
+import datetime
 import json
 import threading
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Union
 
+from boto3.session import Session
+
 from sagemaker.core.hub_catalog import (
     HubCatalogAccessor,
+    HubCatalogCache,
+    HubCatalogFilters,
     HubCatalogKey,
     HubCatalogRefresh,
     HubCatalogSource,
@@ -52,6 +57,7 @@ from sagemaker.core.hub_catalog import (
 )
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.utils.code_injection.codec import transform
 
 KEYWORD_PREFIXES = {
     "tasks": "@task:",
@@ -381,8 +387,6 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         """Build a ``HubContent`` from one ``SearchRecord.HubContent`` dict."""
         if not record:
             return None
-        from sagemaker.core.utils.code_injection.codec import transform
-
         transformed = transform(dict(record), "HubContent")
         transformed.setdefault("hub_name", hub_name)
         known = {name: value for name, value in transformed.items() if name in cls.model_fields}
@@ -399,42 +403,67 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         return technique.lower() in self.fine_tuning_techniques()
 
     @classmethod
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="HubContent.get_all_cached")
-    def get_all_cached(
+    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="HubContent.get_all")
+    def get_all(
         cls,
         hub_name: str,
-        hub_content_type: str = "Model",
+        hub_content_type: str,
+        name_contains: Optional[str] = None,
+        max_schema_version: Optional[str] = None,
+        creation_time_before: Optional[datetime.datetime] = None,
+        creation_time_after: Optional[datetime.datetime] = None,
+        sort_by: Optional[str] = None,
+        sort_order: Optional[str] = None,
         session: Optional[Any] = None,
         region: Optional[str] = None,
     ) -> List["HubContentMixin"]:
-        """Return the contents of a hub from the hub catalog cache.
+        """Get all HubContent resources of a hub, served from the hub catalog cache.
 
         The cache is a ``sagemaker.core.hub_catalog.HubCatalogCache``, built like the
         JumpStart models cache. In memory it is an ``LRUCache`` of up to 20 hubs with a 6
         hour expiration horizon. On disk it is one JSON file per hub, content type, region,
-        and account. The first call for a hub lists it and describes every item, 4 at a
-        time. A call inside the horizon returns the in-memory catalog with no request. A
-        call after the horizon, or in a new process, lists the hub and describes only the
-        items whose ``HubContentVersion`` changed. Each returned ``HubContent`` is bound to
-        ``session`` and ``region`` and carries ``original_creation_time`` from the list
-        summary.
+        and account. The first call for a hub lists it and describes every item on a thread
+        pool of the host default size, with a client that retries a throttled describe in
+        the adaptive mode of botocore. A call inside the horizon returns the in-memory
+        catalog with no request. A call after the horizon, or in a new process, lists the
+        hub and describes only the items whose ``HubContentVersion`` changed. The
+        ``ListHubContents`` filters (``name_contains``, ``max_schema_version``, the creation
+        time bounds, ``sort_by``, ``sort_order``) apply to the cached catalog, so a filtered
+        call costs no request. Each returned ``HubContent`` is bound to ``session`` and
+        ``region`` and carries ``original_creation_time`` from the list summary.
 
         Tune the cache with :meth:`set_cache_kwargs`, for example
-        ``HubContent.set_cache_kwargs(cache_expiration_horizon=timedelta(days=1), max_workers=8)``.
+        ``HubContent.set_cache_kwargs(cache_expiration_horizon=timedelta(days=1))``, and
+        bypass the horizon with :meth:`refresh_cache`.
 
-        Args:
-            hub_name (str): The hub to list, for example ``SageMakerPublicHub``.
-            hub_content_type (str): ``Model``, ``Notebook``, ``ModelReference``, ``DataSet``,
-                or ``JsonDoc`` (default: ``Model``).
-            session (Optional[boto3.session.Session]): Boto3 session.
-            region (Optional[str]): Region name.
+        Parameters:
+            hub_name: The name of the hub to list the contents of.
+            hub_content_type: The type of hub content to list.
+            name_contains: Only list hub content if the name contains the specified string.
+            max_schema_version: The upper bound of the hub content schema version.
+            creation_time_before: Only list hub content that was created before the time specified.
+            creation_time_after: Only list hub content that was created after the time specified.
+            sort_by: ``HubContentName``, ``CreationTime``, or ``HubContentStatus``.
+            sort_order: ``Ascending`` or ``Descending``.
+            session: Boto3 session.
+            region: Region name.
 
         Returns:
-            List[HubContent]: Every content of the hub, in the order the service listed it.
+            List[HubContent]: The matching hub content, in the order the service listed it or
+            the requested sort order.
         """
+        cache = HubCatalogAccessor.get_cache()
         key = cls._catalog_key(hub_name, hub_content_type, session, region)
-        value = HubCatalogAccessor.get_cache().get(key, cls._catalog_source(session, region))
-        return cls._catalog_resources(value, session, region)
+        value = cache.get(key, cls._catalog_source(cache, session, region))
+        filters = HubCatalogFilters(
+            name_contains=name_contains,
+            max_schema_version=max_schema_version,
+            creation_time_before=creation_time_before,
+            creation_time_after=creation_time_after,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+        return cls._catalog_resources(value, filters, session, region)
 
     @classmethod
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="HubContent.refresh_cache")
@@ -447,13 +476,12 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
     ) -> HubCatalogRefresh:
         """List the hub again, describe the changed items, and report what the call did.
 
-        Same cache as :meth:`get_all_cached`, with the expiration horizon ignored, for a
-        caller that wants the counts (listed, reused, described, removed) and the cache
-        file path.
+        Same cache as :meth:`get_all`, with the expiration horizon ignored, for a caller
+        that wants the counts (listed, reused, described, removed) and the cache file path.
         """
+        cache = HubCatalogAccessor.get_cache()
         key = cls._catalog_key(hub_name, hub_content_type, session, region)
-        source = cls._catalog_source(session, region)
-        return HubCatalogAccessor.get_cache().refresh(key, source).refresh
+        return cache.refresh(key, cls._catalog_source(cache, session, region)).refresh
 
     @classmethod
     def clear_cache(
@@ -477,29 +505,45 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         """Rebuild the hub catalog cache with new settings and drop its in-memory entries.
 
         Accepts the keyword arguments of ``HubCatalogCache``: ``max_cache_items``,
-        ``cache_expiration_horizon``, ``max_workers``, and ``cache_dir``. The cache files
-        on disk stay in place.
+        ``cache_expiration_horizon``, ``max_workers``, and ``cache_dir``. ``max_workers``
+        defaults to the ``ThreadPoolExecutor`` default of the host. The cache files on disk
+        stay in place.
         """
         HubCatalogAccessor.set_cache_kwargs(**cache_kwargs)
 
     @classmethod
-    def _catalog_source(cls, session, region) -> HubCatalogSource:
-        """Return the list and describe calls of one retrieval, bound to the caller session."""
+    def _catalog_source(cls, cache: HubCatalogCache, session, region) -> HubCatalogSource:
+        """Return the list and describe calls of one retrieval, bound to the caller session.
+
+        The calls run on the client of ``cache.client_config``: adaptive retries, and one
+        connection per describe worker. Each described resource is bound to ``session`` and
+        ``region`` as ``HubContent.get`` binds its result.
+        """
+
+        def client():
+            return cls.get_sagemaker_client(
+                session=session, region_name=region, config=cache.client_config
+            )
 
         def list_hub(key: HubCatalogKey) -> List[Dict[str, Any]]:
-            client = cls.get_sagemaker_client(session=session, region_name=key.region)
-            return _list_hub_contents(client, key.hub_name, key.hub_content_type)
+            return _list_hub_contents(client(), key.hub_name, key.hub_content_type)
 
         def describe(key: HubCatalogKey, summary: Dict[str, Any]):
-            return cls._describe_summary(key.hub_name, summary, session, region)
+            response = client().describe_hub_content(
+                HubName=key.hub_name,
+                HubContentType=key.hub_content_type,
+                HubContentName=summary["HubContentName"],
+                HubContentVersion=summary["HubContentVersion"],
+            )
+            resource = cls._from_summary(key.hub_name, summary)
+            transform(response, "DescribeHubContentResponse", resource)
+            return resource._set_client_context(session=session, region=region)
 
         return HubCatalogSource(list_function=list_hub, describe_function=describe)
 
     @classmethod
     def _catalog_key(cls, hub_name, hub_content_type, session, region) -> HubCatalogKey:
         """Build the cache key of a hub from the call arguments and the resolved account."""
-        from boto3.session import Session
-
         resolved_region = region or (session.region_name if session is not None else None)
         if not resolved_region:
             resolved_region = Session().region_name or "default"
@@ -511,10 +555,12 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         )
 
     @classmethod
-    def _catalog_resources(cls, value: HubCatalogValue, session, region) -> List["HubContentMixin"]:
-        """Build bound ``HubContent`` resources from a catalog value, in list order."""
+    def _catalog_resources(
+        cls, value: HubCatalogValue, filters: HubCatalogFilters, session, region
+    ) -> List["HubContentMixin"]:
+        """Build bound ``HubContent`` resources from a catalog value, filtered and ordered."""
         resources = []
-        for summary, entry in ordered_entries(value):
+        for summary, entry in filters.apply(ordered_entries(value)):
             resource = cls(**entry["resource"])
             if summary.get("OriginalCreationTime") is not None:
                 resource.original_creation_time = summary["OriginalCreationTime"]
@@ -522,17 +568,12 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         return resources
 
     @classmethod
-    def _describe_summary(cls, hub_name, summary, session, region):
-        """Build a ``HubContent`` from one list summary, bind it, and describe it."""
-        from sagemaker.core.utils.code_injection.codec import transform
-
+    def _from_summary(cls, hub_name: str, summary: Mapping[str, Any]) -> "HubContentMixin":
+        """Build a ``HubContent`` from one ``ListHubContents`` summary."""
         init_data = transform(dict(summary), "HubContentInfo")
         init_data.setdefault("hub_name", hub_name)
         known = {name: value for name, value in init_data.items() if name in cls.model_fields}
-        resource = cls(**known)
-        resource._set_client_context(session=session, region=region)
-        resource.refresh()
-        return resource
+        return cls(**known)
 
     @classmethod
     def _account_id(cls, session, region) -> str:
@@ -541,8 +582,7 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         The answer is kept per set of credentials for the life of the process, so the STS
         call happens once per principal, not once per cache read.
         """
-        from boto3.session import Session
-
+        # common_utils imports resources, which imports this module, so the import runs here.
         from sagemaker.core.common_utils import sts_regional_endpoint
 
         boto_session = session or Session(region_name=region)

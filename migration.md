@@ -531,7 +531,7 @@ pipeline = Pipeline(
 | Fine-tune foundation models | `JumpStartEstimator(model_id=...).fit()` | V3: jumpstart-training-example.ipynb | 🔄 REPLACED |
 | E2E training + inference | Separate steps | jumpstart-e2e-training-example.ipynb | 🔄 REPLACED |
 | Marketplace algorithms | `sagemaker.algorithm.AlgorithmEstimator` | `sagemaker.core.resources.Algorithm` (13 classes) | 🔄 REPLACED |
-| List hub models | `list_jumpstart_models()` (manifest) | `HubContent.get_all(hub_name, hub_content_type)` pages `ListHubContents` and describes 4 models at a time. `HubContent.get_all_cached(hub_name)` serves the hub from an `LRUCache` with the JumpStart cache defaults (20 hubs, 6 hour horizon), backed by a JSON file per hub, and describes only the models whose version changed | 🆕 NEW IN V3 |
+| List hub models | `list_jumpstart_models()` (manifest) | `HubContent.get_all(hub_name, hub_content_type)` serves the hub from an `LRUCache` with the JumpStart cache defaults (20 hubs, 6 hour horizon), backed by a JSON file per hub. It describes only the models whose version changed, on a thread pool, and applies the `ListHubContents` filters to the cached catalog | 🆕 NEW IN V3 |
 | Read model metadata | `JumpStartModelSpecs` fields | `HubContent.license`, `.provider`, `.model_size`, `.tasks`, `.capabilities`, `.recipes`, `.supports_technique("sft")` read from the hub keywords and document | 🆕 NEW IN V3 |
 | Search hub models server side | None (`search_public_hub_models` filters client side) | `HubContent.search(hub_name, filters=[HubContentFilter.metadata("license", "Apache-2.0")])` runs `Search(Resource="HubContent")` | 🆕 NEW IN V3 |
 

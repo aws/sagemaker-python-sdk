@@ -12,9 +12,10 @@
 # language governing permissions and limitations under the License.
 """A cache of the described contents of a hub, in the shape of the JumpStart models cache.
 
-``HubContent.get_all`` costs one ``ListHubContents`` call per page plus one
-``DescribeHubContent`` call per item, about 770 describes for the public hub. The list
-is cheap (8 pages, about 1 second) and the describes are the cost (60 to 95 seconds).
+A list of a hub costs one ``ListHubContents`` call per page plus one ``DescribeHubContent``
+call per item, about 770 describes for the public hub. The list is cheap (8 pages, about 1
+second) and the describes are the cost (60 to 95 seconds). ``HubContent.get_all`` serves
+the list from this cache.
 
 ``HubCatalogCache`` follows ``sagemaker.core.jumpstart.cache.JumpStartModelsCache``. Its
 in-memory layer is the same ``sagemaker.core.utilities.cache.LRUCache``, with one entry per
@@ -48,6 +49,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from botocore.config import Config
+from packaging.version import InvalidVersion, Version
 from platformdirs import user_cache_dir
 
 from sagemaker.core.utilities.cache import LRUCache
@@ -60,8 +63,16 @@ CACHE_SUBDIRECTORY = "hub-content"
 CACHE_FORMAT_VERSION = 2
 HUB_CATALOG_DEFAULT_MAX_CACHE_ITEMS = 20
 HUB_CATALOG_DEFAULT_CACHE_EXPIRATION_HORIZON = datetime.timedelta(hours=6)
-HUB_CATALOG_DEFAULT_DESCRIBE_WORKERS = 4
+HUB_CATALOG_CLIENT_MAX_ATTEMPTS = 10
+# The ThreadPoolExecutor default is at most 32 workers (``min(32, cpu_count + 4)``), so a
+# pool of 32 connections holds one connection per worker of the default pool.
+HUB_CATALOG_DEFAULT_MAX_POOL_CONNECTIONS = 32
 LIST_PAGE_SIZE = 100
+SORT_KEYS = {
+    "HubContentName": lambda summary: summary.get("HubContentName") or "",
+    "CreationTime": lambda summary: _sortable_time(summary.get("CreationTime")),
+    "HubContentStatus": lambda summary: summary.get("HubContentStatus") or "",
+}
 _UNSAFE_FILE_NAME_CHARACTERS = re.compile(r"[^A-Za-z0-9._-]+")
 
 Summary = Dict[str, Any]
@@ -79,6 +90,22 @@ def default_cache_dir() -> str:
     if override:
         return os.path.expanduser(override)
     return os.path.join(user_cache_dir(CACHE_APP_NAME), CACHE_SUBDIRECTORY)
+
+
+def catalog_client_config(max_workers: Optional[int]) -> Config:
+    """Return the botocore config of the clients that list and describe a hub.
+
+    The retry mode is ``adaptive``: botocore rate-limits the client after a
+    ``ThrottlingException``, so a pool of describes backs off instead of failing once the
+    standard retries run out. On the public hub (766 models) the default pool of 32 workers
+    finished with 0 failures in adaptive mode, and failed 462 describes in standard mode.
+    The connection pool holds one connection per worker, so urllib3 discards none. The
+    explicit config outranks ``AWS_RETRY_MODE`` and ``AWS_MAX_ATTEMPTS`` for these calls.
+    """
+    return Config(
+        retries={"max_attempts": HUB_CATALOG_CLIENT_MAX_ATTEMPTS, "mode": "adaptive"},
+        max_pool_connections=max(HUB_CATALOG_DEFAULT_MAX_POOL_CONNECTIONS, max_workers or 0),
+    )
 
 
 @dataclass(frozen=True)
@@ -136,6 +163,58 @@ class HubCatalogValue:
     entries: Dict[str, Entry]
     summaries: List[Summary]
     refresh: HubCatalogRefresh
+
+
+@dataclass(frozen=True)
+class HubCatalogFilters:
+    """The ``ListHubContents`` filters, applied to the cached catalog instead of the service.
+
+    ``name_contains`` is a case-sensitive substring of ``HubContentName``.
+    ``max_schema_version`` keeps the items whose ``DocumentSchemaVersion`` is at most the
+    given version. The two time bounds compare against the ``CreationTime`` of the list
+    summary. ``sort_by`` is ``HubContentName``, ``CreationTime``, or ``HubContentStatus``,
+    and ``sort_order`` is ``Ascending`` or ``Descending``. Without ``sort_by`` the service
+    order of the list is kept.
+    """
+
+    name_contains: Optional[str] = None
+    max_schema_version: Optional[str] = None
+    creation_time_before: Optional[datetime.datetime] = None
+    creation_time_after: Optional[datetime.datetime] = None
+    sort_by: Optional[str] = None
+    sort_order: Optional[str] = None
+
+    def apply(self, pairs: List[Tuple[Summary, Entry]]) -> List[Tuple[Summary, Entry]]:
+        """Return the ``(summary, entry)`` pairs that pass the filters, in the requested order."""
+        kept = [pair for pair in pairs if self._matches(pair[0])]
+        if self.sort_by is None:
+            return kept
+        if self.sort_by not in SORT_KEYS:
+            raise ValueError(
+                f"sort_by must be one of {', '.join(sorted(SORT_KEYS))}, got {self.sort_by!r}."
+            )
+        if self.sort_order not in (None, "Ascending", "Descending"):
+            raise ValueError(
+                f"sort_order must be Ascending or Descending, got {self.sort_order!r}."
+            )
+        sort_key = SORT_KEYS[self.sort_by]
+        return sorted(
+            kept, key=lambda pair: sort_key(pair[0]), reverse=self.sort_order == "Descending"
+        )
+
+    def _matches(self, summary: Summary) -> bool:
+        if self.name_contains and self.name_contains not in (summary.get("HubContentName") or ""):
+            return False
+        if self.max_schema_version and not _version_at_most(
+            summary.get("DocumentSchemaVersion"), self.max_schema_version
+        ):
+            return False
+        created = _sortable_time(summary.get("CreationTime"))
+        if self.creation_time_before and not created < _sortable_time(self.creation_time_before):
+            return False
+        if self.creation_time_after and not created > _sortable_time(self.creation_time_after):
+            return False
+        return True
 
 
 class HubCatalogFile:
@@ -201,28 +280,35 @@ class HubCatalogCache:
     Built like ``JumpStartModelsCache``: an ``LRUCache`` with a bounded item count and an
     expiration horizon. The ``LRUCache`` calls the retrieval function on a miss, or on an
     expired entry with the old value. The retrieval function lists the hub and reuses the
-    old items whose ``HubContentVersion`` the list still reports. The rest are described
-    ``max_workers`` at a time, and the result persists to the cache file of the key.
+    old items whose ``HubContentVersion`` the list still reports. The rest are described on
+    a ``ThreadPoolExecutor`` of the host default size, with the adaptive-retry client of
+    :attr:`client_config`, and the result persists to the cache file of the key.
 
     Args:
         max_cache_items: Maximum number of hubs to hold in memory. Default: 20.
         cache_expiration_horizon: Maximum age of an in-memory entry before the hub is
             listed again. Default: 6 hours.
-        max_workers: How many describe calls to keep in flight. Default: 4.
+        max_workers: How many describe calls to keep in flight. Default: the
+            ``ThreadPoolExecutor`` default of the host (``min(32, cpu_count + 4)``).
         cache_dir: The directory of the cache files. Default: :func:`default_cache_dir`.
+
+    Attributes:
+        client_config: The botocore config of the list and describe clients, from
+            :func:`catalog_client_config`.
     """
 
     def __init__(
         self,
         max_cache_items: int = HUB_CATALOG_DEFAULT_MAX_CACHE_ITEMS,
         cache_expiration_horizon: datetime.timedelta = HUB_CATALOG_DEFAULT_CACHE_EXPIRATION_HORIZON,
-        max_workers: int = HUB_CATALOG_DEFAULT_DESCRIBE_WORKERS,
+        max_workers: Optional[int] = None,
         cache_dir: Optional[str] = None,
     ) -> None:
-        if max_workers < 1:
+        if max_workers is not None and max_workers < 1:
             raise ValueError(f"max_workers must be at least 1, got {max_workers}.")
         self._max_workers = max_workers
         self._cache_dir = cache_dir
+        self.client_config = catalog_client_config(max_workers)
         # The LRUCache is not thread safe, so its reads and writes run under this lock. A
         # retrieval runs outside it, with one lock per key so two threads that miss the
         # same hub share one list-and-describe pass while other hubs stay unblocked.
@@ -399,6 +485,25 @@ def ordered_entries(value: HubCatalogValue) -> List[Tuple[Summary, Entry]]:
         if entry is not None:
             pairs.append((summary, entry))
     return pairs
+
+
+def _sortable_time(value: Any) -> datetime.datetime:
+    """Return ``value`` as an aware datetime, so cached ISO strings and datetimes compare."""
+    if isinstance(value, str):
+        value = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if not isinstance(value, datetime.datetime):
+        return datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+    if value.tzinfo is None:
+        return value.replace(tzinfo=datetime.timezone.utc)
+    return value
+
+
+def _version_at_most(version: Any, ceiling: str) -> bool:
+    """Return ``True`` when ``version`` parses and is at most ``ceiling``."""
+    try:
+        return Version(str(version)) <= Version(ceiling)
+    except InvalidVersion:
+        return False
 
 
 def _remove_quietly(path: str) -> None:

@@ -67,8 +67,10 @@ class Base(BaseModel):
     _region: Optional[str] = PrivateAttr(default=None)
 
     @classmethod
-    def get_sagemaker_client(cls, session=None, region_name=None, service_name="sagemaker"):
-        return SageMakerClient(session=session, region_name=region_name).get_client(
+    def get_sagemaker_client(
+        cls, session=None, region_name=None, service_name="sagemaker", config=None
+    ):
+        return SageMakerClient(session=session, region_name=region_name, config=config).get_client(
             service_name=service_name
         )
 
@@ -14209,86 +14211,6 @@ class HubContent(HubContentMixin, Base):
             region=region,
         )
 
-    @classmethod
-    @Base.add_validate_call
-    def get_all(
-        cls,
-        hub_name: StrPipeVar,
-        hub_content_type: StrPipeVar,
-        name_contains: Optional[StrPipeVar] = Unassigned(),
-        max_schema_version: Optional[StrPipeVar] = Unassigned(),
-        creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[StrPipeVar] = Unassigned(),
-        sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-        max_workers: int = 4,
-    ) -> ResourceIterator["HubContent"]:
-        """
-        Get all HubContent resources
-
-        Parameters:
-            hub_name: The name of the hub to list the contents of.
-            hub_content_type: The type of hub content to list.
-            name_contains: Only list hub content if the name contains the specified string.
-            max_schema_version: The upper bound of the hub content schema verion.
-            creation_time_before: Only list hub content that was created before the time specified.
-            creation_time_after: Only list hub content that was created after the time specified.
-            sort_by: Sort hub content versions by either name or creation time.
-            sort_order: Sort hubs by ascending or descending order.
-            session: Boto3 session.
-            region: Region name.
-            max_workers: How many listed resources to describe at a time, on a thread pool. Defaults to 4. Keep it at or below the max_pool_connections of the client (10 by default).
-
-        Returns:
-            Iterator for listed HubContent resources.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "HubName": hub_name,
-            "HubContentType": hub_content_type,
-            "NameContains": name_contains,
-            "MaxSchemaVersion": max_schema_version,
-            "CreationTimeBefore": creation_time_before,
-            "CreationTimeAfter": creation_time_after,
-            "SortBy": sort_by,
-            "SortOrder": sort_order,
-        }
-
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        return ResourceIterator(
-            client=client,
-            session=session,
-            region=region,
-            list_method="list_hub_contents",
-            summaries_key="HubContentSummaries",
-            summary_name="HubContentInfo",
-            resource_cls=HubContent,
-            extra_init_data={"hub_name": hub_name},
-            max_workers=max_workers,
-            list_method_kwargs=operation_input_args,
-        )
-
     @Base.add_validate_call
     def get_all_versions(
         self,
@@ -14300,7 +14222,6 @@ class HubContent(HubContentMixin, Base):
         sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
-        max_workers: int = 4,
     ) -> ResourceIterator["HubContent"]:
         """
         List hub content versions.
@@ -14314,7 +14235,6 @@ class HubContent(HubContentMixin, Base):
             sort_order: Sort hub content versions by ascending or descending order.
             session: Boto3 session.
             region: Region name.
-            max_workers: How many listed resources to describe at a time, on a thread pool. Defaults to 4. Keep it at or below the max_pool_connections of the client (10 by default).
 
         Returns:
             Iterator for listed HubContent.
@@ -14359,7 +14279,6 @@ class HubContent(HubContentMixin, Base):
             resource_cls=HubContent,
             list_method_kwargs=operation_input_args,
             extra_init_data={"hub_name": self.hub_name},
-            max_workers=max_workers,
         )
 
 

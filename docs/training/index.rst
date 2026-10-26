@@ -307,20 +307,26 @@ Train pre-configured models from the SageMaker JumpStart hub using ``ModelTraine
 
    from sagemaker.core.resources import HubContent
 
-   # Every model of the public hub, with the fields the hub tags it with.
-   # get_all describes 4 models at a time (max_workers=4).
+   # Every model of the public hub, with the fields the hub tags it with. get_all serves the
+   # hub catalog cache, built like the JumpStart models cache: an LRU cache of hubs in memory
+   # (6 hour horizon) backed by one JSON file per hub. The first call describes every model
+   # on a thread pool, a call inside the horizon makes no request, and a call after it lists
+   # the hub and describes only the models whose version changed.
    small_sft_models = [
        content.hub_content_name
        for content in HubContent.get_all(hub_name="SageMakerPublicHub", hub_content_type="Model")
        if content.supports_technique("sft") and content.model_size in ("<1b", "1b-10b")
    ]
 
-   # The same list from the hub catalog cache, built like the JumpStart models cache: an
-   # LRU cache of hubs in memory (6 hour horizon) backed by one JSON file per hub. The first
-   # call describes every model, a call inside the horizon makes no request, and a call
-   # after it lists the hub and describes only the models whose version changed.
-   models = HubContent.get_all_cached("SageMakerPublicHub")
-   HubContent.set_cache_kwargs(cache_expiration_horizon=timedelta(days=1), max_workers=8)
+   # The ListHubContents filters apply to the cached catalog, so a filtered call costs no request.
+   newest_qwen3 = HubContent.get_all(
+       hub_name="SageMakerPublicHub",
+       hub_content_type="Model",
+       name_contains="qwen3",
+       sort_by="CreationTime",
+       sort_order="Descending",
+   )
+   HubContent.set_cache_kwargs(cache_expiration_horizon=timedelta(days=1))
 
    # One model; the document fills in fields the 50-keyword cap dropped
    content = HubContent.get(
@@ -350,7 +356,7 @@ Key points:
 - Use ``list_jumpstart_models()`` and ``search_public_hub_models()`` to discover available models
 - ``HubContent`` exposes ``tasks``, ``license``, ``provider``, ``model_size``, ``context_window``, ``languages``, ``capabilities``, and ``recipes`` read from its search keywords and document, so no caller parses ``HubContentSearchKeywords`` by hand
 - ``HubContent.search()`` filters a hub server side on ``Metadata.<Field>`` through ``HubContentFilter``, inside the 20-filter and 1024-character service limits
-- ``HubContent.get_all_cached()`` serves a hub from ``HubCatalogCache``, the same ``LRUCache`` shape as ``JumpStartModelsCache`` (20 hubs, 6 hour horizon), backed by one JSON file per hub under ``SAGEMAKER_HUB_CACHE_DIR`` or the user cache directory. It describes only the contents whose ``HubContentVersion`` changed. ``refresh_cache()`` lists again and reports the counts, ``clear_cache()`` drops the memory and the file, and ``set_cache_kwargs()`` tunes the horizon, the item cap, the worker count, and the directory
+- ``HubContent.get_all()`` serves a hub from ``HubCatalogCache``, the same ``LRUCache`` shape as ``JumpStartModelsCache`` (20 hubs, 6 hour horizon), backed by one JSON file per hub under ``SAGEMAKER_HUB_CACHE_DIR`` or the user cache directory. It describes only the contents whose ``HubContentVersion`` changed, on a thread pool of the host default size with adaptive retries, and applies the ``ListHubContents`` filters to the cached catalog. ``refresh_cache()`` lists again and reports the counts, ``clear_cache()`` drops the memory and the file, and ``set_cache_kwargs()`` tunes the horizon, the item cap, the worker count, and the directory
 
 :doc:`Full example notebook <../v3-examples/training-examples/jumpstart-training-example>`
 
