@@ -37,22 +37,18 @@ listing it. Each result record is a full ``HubContent`` with its keywords and do
 
 from __future__ import absolute_import
 
-import datetime
 import json
 import threading
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Union
 
 from sagemaker.core.hub_catalog import (
-    DEFAULT_MAX_AGE,
-    HubCatalogCache,
-    HubCatalogRequest,
+    HubCatalogAccessor,
+    HubCatalogKey,
     HubCatalogRefresh,
-    cache_key_for,
-    iterate_in_list_order,
-    resource_entry,
-    reusable_entries,
+    HubCatalogSource,
+    HubCatalogValue,
+    ordered_entries,
 )
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
@@ -115,7 +111,6 @@ MAX_SEARCH_FILTERS = 20
 MAX_SEARCH_FILTER_VALUE_LENGTH = 1024
 SEARCH_PAGE_SIZE = 100
 LIST_PAGE_SIZE = 100
-DEFAULT_DESCRIBE_WORKERS = 4
 # The account of a set of credentials, so a cache hit on an unchanged hub makes no STS call.
 # Keyed by the frozen credentials, which change when the caller assumes another role.
 _ACCOUNT_IDS: Dict[Any, str] = {}
@@ -409,40 +404,37 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         cls,
         hub_name: str,
         hub_content_type: str = "Model",
-        max_age: datetime.timedelta = DEFAULT_MAX_AGE,
-        max_workers: int = DEFAULT_DESCRIBE_WORKERS,
-        cache_dir: Optional[str] = None,
         session: Optional[Any] = None,
         region: Optional[str] = None,
     ) -> List["HubContentMixin"]:
-        """List a hub and describe only the contents the local cache does not hold.
+        """Return the contents of a hub from the hub catalog cache.
 
-        Lists the hub with ``ListHubContents`` and loads the cache file of this hub, content
-        type, region, and account. A cached item whose ``HubContentVersion`` matches the list
-        summary is reused. The other items are described ``max_workers`` at a time, and the
-        merged result is written back. The first call costs the same as ``get_all``. A call
-        on an unchanged hub costs the list calls plus one ``GetCallerIdentity`` per set of
-        credentials per process. Each returned ``HubContent`` is bound to
-        ``session`` and ``region`` and carries ``original_creation_time`` from the summary.
+        The cache is a ``sagemaker.core.hub_catalog.HubCatalogCache``, built like the
+        JumpStart models cache. In memory it is an ``LRUCache`` of up to 20 hubs with a 6
+        hour expiration horizon. On disk it is one JSON file per hub, content type, region,
+        and account. The first call for a hub lists it and describes every item, 4 at a
+        time. A call inside the horizon returns the in-memory catalog with no request. A
+        call after the horizon, or in a new process, lists the hub and describes only the
+        items whose ``HubContentVersion`` changed. Each returned ``HubContent`` is bound to
+        ``session`` and ``region`` and carries ``original_creation_time`` from the list
+        summary.
+
+        Tune the cache with :meth:`set_cache_kwargs`, for example
+        ``HubContent.set_cache_kwargs(cache_expiration_horizon=timedelta(days=1), max_workers=8)``.
 
         Args:
             hub_name (str): The hub to list, for example ``SageMakerPublicHub``.
             hub_content_type (str): ``Model``, ``Notebook``, ``ModelReference``, ``DataSet``,
                 or ``JsonDoc`` (default: ``Model``).
-            max_age (datetime.timedelta): How old the cache file can be before every item is
-                described again (default: 1 day). ``timedelta(0)`` describes every item.
-            max_workers (int): How many describe calls to keep in flight (default: 4).
-            cache_dir (Optional[str]): The cache directory. Defaults to
-                ``SAGEMAKER_HUB_CACHE_DIR`` or the ``platformdirs`` user cache directory.
             session (Optional[boto3.session.Session]): Boto3 session.
             region (Optional[str]): Region name.
 
         Returns:
             List[HubContent]: Every content of the hub, in the order the service listed it.
         """
-        request = HubCatalogRequest(hub_name, hub_content_type, max_age, max_workers, cache_dir)
-        resources, _ = cls._refresh_catalog(request, session, region)
-        return resources
+        key = cls._catalog_key(hub_name, hub_content_type, session, region)
+        value = HubCatalogAccessor.get_cache().get(key, cls._catalog_source(session, region))
+        return cls._catalog_resources(value, session, region)
 
     @classmethod
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="HubContent.refresh_cache")
@@ -450,80 +442,87 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         cls,
         hub_name: str,
         hub_content_type: str = "Model",
-        max_workers: int = DEFAULT_DESCRIBE_WORKERS,
-        cache_dir: Optional[str] = None,
         session: Optional[Any] = None,
         region: Optional[str] = None,
     ) -> HubCatalogRefresh:
-        """Bring the cache of a hub up to date and report what the call did.
+        """List the hub again, describe the changed items, and report what the call did.
 
-        Same work as :meth:`get_all_cached` with the default ``max_age``, for a caller that
-        wants the counts (listed, reused, described, removed) rather than the resources.
+        Same cache as :meth:`get_all_cached`, with the expiration horizon ignored, for a
+        caller that wants the counts (listed, reused, described, removed) and the cache
+        file path.
         """
-        request = HubCatalogRequest(
-            hub_name, hub_content_type, DEFAULT_MAX_AGE, max_workers, cache_dir
-        )
-        _, refresh = cls._refresh_catalog(request, session, region)
-        return refresh
+        key = cls._catalog_key(hub_name, hub_content_type, session, region)
+        source = cls._catalog_source(session, region)
+        return HubCatalogAccessor.get_cache().refresh(key, source).refresh
 
     @classmethod
     def clear_cache(
         cls,
-        hub_name: str,
+        hub_name: Optional[str] = None,
         hub_content_type: str = "Model",
-        cache_dir: Optional[str] = None,
         session: Optional[Any] = None,
         region: Optional[str] = None,
     ) -> bool:
-        """Delete the cache file of a hub. Return ``True`` when a file was deleted."""
-        account_id = cls._account_id(session, region)
-        key = cache_key_for(hub_name, hub_content_type, session, region, account_id)
-        return HubCatalogCache(key, cache_dir).clear()
+        """Drop the in-memory hub catalogs, and the cache file of ``hub_name`` when given.
+
+        Returns ``True`` when a cache file was deleted.
+        """
+        cache = HubCatalogAccessor.get_cache()
+        if hub_name is None:
+            return cache.clear()
+        return cache.clear(cls._catalog_key(hub_name, hub_content_type, session, region))
 
     @classmethod
-    def _refresh_catalog(cls, request: HubCatalogRequest, session, region):
-        """List the hub, reuse the cached items, describe the rest, and write the cache back."""
-        if request.max_workers < 1:
-            raise ValueError(f"max_workers must be at least 1, got {request.max_workers}.")
-        client = cls.get_sagemaker_client(session=session, region_name=region)
-        summaries = _list_hub_contents(client, request.hub_name, request.hub_content_type)
-        account_id = cls._account_id(session, region)
-        key = cache_key_for(request.hub_name, request.hub_content_type, session, region, account_id)
-        cache = HubCatalogCache(key, request.cache_dir)
-        cached = cache.load(request.max_age)
-        reused = reusable_entries(cached, summaries)
-        resources_by_name = {
-            name: cls._from_cache_entry(entry, session, region) for name, entry in reused.items()
-        }
-        missing = [s for s in summaries if s.get("HubContentName") not in reused]
+    def set_cache_kwargs(cls, **cache_kwargs: Any) -> None:
+        """Rebuild the hub catalog cache with new settings and drop its in-memory entries.
 
-        def describe(summary):
-            return cls._describe_summary(summary, request.hub_name, session, region)
+        Accepts the keyword arguments of ``HubCatalogCache``: ``max_cache_items``,
+        ``cache_expiration_horizon``, ``max_workers``, and ``cache_dir``. The cache files
+        on disk stay in place.
+        """
+        HubCatalogAccessor.set_cache_kwargs(**cache_kwargs)
 
-        entries = dict(reused)
-        try:
-            with ThreadPoolExecutor(
-                max_workers=request.max_workers, thread_name_prefix="sagemaker-hub-describe"
-            ) as executor:
-                for summary, resource in zip(missing, executor.map(describe, missing)):
-                    name = summary["HubContentName"]
-                    resources_by_name[name] = resource
-                    entries[name] = resource_entry(resource, summary.get("HubContentVersion"))
-        finally:
-            # A describe that raises still leaves every described item in the cache, so the
-            # next call describes only the rest.
-            cache.save(entries)
-        refresh = HubCatalogRefresh(
-            listed=len(summaries),
-            reused=len(reused),
-            described=len(missing),
-            removed=len(set(cached) - set(entries)),
-            cache_path=cache.path,
+    @classmethod
+    def _catalog_source(cls, session, region) -> HubCatalogSource:
+        """Return the list and describe calls of one retrieval, bound to the caller session."""
+
+        def list_hub(key: HubCatalogKey) -> List[Dict[str, Any]]:
+            client = cls.get_sagemaker_client(session=session, region_name=key.region)
+            return _list_hub_contents(client, key.hub_name, key.hub_content_type)
+
+        def describe(key: HubCatalogKey, summary: Dict[str, Any]):
+            return cls._describe_summary(key.hub_name, summary, session, region)
+
+        return HubCatalogSource(list_function=list_hub, describe_function=describe)
+
+    @classmethod
+    def _catalog_key(cls, hub_name, hub_content_type, session, region) -> HubCatalogKey:
+        """Build the cache key of a hub from the call arguments and the resolved account."""
+        from boto3.session import Session
+
+        resolved_region = region or (session.region_name if session is not None else None)
+        if not resolved_region:
+            resolved_region = Session().region_name or "default"
+        return HubCatalogKey(
+            hub_name=hub_name,
+            hub_content_type=hub_content_type,
+            region=str(resolved_region),
+            account_id=cls._account_id(session, region),
         )
-        return list(iterate_in_list_order(summaries, resources_by_name)), refresh
 
     @classmethod
-    def _describe_summary(cls, summary, hub_name, session, region):
+    def _catalog_resources(cls, value: HubCatalogValue, session, region) -> List["HubContentMixin"]:
+        """Build bound ``HubContent`` resources from a catalog value, in list order."""
+        resources = []
+        for summary, entry in ordered_entries(value):
+            resource = cls(**entry["resource"])
+            if summary.get("OriginalCreationTime") is not None:
+                resource.original_creation_time = summary["OriginalCreationTime"]
+            resources.append(resource._set_client_context(session=session, region=region))
+        return resources
+
+    @classmethod
+    def _describe_summary(cls, hub_name, summary, session, region):
         """Build a ``HubContent`` from one list summary, bind it, and describe it."""
         from sagemaker.core.utils.code_injection.codec import transform
 
@@ -534,11 +533,6 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         resource._set_client_context(session=session, region=region)
         resource.refresh()
         return resource
-
-    @classmethod
-    def _from_cache_entry(cls, entry, session, region):
-        resource = cls(**entry["resource"])
-        return resource._set_client_context(session=session, region=region)
 
     @classmethod
     def _account_id(cls, session, region) -> str:

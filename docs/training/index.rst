@@ -303,6 +303,8 @@ Train pre-configured models from the SageMaker JumpStart hub using ``ModelTraine
 
 .. code-block:: python
 
+   from datetime import timedelta
+
    from sagemaker.core.resources import HubContent
 
    # Every model of the public hub, with the fields the hub tags it with.
@@ -313,9 +315,12 @@ Train pre-configured models from the SageMaker JumpStart hub using ``ModelTraine
        if content.supports_technique("sft") and content.model_size in ("<1b", "1b-10b")
    ]
 
-   # The same list from a local cache: the first call describes every model, the next
-   # call lists the hub and describes only the models whose version changed.
+   # The same list from the hub catalog cache, built like the JumpStart models cache: an
+   # LRU cache of hubs in memory (6 hour horizon) backed by one JSON file per hub. The first
+   # call describes every model, a call inside the horizon makes no request, and a call
+   # after it lists the hub and describes only the models whose version changed.
    models = HubContent.get_all_cached("SageMakerPublicHub")
+   HubContent.set_cache_kwargs(cache_expiration_horizon=timedelta(days=1), max_workers=8)
 
    # One model; the document fills in fields the 50-keyword cap dropped
    content = HubContent.get(
@@ -345,7 +350,7 @@ Key points:
 - Use ``list_jumpstart_models()`` and ``search_public_hub_models()`` to discover available models
 - ``HubContent`` exposes ``tasks``, ``license``, ``provider``, ``model_size``, ``context_window``, ``languages``, ``capabilities``, and ``recipes`` read from its search keywords and document, so no caller parses ``HubContentSearchKeywords`` by hand
 - ``HubContent.search()`` filters a hub server side on ``Metadata.<Field>`` through ``HubContentFilter``, inside the 20-filter and 1024-character service limits
-- ``HubContent.get_all_cached()`` keeps the described contents of a hub in a local JSON file (``SAGEMAKER_HUB_CACHE_DIR`` or the user cache directory) and describes only the contents whose ``HubContentVersion`` changed. ``refresh_cache()`` reports the counts and ``clear_cache()`` deletes the file
+- ``HubContent.get_all_cached()`` serves a hub from ``HubCatalogCache``, the same ``LRUCache`` shape as ``JumpStartModelsCache`` (20 hubs, 6 hour horizon), backed by one JSON file per hub under ``SAGEMAKER_HUB_CACHE_DIR`` or the user cache directory. It describes only the contents whose ``HubContentVersion`` changed. ``refresh_cache()`` lists again and reports the counts, ``clear_cache()`` drops the memory and the file, and ``set_cache_kwargs()`` tunes the horizon, the item cap, the worker count, and the directory
 
 :doc:`Full example notebook <../v3-examples/training-examples/jumpstart-training-example>`
 

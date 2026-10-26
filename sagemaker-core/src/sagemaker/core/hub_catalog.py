@@ -10,21 +10,29 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""A local, on-disk cache of the described contents of a hub.
+"""A cache of the described contents of a hub, in the shape of the JumpStart models cache.
 
 ``HubContent.get_all`` costs one ``ListHubContents`` call per page plus one
 ``DescribeHubContent`` call per item, about 770 describes for the public hub. The list
 is cheap (8 pages, about 1 second) and the describes are the cost (60 to 95 seconds).
-``HubContent.get_all_cached`` keeps the described resources on disk, one JSON file per
-hub, content type, region, and account. The next call lists the hub again and reuses
-every cached item whose ``HubContentVersion`` matches the list summary. Only the items
-that are new or have a new version are described. A model whose version did not change
-has the same document, so the cache serves the same resource the service would return.
 
-The cache lives under the ``platformdirs`` user cache directory (``~/.cache/sagemaker``
-on Linux) or ``SAGEMAKER_HUB_CACHE_DIR``. It holds the service response for catalog
-metadata and no credentials. A file is written to a temporary name and renamed into
-place, so a reader never sees a partial file.
+``HubCatalogCache`` follows ``sagemaker.core.jumpstart.cache.JumpStartModelsCache``. Its
+in-memory layer is the same ``sagemaker.core.utilities.cache.LRUCache``, with one entry per
+hub and content type, a bounded item count, and an expiration horizon. The ``LRUCache``
+calls the retrieval function on a miss, or on an expired entry with the old value. The
+retrieval function lists the hub and keeps every described item whose ``HubContentVersion``
+still matches the list summary. Only the new or changed items are described. The JumpStart
+retrieval function reads the manifest again only when its ETag changed, in the same way.
+
+On top of the JumpStart shape, the described items persist to one JSON file per hub,
+content type, region, and account. A new process starts from the previous catalog instead
+of describing every item again. The file lives under the ``platformdirs`` user cache
+directory (``~/.cache/sagemaker/hub-content`` on Linux) or ``SAGEMAKER_HUB_CACHE_DIR``. It
+holds the service response for catalog metadata and no credentials. A file is written to
+a temporary name and renamed into place, so a reader never sees a partial file.
+
+``HubCatalogAccessor`` holds the process-wide cache instance, as
+``JumpStartModelsAccessor`` holds the JumpStart one.
 """
 
 from __future__ import absolute_import
@@ -35,24 +43,33 @@ import logging
 import os
 import re
 import tempfile
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from boto3.session import Session
 from platformdirs import user_cache_dir
+
+from sagemaker.core.utilities.cache import LRUCache
 
 logger = logging.getLogger(__name__)
 
 CACHE_DIR_ENV_VAR = "SAGEMAKER_HUB_CACHE_DIR"
 CACHE_APP_NAME = "sagemaker"
 CACHE_SUBDIRECTORY = "hub-content"
-CACHE_FORMAT_VERSION = 1
-DEFAULT_MAX_AGE = datetime.timedelta(days=1)
+CACHE_FORMAT_VERSION = 2
+HUB_CATALOG_DEFAULT_MAX_CACHE_ITEMS = 20
+HUB_CATALOG_DEFAULT_CACHE_EXPIRATION_HORIZON = datetime.timedelta(hours=6)
+HUB_CATALOG_DEFAULT_DESCRIBE_WORKERS = 4
+LIST_PAGE_SIZE = 100
 _UNSAFE_FILE_NAME_CHARACTERS = re.compile(r"[^A-Za-z0-9._-]+")
+
+Summary = Dict[str, Any]
+Entry = Dict[str, Any]
 
 
 def default_cache_dir() -> str:
-    """Return the directory of the hub content cache.
+    """Return the directory of the hub content cache files.
 
     ``SAGEMAKER_HUB_CACHE_DIR`` wins when set. The default is the ``hub-content``
     directory under the ``platformdirs`` user cache directory of the ``sagemaker``
@@ -66,7 +83,7 @@ def default_cache_dir() -> str:
 
 @dataclass(frozen=True)
 class HubCatalogKey:
-    """What one cache file covers: one hub, one content type, in one region and account."""
+    """The key of one cache entry: one hub and content type in one region and account."""
 
     hub_name: str
     hub_content_type: str
@@ -80,20 +97,25 @@ class HubCatalogKey:
         return "-".join(safe_parts) + ".json"
 
 
-@dataclass(frozen=True)
-class HubCatalogRequest:
-    """What one ``HubContent.get_all_cached`` call asks for."""
+DescribeFunction = Callable[[HubCatalogKey, Summary], Any]
+ListFunction = Callable[[HubCatalogKey], List[Summary]]
 
-    hub_name: str
-    hub_content_type: str
-    max_age: datetime.timedelta
-    max_workers: int
-    cache_dir: Optional[str]
+
+@dataclass(frozen=True)
+class HubCatalogSource:
+    """The service calls of one retrieval: list a hub, and describe one listed summary.
+
+    The calls carry the session of the caller. They are passed per call and not stored on
+    the cache, so one process cache serves every session.
+    """
+
+    list_function: ListFunction
+    describe_function: DescribeFunction
 
 
 @dataclass(frozen=True)
 class HubCatalogRefresh:
-    """What one ``HubContent.get_all_cached`` call did."""
+    """What one retrieval did: how many items it listed, reused, described, and dropped."""
 
     listed: int
     reused: int
@@ -102,25 +124,30 @@ class HubCatalogRefresh:
     cache_path: str
 
 
-class HubCatalogCache:
-    """Read and write the cache file of one :class:`HubCatalogKey`.
+@dataclass(frozen=True)
+class HubCatalogValue:
+    """The value of one cache entry: the described items and the refresh that produced them.
 
-    The file holds the ``model_dump`` of every described ``HubContent`` keyed by name.
-    Each entry carries the version the list summary reported, and the file carries the
-    time of the write.
+    ``entries`` maps a content name to ``{"listed_version": ..., "resource": ...}``, where
+    ``resource`` is the ``model_dump`` of the described ``HubContent``. ``summaries`` is the
+    ``ListHubContents`` output of the retrieval, in service order.
     """
+
+    entries: Dict[str, Entry]
+    summaries: List[Summary]
+    refresh: HubCatalogRefresh
+
+
+class HubCatalogFile:
+    """Read and write the on-disk copy of one :class:`HubCatalogKey`."""
 
     def __init__(self, key: HubCatalogKey, cache_dir: Optional[str] = None):
         self.key = key
         self.cache_dir = cache_dir or default_cache_dir()
         self.path = os.path.join(self.cache_dir, key.file_name())
 
-    def load(self, max_age: datetime.timedelta) -> Dict[str, Dict[str, Any]]:
-        """Return the cached entries by name, or an empty dict for a missing, stale, or unreadable file.
-
-        Args:
-            max_age: The longest time since the last write for which the file counts.
-        """
+    def load(self) -> Dict[str, Entry]:
+        """Return the entries by name, or an empty dict for a missing or unreadable file."""
         try:
             with open(self.path, "r", encoding="utf-8") as cache_file:
                 payload = json.load(cache_file)
@@ -131,18 +158,15 @@ class HubCatalogCache:
             return {}
         if payload.get("format_version") != CACHE_FORMAT_VERSION:
             return {}
-        written_at = _parse_time(payload.get("written_at"))
-        if written_at is None or _now() - written_at > max_age:
-            return {}
         entries = payload.get("entries")
         return entries if isinstance(entries, dict) else {}
 
-    def save(self, entries: Dict[str, Dict[str, Any]]) -> None:
-        """Write the entries to the cache file, through a temporary file and a rename."""
+    def save(self, entries: Dict[str, Entry]) -> None:
+        """Write the entries, through a temporary file and a rename."""
         os.makedirs(self.cache_dir, exist_ok=True)
         payload = {
             "format_version": CACHE_FORMAT_VERSION,
-            "written_at": _now().isoformat(),
+            "written_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "key": {
                 "hub_name": self.key.hub_name,
                 "hub_content_type": self.key.hub_content_type,
@@ -163,7 +187,7 @@ class HubCatalogCache:
             raise
 
     def clear(self) -> bool:
-        """Delete the cache file. Return ``True`` when a file was deleted."""
+        """Delete the file. Return ``True`` when a file was deleted."""
         try:
             os.remove(self.path)
         except FileNotFoundError:
@@ -171,26 +195,184 @@ class HubCatalogCache:
         return True
 
 
-def cache_key_for(
-    hub_name: str,
-    hub_content_type: str,
-    session: Optional[Session],
-    region: Optional[str],
-    account_id: str,
-) -> HubCatalogKey:
-    """Build the cache key of a hub from the call arguments and the resolved account."""
-    resolved_region = region or (session.region_name if session is not None else None)
-    if not resolved_region:
-        resolved_region = Session().region_name or "default"
-    return HubCatalogKey(
-        hub_name=hub_name,
-        hub_content_type=hub_content_type,
-        region=str(resolved_region),
-        account_id=account_id,
-    )
+class HubCatalogCache:
+    """Cache of the described contents of hubs, one ``LRUCache`` entry per hub and type.
+
+    Built like ``JumpStartModelsCache``: an ``LRUCache`` with a bounded item count and an
+    expiration horizon. The ``LRUCache`` calls the retrieval function on a miss, or on an
+    expired entry with the old value. The retrieval function lists the hub and reuses the
+    old items whose ``HubContentVersion`` the list still reports. The rest are described
+    ``max_workers`` at a time, and the result persists to the cache file of the key.
+
+    Args:
+        max_cache_items: Maximum number of hubs to hold in memory. Default: 20.
+        cache_expiration_horizon: Maximum age of an in-memory entry before the hub is
+            listed again. Default: 6 hours.
+        max_workers: How many describe calls to keep in flight. Default: 4.
+        cache_dir: The directory of the cache files. Default: :func:`default_cache_dir`.
+    """
+
+    def __init__(
+        self,
+        max_cache_items: int = HUB_CATALOG_DEFAULT_MAX_CACHE_ITEMS,
+        cache_expiration_horizon: datetime.timedelta = HUB_CATALOG_DEFAULT_CACHE_EXPIRATION_HORIZON,
+        max_workers: int = HUB_CATALOG_DEFAULT_DESCRIBE_WORKERS,
+        cache_dir: Optional[str] = None,
+    ) -> None:
+        if max_workers < 1:
+            raise ValueError(f"max_workers must be at least 1, got {max_workers}.")
+        self._max_workers = max_workers
+        self._cache_dir = cache_dir
+        # The LRUCache is not thread safe, so its reads and writes run under this lock. A
+        # retrieval runs outside it, with one lock per key so two threads that miss the
+        # same hub share one list-and-describe pass while other hubs stay unblocked.
+        self._cache_lock = threading.Lock()
+        self._key_locks: Dict[HubCatalogKey, threading.Lock] = {}
+        self._content_cache = LRUCache[HubCatalogKey, HubCatalogValue](
+            max_cache_items=max_cache_items,
+            expiration_horizon=cache_expiration_horizon,
+            retrieval_function=self._retrieval_function,
+        )
+
+    def get(self, key: HubCatalogKey, source: HubCatalogSource) -> HubCatalogValue:
+        """Return the catalog of a hub from memory, or retrieve it when absent or expired."""
+        with self._cache_lock:
+            try:
+                value, _ = self._content_cache.get(key, data_source_fallback=False)
+                return value
+            except KeyError:
+                previous = self._previous_value(key)
+        with self._key_lock(key):
+            with self._cache_lock:
+                try:
+                    value, _ = self._content_cache.get(key, data_source_fallback=False)
+                    return value
+                except KeyError:
+                    pass
+            return self._retrieve_and_store(key, previous, source)
+
+    def refresh(self, key: HubCatalogKey, source: HubCatalogSource) -> HubCatalogValue:
+        """List the hub again, describe the changed items, and return the new catalog."""
+        with self._cache_lock:
+            previous = self._previous_value(key)
+        with self._key_lock(key):
+            return self._retrieve_and_store(key, previous, source)
+
+    def clear(self, key: Optional[HubCatalogKey] = None) -> bool:
+        """Drop the in-memory entries, and the cache file of ``key`` when one is given.
+
+        Returns ``True`` when a file was deleted.
+        """
+        with self._cache_lock:
+            self._content_cache.clear()
+        if key is None:
+            return False
+        return HubCatalogFile(key, self._cache_dir).clear()
+
+    def _previous_value(self, key: HubCatalogKey) -> Optional[HubCatalogValue]:
+        """Return the stored value of ``key``, expired or not, without a retrieval."""
+        element = self._content_cache._lru_cache.get(key)  # pylint: disable=protected-access
+        return element.value if element is not None else None
+
+    def _key_lock(self, key: HubCatalogKey) -> threading.Lock:
+        with self._cache_lock:
+            return self._key_locks.setdefault(key, threading.Lock())
+
+    def _retrieve_and_store(
+        self, key: HubCatalogKey, previous: Optional[HubCatalogValue], source: HubCatalogSource
+    ) -> HubCatalogValue:
+        """Run the retrieval outside the cache lock, then store the result under it."""
+        value = self._retrieval_function(key, previous, source)
+        with self._cache_lock:
+            self._content_cache.put(key, value)
+        return value
+
+    def _retrieval_function(
+        self,
+        key: HubCatalogKey,
+        value: Optional[HubCatalogValue],
+        source: Optional[HubCatalogSource] = None,
+    ) -> HubCatalogValue:
+        """Bring the catalog of ``key`` up to date, from the old value and the cache file.
+
+        The ``LRUCache`` holds this function as its ``retrieval_function`` and calls it with
+        ``key`` and ``value`` only. :meth:`get` and :meth:`refresh` call it themselves with
+        the ``source`` of the caller, so the ``LRUCache`` path raises for a missing source.
+        """
+        if source is None:
+            raise RuntimeError("HubCatalogCache retrieves only through get() or refresh().")
+        cache_file = HubCatalogFile(key, self._cache_dir)
+        previous = value.entries if value is not None else cache_file.load()
+        summaries = source.list_function(key)
+        reused = reusable_entries(previous, summaries)
+        missing = [s for s in summaries if s.get("HubContentName") not in reused]
+        entries = dict(reused)
+        try:
+            for summary, resource in self._describe_all(source, key, missing):
+                entries[summary["HubContentName"]] = resource_entry(
+                    resource, summary.get("HubContentVersion")
+                )
+        finally:
+            # A describe that raises still leaves every described item on disk, so the
+            # next retrieval describes only the rest.
+            cache_file.save(entries)
+        refresh = HubCatalogRefresh(
+            listed=len(summaries),
+            reused=len(reused),
+            described=len(missing),
+            removed=len(set(previous) - set(entries)),
+            cache_path=cache_file.path,
+        )
+        return HubCatalogValue(entries=entries, summaries=summaries, refresh=refresh)
+
+    def _describe_all(self, source: HubCatalogSource, key: HubCatalogKey, summaries):
+        """Yield ``(summary, resource)`` for each summary, described on a thread pool."""
+
+        def describe(summary: Summary) -> Any:
+            return source.describe_function(key, summary)
+
+        with ThreadPoolExecutor(
+            max_workers=self._max_workers, thread_name_prefix="sagemaker-hub-describe"
+        ) as executor:
+            yield from zip(summaries, executor.map(describe, summaries))
 
 
-def resource_entry(resource: Any, listed_version: str) -> Dict[str, Any]:
+class HubCatalogAccessor:
+    """Static holder of the process-wide :class:`HubCatalogCache`.
+
+    Mirrors ``JumpStartModelsAccessor``: one cache per process, built from the stored
+    cache kwargs, rebuilt when :meth:`set_cache_kwargs` changes them, and dropped through
+    :meth:`reset_cache`.
+    """
+
+    _cache: Optional[HubCatalogCache] = None
+    _cache_kwargs: Dict[str, Any] = {}
+    _lock = threading.Lock()
+
+    @staticmethod
+    def get_cache() -> HubCatalogCache:
+        """Return the process cache, built on the first call with the stored kwargs."""
+        with HubCatalogAccessor._lock:
+            if HubCatalogAccessor._cache is None:
+                HubCatalogAccessor._cache = HubCatalogCache(**HubCatalogAccessor._cache_kwargs)
+            return HubCatalogAccessor._cache
+
+    @staticmethod
+    def set_cache_kwargs(**cache_kwargs: Any) -> None:
+        """Store new ``HubCatalogCache`` kwargs and drop the cache, so the next call rebuilds it."""
+        with HubCatalogAccessor._lock:
+            HubCatalogAccessor._cache_kwargs = dict(cache_kwargs)
+            HubCatalogAccessor._cache = None
+
+    @staticmethod
+    def reset_cache() -> None:
+        """Drop the process cache and its kwargs, so the next call builds a default one."""
+        with HubCatalogAccessor._lock:
+            HubCatalogAccessor._cache = None
+            HubCatalogAccessor._cache_kwargs = {}
+
+
+def resource_entry(resource: Any, listed_version: str) -> Entry:
     """Return the cache entry of one described resource."""
     return {
         "listed_version": listed_version,
@@ -198,10 +380,8 @@ def resource_entry(resource: Any, listed_version: str) -> Dict[str, Any]:
     }
 
 
-def reusable_entries(
-    entries: Dict[str, Dict[str, Any]], summaries: List[Dict[str, Any]]
-) -> Dict[str, Dict[str, Any]]:
-    """Return the cached entries whose listed version matches the current list summary."""
+def reusable_entries(entries: Dict[str, Entry], summaries: List[Summary]) -> Dict[str, Entry]:
+    """Return the entries whose listed version matches the current list summary."""
     reusable = {}
     for summary in summaries:
         name = summary.get("HubContentName")
@@ -211,30 +391,14 @@ def reusable_entries(
     return reusable
 
 
-def iterate_in_list_order(
-    summaries: List[Dict[str, Any]], resources_by_name: Dict[str, Any]
-) -> Iterator[Any]:
-    """Yield the resources in the order the service listed them."""
-    for summary in summaries:
-        resource = resources_by_name.get(summary.get("HubContentName"))
-        if resource is not None:
-            yield resource
-
-
-def _now() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
-
-
-def _parse_time(value: Any) -> Optional[datetime.datetime]:
-    if not isinstance(value, str):
-        return None
-    try:
-        parsed = datetime.datetime.fromisoformat(value)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=datetime.timezone.utc)
-    return parsed
+def ordered_entries(value: HubCatalogValue) -> List[Tuple[Summary, Entry]]:
+    """Return ``(summary, entry)`` pairs in the order the service listed the hub."""
+    pairs = []
+    for summary in value.summaries:
+        entry = value.entries.get(summary.get("HubContentName"))
+        if entry is not None:
+            pairs.append((summary, entry))
+    return pairs
 
 
 def _remove_quietly(path: str) -> None:

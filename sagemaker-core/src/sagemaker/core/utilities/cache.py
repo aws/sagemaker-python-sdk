@@ -128,7 +128,7 @@ class LRUCache(Generic[KeyType, ValType]):
 
         if value is None:
             value = self._retrieval_function(  # type: ignore
-                key=key, value=curr_value.element if curr_value else None
+                key=key, value=curr_value.value if curr_value else None
             )
 
         self._lru_cache[key] = self.Element(
