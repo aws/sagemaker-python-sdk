@@ -323,11 +323,14 @@ class HubCatalogCache:
     def get(self, key: HubCatalogKey, source: HubCatalogSource) -> HubCatalogValue:
         """Return the catalog of a hub from memory, or retrieve it when absent or expired."""
         with self._cache_lock:
+            # LRUCache.get pops an expired element before it raises, so read the old value
+            # first. It lets the retrieval describe only the changed items without a file read.
+            previous = self._previous_value(key)
             try:
                 value, _ = self._content_cache.get(key, data_source_fallback=False)
                 return value
             except KeyError:
-                previous = self._previous_value(key)
+                pass
         with self._key_lock(key):
             with self._cache_lock:
                 try:

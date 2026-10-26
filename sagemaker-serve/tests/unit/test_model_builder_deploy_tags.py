@@ -93,6 +93,8 @@ class TestTagNormalization(unittest.TestCase):
             format_tags([{"key": "n", "value": 1}]),
         )
         self.assertEqual(format_tags([("n", 1)]), [{"Key": "n", "Value": "1"}])
+        self.assertEqual(format_tags([{"Key": "x"}]), [{"Key": "x", "Value": ""}])
+        self.assertEqual(format_tags({"x": None}), [{"Key": "x", "Value": ""}])
         self.assertEqual(
             format_tags([BOTO_TAG, {"key": "team", "value": "ml"}]),
             [BOTO_TAG, {"Key": "team", "Value": "ml"}],

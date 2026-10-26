@@ -234,6 +234,22 @@ def test_an_expired_entry_lists_again_and_reuses_the_unchanged_items():
     assert [m.hub_content_version for m in models] == ["1.0.0", "1.1.0"]
 
 
+def test_an_expired_entry_reuses_the_in_memory_items_without_the_cache_file(_isolated_cache):
+    hub = _Hub({"model-a": "1.0.0", "model-b": "1.0.0"})
+    HubContent.set_cache_kwargs(cache_expiration_horizon=datetime.timedelta(milliseconds=50))
+    with _patched(hub):
+        HubContent.get_all(HUB, "Model", region="us-west-2")
+        (_isolated_cache / f"{ACCOUNT}-us-west-2-{HUB}-Model.json").unlink()
+        hub.described.clear()
+        hub.versions["model-b"] = "1.1.0"
+        time.sleep(0.1)
+        models = HubContent.get_all(HUB, "Model", region="us-west-2")
+
+    assert hub.described == ["model-b"]
+    assert [m.hub_content_version for m in models] == ["1.0.0", "1.1.0"]
+    assert sorted(_cache_payload(_isolated_cache)["entries"]) == ["model-a", "model-b"]
+
+
 def test_a_new_process_starts_from_the_cache_file(_isolated_cache):
     hub = _Hub({"model-a": "1.0.0", "model-b": "1.0.0"})
     with _patched(hub):
@@ -247,6 +263,8 @@ def test_a_new_process_starts_from_the_cache_file(_isolated_cache):
     assert hub.described == []
     assert [m.hub_content_name for m in models] == ["model-a", "model-b"]
     assert models[0].license == "apache-2.0"
+    assert models[0].original_creation_time == ORIGINAL
+    assert models[0].creation_time == CREATED
 
 
 def test_cache_files_are_separate_per_account_region_hub_and_type(_isolated_cache):

@@ -233,6 +233,20 @@ def test_options_object_and_keywords_together_raise(recorder):
 
     with pytest.raises(ValueError, match="not the two together"):
         _run(write(OSS_RETURN), EVAL_SAMPLES, options=RewardVerificationOptions(), envelope="oss")
+    with pytest.raises(ValueError, match="not the two together"):
+        _run(write(OSS_RETURN), EVAL_SAMPLES, options=RewardVerificationOptions(), is_nova=False)
+
+
+def test_the_first_release_positional_parameters_still_work(recorder):
+    write, events = recorder
+    reward_file = write(OSS_RETURN)
+    try:
+        result = verify_reward_function(reward_file, TRAIN_SAMPLES, False, None, False)
+    finally:
+        Path(reward_file).unlink()
+
+    assert result["successful_samples"] == 2
+    assert events() == [TRAIN_SAMPLES]
 
 
 def test_reward_sample_model_requires_id_and_messages():

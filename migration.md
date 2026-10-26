@@ -478,6 +478,7 @@ pipeline = Pipeline(
 | Fine-tuning SDK (SFT, RLVR, RLAIF) | Not available | V3.1.0: Standardized fine-tuning techniques | 🆕 NEW IN V3 |
 | Model customization | Manual training scripts | model-customization-examples/ | 🆕 NEW IN V3 |
 | Nova recipe training | Not available | V3.4.0: Nova recipe support in ModelTrainer | 🆕 NEW IN V3 |
+| Attach a trainer to an existing job | `Estimator.attach(job_name)` | `trainer.latest_training_job = TrainingJob.get(job_name)`. The property accepts a `TrainingJob` or `None` and raises `TypeError` for a job name string. `trainer.train()` returns the created `TrainingJob` | 🆕 NEW IN V3 |
 
 ### Data Processing
 

@@ -26,7 +26,7 @@ from unittest.mock import Mock
 
 import boto3
 import pytest
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoRegionError
 
 from sagemaker.core.instance_types import (
     InstanceSpec,
@@ -241,12 +241,24 @@ def test_unknown_instance_type_gets_an_empty_spec_and_a_warning(caplog):
 
 def test_describe_instance_type_returns_the_one_spec():
     ec2_client = _ec2_client(KNOWN_INFOS)
+    session = _session(ec2_client)
 
-    spec = describe_instance_type("ml.g5.xlarge", session=_session(ec2_client))
+    spec = describe_instance_type("ml.g5.xlarge", session=session, region="eu-west-1")
 
     assert spec.name == "ml.g5.xlarge"
     assert (spec.vcpus, spec.memory_mib, spec.gpu_count) == (4, 16384, 1)
     assert _requested_names(ec2_client) == [["g5.xlarge"]]
+    session.client.assert_called_once_with("ec2", region_name="eu-west-1")
+
+
+def test_describe_instance_types_without_a_region_raises_no_region_error(monkeypatch):
+    for variable in ("AWS_REGION", "AWS_DEFAULT_REGION", "AWS_PROFILE"):
+        monkeypatch.delenv(variable, raising=False)
+    monkeypatch.setenv("AWS_CONFIG_FILE", "/nonexistent/aws-config")
+    session = boto3.Session(aws_access_key_id="unused", aws_secret_access_key="unused")
+
+    with pytest.raises(NoRegionError):
+        describe_instance_types(["ml.g5.xlarge"], session=session)
 
 
 def test_describe_instance_type_of_an_unknown_type_has_no_hardware():

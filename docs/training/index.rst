@@ -336,14 +336,15 @@ Train pre-configured models from the SageMaker JumpStart hub using ``ModelTraine
    )
    print(content.license, content.provider, content.tasks, content.fine_tuning_techniques())
 
-   # Server-side search on the document fields, paged for you
+   # Server-side search on the document fields, paged for you. A Metadata value matches the
+   # document spelling, case-sensitive: Apache-2.0 and meta, not apache-2.0 and Meta.
    from sagemaker.core.hub_content import HubContentFilter
 
    apache_meta_models = HubContent.search(
        "SageMakerPublicHub",
        filters=[
-           HubContentFilter.metadata("license", "apache-2.0"),
-           HubContentFilter.metadata("provider", "Meta"),
+           HubContentFilter.metadata("license", "Apache-2.0"),
+           HubContentFilter.metadata("provider", "meta"),
        ],
    )
 
@@ -355,7 +356,7 @@ Key points:
 - Supports HuggingFace, XGBoost, CatBoost, LightGBM, and many more frameworks
 - Use ``list_jumpstart_models()`` and ``search_public_hub_models()`` to discover available models
 - ``HubContent`` exposes ``tasks``, ``license``, ``provider``, ``model_size``, ``context_window``, ``languages``, ``capabilities``, and ``recipes`` read from its search keywords and document, so no caller parses ``HubContentSearchKeywords`` by hand
-- ``HubContent.search()`` filters a hub server side on ``Metadata.<Field>`` through ``HubContentFilter``, inside the 20-filter and 1024-character service limits
+- ``HubContent.search()`` filters a hub server side on ``Metadata.<Field>`` through ``HubContentFilter``, inside the 20-filter and 1024-character service limits, and returns the matching ``HubContent`` list. A ``Metadata`` value is case-sensitive and matches the document spelling (``Apache-2.0``, ``meta``), while the keyword accessors return the lowercase keyword
 - ``HubContent.get_all()`` serves a hub from ``HubCatalogCache``, the same ``LRUCache`` shape as ``JumpStartModelsCache`` (20 hubs, 6 hour horizon), backed by one JSON file per hub under ``SAGEMAKER_HUB_CACHE_DIR`` or the user cache directory. It describes only the contents whose ``HubContentVersion`` changed, on a thread pool of the host default size with adaptive retries, and applies the ``ListHubContents`` filters to the cached catalog. ``refresh_cache()`` lists again and reports the counts, ``clear_cache()`` drops the memory and the file, and ``set_cache_kwargs()`` tunes the horizon, the item cap, the worker count, and the directory
 
 :doc:`Full example notebook <../v3-examples/training-examples/jumpstart-training-example>`

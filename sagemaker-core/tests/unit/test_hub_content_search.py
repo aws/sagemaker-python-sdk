@@ -73,12 +73,12 @@ def _client(pages):
 
 class TestHubContentFilter:
     def test_metadata_filter_maps_an_attribute_to_its_document_field(self):
-        search_filter = HubContentFilter.metadata("license", "apache-2.0")
+        search_filter = HubContentFilter.metadata("license", "Apache-2.0")
 
         assert search_filter.to_request() == {
             "Name": "Metadata.License",
             "Operator": "Equals",
-            "Value": "apache-2.0",
+            "Value": "Apache-2.0",
         }
 
     def test_metadata_filter_with_a_sequence_uses_in(self):
@@ -147,15 +147,14 @@ class TestHubContentSearch:
         session = Mock(name="session")
 
         with patch.object(HubContent, "get_sagemaker_client", return_value=client):
-            results = list(
-                HubContent.search(
-                    HUB,
-                    filters=[HubContentFilter.metadata("license", "apache-2.0")],
-                    session=session,
-                    region="us-west-2",
-                )
+            results = HubContent.search(
+                HUB,
+                filters=[HubContentFilter.metadata("license", "Apache-2.0")],
+                session=session,
+                region="us-west-2",
             )
 
+        assert isinstance(results, list)
         assert [content.hub_content_name for content in results] == ["model-a", "model-b"]
         assert all(isinstance(content, HubContent) for content in results)
         assert results[0].hub_name == HUB
@@ -170,7 +169,7 @@ class TestHubContentSearch:
         assert first_request["SearchExpression"]["Filters"][2] == {
             "Name": "Metadata.License",
             "Operator": "Equals",
-            "Value": "apache-2.0",
+            "Value": "Apache-2.0",
         }
         assert "NextToken" not in first_request
         assert client.search.call_args_list[1].kwargs["NextToken"] == "page-2"
@@ -184,7 +183,7 @@ class TestHubContentSearch:
         )
 
         with patch.object(HubContent, "get_sagemaker_client", return_value=client):
-            results = list(HubContent.search(HUB))
+            results = HubContent.search(HUB)
 
         assert [content.hub_content_name for content in results] == ["model-a"]
         assert client.search.call_count == 2
@@ -193,16 +192,37 @@ class TestHubContentSearch:
         client = _client([{"Results": [_record("model-a")]}])
 
         with patch.object(HubContent, "get_sagemaker_client", return_value=client):
-            (content,) = list(HubContent.search(HUB, hub_content_type="Model"))
+            (content,) = HubContent.search(HUB, hub_content_type="Model")
 
         assert content.hub_content_status == "Available"
         assert not hasattr(content, "tags")
 
     def test_search_emits_telemetry_once_per_call(self, _offline_telemetry):
-        client = _client([{"Results": [_record("model-a")]}])
+        client = _client(
+            [
+                {"Results": [_record("model-a")], "NextToken": "page-2"},
+                {"Results": [_record("model-b")]},
+            ]
+        )
 
         with patch.object(HubContent, "get_sagemaker_client", return_value=client):
-            list(HubContent.search(HUB))
+            HubContent.search(HUB)
 
         assert _offline_telemetry.call_count == 1
-        assert _offline_telemetry.call_args.args[5].startswith("HubContent.search&")
+        status, _, _, failure_reason, _, extra = _offline_telemetry.call_args.args
+        assert (status, failure_reason) == (1, None)
+        assert extra.startswith("HubContent.search&")
+        assert client.search.call_count == 2
+
+    def test_search_raises_from_the_call_and_emits_a_failure(self, _offline_telemetry):
+        client = _client([])
+        too_many = [HubContentFilter.keyword(f"@task:{i}") for i in range(MAX_SEARCH_FILTERS)]
+
+        with patch.object(HubContent, "get_sagemaker_client", return_value=client):
+            with pytest.raises(ValueError, match=f"at most {MAX_SEARCH_FILTERS} filters"):
+                HubContent.search(HUB, filters=too_many)
+
+        assert client.search.call_count == 0
+        status, _, _, failure_reason, failure_type, _ = _offline_telemetry.call_args.args
+        assert (status, failure_type) == (0, "ValueError")
+        assert f"at most {MAX_SEARCH_FILTERS} filters" in failure_reason

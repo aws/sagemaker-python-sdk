@@ -328,7 +328,9 @@ def list_instance_types(
 
 
 def describe_instance_types(
-    instance_types: Sequence[str], session: Optional[boto3.Session] = None
+    instance_types: Sequence[str],
+    session: Optional[boto3.Session] = None,
+    region: Optional[str] = None,
 ) -> Dict[str, InstanceSpec]:
     """Describes the hardware of SageMaker instance types through EC2 ``DescribeInstanceTypes``.
 
@@ -343,15 +345,17 @@ def describe_instance_types(
             ``["ml.g5.xlarge", "ml.m5.large"]``.
         session (boto3.Session): The session that creates the EC2 client. Defaults to a new
             session.
+        region (str): The region of the EC2 client. Defaults to the session region.
 
     Returns:
         dict[str, InstanceSpec]: One ``InstanceSpec`` per requested name, keyed by that name.
 
     Raises:
+        botocore.exceptions.NoRegionError: If neither ``region`` nor the session has a region.
         botocore.exceptions.ClientError: If EC2 rejects a request for a reason other than an
             unknown instance type, for example missing ``ec2:DescribeInstanceTypes`` permission.
     """
-    ec2_client = _boto_session(session).client("ec2")
+    ec2_client = _boto_session(session).client("ec2", region_name=region)
     specs: Dict[str, InstanceSpec] = {}
     for start in range(0, len(instance_types), DESCRIBE_INSTANCE_TYPES_BATCH_SIZE):
         batch = list(instance_types[start : start + DESCRIBE_INSTANCE_TYPES_BATCH_SIZE])
@@ -360,7 +364,7 @@ def describe_instance_types(
 
 
 def describe_instance_type(
-    instance_type: str, session: Optional[boto3.Session] = None
+    instance_type: str, session: Optional[boto3.Session] = None, region: Optional[str] = None
 ) -> InstanceSpec:
     """Describes the hardware of one SageMaker instance type through EC2.
 
@@ -368,9 +372,16 @@ def describe_instance_type(
         instance_type (str): The SageMaker instance type, for example ``ml.g5.xlarge``.
         session (boto3.Session): The session that creates the EC2 client. Defaults to a new
             session.
+        region (str): The region of the EC2 client. Defaults to the session region.
 
     Returns:
         InstanceSpec: The hardware. An instance type that EC2 does not know gets
         ``gpu_count=0`` and ``None`` in every other field. See :func:`describe_instance_types`.
+
+    Raises:
+        botocore.exceptions.NoRegionError: If neither ``region`` nor the session has a region.
+        botocore.exceptions.ClientError: If EC2 rejects the request for a reason other than an
+            unknown instance type.
     """
-    return describe_instance_types([instance_type], session=session)[instance_type]
+    specs = describe_instance_types([instance_type], session=session, region=region)
+    return specs[instance_type]

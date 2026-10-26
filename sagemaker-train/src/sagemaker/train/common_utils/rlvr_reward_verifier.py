@@ -183,7 +183,7 @@ def _unwrap_response(payload: Any, is_nova: bool) -> Any:
 def _resolve_options(
     options: Optional[RewardVerificationOptions], option_fields: Dict[str, Any]
 ) -> RewardVerificationOptions:
-    """Build the options from the ``options`` object or from its fields passed as keywords."""
+    """Build the options from the ``options`` object or from its fields passed one by one."""
     if options is not None and option_fields:
         known = ", ".join(field.name for field in fields(RewardVerificationOptions))
         raise ValueError(f"Pass 'options' or the keyword arguments {known}, not the two together.")
@@ -264,6 +264,9 @@ def _unwrap_batches(raw_responses: List[Any], spec: _EnvelopeSpec) -> Any:
 def verify_reward_function(
     reward_function: str,
     sample_data: List[Dict[str, Any]],
+    validate_format: Optional[bool] = None,
+    compute: Optional[Union[TrainingJobCompute, HyperPodCompute]] = None,
+    is_nova: Optional[bool] = None,
     options: Optional[RewardVerificationOptions] = None,
     **option_fields: Any,
 ) -> Dict[str, Any]:
@@ -277,16 +280,17 @@ def verify_reward_function(
                         or a path to a local Python file containing the reward function.
         sample_data: List of conversation samples to test. Each sample should be a dict
                     with 'id', 'messages', and optionally 'reference_answer' keys.
+        validate_format: If True (default), validates each result against
+                 ``RewardFunctionOutput``. Positional, as in the first release.
+        compute: ``TrainingJobCompute`` or ``HyperPodCompute``. With a Nova model, a
+                 ``HyperPodCompute`` makes the Lambda function name contain 'SageMaker', as
+                 SageMaker HyperPod demands.
+        is_nova: If True (default), expects a bare list back. False expects
+                 {statusCode: 200, headers: {...}, body: json.dumps(results)}.
         options: ``RewardVerificationOptions`` with ``validate_format``, ``compute``,
-                 ``is_nova``, and ``envelope``.
-        **option_fields: The fields of ``RewardVerificationOptions`` as keyword arguments,
-                 as an alternative to ``options``. ``validate_format`` (default True)
-                 validates each result against ``RewardFunctionOutput``. ``compute``
-                 (``TrainingJobCompute`` or ``HyperPodCompute``) with a Nova model makes
-                 the Lambda function name contain 'SageMaker', as SageMaker HyperPod
-                 demands. ``is_nova`` (default True) expects a bare list back, False
-                 expects {statusCode: 200, headers: {...}, body: json.dumps(results)}.
-                 ``envelope`` selects the request and response contract, see
+                 ``is_nova``, and ``envelope``, as an alternative to the keyword arguments.
+        **option_fields: The other fields of ``RewardVerificationOptions`` as keyword
+                 arguments. ``envelope`` selects the request and response contract, see
                  ``RewardVerificationOptions``.
 
     Returns:
@@ -348,6 +352,10 @@ def verify_reward_function(
         ...     envelope="eval_oss",
         ... )
     """
+    # validate_format, compute, and is_nova are the parameters of the first release, so they
+    # stay positional. The newer fields (envelope) arrive through option_fields.
+    named_fields = {"validate_format": validate_format, "compute": compute, "is_nova": is_nova}
+    option_fields = {**{k: v for k, v in named_fields.items() if v is not None}, **option_fields}
     resolved_options = _resolve_options(options, option_fields)
     validate_format = resolved_options.validate_format
     compute = resolved_options.compute

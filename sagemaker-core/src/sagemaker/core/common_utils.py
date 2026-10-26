@@ -1689,8 +1689,14 @@ def create_paginator_config(max_items: int = None, page_size: int = None) -> Dic
 
 
 def _tag_text(value: Any) -> Union[str, PipelineVariable]:
-    """Return a tag key or value as the service string, keeping a pipeline variable intact."""
-    if value is None or is_pipeline_variable(value):
+    """Return a tag key or value as the service string, keeping a pipeline variable intact.
+
+    The service model marks ``Tag.Value`` as a necessary member (0 to 256 characters), so a
+    missing value becomes the empty string instead of ``None``.
+    """
+    if value is None:
+        return ""
+    if is_pipeline_variable(value):
         return value
     return str(value)
 

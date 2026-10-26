@@ -31,7 +31,7 @@ catalog cache), and on a ``HubContent`` built by hand from a boto response.
 ``HubContent.search`` runs the service-side ``Search`` API with ``Resource="HubContent"``.
 The service indexes the document fields as ``Metadata.<Field>`` (``Metadata.Task``,
 ``Metadata.License``, ``Metadata.Provider``, ``Metadata.ModelSize``, ...), so a filter such
-as ``HubContentFilter.metadata("license", "apache-2.0")`` narrows the public hub without
+as ``HubContentFilter.metadata("license", "Apache-2.0")`` narrows the public hub without
 listing it. Each result record is a full ``HubContent`` with its keywords and document.
 """
 
@@ -41,7 +41,7 @@ import datetime
 import json
 import threading
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 
 from boto3.session import Session
 
@@ -183,9 +183,13 @@ class HubContentFilter:
     ) -> "HubContentFilter":
         """Build a ``Metadata.<Field>`` filter from a ``HubContent`` attribute name.
 
-        ``HubContentFilter.metadata("license", "apache-2.0")`` is
-        ``HubContentFilter("Metadata.License", "Equals", "apache-2.0")``. A sequence of
-        values selects the ``In`` operator.
+        ``HubContentFilter.metadata("license", "Apache-2.0")`` is
+        ``HubContentFilter("Metadata.License", "Equals", "Apache-2.0")``. A sequence of
+        values selects the ``In`` operator. The service compares the value with the
+        document spelling, case-sensitive: on the public hub ``Apache-2.0`` matches 112
+        models and ``apache-2.0`` none, ``meta`` matches 74 and ``Meta`` none. The keyword
+        accessors (``content.license``) return the lowercase keyword, so match a keyword
+        value with :meth:`keyword` (``@license:apache-2.0``).
         """
         if attribute not in METADATA_FIELDS:
             raise ValueError(
@@ -332,26 +336,28 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         hub_content_type: str = "Model",
         session: Optional[Any] = None,
         region: Optional[str] = None,
-    ) -> Iterator["HubContentMixin"]:
-        """Search a hub server side and yield each matching ``HubContent``.
+    ) -> List["HubContentMixin"]:
+        """Search a hub server side and return every matching ``HubContent``.
 
         Runs ``Search(Resource="HubContent")`` with an ``And`` expression of ``HubName``,
         ``HubContentType``, and ``filters``, sorted by ``HubContentName`` so the pages are
         stable, and pages until the service returns no ``NextToken``. Each result is a full
         ``HubContent`` bound to ``session`` and ``region``, with its search keywords and
         document, so ``content.license`` and ``content.recipes`` work without a second call.
+        The call returns after the last page, so the filters are validated and the pages are
+        fetched inside the call, where the telemetry and the ``Raises`` below see them.
 
         Args:
             hub_name (str): The hub to search, for example ``SageMakerPublicHub``.
             filters (Optional[Sequence[HubContentFilter]]): Up to 18 extra filters, for
-                example ``[HubContentFilter.metadata("license", "apache-2.0")]``.
+                example ``[HubContentFilter.metadata("license", "Apache-2.0")]``.
             hub_content_type (str): ``Model``, ``Notebook``, ``ModelReference``, or another
                 hub content type (default: ``Model``).
             session (Optional[boto3.session.Session]): Boto3 session.
             region (Optional[str]): Region name.
 
         Returns:
-            Iterator[HubContent]: The matching hub content, one page at a time.
+            List[HubContent]: The matching hub content, in ``HubContentName`` order.
 
         Raises:
             ValueError: If more than ``MAX_SEARCH_FILTERS`` filters result, or a filter has an
@@ -359,26 +365,12 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         """
         expression = _search_expression(hub_name, hub_content_type, filters or ())
         client = cls.get_sagemaker_client(session=session, region_name=region)
-        next_token = None
-        while True:
-            request = {
-                "Resource": "HubContent",
-                "SearchExpression": expression,
-                "SortBy": "HubContentName",
-                "SortOrder": "Ascending",
-                "MaxResults": SEARCH_PAGE_SIZE,
-            }
-            if next_token:
-                request["NextToken"] = next_token
-            response = client.search(**request)
-            for record in response.get("Results", []):
-                content = cls._from_search_record(record.get("HubContent", {}), hub_name)
-                if content is not None:
-                    yield content._set_client_context(session=session, region=region)
-            page_token = response.get("NextToken")
-            if not page_token or page_token == next_token:
-                return
-            next_token = page_token
+        results = []
+        for record in _search_hub_contents(client, expression):
+            content = cls._from_search_record(record, hub_name)
+            if content is not None:
+                results.append(content._set_client_context(session=session, region=region))
+        return results
 
     @classmethod
     def _from_search_record(
@@ -654,6 +646,28 @@ def _list_hub_contents(client, hub_name: str, hub_content_type: str) -> List[Dic
         page_token = response.get("NextToken")
         if not page_token or page_token == next_token:
             return summaries
+        next_token = page_token
+
+
+def _search_hub_contents(client, expression: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Return every ``SearchRecord.HubContent`` dict of a hub content search, page by page."""
+    records: List[Dict[str, Any]] = []
+    next_token = None
+    while True:
+        request = {
+            "Resource": "HubContent",
+            "SearchExpression": expression,
+            "SortBy": "HubContentName",
+            "SortOrder": "Ascending",
+            "MaxResults": SEARCH_PAGE_SIZE,
+        }
+        if next_token:
+            request["NextToken"] = next_token
+        response = client.search(**request)
+        records.extend(record.get("HubContent", {}) for record in response.get("Results", []))
+        page_token = response.get("NextToken")
+        if not page_token or page_token == next_token:
+            return records
         next_token = page_token
 
 
