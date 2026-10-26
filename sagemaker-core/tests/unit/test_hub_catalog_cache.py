@@ -110,9 +110,34 @@ class _Hub:
 def _isolated_cache(tmp_path, monkeypatch):
     monkeypatch.setenv(hub_catalog.CACHE_DIR_ENV_VAR, str(tmp_path / "hub-cache"))
     SageMakerClient.reset()
-    with patch.object(HubContent, "_account_id", return_value=ACCOUNT):
+    with (
+        patch.object(HubContent, "_account_id", return_value=ACCOUNT),
+        patch(
+            "sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session",
+            return_value=MagicMock(sagemaker_config=None),
+        ),
+        patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request"),
+    ):
         yield tmp_path / "hub-cache"
     SageMakerClient.reset()
+
+
+@pytest.fixture
+def telemetry_send():
+    with patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request") as send:
+        yield send
+
+
+def test_get_all_cached_and_refresh_cache_emit_telemetry(telemetry_send):
+    hub = _Hub({"model-a": "1.0.0"})
+
+    with _patched(hub):
+        HubContent.get_all_cached(HUB, region="us-west-2")
+        HubContent.refresh_cache(HUB, region="us-west-2")
+
+    func_names = [call.args[5].split("&")[0] for call in telemetry_send.call_args_list]
+    assert func_names == ["HubContent.get_all_cached", "HubContent.refresh_cache"]
+    assert all(call.args[0] == 1 for call in telemetry_send.call_args_list)
 
 
 def test_account_id_calls_sts_once_per_set_of_credentials(monkeypatch):

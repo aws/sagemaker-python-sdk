@@ -36,6 +36,19 @@ from sagemaker.core.resources import HubContent
 HUB = "SageMakerPublicHub"
 
 
+@pytest.fixture(autouse=True)
+def _offline_telemetry():
+    """Keep the ``HubContent.search`` telemetry off the network and off the default session."""
+    with (
+        patch(
+            "sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session",
+            return_value=Mock(sagemaker_config=None),
+        ),
+        patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request") as send,
+    ):
+        yield send
+
+
 def _record(name, license_name="apache-2.0", hub_name=HUB):
     return {
         "HubContent": {
@@ -184,3 +197,12 @@ class TestHubContentSearch:
 
         assert content.hub_content_status == "Available"
         assert not hasattr(content, "tags")
+
+    def test_search_emits_telemetry_once_per_call(self, _offline_telemetry):
+        client = _client([{"Results": [_record("model-a")]}])
+
+        with patch.object(HubContent, "get_sagemaker_client", return_value=client):
+            list(HubContent.search(HUB))
+
+        assert _offline_telemetry.call_count == 1
+        assert _offline_telemetry.call_args.args[5].startswith("HubContent.search&")

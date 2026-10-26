@@ -54,6 +54,8 @@ from sagemaker.core.hub_catalog import (
     resource_entry,
     reusable_entries,
 )
+from sagemaker.core.telemetry.constants import Feature
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 
 KEYWORD_PREFIXES = {
     "tasks": "@task:",
@@ -321,6 +323,7 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         return recipes
 
     @classmethod
+    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="HubContent.search")
     def search(
         cls,
         hub_name: str,
@@ -401,6 +404,7 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         return technique.lower() in self.fine_tuning_techniques()
 
     @classmethod
+    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="HubContent.get_all_cached")
     def get_all_cached(
         cls,
         hub_name: str,
@@ -441,6 +445,7 @@ class HubContentMixin:  # pylint: disable=too-many-public-methods
         return resources
 
     @classmethod
+    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="HubContent.refresh_cache")
     def refresh_cache(
         cls,
         hub_name: str,
