@@ -1,0 +1,8 @@
+# Only src/, pyproject.toml and requirements.txt are needed to build the agent image.
+.venv/
+**/__pycache__/
+*.py[cod]
+.bedrock_agentcore/
+.bedrock_agentcore.yaml
+data/
+scripts/

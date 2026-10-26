@@ -1,0 +1,25 @@
+# Runtime (container) dependencies -- installed into the AgentCore Docker image (see Dockerfile).
+# These are EXACTLY what the deployed agent imports at rollout time. Dev/launch/notebook tooling
+# lives in requirements-dev.txt (which installs this file too via `-r requirements.txt`).
+#
+# Note there is deliberately NO explicit boto3/botocore floor here: the deployed agent only does
+# inference + bearer-token reward report-back, never SageMaker CreateJob, so any transitive botocore
+# is fine. The CreateJob >=1.43.37 floor is a launcher concern and lives in requirements-dev.txt.
+
+# amazon-sop-bench is public OSS (github.com/amazon-science/SOP-Bench, CC-BY-NC-4.0). It bundles its
+# benchmark data in-package (benchmarks/data/**), so a plain pip install includes the data --
+# you do NOT need to clone the repo. Pinned to the commit this example was tested
+# against, for reproducible builds (not on PyPI yet).
+amazon-sop-bench @ git+https://github.com/amazon-science/SOP-Bench.git@f6d43858b94cf439854038101bce0eecd3e16eae
+
+# AgentCore runtime SDK: BedrockAgentCoreApp + @sagemaker_rft_handler (the deployed entrypoint).
+bedrock-agentcore
+
+# Modular SageMaker SDK: only the train (RFT adapters/decorators) + core (token_generator) modules,
+# NOT the full `sagemaker` meta-package (which drags in serve/mlops/jumpstart and balloons the image
+# past AgentCore's 2048 MB cap). Imports: sagemaker.train.rft, sagemaker.core.token_generator.
+sagemaker-train
+sagemaker-core
+
+# OpenAI-compatible client for the agent loop.
+openai
