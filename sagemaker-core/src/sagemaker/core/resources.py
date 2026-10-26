@@ -14223,6 +14223,7 @@ class HubContent(HubContentMixin, Base):
         sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
+        max_workers: int = 4,
     ) -> ResourceIterator["HubContent"]:
         """
         Get all HubContent resources
@@ -14238,6 +14239,7 @@ class HubContent(HubContentMixin, Base):
             sort_order: Sort hubs by ascending or descending order.
             session: Boto3 session.
             region: Region name.
+            max_workers: How many listed resources to describe at a time, on a thread pool. Defaults to 4. Keep it at or below the max_pool_connections of the client (10 by default).
 
         Returns:
             Iterator for listed HubContent resources.
@@ -14283,6 +14285,7 @@ class HubContent(HubContentMixin, Base):
             summary_name="HubContentInfo",
             resource_cls=HubContent,
             extra_init_data={"hub_name": hub_name},
+            max_workers=max_workers,
             list_method_kwargs=operation_input_args,
         )
 
@@ -14297,6 +14300,7 @@ class HubContent(HubContentMixin, Base):
         sort_order: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
+        max_workers: int = 4,
     ) -> ResourceIterator["HubContent"]:
         """
         List hub content versions.
@@ -14310,6 +14314,7 @@ class HubContent(HubContentMixin, Base):
             sort_order: Sort hub content versions by ascending or descending order.
             session: Boto3 session.
             region: Region name.
+            max_workers: How many listed resources to describe at a time, on a thread pool. Defaults to 4. Keep it at or below the max_pool_connections of the client (10 by default).
 
         Returns:
             Iterator for listed HubContent.
@@ -14354,6 +14359,7 @@ class HubContent(HubContentMixin, Base):
             resource_cls=HubContent,
             list_method_kwargs=operation_input_args,
             extra_init_data={"hub_name": self.hub_name},
+            max_workers=max_workers,
         )
 
 

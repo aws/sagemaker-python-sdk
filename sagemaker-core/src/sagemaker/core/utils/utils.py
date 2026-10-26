@@ -18,7 +18,8 @@ import os
 import re
 import subprocess
 import threading
-from collections import OrderedDict
+from collections import OrderedDict, deque
+from concurrent.futures import ThreadPoolExecutor
 
 from boto3.session import Session
 from botocore.config import Config
@@ -533,7 +534,14 @@ def _retries_configured_outside_code(session: Session) -> bool:
 
 
 class ResourceIterator(Generic[T]):
-    """ResourceIterator class to iterate over a list of resources."""
+    """ResourceIterator class to iterate over a list of resources.
+
+    Each listed resource is described (``refresh()``) before it is returned, so a list of
+    N resources costs one list call per page plus N describe calls. With ``max_workers``
+    above 1 the describes of the next ``max_workers`` resources run on a thread pool while
+    the caller consumes the current one. The resources still come back in list order, and
+    the list calls stay on the thread of the caller.
+    """
 
     def __init__(
         self,
@@ -547,6 +555,7 @@ class ResourceIterator(Generic[T]):
         session=None,
         region: Optional[str] = None,
         extra_init_data: dict = None,
+        max_workers: int = 1,
     ):
         """Initialize a ResourceIterator object
 
@@ -567,7 +576,19 @@ class ResourceIterator(Generic[T]):
             extra_init_data (dict, optional): Attributes set on every resource in addition to
                 the summary, for a list argument the summary does not echo back (for example
                 the ``hub_name`` a ``ListHubContents`` call was made with). Defaults to None.
+            max_workers (int, optional): How many listed resources to describe at a time.
+                1 describes each resource when the caller asks for it. A higher value keeps
+                up to ``max_workers`` ``refresh()`` calls in flight on a thread pool, so a
+                caller that stops early makes at most ``max_workers - 1`` describe calls
+                beyond the resources it consumed. Keep it at or below the
+                ``max_pool_connections`` of the client (10 by default), or urllib3 discards
+                connections. Defaults to 1.
+
+        Raises:
+            ValueError: If ``max_workers`` is less than 1.
         """
+        if max_workers < 1:
+            raise ValueError(f"max_workers must be at least 1, got {max_workers}.")
         self.summaries_key = summaries_key
         self.summary_name = summary_name
         self.client = client
@@ -577,88 +598,127 @@ class ResourceIterator(Generic[T]):
         self.session = session
         self.region = region
         self.extra_init_data = extra_init_data or {}
+        self.max_workers = max_workers
 
         self.resource_cls = resource_cls
         self.index = 0
         self.summary_list = []
         self.next_token = None
+        self._exhausted = False
+        self._pending = deque()
+        self._executor: Optional[ThreadPoolExecutor] = None
 
     def __iter__(self):
         """Return the iterator object."""
         return self
 
     def __next__(self) -> T:
+        """Return the next item from the iterator."""
+        if self.max_workers == 1:
+            return self._load(self._next_summary())
+        while len(self._pending) < self.max_workers:
+            try:
+                summary = self._next_summary()
+            except StopIteration:
+                break
+            self._pending.append(self._get_executor().submit(self._load, summary))
+        if not self._pending:
+            self._shutdown_executor()
+            raise StopIteration
+        return self._pending.popleft().result()
+
+    def _get_executor(self) -> ThreadPoolExecutor:
+        """Return the describe pool, creating it on the first concurrent describe."""
+        if self._executor is None:
+            self._executor = ThreadPoolExecutor(
+                max_workers=self.max_workers, thread_name_prefix="sagemaker-resource-refresh"
+            )
+        return self._executor
+
+    def _shutdown_executor(self):
+        """Release the describe pool once the iteration is over."""
+        if self._executor is not None:
+            self._executor.shutdown(wait=False)
+            self._executor = None
+
+    def _load(self, summary: dict) -> T:
+        """Build the resource for one summary, bind it to the session, and describe it."""
+        # Initialize the resource object
+        if is_primitive_class(self.resource_cls):
+            # If the resource class is a primitive class, there will be only one element in the summary
+            return list(summary.values())[0]
+
+        # Transform the resource summary into format to initialize object
+        init_data = transform(summary, self.summary_name)
+
+        if self.custom_key_mapping:
+            init_data = {self.custom_key_mapping.get(k, k): v for k, v in init_data.items()}
+
+        # Filter out the fields that are not in the resource class
+        fields = self.resource_cls.__annotations__
+        init_data = {k: v for k, v in init_data.items() if k in fields}
+        for key, value in self.extra_init_data.items():
+            init_data.setdefault(key, value)
+
+        resource_object = self.resource_cls(**init_data)
+
+        # Bind the resource to the session/region it was listed with
+        if hasattr(resource_object, "_set_client_context"):
+            resource_object._set_client_context(  # pylint: disable=protected-access
+                session=self.session, region=self.region
+            )
+
+        # If the resource object has refresh method, refresh and return it
+        if hasattr(resource_object, "refresh"):
+            resource_object.refresh()
+        return resource_object
+
+    def _next_summary(self) -> dict:
+        """Return the next list summary, fetching the next page when the current one is spent."""
+        if self._exhausted:
+            raise StopIteration
 
         # If there are summaries in the summary_list, return the next summary
-        """Return the next item from the iterator."""
         if len(self.summary_list) > 0 and self.index < len(self.summary_list):
             # Get the next summary from the resource summary_list
             summary = self.summary_list[self.index]
             self.index += 1
-
-            # Initialize the resource object
-            if is_primitive_class(self.resource_cls):
-                # If the resource class is a primitive class, there will be only one element in the summary
-                resource_object = list(summary.values())[0]
-            else:
-                # Transform the resource summary into format to initialize object
-                init_data = transform(summary, self.summary_name)
-
-                if self.custom_key_mapping:
-                    init_data = {self.custom_key_mapping.get(k, k): v for k, v in init_data.items()}
-
-                # Filter out the fields that are not in the resource class
-                fields = self.resource_cls.__annotations__
-                init_data = {k: v for k, v in init_data.items() if k in fields}
-                for key, value in self.extra_init_data.items():
-                    init_data.setdefault(key, value)
-
-                resource_object = self.resource_cls(**init_data)
-
-                # Bind the resource to the session/region it was listed with
-                if hasattr(resource_object, "_set_client_context"):
-                    resource_object._set_client_context(  # pylint: disable=protected-access
-                        session=self.session, region=self.region
-                    )
-
-            # If the resource object has refresh method, refresh and return it
-            if hasattr(resource_object, "refresh"):
-                resource_object.refresh()
-            return resource_object
+            return summary
 
         # If index reached the end of summary_list, and there is no next token, raise StopIteration
-        elif (
+        if (
             len(self.summary_list) > 0
             and self.index >= len(self.summary_list)
             and (not self.next_token)
         ):
+            self._exhausted = True
             raise StopIteration
 
         # Otherwise, get the next page of summaries by calling the list method with the next token if available
-        else:
-            while True:
-                previous_token = self.next_token
-                if self.next_token:
-                    response = getattr(self.client, self.list_method)(
-                        NextToken=self.next_token, **self.list_method_kwargs
-                    )
-                else:
-                    response = getattr(self.client, self.list_method)(**self.list_method_kwargs)
+        while True:
+            previous_token = self.next_token
+            if self.next_token:
+                response = getattr(self.client, self.list_method)(
+                    NextToken=self.next_token, **self.list_method_kwargs
+                )
+            else:
+                response = getattr(self.client, self.list_method)(**self.list_method_kwargs)
 
-                self.summary_list = response.get(self.summaries_key, [])
-                self.next_token = response.get("NextToken", None)
-                self.index = 0
+            self.summary_list = response.get(self.summaries_key, [])
+            self.next_token = response.get("NextToken", None)
+            self.index = 0
 
-                if len(self.summary_list) > 0:
-                    return self.__next__()
+            if len(self.summary_list) > 0:
+                return self._next_summary()
 
-                # A page can be empty and still carry a NextToken (the service
-                # filters results after paginating), so an empty page only ends
-                # the iteration when there is no further page. A NextToken that
-                # comes back unchanged would page forever, so it also ends the
-                # iteration (the same consecutive-repeat check botocore paginators do).
-                if not self.next_token or self.next_token == previous_token:
-                    raise StopIteration
+            # A page can be empty and still carry a NextToken (the service
+            # filters results after paginating), so an empty page only ends
+            # the iteration when there is no further page. A NextToken that
+            # comes back unchanged would page forever, so it also ends the
+            # iteration (the same consecutive-repeat check botocore paginators do).
+            if not self.next_token or self.next_token == previous_token:
+                self._exhausted = True
+                raise StopIteration
 
 
 def serialize(value: Any) -> Any:

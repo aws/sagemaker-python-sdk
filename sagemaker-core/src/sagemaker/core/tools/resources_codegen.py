@@ -136,6 +136,35 @@ GET_ALL_INPUT_ATTRIBUTES = {
     "HubContent": {"HubName": "hub_name"},
 }
 
+# ResourceIterator describes every listed resource before it returns it, one call per
+# resource. A list API whose catalog runs to hundreds of items (ListHubContents returns
+# the public hub, about 770 models) takes minutes one describe at a time, so the
+# generated list methods of these resources take ``max_workers`` and hand it to the
+# iterator, which keeps that many describes in flight. The value is the default worker
+# count: 4 describes of the public hub run 1.7 to 2.8 times faster than 1, and 8 run
+# into DescribeHubContent throttling and gain nothing more.
+CONCURRENT_DESCRIBE_RESOURCES = {"HubContent": 4}
+MAX_WORKERS_ARG_TEMPLATE = "max_workers: int = {default},"
+MAX_WORKERS_DOCSTRING_TEMPLATE = (
+    "max_workers: How many listed resources to describe at a time, on a thread pool. "
+    "Defaults to {default}. Keep it at or below the max_pool_connections of the client "
+    "(10 by default).\n"
+)
+
+
+def _max_workers_code(resource_name: str):
+    """Return the signature line and the docstring line of ``max_workers`` for a resource.
+
+    The two are empty for a resource that ``CONCURRENT_DESCRIBE_RESOURCES`` does not name.
+    """
+    default = CONCURRENT_DESCRIBE_RESOURCES.get(resource_name)
+    if default is None:
+        return "", ""
+    return (
+        add_indent(MAX_WORKERS_ARG_TEMPLATE.format(default=default), 4),
+        add_indent(MAX_WORKERS_DOCSTRING_TEMPLATE.format(default=default)),
+    )
+
 
 class ResourcesCodeGen:
     """A class for generating resources based on a service JSON file.
@@ -1066,6 +1095,7 @@ class ResourcesCodeGen:
         return_string: str = None,
         include_intelligent_defaults_errors: bool = False,
         exclude_resource_attrs: list = None,
+        extra_parameters_docstring: str = "",
     ) -> str:
         """Generate the docstring for a method of a resource.
 
@@ -1079,6 +1109,8 @@ class ResourcesCodeGen:
             return_string (str): The return string.
             include_intelligent_defaults_errors (bool): Whether to include intelligent defaults errors.
             exclude_resource_attrs (list): A list of attributes to exclude from the docstring.
+            extra_parameters_docstring (str): Parameter lines to add after ``session`` and
+                ``region``, for a method argument that is not an operation input member.
 
         Returns:
             str: The generated docstring for the IMPORT method.
@@ -1100,6 +1132,7 @@ class ResourcesCodeGen:
             if not _shape_attr_documentation_string:
                 docstring += "\nParameters:\n"
             docstring += add_indent("session: Boto3 session.\nregion: Region name.\n")
+            docstring += extra_parameters_docstring
 
         if include_return_resource_docstring:
             docstring += f"\nReturns:\n" f"    The {resource_name} resource.\n"
@@ -1769,6 +1802,11 @@ class ResourcesCodeGen:
                 )
                 resource_iterator_args_list.append(f"extra_init_data={{{extra_init}}}")
 
+        extra_args, extra_parameters_docstring = _max_workers_code(method.return_type)
+        if extra_args:
+            method_args += "\n" + extra_args
+            resource_iterator_args_list.append("max_workers=max_workers")
+
         resource_iterator_args = ",\n".join(resource_iterator_args_list)
         resource_iterator_args = add_indent(resource_iterator_args, 8)
         serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
@@ -1790,6 +1828,7 @@ class ResourcesCodeGen:
             include_session_region=True,
             return_string=return_string,
             exclude_resource_attrs=exclude_list + (exclude_resource_attrs or []),
+            extra_parameters_docstring=extra_parameters_docstring,
         )
 
         return GENERIC_METHOD_TEMPLATE.format(
@@ -2089,6 +2128,11 @@ if not isinstance(self.resource_config, Unassigned):
             )
             resource_iterator_args_list.append(f"extra_init_data={{{extra_init}}}")
 
+        extra_args, extra_parameters_docstring = _max_workers_code(resource_name)
+        if extra_args:
+            extra_args += "\n"
+            resource_iterator_args_list.append("max_workers=max_workers")
+
         exclude_list = ["next_token", "max_results"]
         get_all_args = self._generate_method_args(operation_input_shape_name, exclude_list)
 
@@ -2102,6 +2146,8 @@ if not isinstance(self.resource_config, Unassigned):
                 operation=operation,
                 custom_key_mapping=custom_key_mapping_str,
                 resource_iterator_args=resource_iterator_args,
+                extra_args=extra_args,
+                extra_parameters_docstring=extra_parameters_docstring,
             )
             return formatted_method
 
@@ -2124,6 +2170,7 @@ if not isinstance(self.resource_config, Unassigned):
             include_return_resource_docstring=False,
             return_string=f"Returns:\n" f"    Iterator for listed {resource_name} resources.\n",
             exclude_resource_attrs=exclude_list,
+            extra_parameters_docstring=extra_parameters_docstring,
         )
 
         formatted_method = GET_ALL_METHOD_WITH_ARGS_TEMPLATE.format(
@@ -2134,6 +2181,7 @@ if not isinstance(self.resource_config, Unassigned):
             operation_input_args=operation_input_args,
             custom_key_mapping=custom_key_mapping_str,
             resource_iterator_args=resource_iterator_args,
+            extra_args=extra_args,
         )
         return formatted_method
 

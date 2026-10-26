@@ -532,7 +532,7 @@ def get_all(
 {get_all_args}
     session: Optional[Session] = None,
     region: Optional[StrPipeVar] = None,
-) -> ResourceIterator["{resource}"]:
+{extra_args}) -> ResourceIterator["{resource}"]:
 {docstring}
     client = Base.get_sagemaker_client(session=session, region_name=region, service_name="{service_name}")
 
@@ -556,14 +556,14 @@ def get_all(
     cls,
     session: Optional[Session] = None,
     region: Optional[StrPipeVar] = None,
-) -> ResourceIterator["{resource}"]:
+{extra_args}) -> ResourceIterator["{resource}"]:
     """
     Get all {resource} resources.
 
     Parameters:
         session: Boto3 session.
         region: Region name.
-
+{extra_parameters_docstring}
     Returns:
         Iterator for listed {resource} resources.
 
