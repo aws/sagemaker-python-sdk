@@ -45,7 +45,7 @@ import os
 import re
 import tempfile
 import threading
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -396,15 +396,12 @@ class HubCatalogCache:
         reused = reusable_entries(previous, summaries)
         missing = [s for s in summaries if s.get("HubContentName") not in reused]
         entries = dict(reused)
-        try:
-            for summary, resource in self._describe_all(source, key, missing):
-                entries[summary["HubContentName"]] = resource_entry(
-                    resource, summary.get("HubContentVersion")
-                )
-        finally:
-            # A describe that raises still leaves every described item on disk, so the
-            # next retrieval describes only the rest.
-            cache_file.save(entries)
+        failure = self._describe_all(source, key, missing, entries)
+        # The file holds every item that was described, so after a failure the next
+        # retrieval describes only the rest.
+        cache_file.save(entries)
+        if failure is not None:
+            raise failure
         refresh = HubCatalogRefresh(
             listed=len(summaries),
             reused=len(reused),
@@ -414,16 +411,38 @@ class HubCatalogCache:
         )
         return HubCatalogValue(entries=entries, summaries=summaries, refresh=refresh)
 
-    def _describe_all(self, source: HubCatalogSource, key: HubCatalogKey, summaries):
-        """Yield ``(summary, resource)`` for each summary, described on a thread pool."""
+    def _describe_all(
+        self,
+        source: HubCatalogSource,
+        key: HubCatalogKey,
+        summaries: List[Summary],
+        entries: Dict[str, Entry],
+    ) -> Optional[BaseException]:
+        """Describe every summary on a thread pool and put each result into ``entries``.
 
-        def describe(summary: Summary) -> Any:
-            return source.describe_function(key, summary)
-
+        Every describe runs to its end, as completed, so one failure drops no result that
+        another worker already has. The first failure comes back instead of raising, so the
+        caller persists the entries before it raises.
+        """
+        failure: Optional[BaseException] = None
         with ThreadPoolExecutor(
             max_workers=self._max_workers, thread_name_prefix="sagemaker-hub-describe"
         ) as executor:
-            yield from zip(summaries, executor.map(describe, summaries))
+            futures = {
+                executor.submit(source.describe_function, key, summary): summary
+                for summary in summaries
+            }
+            for future in as_completed(futures):
+                summary = futures[future]
+                try:
+                    resource = future.result()
+                except Exception as error:  # pylint: disable=broad-except
+                    failure = failure or error
+                    continue
+                entries[summary["HubContentName"]] = resource_entry(
+                    resource, summary.get("HubContentVersion")
+                )
+        return failure
 
 
 class HubCatalogAccessor:

@@ -957,7 +957,7 @@ class TestSFTTrainerComputeDispatch:
 
         compute = HyperPodCompute(cluster_name="my-cluster", instance_type="ml.p5.48xlarge")
         trainer = self._make_trainer(compute=compute)
-        with patch.object(trainer, "_train_hyperpod", return_value="job-name") as mock_hp:
+        with patch.object(trainer, "_train_hyperpod", return_value=Mock()) as mock_hp:
             trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
             mock_hp.assert_called_once()
 

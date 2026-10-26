@@ -1550,7 +1550,12 @@ class BaseTrainer(ABC):
 
         Uses the HyperPod CLI to connect to the cluster and submit a training job
         using a recipe-based approach. Shared across trainers that support HyperPod
-        (SFT, DPO, RLVR).
+        (SFT, DPO, RLVR, CPT).
+
+        Returns:
+            TrainingJob: A handle named after the submitted HyperPod job, the same object
+            ``on_submit`` gets and ``latest_training_job`` holds, or ``None`` for a
+            ``dry_run``. Read ``training_job_name`` for the job name.
         """
 
         sagemaker_session = TrainDefaults.get_sagemaker_session(
@@ -1760,4 +1765,4 @@ class BaseTrainer(ABC):
             except Exception as e:
                 logger.warning("Could not resolve checkpoint from manifest for %s: %s", job_name, e)
 
-        return job_name
+        return training_job

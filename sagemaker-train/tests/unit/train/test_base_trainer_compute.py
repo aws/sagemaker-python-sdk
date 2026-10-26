@@ -229,9 +229,9 @@ class TestHyperPodComputeMapping:
             ),
             patch.object(trainer, "get_resolved_recipe", return_value={"training_config": {}}),
         ):
-            job_name = trainer._train_hyperpod(wait=False)
+            training_job = trainer._train_hyperpod(wait=False)
 
-        assert job_name == "my-job-123"
+        assert training_job.training_job_name == "my-job-123"
 
         # instance_type is in --override-parameters
         start_cmd = mock_subprocess.run.call_args_list[-1].args[0]

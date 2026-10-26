@@ -233,7 +233,8 @@ class CPTTrainer(BaseTrainer):
                 before any wait. Not called for a ``dry_run``.
 
         Returns:
-            str: The HyperPod job name, or None if dry_run=True.
+            TrainingJob: A handle named after the submitted HyperPod job, or None if
+            dry_run=True. Read ``training_job_name`` for the job name.
 
         Raises:
             ValueError: If compute is not configured or recipe is missing.

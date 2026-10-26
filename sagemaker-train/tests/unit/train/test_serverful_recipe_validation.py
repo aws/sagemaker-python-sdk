@@ -781,9 +781,9 @@ class TestHyperpodResolvesAndFlattensRecipe:
                 "sagemaker.train.common_utils.finetune_utils.get_training_image",
                 return_value=None,
             ):
-                job_name = trainer._train_hyperpod(wait=False)
+                training_job = trainer._train_hyperpod(wait=False)
 
-        assert job_name == "my-job-456"
+        assert training_job.training_job_name == "my-job-456"
 
         # Verify get_hyperpod_recipe_path received additional_overrides
         recipe_call_kwargs = mock_get_recipe_path.call_args.kwargs

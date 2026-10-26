@@ -299,7 +299,8 @@ class FineTuningSweep:
         training_job = trainer.train(wait=False)
         if isinstance(training_job, TrainingJob):
             return training_job
-        # A HyperPod trainer returns the job name and keeps the handle on the trainer.
+        # A trainer that returns no handle (ModelTrainer before this release) keeps it on
+        # latest_training_job.
         training_job = trainer.latest_training_job
         if isinstance(training_job, TrainingJob):
             return training_job

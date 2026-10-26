@@ -309,27 +309,30 @@ def test_an_unreadable_cache_file_is_ignored(_isolated_cache, caplog):
 
 
 def test_a_failed_describe_raises_and_keeps_the_described_items_in_the_file(_isolated_cache):
-    hub = _Hub({"model-a": "1.0.0", "model-b": "1.0.0", "model-c": "1.0.0"})
+    hub = _Hub({"model-a": "1.0.0", "model-b": "1.0.0", "model-c": "1.0.0", "model-d": "1.0.0"})
 
     def describe(**kwargs):
-        if kwargs["HubContentName"] == "model-c":
-            raise RuntimeError("describe of model-c failed")
+        if kwargs["HubContentName"] == "model-a":
+            raise RuntimeError("describe of model-a failed")
         return hub._describe(**kwargs)
 
     hub.client.describe_hub_content.side_effect = describe
     HubContent.set_cache_kwargs(max_workers=1)
     with _patched(hub):
-        with pytest.raises(RuntimeError, match="describe of model-c failed"):
+        with pytest.raises(RuntimeError, match="describe of model-a failed"):
             HubContent.get_all(HUB, "Model", region="us-west-2")
 
-    assert sorted(_cache_payload(_isolated_cache)["entries"]) == ["model-a", "model-b"]
+    # The first describe failed, and the three after it still ran and landed in the file.
+    assert hub.described == ["model-b", "model-c", "model-d"]
+    assert hub.client.describe_hub_content.call_count == 4
+    assert sorted(_cache_payload(_isolated_cache)["entries"]) == ["model-b", "model-c", "model-d"]
     hub.client.describe_hub_content.side_effect = hub._describe
     hub.described.clear()
     with _patched(hub):
         refresh = HubContent.refresh_cache(HUB, region="us-west-2")
 
-    assert hub.described == ["model-c"]
-    assert (refresh.reused, refresh.described) == (2, 1)
+    assert hub.described == ["model-a"]
+    assert (refresh.reused, refresh.described) == (3, 1)
 
 
 def test_set_cache_kwargs_rebuilds_the_cache_and_rejects_bad_values():

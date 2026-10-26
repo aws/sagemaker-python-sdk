@@ -36,6 +36,7 @@ from sagemaker.core.telemetry.telemetry_logging import (
     PYTHON_VERSION,
     TELEMETRY_REQUEST_TIMEOUT,
 )
+from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry.constants import Status
 from sagemaker.core.user_agent import SDK_VERSION, process_studio_metadata_file
 
@@ -970,3 +971,57 @@ class TestEmitFailureTelemetry(unittest.TestCase):
 
         # Should not raise.
         _emit_failure_telemetry(Feature.MODEL_CUSTOMIZATION, "MyClass.method", ValueError("x"))
+
+
+class TestSessionKeyword(unittest.TestCase):
+    """A classmethod that takes a boto ``session`` keyword reports telemetry on that session.
+
+    The resource classmethods (``HubContent.get_all``, ``HubContent.search``) take a
+    ``boto3.Session`` named ``session``. Before this change the decorator read only
+    ``sagemaker_session``, so their telemetry went to the default credentials of the process.
+    """
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_a_boto_session_keyword_is_wrapped_and_the_default_is_not_built(
+        self, mock_send, mock_default_session, mock_optout
+    ):
+        boto_session = boto3.Session(
+            region_name="eu-west-1", aws_access_key_id="unused", aws_secret_access_key="unused"
+        )
+
+        @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "HubContent.get_all")
+        def get_all(cls, hub_name, session=None, region=None):
+            return [hub_name]
+
+        result = get_all(object, "SageMakerPublicHub", session=boto_session, region="eu-west-1")
+
+        self.assertEqual(result, ["SageMakerPublicHub"])
+        mock_default_session.assert_not_called()
+        telemetry_session = mock_send.call_args.args[2]
+        self.assertIsInstance(telemetry_session, Session)
+        self.assertIs(telemetry_session.boto_session, boto_session)
+        self.assertEqual(telemetry_session.boto_region_name, "eu-west-1")
+
+    @patch(
+        "sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config", return_value=False
+    )
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    def test_no_session_keyword_falls_back_to_the_default_session(
+        self, mock_send, mock_default_session, mock_optout
+    ):
+        mock_default_session.return_value = Mock()
+
+        @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "HubContent.get_all")
+        def get_all(cls, hub_name, session=None, region=None):
+            return [hub_name]
+
+        get_all(object, "SageMakerPublicHub")
+        get_all(object, "SageMakerPublicHub", session=Mock(name="not a boto session"))
+
+        self.assertEqual(mock_default_session.call_count, 2)
+        self.assertEqual(mock_send.call_count, 2)

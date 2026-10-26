@@ -19,7 +19,7 @@ import platform
 import sys
 import threading
 from time import perf_counter
-from typing import List
+from typing import List, Optional
 import functools
 import requests
 from urllib.parse import quote
@@ -301,9 +301,11 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
             # Fallback: check kwargs for sagemaker_session (e.g., classmethods where
             # args[0] is the class and the session is passed as a keyword argument)
             if not sagemaker_session:
-                sagemaker_session = kwargs.get("sagemaker_session") or (
-                    _get_default_sagemaker_session()
+                sagemaker_session = kwargs.get("sagemaker_session") or _session_from_boto_session(
+                    kwargs.get("session")
                 )
+            if not sagemaker_session:
+                sagemaker_session = _get_default_sagemaker_session()
 
             if sagemaker_session:
                 global _telemetry_msg_shown
@@ -650,3 +652,20 @@ def _get_default_sagemaker_session():
     sagemaker_session = Session(boto_session=boto_session)
 
     return sagemaker_session
+
+
+def _session_from_boto_session(boto_session) -> Optional[Session]:
+    """Return a ``Session`` on the caller's ``boto3.Session``, or ``None`` without one.
+
+    The resource classmethods (``HubContent.get_all``, ``HubContent.search``, ...) take a
+    ``session`` keyword that is a ``boto3.Session``, not a ``sagemaker_session``. The
+    telemetry of such a call is attributed to the account and region of that session
+    instead of the default credentials of the process. Anything else in the keyword (a
+    SageMaker ``Session``, a mock, a patched ``boto3.Session`` class, a session with no
+    region) keeps the default session, as before.
+    """
+    if not isinstance(boto3.Session, type) or not isinstance(boto_session, boto3.Session):
+        return None
+    if not boto_session.region_name:
+        return None
+    return Session(boto_session=boto_session)

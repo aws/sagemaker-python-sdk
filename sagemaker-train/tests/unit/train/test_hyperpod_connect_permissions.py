@@ -141,9 +141,9 @@ class TestTrainHyperPodVerifiesConnectPermissions:
                 return_value="fine-tuning/nova/test-recipe",
             ),
         ):
-            job_name = trainer._train_hyperpod(wait=False)
+            training_job = trainer._train_hyperpod(wait=False)
 
-        assert job_name == "my-job-123"
+        assert training_job.training_job_name == "my-job-123"
         mock_verify.assert_called_once()
 
 
@@ -212,10 +212,10 @@ class TestTrainHyperPodConnectPermissionsEndToEnd:
             ),
             caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"),
         ):
-            job_name = trainer._train_hyperpod(wait=False)
+            training_job = trainer._train_hyperpod(wait=False)
 
         # Submission still proceeds despite the missing permission.
-        assert job_name == "my-job-123"
+        assert training_job.training_job_name == "my-job-123"
         # The real resolver simulated the caller and warned about the gap.
         assert any(
             "eks:DescribeCluster" in r.getMessage() and "my-cluster" in r.getMessage()
@@ -254,9 +254,9 @@ class TestTrainHyperPodConnectPermissionsEndToEnd:
             ),
             caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"),
         ):
-            job_name = trainer._train_hyperpod(wait=False)
+            training_job = trainer._train_hyperpod(wait=False)
 
-        assert job_name == "my-job-123"
+        assert training_job.training_job_name == "my-job-123"
         assert not [
             r
             for r in caplog.records
