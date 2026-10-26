@@ -33,6 +33,7 @@ from sagemaker.core import shapes
 from sagemaker.core.shapes import AlgorithmSpecification, ModelPackageConfig
 from sagemaker.core.utils.utils import serialize
 from sagemaker.core.apiutils._boto_functions import to_pascal_case
+from sagemaker.core.common_utils import name_from_base
 
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 from sagemaker.core.config.config_schema import (
@@ -76,7 +77,6 @@ from sagemaker.train.configs import (
 from sagemaker.train.distributed import Torchrun, DistributedConfig
 from sagemaker.train.utils import (
     _default_s3_uri,
-    _get_unique_name,
     _is_valid_path,
     _is_valid_s3_uri,
     safe_serialize,
@@ -679,7 +679,13 @@ class ModelTrainer(BaseModel):
             Dict[str, Any]: The training job arguments.
         """
         self._populate_intelligent_defaults()
-        current_training_job_name = _get_unique_name(self.base_job_name)
+        # Use the shared name_from_base timestamp format so that
+        # sagemaker.core.common_utils.base_from_name can strip it back to base_job_name.
+        # trim_request_dict relies on base_from_name to preserve the prefix when a pipeline
+        # sets PipelineDefinitionConfig(use_custom_job_prefix=True) (issues #5776, #6299).
+        # Underscores are replaced because SageMaker job names disallow them; _get_unique_name
+        # used to do this and name_from_base does not.
+        current_training_job_name = name_from_base(self.base_job_name.replace("_", "-"))
         # Use input_s3_key_prefix (e.g. a pipeline name) as the leading key prefix when set;
         # otherwise fall back to base_job_name to preserve the default upload layout.
         input_data_key_prefix_root = self.input_s3_key_prefix or self.base_job_name
@@ -851,7 +857,7 @@ class ModelTrainer(BaseModel):
             "training_job_name": current_training_job_name,
             "algorithm_specification": algorithm_specification,
             "hyper_parameters": string_hyper_parameters,
-            "input_data_config": final_input_data_config,
+            "input_data_config": (final_input_data_config if final_input_data_config else None),
             "resource_config": resource_config,
             "vpc_config": vpc_config,
             "role_arn": self.role,
@@ -880,8 +886,15 @@ class ModelTrainer(BaseModel):
             training_request["model_package_config"] = self.model_package_config
 
         if boto3 or isinstance(self.sagemaker_session, PipelineSession):
-            if isinstance(self.sagemaker_session, PipelineSession):
-                training_request.pop("training_job_name", None)
+            # Keep training_job_name in the request. The TrainingStep strips it via
+            # trim_request_dict, which drops it by default but preserves the base_job_name
+            # prefix when PipelineDefinitionConfig(use_custom_job_prefix=True). Popping it here
+            # unconditionally left use_custom_job_prefix nothing to preserve (issue #5776, #6299).
+            # ``serialize`` renames the fields of Tag models to the boto-style
+            # {"Key": ..., "Value": ...} form the service requires, but passes plain dicts
+            # through untouched, so hand it the validated Tag objects. ``TrainingJob.create``
+            # takes the dicts instead, which it revalidates into its own Tag model.
+            training_request["tags"] = self.tags
             # Convert snake_case to PascalCase for AWS API
             pipeline_request = {to_pascal_case(k): v for k, v in training_request.items()}
             serialized_request = serialize(pipeline_request)
@@ -995,7 +1008,7 @@ class ModelTrainer(BaseModel):
                     "algorithm_specification"
                 ].container_entrypoint,
                 container_arguments=training_request["algorithm_specification"].container_arguments,
-                input_data_config=training_request["input_data_config"],
+                input_data_config=training_request["input_data_config"] or [],
                 hyper_parameters=training_request["hyper_parameters"],
                 environment=training_request["environment"],
             )
@@ -1561,7 +1574,7 @@ class ModelTrainer(BaseModel):
             )
         if is_nova:
             if hyperparameters and isinstance(hyperparameters, str):
-                hyperparameters = cls._validate_and_load_hyperparameters_file(hyperparameters)
+                hyperparameters = cls._validate_and_fetch_hyperparameters_file(hyperparameters)
                 model_trainer_args["hyperparameters"].update(hyperparameters)
             elif hyperparameters and isinstance(hyperparameters, dict):
                 model_trainer_args["hyperparameters"].update(hyperparameters)

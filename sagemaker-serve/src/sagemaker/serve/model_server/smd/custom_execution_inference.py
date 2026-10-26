@@ -10,24 +10,40 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module is for SageMaker inference.py."""
+"""This module is for SageMaker inference.py.
+
+This file is copied into the model artifacts as ``code/inference.py`` and runs inside
+the SageMaker Distribution serving container, whose installed ``sagemaker`` version is
+set by the image rather than by the SDK that built the artifacts. It therefore must not
+import from ``sagemaker``: the integrity check is inlined below instead of imported from
+``sagemaker.serve.validations.check_integrity`` so that it cannot drift against the
+container's copy of that module.
+"""
 
 from __future__ import absolute_import
 import asyncio
+import hashlib
+import hmac
+import json
+import logging
 import os
 import platform
-import cloudpickle
-import logging
 from pathlib import Path
-from sagemaker.serve.validations.check_integrity import perform_integrity_check
+import cloudpickle
 
 logger = LOGGER = logging.getLogger("sagemaker")
+
+DEFAULT_CODE_DIRECTORY = "/opt/ml/model/code"
+
+
+def _get_code_directory() -> Path:
+    """Returns the directory holding serve.pkl and metadata.json."""
+    return Path(os.getenv("SAGEMAKER_INFERENCE_CODE_DIRECTORY") or DEFAULT_CODE_DIRECTORY)
 
 
 def initialize_custom_orchestrator():
     """Initializes the custom orchestrator."""
-    code_dir = os.getenv("SAGEMAKER_INFERENCE_CODE_DIRECTORY", None)
-    serve_path = Path(code_dir).joinpath("serve.pkl")
+    serve_path = _get_code_directory().joinpath("serve.pkl")
     with open(str(serve_path), mode="rb") as pkl_file:
         return cloudpickle.load(pkl_file)
 
@@ -48,12 +64,32 @@ def _py_vs_parity_check():
         )
 
 
+def _perform_integrity_check(buffer: bytes, metadata_path: Path):
+    """Validates the integrity of bytes by comparing the SHA-256 hash value."""
+    if not Path.exists(metadata_path):
+        raise ValueError("Path to metadata.json does not exist")
+
+    with open(str(metadata_path), "rb") as md:
+        try:
+            expected_hash_value = json.loads(md.read()).get("sha256_hash")
+        except json.JSONDecodeError:
+            raise ValueError("Corrupt metadata file. It is not a valid json file.")
+
+    if not expected_hash_value:
+        raise ValueError("metadata.json does not contain a sha256_hash value")
+
+    actual_hash_value = hashlib.sha256(buffer).hexdigest()
+
+    if not hmac.compare_digest(expected_hash_value, actual_hash_value):
+        raise ValueError("Integrity check for the serialized function or data failed.")
+
+
 def _pickle_file_integrity_check():
-    with open("/opt/ml/model/code/serve.pkl", "rb") as f:
+    code_directory = _get_code_directory()
+    with open(str(code_directory.joinpath("serve.pkl")), "rb") as f:
         buffer = f.read()
 
-    metadata_path = Path("/opt/ml/model/code/metadata.json")
-    perform_integrity_check(buffer=buffer, metadata_path=metadata_path)
+    _perform_integrity_check(buffer=buffer, metadata_path=code_directory.joinpath("metadata.json"))
 
 
 _run_preflight_diagnostics()

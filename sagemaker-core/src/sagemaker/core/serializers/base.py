@@ -19,6 +19,7 @@ from collections.abc import Iterable
 import csv
 import io
 import json
+import sys
 import numpy as np
 from pandas import DataFrame
 from six import with_metaclass
@@ -433,6 +434,18 @@ class StringSerializer(SimpleBaseSerializer):
         raise ValueError(f"Object of type {type(data)} is not String serializable.")
 
 
+def _is_torch_tensor(data):
+    """Return whether ``data`` is a ``torch.Tensor``, without importing torch.
+
+    A ``torch.Tensor`` instance cannot exist unless torch has already been
+    imported, so a missing ``sys.modules`` entry is proof that ``data`` is not
+    one. This keeps the check exact while letting callers that never pass a
+    tensor avoid pulling in an optional multi-hundred-megabyte dependency.
+    """
+    torch = sys.modules.get("torch")
+    return torch is not None and isinstance(data, torch.Tensor)
+
+
 class TorchTensorSerializer(SimpleBaseSerializer):
     """Serialize torch.Tensor to a buffer by converting tensor to numpy and call NumpySerializer.
 
@@ -444,17 +457,24 @@ class TorchTensorSerializer(SimpleBaseSerializer):
 
     def __init__(self, content_type="tensor/pt"):
         super(TorchTensorSerializer, self).__init__(content_type=content_type)
+        self.numpy_serializer = NumpySerializer()
+
+    @property
+    def torch_tensor(self):
+        """The ``torch.Tensor`` type, imported on first access.
+
+        torch is an optional dependency (``sagemaker-core[torch]``), so it is not
+        imported until a caller actually needs the type.
+        """
         try:
             from torch import Tensor
-
-            self.torch_tensor = Tensor
         except ImportError as e:
             raise ImportError(
                 "Unable to import torch. Please install torch to use TorchTensorSerializer: "
                 "pip install 'sagemaker-core[torch]'"
             ) from e
 
-        self.numpy_serializer = NumpySerializer()
+        return Tensor
 
     def serialize(self, data):
         """Serialize torch.Tensor to a buffer.
@@ -465,7 +485,7 @@ class TorchTensorSerializer(SimpleBaseSerializer):
         Returns:
             raw-bytes: The data serialized as raw-bytes from the input.
         """
-        if isinstance(data, self.torch_tensor):
+        if _is_torch_tensor(data):
             try:
                 return self.numpy_serializer.serialize(data.detach().numpy())
             except Exception as e:

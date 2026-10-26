@@ -48,6 +48,7 @@ from sagemaker.core.workflow.properties import Properties
 
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum, CacheConfig
 from sagemaker.mlops.workflow.check_job_config import CheckJobConfig
+from sagemaker.mlops.workflow._check_job_request import _build_check_job_request
 from sagemaker.core.workflow.utilities import trim_request_dict
 
 _DATA_BIAS_TYPE = "DATA_BIAS"
@@ -266,77 +267,15 @@ class ClarifyCheckStep(Step):
         """The arguments dict that is used to define the ClarifyCheck step."""
         from sagemaker.core.workflow.utilities import _pipeline_config
 
-        # Create request dictionary manually with correct AWS API field names
-        processing_inputs = []
-        for inp_key in ["config_input", "data_input"]:
-            inp = self._processing_params[inp_key]
-            input_dict = {
-                "InputName": inp.input_name,
-            }
-            if inp.s3_input:
-                input_dict["S3Input"] = {
-                    "S3Uri": inp.s3_input.s3_uri,
-                    "LocalPath": inp.s3_input.local_path,
-                    "S3DataType": getattr(inp.s3_input, "s3_data_type", "S3Prefix"),
-                    "S3InputMode": getattr(inp.s3_input, "s3_input_mode", "File"),
-                }
-            processing_inputs.append(input_dict)
-
-        s3_output_dict = {
-            "S3Uri": self._processing_params["result_output"].s3_output.s3_uri,
-            "LocalPath": self._processing_params["result_output"].s3_output.local_path,
-            "S3UploadMode": self._processing_params["result_output"].s3_output.s3_upload_mode,
-        }
-        if self.check_job_config.output_kms_key:
-            s3_output_dict["KmsKeyId"] = self.check_job_config.output_kms_key
-
-        processing_outputs = [
-            {
-                "OutputName": self._processing_params["result_output"].output_name,
-                "S3Output": s3_output_dict,
-            }
-        ]
-
-        cluster_config = {
-            "InstanceCount": self._baselining_processor.instance_count,
-            "InstanceType": self._baselining_processor.instance_type,
-            "VolumeSizeInGB": getattr(self._baselining_processor, "volume_size_in_gb", 30),
-        }
-        if self.check_job_config.volume_kms_key:
-            cluster_config["VolumeKmsKeyId"] = self.check_job_config.volume_kms_key
-
-        request_dict = {
-            "ProcessingInputs": processing_inputs,
-            "ProcessingOutputConfig": {"Outputs": processing_outputs},
-            "ProcessingJobName": self._baselining_processor._current_job_name or "clarify-job",
-            "ProcessingResources": {
-                "ClusterConfig": cluster_config,
-            },
-            "AppSpecification": {
-                "ImageUri": self._baselining_processor.image_uri,
-            },
-            "RoleArn": self._baselining_processor.role,
-            "StoppingCondition": {
-                "MaxRuntimeInSeconds": getattr(
-                    self._baselining_processor, "max_runtime_in_seconds", None
-                )
-                or 86400
-            },
-        }
-
-        # Add optional fields if they exist
-        if self._baselining_processor.env:
-            request_dict["Environment"] = self._baselining_processor.env
-        if self._baselining_processor.network_config:
-            request_dict["NetworkConfig"] = self._baselining_processor.network_config
-        if self._baselining_processor.entrypoint:
-            request_dict["AppSpecification"][
-                "ContainerEntrypoint"
-            ] = self._baselining_processor.entrypoint
-        if self._baselining_processor.arguments:
-            request_dict["AppSpecification"][
-                "ContainerArguments"
-            ] = self._baselining_processor.arguments
+        request_dict = _build_check_job_request(
+            processing_inputs=[
+                self._processing_params[inp_key] for inp_key in ["config_input", "data_input"]
+            ],
+            processing_output=self._processing_params["result_output"],
+            processor=self._baselining_processor,
+            check_job_config=self.check_job_config,
+            default_job_name="clarify-job",
+        )
         # Continue to pop job name if not explicitly opted-in via config
         request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 

@@ -33,7 +33,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "sagemaker-core>=2.23.0",
+    "sagemaker-core>=2.27.0",
     "graphene>=3,<4",
     "typing_extensions>=4.9.0",
     "tblib>=1.7.0",
@@ -44,7 +44,7 @@ dependencies = [
     "mlflow>=3.0.0,<4.0.0",
     "nest_asyncio>=1.5.0",
     "requests>=2.28.0",
-    "pydantic>=2.0.0",
+    "pydantic>=2.0.0,<3.0.0",
 ]
 
 [project.urls]
@@ -53,6 +53,7 @@ Homepage = "https://github.com/aws/sagemaker-python-sdk"
 [project.optional-dependencies]
 rft-strands = ["strands-agents"]
 rft-langchain = ["httpx>=0.24.0"]
+tokenizer = ["transformers"]
 test = [
     "pytest",
     "pytest-cov",
@@ -63,7 +64,8 @@ test = [
     "scipy",
     "omegaconf",
     "graphene",
-    "IPython"
+    "IPython",
+    "transformers",
 ]
 notebook = [
     "ipywidgets>=8.0.0",

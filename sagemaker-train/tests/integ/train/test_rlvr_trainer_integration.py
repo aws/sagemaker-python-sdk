@@ -26,6 +26,8 @@ from sagemaker.train.common import TrainingType
 from sagemaker.ai_registry.evaluator import Evaluator
 from sagemaker.ai_registry.air_constants import REWARD_FUNCTION
 
+from .nova_capacity import nova_capacity_slot, wait_for_nova_training_job
+
 logger = logging.getLogger(__name__)
 
 EVALUATOR_NAME = "test-integ-rlvr-trainer"
@@ -184,22 +186,16 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     rlvr_trainer.hyperparameters.save_steps = 10
     rlvr_trainer.hyperparameters.global_batch_size = 32
 
-    training_job = rlvr_trainer.train(wait=False)
-    logger.info(f"Training job submitted: {training_job.training_job_arn}")
-
-    # Manual wait loop
-    max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
-    poll_interval = 30
-    start_time = time.time()
-
-    while time.time() - start_time < max_wait_time:
-        training_job.refresh()
-        status = training_job.training_job_status
-
-        if status in ["Completed", "Failed", "Stopped"]:
-            break
-
-        time.sleep(poll_interval)
+    # Nova serverless jobs share a p5 pool with customers: run one at a time and
+    # give the capacity back if the job cannot get instances (see nova_capacity.py).
+    with nova_capacity_slot():
+        training_job = rlvr_trainer.train(wait=False)
+        logger.info(f"Training job submitted: {training_job.training_job_arn}")
+        wait_for_nova_training_job(
+            training_job,
+            max_wait_time=10800,  # 3 hour timeout (Nova training takes >1 hour)
+            poll_interval=30,
+        )
 
     # Verify job completed successfully
     assert training_job.training_job_status == "Completed"

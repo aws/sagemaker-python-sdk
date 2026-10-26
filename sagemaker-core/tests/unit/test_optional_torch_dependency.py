@@ -122,16 +122,39 @@ def test_deserializer_module_imports_without_torch():
     ), f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
 
-def test_torch_tensor_serializer_raises_import_error_without_torch():
-    """Verify TorchTensorSerializer raises ImportError when torch is not installed."""
+def test_torch_tensor_serializer_constructs_without_torch():
+    """Verify TorchTensorSerializer can be built and rejects non-tensors without torch.
+
+    Construction must not import torch, so that a framework default serializer can
+    be selected on a torch-free install. Nothing is lost: an input that is actually
+    a torch.Tensor can only exist where torch is installed.
+    """
     import sagemaker.core.serializers.base as ser_module
 
     saved = {}
     try:
         saved = _block_torch()
 
+        serializer = ser_module.TorchTensorSerializer()
+
+        with pytest.raises(ValueError, match="not a torch.Tensor"):
+            serializer.serialize([1.0, 2.0, 3.0])
+    finally:
+        _restore_torch(saved)
+
+
+def test_torch_tensor_serializer_type_access_raises_import_error_without_torch():
+    """Verify the torch.Tensor type itself is still reported as missing."""
+    import sagemaker.core.serializers.base as ser_module
+
+    saved = {}
+    try:
+        saved = _block_torch()
+
+        serializer = ser_module.TorchTensorSerializer()
+
         with pytest.raises(ImportError, match="Unable to import torch"):
-            ser_module.TorchTensorSerializer()
+            serializer.torch_tensor  # pylint: disable=pointless-statement
     finally:
         _restore_torch(saved)
 

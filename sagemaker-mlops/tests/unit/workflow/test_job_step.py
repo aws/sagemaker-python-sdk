@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for `StepTypeEnum.JOB` and `JobStep`."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -49,6 +50,9 @@ EXPECTED_STEP_TYPES = {
     "INFERENCE_COMPONENT": "InferenceComponent",
     "LINEAGE": "Lineage",
     "JOB": "Job",
+    "CLEANUP": "Cleanup",
+    "FOR_EACH": "ForEach",
+    "ATHENA": "Athena",
 }
 
 

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Shared capture paths for producers running under a ``PipelineSession``."""
+
 from __future__ import absolute_import
 
 from typing import Any, Dict, List, Optional
@@ -87,9 +88,11 @@ def capture_training_request(pipeline_session, create_args: Dict[str, Any]) -> N
         # Dict-form tags arrive in both shapes: lowercase keys from the SDK's own
         # tag builders, PascalCase from callers passing wire-form dicts through.
         request["Tags"] = [
-            Tag(key=tag.get("key", tag.get("Key")), value=tag.get("value", tag.get("Value")))
-            if isinstance(tag, dict)
-            else tag
+            (
+                Tag(key=tag.get("key", tag.get("Key")), value=tag.get("value", tag.get("Value")))
+                if isinstance(tag, dict)
+                else tag
+            )
             for tag in request["Tags"]
         ]
     pipeline_session._intercept_create_request(serialize(request), None, "train")

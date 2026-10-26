@@ -23,6 +23,7 @@ from sagemaker.train.tuner import (
     HyperparameterTuner,
     WarmStartTypes,
     GRID_SEARCH,
+    _to_boto_tag,
 )
 from sagemaker.core.parameter import (
     CategoricalParameter,
@@ -33,10 +34,13 @@ from sagemaker.core.parameter import (
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.workflow.parameters import ParameterString
 from sagemaker.core.shapes import (
+    CheckpointConfig,
     HyperParameterTuningJobWarmStartConfig,
     Channel,
     DataSource,
+    RetryStrategy,
     S3DataSource,
+    Tag,
 )
 
 # ---------------------------------------------------------------------------
@@ -66,6 +70,7 @@ def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
     trainer.compute.volume_size_in_gb = 30
+    trainer.compute.volume_kms_key_id = None
     trainer.stopping_condition = MagicMock()
     trainer.stopping_condition.max_runtime_in_seconds = 3600
     trainer.input_data_config = None
@@ -716,6 +721,40 @@ class TestHyperparameterTunerStaticMethods:
             definition.checkpoint_config.s3_uri == "s3://bucket/checkpoint"
         ), "checkpoint_config should be preserved"
 
+    def test_pipeline_session_request_keeps_tuning_job_name(self):
+        """Regression for #6299 / #5776.
+
+        Under a PipelineSession the tuning request must KEEP HyperParameterTuningJobName. The
+        TuningStep strips it via trim_request_dict (dropped by default, prefix preserved when
+        use_custom_job_prefix=True); popping it here left use_custom_job_prefix nothing to preserve.
+        """
+        from unittest.mock import Mock
+        from sagemaker.core.workflow.pipeline_context import PipelineSession
+
+        pipeline_session = Mock(spec=PipelineSession)
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.sagemaker_session = pipeline_session
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+        tuner._current_job_name = "my-prefix-2026-01-01-00-00-00-000"
+
+        tuner._start_tuning_job(inputs=None)
+
+        pipeline_session._intercept_create_request.assert_called_once()
+        serialized_request = pipeline_session._intercept_create_request.call_args.args[0]
+        assert "HyperParameterTuningJobName" in serialized_request
+        assert serialized_request["HyperParameterTuningJobName"].startswith("my-prefix")
+
+        # The name must be strippable back to the base, or trim_request_dict would preserve a
+        # definition-time timestamp instead of the prefix when use_custom_job_prefix=True.
+        from sagemaker.core.common_utils import base_from_name
+
+        assert base_from_name(serialized_request["HyperParameterTuningJobName"]) == "my-prefix"
+
     def test_build_training_job_definition_includes_environment_variables(self):
         """Test that _build_training_job_definition includes environment variables.
 
@@ -820,3 +859,223 @@ class TestHyperparameterTunerStaticMethods:
         assert (
             definition.output_data_config.s3_output_path == "s3://bucket/output"
         ), "s3_output_path should be preserved"
+
+
+class TestBuildTrainingJobDefinitionCheckpointAndRetry:
+    """Regression for #6500.
+
+    ``_build_training_job_definition`` dropped ``checkpoint_config`` and
+    ``retry_strategy``, so a tuned job could not resume from its configured
+    checkpoint and ignored the configured retry count.
+    """
+
+    @staticmethod
+    def _tuner(trainer):
+        return HyperparameterTuner(
+            model_trainer=trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+    def test_checkpoint_config_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        trainer.checkpoint_config = CheckpointConfig(
+            s3_uri="s3://bucket/checkpoints/", local_path="/opt/ml/checkpoints"
+        )
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.checkpoint_config == trainer.checkpoint_config
+
+    def test_retry_strategy_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        trainer._retry_strategy = RetryStrategy(maximum_retry_attempts=10)
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.retry_strategy == trainer._retry_strategy
+
+    def test_managed_spot_trainer_keeps_both(self):
+        trainer = _create_mock_model_trainer(with_spot_training=True)
+        trainer.checkpoint_config = CheckpointConfig(s3_uri="s3://bucket/checkpoints/")
+        trainer._retry_strategy = RetryStrategy(maximum_retry_attempts=3)
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.enable_managed_spot_training is True
+        assert definition.checkpoint_config.s3_uri == "s3://bucket/checkpoints/"
+        assert definition.retry_strategy.maximum_retry_attempts == 3
+
+    def test_omitted_values_stay_unassigned(self):
+        trainer = _create_mock_model_trainer()
+        trainer.checkpoint_config = None
+        trainer._retry_strategy = None
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert not isinstance(definition.checkpoint_config, CheckpointConfig)
+        assert not isinstance(definition.retry_strategy, RetryStrategy)
+
+
+class TestBuildTrainingJobDefinitionVolumeKmsKey:
+    """Regression for #6521.
+
+    ``_build_training_job_definition`` dropped ``volume_kms_key_id`` from
+    ``ModelTrainer.compute``, so HPO child training jobs silently failed to
+    encrypt their storage volumes with the configured customer-managed KMS key.
+    """
+
+    @staticmethod
+    def _tuner(trainer):
+        return HyperparameterTuner(
+            model_trainer=trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+    def test_explicit_key_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        trainer.compute.volume_kms_key_id = (
+            "arn:aws:kms:us-east-2:123456789012:key/00000000-0000-0000-0000-000000000000"
+        )
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.resource_config.volume_kms_key_id == (
+            "arn:aws:kms:us-east-2:123456789012:key/00000000-0000-0000-0000-000000000000"
+        )
+
+    def test_plain_string_key_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        trainer.compute.volume_kms_key_id = "1234abcd-12ab-34cd-56ef-1234567890ab"
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert (
+            definition.resource_config.volume_kms_key_id == "1234abcd-12ab-34cd-56ef-1234567890ab"
+        )
+
+    def test_pipeline_variable_key_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        kms_param = ParameterString(name="VolumeKmsKeyId")
+        trainer.compute.volume_kms_key_id = kms_param
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.resource_config.volume_kms_key_id is kms_param
+
+    def test_omitted_key_stays_unassigned(self):
+        from sagemaker.core.utils.utils import Unassigned
+
+        trainer = _create_mock_model_trainer()
+        trainer.compute.volume_kms_key_id = None
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        # Leaving the field Unassigned keeps VolumeKmsKeyId out of the
+        # serialized CreateHyperParameterTuningJob request.
+        assert isinstance(definition.resource_config.volume_kms_key_id, Unassigned)
+
+
+class TestHyperparameterTunerTagInheritance:
+    """Test tag inheritance from ModelTrainer (issue #6472)."""
+
+    @pytest.fixture
+    def trainer_with_tag_objects(self):
+        """Create a mock ModelTrainer whose tags are v3 ``Tag`` objects."""
+        trainer = _create_mock_model_trainer()
+        trainer.tags = [Tag(key="project", value="ml-project")]
+        return trainer
+
+    @staticmethod
+    def _create_tuner(model_trainer, tags=None, include_jumpstart_tags=False):
+        """Create a tuner with JumpStart tagging disabled by default."""
+        tuner = HyperparameterTuner(
+            model_trainer=model_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+            tags=tags,
+        )
+        tuner.sagemaker_session.settings.include_jumpstart_tags = include_jumpstart_tags
+        return tuner
+
+    def test_inherits_tag_objects_from_model_trainer(self, trainer_with_tag_objects):
+        """Test v3 ``Tag`` objects are normalized to boto-style dicts when inherited."""
+        tuner = self._create_tuner(trainer_with_tag_objects)
+
+        tuner._prepare_tags_for_tuning()
+
+        assert tuner.tags == [{"Key": "project", "Value": "ml-project"}]
+
+    def test_merges_tag_objects_with_boto_style_tuner_tags(self, trainer_with_tag_objects):
+        """Test inherited ``Tag`` objects merge with the tuner's own boto-style tags."""
+        tuner = self._create_tuner(
+            trainer_with_tag_objects, tags=[{"Key": "owner", "Value": "team"}]
+        )
+
+        tuner._prepare_tags_for_tuning()
+
+        assert tuner.tags == [
+            {"Key": "owner", "Value": "team"},
+            {"Key": "project", "Value": "ml-project"},
+        ]
+
+    def test_does_not_duplicate_equivalent_tags(self, trainer_with_tag_objects):
+        """Test a tuner tag equal to an inherited ``Tag`` object is not added twice."""
+        tuner = self._create_tuner(
+            trainer_with_tag_objects, tags=[{"Key": "project", "Value": "ml-project"}]
+        )
+
+        tuner._prepare_tags_for_tuning()
+
+        assert tuner.tags == [{"Key": "project", "Value": "ml-project"}]
+
+    def test_tags_stay_none_when_no_tags_are_set(self):
+        """Test tags remain None when neither the tuner nor the trainer has tags."""
+        trainer = _create_mock_model_trainer()
+        trainer.tags = None
+        tuner = self._create_tuner(trainer)
+
+        tuner._prepare_tags_for_tuning()
+
+        assert tuner.tags is None
+
+    def test_jumpstart_tag_helper_receives_boto_style_tags(self, trainer_with_tag_objects):
+        """Test tags are normalized before being passed to the JumpStart tag helper.
+
+        ``add_jumpstart_uri_tags`` subscripts each tag with ``tag["Key"]``, so it fails
+        on ``Tag`` objects too.
+        """
+        tuner = self._create_tuner(trainer_with_tag_objects, include_jumpstart_tags=True)
+
+        with patch("sagemaker.train.tuner.add_jumpstart_uri_tags") as mock_add_tags:
+            mock_add_tags.side_effect = lambda tags, **kwargs: tags
+            tuner._prepare_tags_for_tuning()
+
+        passed_tags = mock_add_tags.call_args[1]["tags"]
+        assert passed_tags == [{"Key": "project", "Value": "ml-project"}]
+
+    def test_start_tuning_job_converts_tag_objects(self, trainer_with_tag_objects):
+        """Test ``_start_tuning_job`` accepts ``Tag`` objects left on ``tuner.tags``."""
+        tuner = self._create_tuner(trainer_with_tag_objects)
+        tuner._current_job_name = "test-tuning-job"
+        tuner.tags = [Tag(key="project", value="ml-project")]
+
+        with patch("sagemaker.train.tuner.HyperParameterTuningJob") as mock_tuning_job:
+            tuner._start_tuning_job(None)
+
+        tags = mock_tuning_job.create.call_args[1]["tags"]
+        assert tags == [Tag(key="project", value="ml-project")]
+
+    def test_to_boto_tag_normalizes_lowercase_dicts(self):
+        """Test lowercase tag dicts are normalized to boto-style dicts."""
+        assert _to_boto_tag({"key": "project", "value": "ml-project"}) == {
+            "Key": "project",
+            "Value": "ml-project",
+        }
+
+    def test_to_boto_tag_passes_through_unknown_tags(self):
+        """Test tags that are neither ``Tag`` objects nor dicts are left untouched."""
+        parameter = ParameterString(name="TagValue")
+
+        assert _to_boto_tag(parameter) is parameter
