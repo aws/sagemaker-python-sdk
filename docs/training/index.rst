@@ -305,12 +305,17 @@ Train pre-configured models from the SageMaker JumpStart hub using ``ModelTraine
 
    from sagemaker.core.resources import HubContent
 
-   # Every model of the public hub, with the fields the hub tags it with
+   # Every model of the public hub, with the fields the hub tags it with.
+   # get_all describes 4 models at a time (max_workers=4).
    small_sft_models = [
        content.hub_content_name
        for content in HubContent.get_all(hub_name="SageMakerPublicHub", hub_content_type="Model")
        if content.supports_technique("sft") and content.model_size in ("<1b", "1b-10b")
    ]
+
+   # The same list from a local cache: the first call describes every model, the next
+   # call lists the hub and describes only the models whose version changed.
+   models = HubContent.get_all_cached("SageMakerPublicHub")
 
    # One model; the document fills in fields the 50-keyword cap dropped
    content = HubContent.get(
@@ -340,6 +345,7 @@ Key points:
 - Use ``list_jumpstart_models()`` and ``search_public_hub_models()`` to discover available models
 - ``HubContent`` exposes ``tasks``, ``license``, ``provider``, ``model_size``, ``context_window``, ``languages``, ``capabilities``, and ``recipes`` read from its search keywords and document, so no caller parses ``HubContentSearchKeywords`` by hand
 - ``HubContent.search()`` filters a hub server side on ``Metadata.<Field>`` through ``HubContentFilter``, inside the 20-filter and 1024-character service limits
+- ``HubContent.get_all_cached()`` keeps the described contents of a hub in a local JSON file (``SAGEMAKER_HUB_CACHE_DIR`` or the user cache directory) and describes only the contents whose ``HubContentVersion`` changed. ``refresh_cache()`` reports the counts and ``clear_cache()`` deletes the file
 
 :doc:`Full example notebook <../v3-examples/training-examples/jumpstart-training-example>`
 

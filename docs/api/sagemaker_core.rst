@@ -56,6 +56,14 @@ Utilities
    :members:
    :undoc-members:
 
+.. automodule:: sagemaker.core.hub_content
+   :members:
+   :undoc-members:
+
+.. automodule:: sagemaker.core.hub_catalog
+   :members:
+   :undoc-members:
+
 Exceptions
 ----------
 
