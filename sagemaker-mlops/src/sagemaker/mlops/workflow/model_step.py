@@ -291,6 +291,15 @@ class ModelStep(ConfigurableRetryStep):
                             kms_key_id=fields["model_kms_key"],
                         ),
                     )
+                # Encrypt the repack job's compute volume with the same customer-managed
+                # key as the model. This reaches _RepackModelStep via **kwargs, which
+                # applies it to the job's Compute (ResourceConfig.VolumeKmsKeyId). Without
+                # it the runtime repack cannot use a configured CMK for its volume (GH
+                # #6536). setdefault so an explicit repack_model_step_settings override wins.
+                if fields["model_kms_key"]:
+                    self._repack_model_step_settings.setdefault(
+                        "volume_kms_key_id", fields["model_kms_key"]
+                    )
                 repack_model_step = _RepackModelStep(
                     name="{}-{}-{}".format(self.name, _REPACK_MODEL_NAME_BASE, name_base),
                     sagemaker_session=(

@@ -207,6 +207,63 @@ class TestRepackModelStep:
                     call_kwargs = mock_retrieve.call_args[1]
                     assert call_kwargs["instance_type"] == "ml.p3.2xlarge"
 
+    def test_init_threads_volume_kms_key_id_to_compute(self, mock_session, temp_entry_point):
+        """GH #6536: volume_kms_key_id must be applied to the repack job's Compute
+        (ResourceConfig.VolumeKmsKeyId) and consumed here rather than forwarded to
+        ModelTrainer."""
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
+                    mock_retrieve.return_value = "sklearn-image:latest"
+                    mock_trainer_instance = Mock()
+                    mock_trainer_instance.train = Mock(return_value=Mock())
+                    mock_trainer.return_value = mock_trainer_instance
+                    mock_super.return_value = None
+
+                    _RepackModelStep(
+                        name="repack-step",
+                        sagemaker_session=mock_session,
+                        role="arn:aws:iam::123456789012:role/SageMakerRole",
+                        model_data="s3://bucket/model.tar.gz",
+                        entry_point=temp_entry_point,
+                        volume_kms_key_id="arn:aws:kms:us-west-2:111122223333:key/abc",
+                    )
+
+                    mock_trainer.assert_called_once()
+                    call_kwargs = mock_trainer.call_args[1]
+                    assert (
+                        call_kwargs["compute"].volume_kms_key_id
+                        == "arn:aws:kms:us-west-2:111122223333:key/abc"
+                    )
+                    # Consumed by Compute, not forwarded to ModelTrainer as a stray kwarg.
+                    assert "volume_kms_key_id" not in call_kwargs
+
+    def test_init_without_volume_kms_key_id_leaves_compute_unset(
+        self, mock_session, temp_entry_point
+    ):
+        """Omitting volume_kms_key_id must leave Compute.volume_kms_key_id unset so the
+        repack job's ResourceConfig carries no VolumeKmsKeyId (legacy behavior)."""
+        with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
+            with patch("sagemaker.train.ModelTrainer") as mock_trainer:
+                with patch("sagemaker.mlops.workflow._utils.TrainingStep.__init__") as mock_super:
+                    mock_retrieve.return_value = "sklearn-image:latest"
+                    mock_trainer_instance = Mock()
+                    mock_trainer_instance.train = Mock(return_value=Mock())
+                    mock_trainer.return_value = mock_trainer_instance
+                    mock_super.return_value = None
+
+                    _RepackModelStep(
+                        name="repack-step",
+                        sagemaker_session=mock_session,
+                        role="arn:aws:iam::123456789012:role/SageMakerRole",
+                        model_data="s3://bucket/model.tar.gz",
+                        entry_point=temp_entry_point,
+                    )
+
+                    mock_trainer.assert_called_once()
+                    compute = mock_trainer.call_args[1]["compute"]
+                    assert compute.volume_kms_key_id is None
+
     def test_init_with_depends_on(self, mock_session, temp_entry_point):
         """Test _RepackModelStep initialization with depends_on."""
         with patch("sagemaker.mlops.workflow._utils.image_uris.retrieve") as mock_retrieve:
