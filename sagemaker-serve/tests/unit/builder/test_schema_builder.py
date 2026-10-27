@@ -1,4 +1,7 @@
+import json
 import unittest
+from io import BytesIO
+
 import numpy as np
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 
@@ -53,6 +56,33 @@ class TestSchemaBuilder(unittest.TestCase):
         mapping = schema.generate_marshalling_map()
         self.assertIn("input_serializer", mapping)
         self.assertIn("output_deserializer", mapping)
+
+    def test_numpy_input_deserializer_honors_json_content_type(self):
+        schema = SchemaBuilder(np.array([[0]]), np.array([[0]]))
+        stream = BytesIO(json.dumps([[1, 2], [3, 4]]).encode("utf-8"))
+
+        result = schema.input_deserializer.deserialize(stream, content_type="application/json")
+
+        np.testing.assert_array_equal(result, np.array([[1, 2], [3, 4]]))
+
+    def test_numpy_input_deserializer_honors_csv_content_type(self):
+        schema = SchemaBuilder(np.array([[0]]), np.array([[0]]))
+        stream = BytesIO(b"1,2\n3,4\n")
+
+        result = schema.input_deserializer.deserialize(stream, content_type="text/csv")
+
+        np.testing.assert_array_equal(result, np.array([[1, 2], [3, 4]]))
+
+    def test_numpy_output_deserializer_preserves_expected_accept_type(self):
+        expected = np.array([[0.1, 0.9]])
+        schema = SchemaBuilder(np.array([[0]]), expected)
+        stream = BytesIO()
+        np.save(stream, expected)
+        stream.seek(0)
+
+        result = schema.output_deserializer.deserialize(stream, content_type="text/html")
+
+        np.testing.assert_array_equal(result, expected)
 
 
 if __name__ == "__main__":
