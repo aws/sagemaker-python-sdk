@@ -173,7 +173,10 @@ class _RepackModelStep(TrainingStep):
                     job will be created without VPC config (default: None).
             security_group_ids (list[str]): List of security group ids. If not
                 specified, the re-packing job will be created without VPC config (default: None).
-            **kwargs: additional arguments for the repacking job.
+            **kwargs: additional arguments for the repacking job. ``volume_kms_key_id``
+                is consumed here and applied to the repack job's ``Compute`` so the
+                training volume is encrypted with the given KMS key; any remaining
+                keys are forwarded to the underlying ``ModelTrainer``.
         """
         self._model_data = model_data
         self.sagemaker_session = sagemaker_session
@@ -207,6 +210,7 @@ class _RepackModelStep(TrainingStep):
 
         compute = Compute(
             instance_type=kwargs.pop("instance_type", None) or INSTANCE_TYPE,
+            volume_kms_key_id=kwargs.pop("volume_kms_key_id", None),
         )
 
         networking = None
