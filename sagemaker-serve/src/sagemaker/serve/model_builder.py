@@ -57,7 +57,7 @@ from sagemaker.core.resources import (
     ModelCard,
     ModelPackageModelCard,
 )
-from sagemaker.core.utils.utils import logger
+from sagemaker.core.utils.utils import Unassigned, logger
 from sagemaker.core.exceptions import CapacityError, UnexpectedStatusException
 from sagemaker.core.helper import session_helper
 from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
@@ -261,6 +261,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         network: Network configuration including VPC settings and network isolation.
         instance_type: EC2 instance type for deployment (e.g., 'ml.m5.large').
         mode: Deployment mode (SAGEMAKER_ENDPOINT, LOCAL_CONTAINER, or IN_PROCESS).
+        recipe_name: Optional recipe name used to select recipe-level hosting configuration when
+            base model metadata omits it or the Hub document publishes multiple deployable recipes.
 
     Note:
         ModelBuilder returns sagemaker.core.resources.Model and sagemaker.core.resources.Endpoint
@@ -449,6 +451,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     image_config: Optional[Dict[str, StrPipeVar]] = field(
         default=None,
         metadata={"help": "DEPRECATED: Use configure_for_torchserve() instead"},
+    )
+    recipe_name: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Recipe name override for resolving recipe-level hosting configurations. "
+            "Use this when base model metadata omits a recipe and the Hub document publishes "
+            "multiple recipes with hosting configurations."
+        },
     )
 
     def _create_session_with_region(self):
@@ -761,22 +771,47 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             raise ValueError(error_msg)
 
+    @staticmethod
+    def _optional_base_model_string(value: Any) -> Optional[str]:
+        """Normalize an optional string from generated ``BaseModel`` metadata."""
+        if value is None or isinstance(value, Unassigned) or value == "":
+            return None
+        return value
+
+    def _effective_recipe_name(self, base_model: Any) -> Optional[str]:
+        """Return the public recipe override or the normalized BaseModel recipe."""
+        return self._optional_base_model_string(
+            self.recipe_name
+        ) or self._optional_base_model_string(getattr(base_model, "recipe_name", None))
+
     def _fetch_hub_document_for_custom_model(self) -> dict:
         from sagemaker.core.shapes import BaseModel as CoreBaseModel
 
         base_model: CoreBaseModel = (
             self._fetch_model_package().inference_specification.containers[0].base_model
         )
+        hub_content_name = self._optional_base_model_string(base_model.hub_content_name)
+        if hub_content_name is None:
+            raise ValueError(
+                "Cannot resolve hosting configuration because the model package's BaseModel "
+                "does not specify hub_content_name."
+            )
+        hub_content_version = self._optional_base_model_string(base_model.hub_content_version)
+
         # Prefer an explicitly configured hub (e.g. a private hub used for
         # testing or for sourcing pre-release hosting configs); fall back to the
         # public JumpStart hub when none is set.
         hub_name = getattr(self, "hub_name", None) or "SageMakerPublicHub"
-        hub_content = HubContent.get(
-            hub_content_type="Model",
-            hub_name=hub_name,
-            hub_content_name=base_model.hub_content_name,
-            hub_content_version=base_model.hub_content_version,
-        )
+        get_kwargs = {
+            "hub_content_type": "Model",
+            "hub_name": hub_name,
+            "hub_content_name": hub_content_name,
+        }
+        # Omitting HubContentVersion asks SageMaker for the latest version. Passing
+        # None, an empty string, or Unassigned would serialize an invalid request.
+        if hub_content_version is not None:
+            get_kwargs["hub_content_version"] = hub_content_version
+        hub_content = HubContent.get(**get_kwargs)
         return json.loads(hub_content.hub_content_document)
 
     def _fetch_hosting_configs_for_custom_model(self) -> dict:
@@ -1022,28 +1057,41 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
     @staticmethod
     def _extract_hosting_configs_from_hub(
-        hub_document: Dict[str, Any], recipe_name: str
+        hub_document: Dict[str, Any], recipe_name: Optional[str]
     ) -> List[Dict[str, Any]]:
-        """Discover the raw ``HostingConfigs`` for a recipe from an already-fetched hub document.
+        """Discover raw ``HostingConfigs`` using explicit, top-level, or unique recipe metadata.
 
-        The authoritative hosting configurations live under
-        ``RecipeCollection[<recipe>].HostingConfigs``. Falls back to the top-level
-        ``HostingConfigs`` when the matching recipe entry does not carry its own (some models
-        publish there instead). Returns ``[]`` when neither is present — callers decide whether an
-        empty result is an error (fine-tuned) or a signal to try another path (e.g. Nova).
-
-        This is the single source of truth for config discovery so that
-        :meth:`_resolve_recipe_hosting_configs` (used by list/get/set_deployment_config) and
-        :meth:`_fetch_and_cache_recipe_config` (used by build) never diverge — in particular the
-        top-level fallback is honored on BOTH the selection and the build paths.
+        A named recipe is selected first and retains the historical top-level fallback. When no
+        recipe is available, top-level ``HostingConfigs`` takes precedence. Only if top-level
+        configs are absent does ModelBuilder infer a recipe, and only when exactly one recipe
+        publishes non-empty hosting configs.
         """
-        for recipe in hub_document.get("RecipeCollection", []):
-            if recipe.get("Name") == recipe_name:
-                configs = recipe.get("HostingConfigs")
-                if configs:
-                    return configs
-                break
-        return hub_document.get("HostingConfigs") or []
+        recipe_name = ModelBuilder._optional_base_model_string(recipe_name)
+        recipes = hub_document.get("RecipeCollection", []) or []
+        if recipe_name is not None:
+            for recipe in recipes:
+                if recipe.get("Name") == recipe_name:
+                    configs = recipe.get("HostingConfigs")
+                    if configs:
+                        return configs
+                    break
+
+        top_level_configs = hub_document.get("HostingConfigs")
+        if top_level_configs:
+            return top_level_configs
+        if recipe_name is not None:
+            return []
+
+        candidates = [recipe for recipe in recipes if recipe.get("HostingConfigs")]
+        if len(candidates) == 1:
+            return candidates[0]["HostingConfigs"]
+        if len(candidates) > 1:
+            candidate_names = [str(recipe.get("Name") or "<unnamed>") for recipe in candidates]
+            raise ValueError(
+                "Multiple recipes publish HostingConfigs: "
+                f"{', '.join(candidate_names)}. Specify recipe_name when creating ModelBuilder."
+            )
+        return []
 
     def _resolve_recipe_hosting_configs(self) -> List[Dict[str, Any]]:
         """Return the raw ``HostingConfigs`` list published for this model's recipe.
@@ -1063,7 +1111,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "Model is not supported for deployment: the model package has no inference "
                 "container to resolve a recipe from."
             )
-        recipe_name = getattr(containers[0].base_model, "recipe_name", None) or ""
+        recipe_name = self._effective_recipe_name(containers[0].base_model)
 
         configs = self._extract_hosting_configs_from_hub(hub_document, recipe_name)
         if configs:
@@ -1297,7 +1345,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         hub_document = self._fetch_hub_document_for_custom_model()
         model_package = self._fetch_model_package()
         container = model_package.inference_specification.containers[0]
-        recipe_name = getattr(container.base_model, "recipe_name", None) or ""
+        recipe_name = self._effective_recipe_name(container.base_model)
 
         if not self.s3_upload_path:
             from sagemaker.serve.utils.model_package_utils import get_s3_uri_from_inference_spec
@@ -1557,7 +1605,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         model_package = self._fetch_model_package()
         if model_package is not None:
             base_model = model_package.inference_specification.containers[0].base_model
-            return getattr(base_model, "hub_content_name", None) if base_model else None
+            return (
+                self._optional_base_model_string(getattr(base_model, "hub_content_name", None))
+                if base_model
+                else None
+            )
         if isinstance(self.model, BaseTrainer):
             return self.model.base_model_name
         # Raw S3 checkpoint: base model identity is supplied via model_metadata.
@@ -1583,8 +1635,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if containers:
                 base_model = getattr(containers[0], "base_model", None)
                 if base_model:
-                    recipe_name = getattr(base_model, "recipe_name", None) or ""
-                    hub_content_name = getattr(base_model, "hub_content_name", None) or ""
+                    recipe_name = self._effective_recipe_name(base_model) or ""
+                    hub_content_name = (
+                        self._optional_base_model_string(
+                            getattr(base_model, "hub_content_name", None)
+                        )
+                        or ""
+                    )
                     if (isinstance(recipe_name, str) and "nova" in recipe_name.lower()) or (
                         isinstance(hub_content_name, str) and "nova" in hub_content_name.lower()
                     ):
@@ -1656,16 +1713,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return None
 
         container = self._fetch_model_package().inference_specification.containers[0]
-        recipe_name = getattr(container.base_model, "recipe_name", None) or ""
+        recipe_name = self._effective_recipe_name(container.base_model)
 
-        hosting_configs = None
-        for recipe in hub_document.get("RecipeCollection", []):
-            if recipe.get("Name") == recipe_name:
-                hosting_configs = recipe.get("HostingConfigs")
-                break
-        if not hosting_configs:
-            hosting_configs = hub_document.get("HostingConfigs")
-
+        hosting_configs = self._extract_hosting_configs_from_hub(hub_document, recipe_name)
         if not hosting_configs:
             return None
 
@@ -1701,9 +1751,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         model_package = self._fetch_model_package()
         if model_package:
-            hub_content_name = model_package.inference_specification.containers[
-                0
-            ].base_model.hub_content_name
+            hub_content_name = self._optional_base_model_string(
+                model_package.inference_specification.containers[0].base_model.hub_content_name
+            )
         else:
             # No model package (e.g. SMTJ trainer): resolve from base_model_name
             base_model_name = self._base_model_name()
@@ -1758,7 +1808,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         base_model = getattr(containers[0], "base_model", None)
         if not base_model:
             return
-        hub_content_name = getattr(base_model, "hub_content_name", None)
+        hub_content_name = self._optional_base_model_string(
+            getattr(base_model, "hub_content_name", None)
+        )
         if not hub_content_name:
             return
 
@@ -3325,7 +3377,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         model_package = self._fetch_model_package()
         if is_restricted_model_package(model_package):
             return set()
-        recipe_name = model_package.inference_specification.containers[0].base_model.recipe_name
+        base_model = model_package.inference_specification.containers[0].base_model
+        recipe_name = self._effective_recipe_name(base_model)
+        if recipe_name is None:
+            raise ValueError(
+                "Cannot fetch endpoints for the base model because no recipe is available. "
+                "Specify recipe_name when creating ModelBuilder."
+            )
         endpoint_names = set()
         logger.error(f"recipe_name: {recipe_name}")
         for inference_component in InferenceComponent.get_all():
@@ -6525,8 +6583,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         base_model_recipe_name = None
         if peft_type == "LORA":
             container = model_package.inference_specification.containers[0]
-            base_model_recipe_name = getattr(
-                getattr(container, "base_model", None), "recipe_name", None
+            base_model_recipe_name = self._effective_recipe_name(
+                getattr(container, "base_model", None)
             )
             if not base_model_recipe_name:
                 raise ValueError(
@@ -6741,7 +6799,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 if getattr(container, "is_checkpoint", None) is False:
                     return None
                 recipe_name = (
-                    getattr(getattr(container, "base_model", None), "recipe_name", "") or ""
+                    self._effective_recipe_name(getattr(container, "base_model", None)) or ""
                 )
                 if "lora" in recipe_name.lower():
                     return "LORA"
@@ -6826,14 +6884,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # The jumpstart-model-id tag always applies (resolved from the model
         # package or the trainer's base_model_name). The recipe-name tag is only
         # available when a model package is present.
-        tags = [
-            {"key": "sagemaker-sdk:jumpstart-model-id", "value": self._base_model_name()},
-        ]
+        tags = []
+        base_model_name = self._optional_base_model_string(self._base_model_name())
+        if base_model_name is not None:
+            tags.append({"key": "sagemaker-sdk:jumpstart-model-id", "value": base_model_name})
         model_package = self._fetch_model_package()
         if model_package is not None:
             base_model = model_package.inference_specification.containers[0].base_model
-            if base_model is not None and base_model.recipe_name:
-                tags.append({"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name})
+            recipe_name = self._effective_recipe_name(base_model)
+            if recipe_name is not None:
+                tags.append({"key": "sagemaker-sdk:recipe-name", "value": recipe_name})
 
         # Merge tags accumulated via add_tags (e.g. the model-source reuse tag).
         # Those are stored in {"Key": ..., "Value": ...} form, so normalize to the
