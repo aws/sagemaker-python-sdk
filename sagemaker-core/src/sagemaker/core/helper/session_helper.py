@@ -2167,6 +2167,101 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request["NextToken"] = next_token
         return self.sagemaker_client.list_hub_contents(**request)
 
+    def create_hub(
+        self,
+        hub_name: str,
+        hub_description: str,
+        hub_display_name: str = None,
+        hub_search_keywords: List[str] = None,
+        s3_storage_config: Dict[str, Any] = None,
+        tags: List[Dict[str, Any]] = None,
+    ) -> Dict[str, str]:
+        """Creates a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name of the Hub to create.
+            hub_description (str): A description of the Hub.
+            hub_display_name (str): The display name of the Hub. Defaults to ``hub_name``.
+            hub_search_keywords (list): The searchable keywords for the Hub.
+            s3_storage_config (dict): The Amazon S3 storage configuration for the Hub.
+            tags (list): Any tags to associate with the Hub.
+
+        Returns:
+            dict: Response from the CreateHub API.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubDescription": hub_description,
+            "HubDisplayName": hub_display_name or hub_name,
+        }
+        if hub_search_keywords:
+            request["HubSearchKeywords"] = hub_search_keywords
+        if s3_storage_config:
+            request["S3StorageConfig"] = s3_storage_config
+        if tags:
+            request["Tags"] = tags
+        return self.sagemaker_client.create_hub(**request)
+
+    def describe_hub(self, hub_name: str) -> Dict[str, Any]:
+        """Describes a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name of the Hub to describe.
+
+        Returns:
+            dict: Response from the DescribeHub API.
+        """
+        return self.sagemaker_client.describe_hub(HubName=hub_name)
+
+    def delete_hub(self, hub_name: str) -> None:
+        """Deletes a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name of the Hub to delete.
+        """
+        return self.sagemaker_client.delete_hub(HubName=hub_name)
+
+    def create_hub_content_reference(
+        self,
+        hub_name: str,
+        source_hub_content_arn: str,
+        hub_content_name: str = None,
+        min_version: str = None,
+    ) -> Dict[str, str]:
+        """Creates a reference to public hub content in a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name of the Hub to add the reference to.
+            source_hub_content_arn (str): The ARN of the hub content in the public Hub.
+            hub_content_name (str): The name of the reference to add to the Hub.
+            min_version (str): The minimum version of the hub content to reference.
+
+        Returns:
+            dict: Response from the CreateHubContentReference API.
+        """
+        request = {"HubName": hub_name, "SageMakerPublicHubContentArn": source_hub_content_arn}
+        if hub_content_name:
+            request["HubContentName"] = hub_content_name
+        if min_version:
+            request["MinVersion"] = min_version
+        return self.sagemaker_client.create_hub_content_reference(**request)
+
+    def delete_hub_content_reference(
+        self, hub_name: str, hub_content_type: str, hub_content_name: str
+    ) -> None:
+        """Deletes a hub content reference from a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name of the Hub to delete the reference from.
+            hub_content_type (str): The type of the hub content reference.
+            hub_content_name (str): The name of the hub content reference.
+        """
+        return self.sagemaker_client.delete_hub_content_reference(
+            HubName=hub_name,
+            HubContentType=hub_content_type,
+            HubContentName=hub_content_name,
+        )
+
 
 def _expand_container_def(c_def):
     """Placeholder docstring"""
