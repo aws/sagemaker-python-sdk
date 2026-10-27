@@ -671,6 +671,18 @@ class _JobSettings:
             sagemaker_session=self.sagemaker_session,
         )
 
+        self.pre_execution_script = resolve_value_from_config(
+            direct_input=pre_execution_script,
+            config_path=REMOTE_FUNCTION_PRE_EXECUTION_SCRIPT,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+        # Check what the user configured, before the Spark setup commands below are added.
+        if self.pre_execution_commands is not None and self.pre_execution_script is not None:
+            raise ValueError(
+                "Only one of pre_execution_commands or pre_execution_script can be specified!"
+            )
+
         # When using Spark, ensure sagemaker-feature-store-pyspark is installed
         # and its version-matched JAR is on Spark's classpath before spark-submit
         if spark_config:
@@ -689,22 +701,22 @@ class _JobSettings:
                 "[shutil.copy(j, '/usr/lib/spark/jars/') "
                 "for j in glob.glob(os.path.join(jars_dir, '*' + spark_ver + '*.jar'))]\""
             )
-            if self.pre_execution_commands is None:
+            if self.pre_execution_script is not None:
+                # Only one of commands or a script can run before the job, so leave the
+                # user's script in charge of the setup.
+                logger.warning(
+                    "pre_execution_script is set, so sagemaker-feature-store-pyspark is not "
+                    "installed automatically for this Spark job; install it in the script if "
+                    "it is needed."
+                )
+            elif self.pre_execution_commands is None:
                 self.pre_execution_commands = [install_cmd, copy_jar_cmd]
             elif install_cmd not in self.pre_execution_commands:
-                self.pre_execution_commands.append(install_cmd)
-                self.pre_execution_commands.append(copy_jar_cmd)
-
-        self.pre_execution_script = resolve_value_from_config(
-            direct_input=pre_execution_script,
-            config_path=REMOTE_FUNCTION_PRE_EXECUTION_SCRIPT,
-            sagemaker_session=self.sagemaker_session,
-        )
-
-        if self.pre_execution_commands is not None and self.pre_execution_script is not None:
-            raise ValueError(
-                "Only one of pre_execution_commands or pre_execution_script can be specified!"
-            )
+                # Copy, so the caller's list is not modified.
+                self.pre_execution_commands = list(self.pre_execution_commands) + [
+                    install_cmd,
+                    copy_jar_cmd,
+                ]
 
         self.include_local_workdir = resolve_value_from_config(
             direct_input=include_local_workdir,
