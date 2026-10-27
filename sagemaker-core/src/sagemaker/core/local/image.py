@@ -860,7 +860,11 @@ class _SageMakerContainer(object):
             if self.container_entrypoint:
                 host_config["entrypoint"] = self.container_entrypoint
             if self.container_arguments:
-                host_config["entrypoint"] = host_config["entrypoint"] + self.container_arguments
+                if "entrypoint" in host_config:
+                    host_config["entrypoint"] = host_config["entrypoint"] + self.container_arguments
+                else:
+                    # No custom entrypoint: pass the arguments to the image's own entrypoint.
+                    host_config["command"] = self.container_arguments
 
         if self.is_studio:
             host_config["network_mode"] = "sagemaker"
