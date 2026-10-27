@@ -20,7 +20,9 @@ from sagemaker.core.model_monitor.clarify_model_monitoring import (
     ClarifyMonitoringExecution,
     ClarifyBaseliningConfig,
     BiasAnalysisConfig,
+    ClarifyBaseliningJob,
 )
+from sagemaker.core.model_monitor.model_monitoring import MonitoringExecution
 from sagemaker.core.clarify import BiasConfig, DataConfig, ModelConfig, ModelPredictedLabelConfig
 
 
@@ -87,11 +89,7 @@ class TestClarifyModelMonitor:
             ]
         }
 
-        mock_execution = Mock()
-        mock_execution.sagemaker_session = mock_session
-        mock_execution.job_name = "test-job"
-        mock_execution.inputs = []
-        mock_execution.output = ProcessingOutput(
+        output = ProcessingOutput(
             output_name="output",
             s3_output=ProcessingS3Output(
                 s3_uri="s3://bucket/output",
@@ -99,13 +97,22 @@ class TestClarifyModelMonitor:
                 s3_upload_mode="EndOfJob",
             ),
         )
-        mock_execution.output_kms_key = None
-        mock_from_arn.return_value = mock_execution
+        mock_from_arn.return_value = MonitoringExecution(
+            sagemaker_session=mock_session,
+            job_name="test-job",
+            inputs=[],
+            output=output,
+            output_kms_key="kms-key",
+        )
 
         executions = monitor.list_executions()
 
         assert len(executions) == 1
         assert isinstance(executions[0], ClarifyMonitoringExecution)
+        assert executions[0].processing_job_name == "test-job"
+        assert executions[0].sagemaker_session is mock_session
+        assert executions[0].output == output
+        assert executions[0].processing_output_config.kms_key_id == "kms-key"
 
     @patch("sagemaker.core.model_monitor.clarify_model_monitoring.boto_list_monitoring_executions")
     @patch("sagemaker.core.model_monitor.clarify_model_monitoring.logs_for_processing_job")
@@ -283,6 +290,54 @@ class TestModelBiasMonitor:
                 )
 
         assert monitor.monitoring_schedule_name is not None
+
+
+class TestClarifyBaseliningJob:
+    """Test cases for ClarifyBaseliningJob class"""
+
+    def test_init_from_v3_processing_job(self, mock_session):
+        """Test ClarifyBaseliningJob reads the v3 ProcessingJob resource attributes"""
+        from sagemaker.core.resources import ProcessingJob
+        from sagemaker.core.shapes import (
+            ProcessingInput,
+            ProcessingOutput,
+            ProcessingOutputConfig,
+            ProcessingS3Input,
+            ProcessingS3Output,
+        )
+
+        processing_input = ProcessingInput(
+            input_name="dataset",
+            s3_input=ProcessingS3Input(
+                s3_uri="s3://bucket/input",
+                local_path="/opt/ml/processing/input/data",
+                s3_data_type="S3Prefix",
+                s3_input_mode="File",
+            ),
+        )
+        processing_output = ProcessingOutput(
+            output_name="analysis_result",
+            s3_output=ProcessingS3Output(
+                s3_uri="s3://bucket/output",
+                local_path="/opt/ml/processing/output",
+                s3_upload_mode="EndOfJob",
+            ),
+        )
+        processing_job = ProcessingJob(
+            processing_job_name="baseline-job",
+            processing_inputs=[processing_input],
+            processing_output_config=ProcessingOutputConfig(
+                outputs=[processing_output], kms_key_id="kms-key"
+            ),
+        )
+
+        job = ClarifyBaseliningJob(processing_job=processing_job, sagemaker_session=mock_session)
+
+        assert job.sagemaker_session is mock_session
+        assert job.job_name == "baseline-job"
+        assert job.inputs == [processing_input]
+        assert job.outputs == [processing_output]
+        assert job.output_kms_key == "kms-key"
 
 
 class TestClarifyBaseliningConfig:
