@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import uuid
-import pytest
 import logging
 
 from sagemaker.serve.model_builder import ModelBuilder

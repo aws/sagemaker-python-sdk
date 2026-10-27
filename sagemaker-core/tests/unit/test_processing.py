@@ -23,6 +23,7 @@ from sagemaker.core.processing import (
     _processing_output_to_request_dict,
     _get_process_request,
     logs_for_processing_job,
+    _wait_for_processing_job,
 )
 from sagemaker.core.shapes import (
     ProcessingInput,
@@ -1099,6 +1100,7 @@ class TestScriptProcessorRun:
 
         mock_job = Mock()
         mock_job.wait = Mock()
+        mock_job.processing_job_name = "test-processing-job"
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
             f.write("print('test')")
@@ -1110,11 +1112,77 @@ class TestScriptProcessorRun:
                     with patch(
                         "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
                     ):
-                        processor.run(code=temp_file, wait=True, logs=False)
-                        mock_job.wait.assert_called_once()
+                        with patch(
+                            "sagemaker.core.processing._wait_for_processing_job"
+                        ) as mock_wait:
+                            processor.run(code=temp_file, wait=True, logs=False)
+                            # The wait path must go through the session-aware helper
+                            # (which uses the session's region), not latest_job.wait()
+                            # which resolves a default-region client (issue #5796).
+                            mock_job.wait.assert_not_called()
+                            mock_wait.assert_called_once_with(
+                                sagemaker_session=mock_session,
+                                job_name="test-processing-job",
+                            )
         finally:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)
+
+    def test_run_with_wait_and_logs_uses_session(self, mock_session):
+        processor = ScriptProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            command=["python3"],
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        mock_job = Mock()
+        mock_job.processing_job_name = "test-processing-job"
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
+            f.write("print('test')")
+            temp_file = f.name
+
+        try:
+            with patch.object(processor, "_start_new", return_value=mock_job):
+                with patch("os.path.isfile", return_value=True):
+                    with patch(
+                        "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
+                    ):
+                        with patch(
+                            "sagemaker.core.processing.logs_for_processing_job"
+                        ) as mock_logs:
+                            processor.run(code=temp_file, wait=True, logs=True)
+                            # logs path must also be session-aware (issue #5796).
+                            mock_logs.assert_called_once_with(
+                                sagemaker_session=mock_session,
+                                job_name="test-processing-job",
+                                wait=True,
+                            )
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    def test_wait_for_processing_job_uses_session_region(self, mock_session):
+        """_wait_for_processing_job describes via the session's region-aware client."""
+        mock_session.sagemaker_client.describe_processing_job = Mock(
+            return_value={"ProcessingJobStatus": "Completed"}
+        )
+        with patch("sagemaker.core.processing._wait_until", side_effect=lambda fn, poll: fn()):
+            _wait_for_processing_job(mock_session, "test-job", poll=1)
+        mock_session.sagemaker_client.describe_processing_job.assert_called_with(
+            ProcessingJobName="test-job"
+        )
+
+    def test_wait_for_processing_job_raises_on_failure(self, mock_session):
+        mock_session.sagemaker_client.describe_processing_job = Mock(
+            return_value={"ProcessingJobStatus": "Failed", "FailureReason": "boom"}
+        )
+        with patch("sagemaker.core.processing._wait_until", side_effect=lambda fn, poll: fn()):
+            with pytest.raises(Exception):
+                _wait_for_processing_job(mock_session, "test-job", poll=1)
 
     def test_run_without_wait(self, mock_session):
         processor = ScriptProcessor(
@@ -1343,6 +1411,45 @@ class TestFrameworkProcessorPackageCode:
             observed.get("still_open") == []
         ), "temp tar.gz handle was still open when os.unlink was called"
 
+    def test_package_code_with_pipeline_config(self, mock_session):
+        """Test that _package_code uses pipeline code_hash when available.
+
+        When _pipeline_config.code_hash is set, _package_code should use it
+        in the S3 key (similar to ScriptProcessor._upload_code) for pipeline
+        cache hits. This test verifies the fix for issue #6493.
+        """
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
+                mock_config.pipeline_name = "test-pipeline"
+                mock_config.code_hash = "abc123"
+
+                result = processor._package_code(
+                    entry_point=entry_point,
+                    source_dir=tmpdir,
+                    requirements=None,
+                    job_name="test-job",
+                    kms_key=None,
+                )
+
+                # Should use code_hash in the S3 path, not job_name, and keep
+                # sourcedir.tar.gz so helper-script replace() URIs stay distinct.
+                assert "test-pipeline" in result
+                assert "abc123" in result
+                assert "sourcedir.tar.gz" in result
+                assert "test-job" not in result
+
 
 class TestFrameworkProcessorRun:
     def test_run_with_s3_code(self, mock_session):
@@ -1387,6 +1494,32 @@ class TestFrameworkProcessorRun:
                     ):
                         processor.run(code=entry_point, wait=False)
                         assert processor.latest_job == mock_job
+
+    def test_run_rejects_pipeline_variable_requirements(self, mock_session):
+        """requirements must not be a pipeline variable; it is baked into runproc.sh.
+
+        Previously a pipeline variable raised an opaque TypeError out of
+        os.path.isabs; the guard now raises a clear ValueError like the code
+        and submit_app guards.
+        """
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        with patch(
+            "sagemaker.core.processing.is_pipeline_variable",
+            side_effect=lambda v: v == "reqs.txt",
+        ):
+            with pytest.raises(ValueError, match="requirements argument"):
+                processor.run(
+                    code="s3://bucket/train.py",
+                    requirements="reqs.txt",
+                    wait=False,
+                )
 
 
 class TestFrameworkProcessorPackAndUpload:
@@ -1451,6 +1584,156 @@ class TestFrameworkProcessorPackAndUpload:
                     assert any("install_requirements.py" in uri for uri in upload_uris)
                     assert any("runproc.sh" in uri for uri in upload_uris)
                     assert mock_upload.call_count == 2
+
+    def test_pack_and_upload_code_falls_back_to_output_kms_key(self, mock_session):
+        """kms_key falls back to output_kms_key for ALL artifacts, incl. sourcedir.tar.gz.
+
+        Regression test for #4874: the source bundle is packaged and uploaded by
+        ``_package_code`` before the helper scripts. Previously the fallback was
+        computed after that call, so ``sourcedir.tar.gz`` (the largest, most sensitive
+        artifact) was uploaded unencrypted while install_requirements.py / runproc.sh
+        were encrypted. All three must use the resolved key.
+        """
+        kms_key_arn = "arn:aws:kms:us-west-2:123456789012:key/output-key"
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            output_kms_key=kms_key_arn,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            with patch.object(
+                processor, "_package_code", return_value="s3://bucket/code/sourcedir.tar.gz"
+            ) as mock_package_code:
+                with patch(
+                    "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                    return_value="s3://bucket/runproc.sh",
+                ) as mock_upload:
+                    processor._pack_and_upload_code(
+                        code=entry_point,
+                        source_dir=None,
+                        requirements=None,
+                        job_name=None,
+                        inputs=None,
+                        kms_key=None,
+                    )
+
+        # The source bundle upload (via _package_code) must receive the resolved key.
+        assert mock_package_code.call_args.kwargs["kms_key"] == kms_key_arn
+        # install_requirements.py and runproc.sh must use the same resolved key.
+        upload_kms = [call.kwargs.get("kms_key") for call in mock_upload.call_args_list]
+        assert upload_kms, "expected helper-script uploads"
+        assert all(k == kms_key_arn for k in upload_kms)
+
+    def test_pack_and_upload_code_explicit_kms_key_wins(self, mock_session):
+        """An explicitly passed kms_key overrides output_kms_key for every artifact."""
+        output_kms = "arn:aws:kms:us-west-2:123456789012:key/output-key"
+        explicit_kms = "arn:aws:kms:us-west-2:123456789012:key/explicit-key"
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            output_kms_key=output_kms,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            with patch.object(
+                processor, "_package_code", return_value="s3://bucket/code/sourcedir.tar.gz"
+            ) as mock_package_code:
+                with patch(
+                    "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                    return_value="s3://bucket/runproc.sh",
+                ) as mock_upload:
+                    processor._pack_and_upload_code(
+                        code=entry_point,
+                        source_dir=None,
+                        requirements=None,
+                        job_name=None,
+                        inputs=None,
+                        kms_key=explicit_kms,
+                    )
+
+        assert mock_package_code.call_args.kwargs["kms_key"] == explicit_kms
+        upload_kms = [call.kwargs.get("kms_key") for call in mock_upload.call_args_list]
+        assert upload_kms and all(k == explicit_kms for k in upload_kms)
+
+    def test_pack_and_upload_code_with_pipeline_config(self, mock_session):
+        """Pipeline code_hash prefix must keep sourcedir.tar.gz so helper uploads do not collide.
+
+        ``_pack_and_upload_code`` derives runproc.sh and install_requirements.py URIs
+        with ``s3_payload.replace("sourcedir.tar.gz", ...)``. If the payload URI is
+        only the hash (no sourcedir.tar.gz filename), those replacements are no-ops
+        and the helper scripts overwrite the source archive. Two different hashes
+        must also produce different S3 keys (issue #6493).
+        """
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        def pack_with_hash(code_hash):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                entry_point = os.path.join(tmpdir, "train.py")
+                with open(entry_point, "w") as f:
+                    f.write("print('training')")
+
+                with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
+                    mock_config.pipeline_name = "test-pipeline"
+                    mock_config.code_hash = code_hash
+                    with patch(
+                        "sagemaker.core.s3.S3Uploader.upload_string_as_file_body"
+                    ) as mock_upload:
+                        mock_upload.side_effect = (
+                            lambda body, desired_s3_uri=None, **kwargs: desired_s3_uri
+                        )
+                        processor._pack_and_upload_code(
+                            code=entry_point,
+                            source_dir=tmpdir,
+                            requirements=None,
+                            job_name="test-job",
+                            inputs=None,
+                            kms_key=None,
+                        )
+                        upload_uris = [
+                            call.kwargs.get("desired_s3_uri") for call in mock_upload.call_args_list
+                        ]
+
+            sourcedir_uris = [uri for uri in upload_uris if uri and "sourcedir.tar.gz" in uri]
+            helper_uris = [
+                uri
+                for uri in upload_uris
+                if uri and ("install_requirements.py" in uri or uri.endswith("/runproc.sh"))
+            ]
+            assert sourcedir_uris, "sourcedir.tar.gz must remain in the pipeline hash S3 key"
+            payload_uri = sourcedir_uris[0]
+            assert code_hash in payload_uri
+            assert "test-pipeline" in payload_uri
+            assert "test-job" not in payload_uri
+            assert helper_uris, "expected helper-script uploads"
+            assert payload_uri not in helper_uris
+            return payload_uri
+
+        uri_a = pack_with_hash("abc123")
+        uri_b = pack_with_hash("def456")
+        assert uri_a != uri_b
+        assert "abc123" in uri_a
+        assert "def456" in uri_b
 
 
 class TestProcessingInputOutputHelpers:
@@ -2345,3 +2628,171 @@ class TestScriptAndSparkProcessorInstancePreferences:
             sagemaker_session=mock_session,
         )
         assert processor.instance_preferences == self._PREFS
+
+
+class TestFrameworkProcessorRequirements:
+    """#5805: FrameworkProcessor.run(requirements=...) must be honored in the runproc script."""
+
+    def _make_processor(self, mock_session):
+        return FrameworkProcessor(
+            image_uri="test-image:latest",
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            command=["python3"],
+            sagemaker_session=mock_session,
+        )
+
+    def test_custom_requirements_file_is_used(self, mock_session):
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(
+            "run_entrypoint.py", requirements="cpu-requirements.txt"
+        )
+        assert "if [[ -f 'cpu-requirements.txt' ]]; then" in script
+        assert "install_requirements.py cpu-requirements.txt" in script
+        assert "if [[ -f 'requirements.txt' ]]; then" not in script
+
+    def test_requirements_relative_subdirectory_is_preserved(self, mock_session):
+        """requirements is relative to source_dir, whose layout the bundle preserves."""
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(
+            "run_entrypoint.py", requirements="reqs/cpu-requirements.txt"
+        )
+        assert "if [[ -f 'reqs/cpu-requirements.txt' ]]; then" in script
+        assert "install_requirements.py reqs/cpu-requirements.txt" in script
+
+    def test_requirements_absolute_path_uses_basename(self, mock_session):
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(
+            "run_entrypoint.py", requirements="/home/me/proj/cpu-requirements.txt"
+        )
+        assert "if [[ -f 'cpu-requirements.txt' ]]; then" in script
+
+    def test_custom_requirements_file_used_with_entry_point_s3_source(self, mock_session):
+        """The custom-entrypoint (S3 source_dir) branch must honor requirements too."""
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(
+            "run_entrypoint.py",
+            entry_point="runproc.sh",
+            source_dir="s3://bucket/code/sourcedir.tar.gz",
+            requirements="cpu-requirements.txt",
+        )
+        assert "if [[ -f 'cpu-requirements.txt' ]]; then" in script
+        assert "install_requirements.py cpu-requirements.txt" in script
+        assert "if [[ -f 'requirements.txt' ]]; then" not in script
+        assert "./runproc.sh" in script
+
+    def test_default_requirements_file_when_none(self, mock_session):
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script("run_entrypoint.py")
+        assert "if [[ -f 'requirements.txt' ]]; then" in script
+        assert "install_requirements.py requirements.txt" in script
+
+
+class TestProcessorKmsKeyDefault:
+    """#4874: Processor.run kms_key should default to the configured output_kms_key."""
+
+    def test_run_defaults_kms_key_to_output_kms_key(self, mock_session):
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            output_kms_key="arn:aws:kms:us-west-2:123456789012:key/out-key",
+            sagemaker_session=mock_session,
+        )
+
+        captured = {}
+
+        def fake_normalize(**kwargs):
+            captured["kms_key"] = kwargs.get("kms_key")
+            return [], []
+
+        with (
+            patch.object(processor, "_normalize_args", side_effect=fake_normalize),
+            patch.object(processor, "_start_new", return_value=Mock()),
+            patch(
+                "sagemaker.core.processing.check_and_get_run_experiment_config",
+                side_effect=lambda x: x,
+            ),
+        ):
+            processor.run(wait=False, logs=False)
+
+        assert captured["kms_key"] == "arn:aws:kms:us-west-2:123456789012:key/out-key"
+
+    def test_run_explicit_kms_key_wins(self, mock_session):
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            output_kms_key="arn:aws:kms:us-west-2:123456789012:key/out-key",
+            sagemaker_session=mock_session,
+        )
+
+        captured = {}
+
+        def fake_normalize(**kwargs):
+            captured["kms_key"] = kwargs.get("kms_key")
+            return [], []
+
+        with (
+            patch.object(processor, "_normalize_args", side_effect=fake_normalize),
+            patch.object(processor, "_start_new", return_value=Mock()),
+            patch(
+                "sagemaker.core.processing.check_and_get_run_experiment_config",
+                side_effect=lambda x: x,
+            ),
+        ):
+            processor.run(wait=False, logs=False, kms_key="arn:aws:kms:us-west-2:1:key/explicit")
+
+        assert captured["kms_key"] == "arn:aws:kms:us-west-2:1:key/explicit"
+
+
+class TestProcessorLocalModeRole:
+    def test_role_not_required_for_local_instance(self, mock_session):
+        """A role is optional when instance_type is local (role is unused locally)."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local",
+            sagemaker_session=mock_session,
+        )
+        assert processor.role is None
+        assert processor.instance_type == "local"
+
+    def test_role_not_required_for_local_gpu_instance(self, mock_session):
+        """A role is optional when instance_type is local_gpu."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local_gpu",
+            sagemaker_session=mock_session,
+        )
+        assert processor.role is None
+
+    def test_role_still_required_for_managed_instance(self, mock_session):
+        """A missing role still raises for non-local instance types."""
+        with pytest.raises(
+            ValueError, match="An AWS IAM role is required to create a Processing job."
+        ):
+            Processor(
+                image_uri="test-image:latest",
+                instance_count=1,
+                instance_type="ml.m5.xlarge",
+                sagemaker_session=mock_session,
+            )
+
+    def test_request_args_skip_role_expansion_when_no_role(self, mock_session):
+        """Building the create request must not call expand_role(None) in local mode."""
+        processor = Processor(
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="local",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "local-job"
+        processor._normalize_args = lambda *a, **k: None
+        request = processor._get_process_args(inputs=[], outputs=[], experiment_config=None)
+        assert request["role_arn"] is None
+        mock_session.expand_role.assert_not_called()

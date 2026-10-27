@@ -10,11 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Integration test for KMS key propagation in check steps.
+"""Integration test for KMS key and tag propagation in check steps.
 
 This test constructs real QualityCheckStep and ClarifyCheckStep objects using
 the actual SDK classes with a real SageMaker Session, then inspects the compiled
-step arguments to verify KmsKeyId and VolumeKmsKeyId are present.
+step arguments to verify KmsKeyId, VolumeKmsKeyId and Tags are present.
 
 No SageMaker compute resources are launched. The only AWS interaction is a small
 S3 put_object for the Clarify analysis config (cleaned up in teardown).
@@ -44,6 +44,7 @@ from sagemaker.mlops.workflow.check_job_config import CheckJobConfig
 # the key appears in the compiled request dict.
 _TEST_OUTPUT_KMS_KEY = "arn:aws:kms:us-west-2:123456789012:key/test-output-key-id"
 _TEST_VOLUME_KMS_KEY = "arn:aws:kms:us-west-2:123456789012:key/test-volume-key-id"
+_TEST_TAGS = [{"Key": "integ-test", "Value": "check-step"}]
 
 _S3_PREFIX = "integ-test-kms-check-step"
 
@@ -71,7 +72,7 @@ def s3_client(sagemaker_session):
 
 @pytest.fixture
 def check_job_config_with_kms(role, sagemaker_session):
-    """CheckJobConfig with both output and volume KMS keys."""
+    """CheckJobConfig with both output and volume KMS keys, and tags."""
     return CheckJobConfig(
         role=role,
         instance_count=1,
@@ -80,13 +81,14 @@ def check_job_config_with_kms(role, sagemaker_session):
         volume_kms_key=_TEST_VOLUME_KMS_KEY,
         output_kms_key=_TEST_OUTPUT_KMS_KEY,
         max_runtime_in_seconds=3600,
+        tags=_TEST_TAGS,
         sagemaker_session=sagemaker_session,
     )
 
 
 @pytest.fixture
 def check_job_config_no_kms(role, sagemaker_session):
-    """CheckJobConfig without KMS keys."""
+    """CheckJobConfig without KMS keys or tags."""
     return CheckJobConfig(
         role=role,
         instance_count=1,
@@ -130,13 +132,24 @@ class TestDataQualityCheckStepKms:
         )
 
     def test_output_kms_key_in_arguments(self, check_job_config_with_kms, bucket):
-        """output_kms_key from CheckJobConfig appears as KmsKeyId in S3Output."""
+        """output_kms_key from CheckJobConfig appears as KmsKeyId in ProcessingOutputConfig."""
         step = self._build_step(check_job_config_with_kms, bucket)
         args = step.arguments
 
-        s3_output = args["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]
-        assert "KmsKeyId" in s3_output, f"Expected KmsKeyId in S3Output but got: {s3_output}"
-        assert s3_output["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
+        output_config = args["ProcessingOutputConfig"]
+        assert (
+            "KmsKeyId" in output_config
+        ), f"Expected KmsKeyId in ProcessingOutputConfig but got: {output_config}"
+        assert output_config["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
+        # ProcessingS3Output does not accept KmsKeyId.
+        assert "KmsKeyId" not in output_config["Outputs"][0]["S3Output"]
+
+    def test_tags_in_arguments(self, check_job_config_with_kms, bucket):
+        """tags from CheckJobConfig appear as top-level Tags."""
+        step = self._build_step(check_job_config_with_kms, bucket)
+        args = step.arguments
+
+        assert args["Tags"] == _TEST_TAGS
 
     def test_volume_kms_key_in_arguments(self, check_job_config_with_kms, bucket):
         """volume_kms_key from CheckJobConfig appears as VolumeKmsKeyId in ClusterConfig."""
@@ -149,16 +162,19 @@ class TestDataQualityCheckStepKms:
         ), f"Expected VolumeKmsKeyId in ClusterConfig but got: {cluster_config}"
         assert cluster_config["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
 
-    def test_no_kms_keys_when_not_configured(self, check_job_config_no_kms, bucket):
-        """KMS keys are absent from arguments when not set in CheckJobConfig."""
+    def test_no_kms_keys_or_tags_when_not_configured(self, check_job_config_no_kms, bucket):
+        """KMS keys and tags are absent from arguments when not set in CheckJobConfig."""
         step = self._build_step(check_job_config_no_kms, bucket)
         args = step.arguments
 
-        s3_output = args["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]
-        assert "KmsKeyId" not in s3_output
+        output_config = args["ProcessingOutputConfig"]
+        assert "KmsKeyId" not in output_config
+        assert "KmsKeyId" not in output_config["Outputs"][0]["S3Output"]
 
         cluster_config = args["ProcessingResources"]["ClusterConfig"]
         assert "VolumeKmsKeyId" not in cluster_config
+
+        assert "Tags" not in args
 
     def test_arguments_are_json_serializable(self, check_job_config_with_kms, bucket):
         """The compiled arguments dict is valid JSON (required for pipeline definitions)."""
@@ -167,13 +183,11 @@ class TestDataQualityCheckStepKms:
 
         json_str = json.dumps(args, default=str)
         parsed = json.loads(json_str)
-        assert (
-            parsed["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["KmsKeyId"]
-            == _TEST_OUTPUT_KMS_KEY
-        )
+        assert parsed["ProcessingOutputConfig"]["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
         assert (
             parsed["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
         )
+        assert parsed["Tags"] == _TEST_TAGS
 
 
 class TestDataBiasCheckStepKms:
@@ -208,13 +222,24 @@ class TestDataBiasCheckStepKms:
         )
 
     def test_output_kms_key_in_arguments(self, check_job_config_with_kms, bucket):
-        """output_kms_key from CheckJobConfig appears as KmsKeyId in S3Output."""
+        """output_kms_key from CheckJobConfig appears as KmsKeyId in ProcessingOutputConfig."""
         step = self._build_step(check_job_config_with_kms, bucket)
         args = step.arguments
 
-        s3_output = args["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]
-        assert "KmsKeyId" in s3_output, f"Expected KmsKeyId in S3Output but got: {s3_output}"
-        assert s3_output["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
+        output_config = args["ProcessingOutputConfig"]
+        assert (
+            "KmsKeyId" in output_config
+        ), f"Expected KmsKeyId in ProcessingOutputConfig but got: {output_config}"
+        assert output_config["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
+        # ProcessingS3Output does not accept KmsKeyId.
+        assert "KmsKeyId" not in output_config["Outputs"][0]["S3Output"]
+
+    def test_tags_in_arguments(self, check_job_config_with_kms, bucket):
+        """tags from CheckJobConfig appear as top-level Tags."""
+        step = self._build_step(check_job_config_with_kms, bucket)
+        args = step.arguments
+
+        assert args["Tags"] == _TEST_TAGS
 
     def test_volume_kms_key_in_arguments(self, check_job_config_with_kms, bucket):
         """volume_kms_key from CheckJobConfig appears as VolumeKmsKeyId in ClusterConfig."""
@@ -227,16 +252,19 @@ class TestDataBiasCheckStepKms:
         ), f"Expected VolumeKmsKeyId in ClusterConfig but got: {cluster_config}"
         assert cluster_config["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
 
-    def test_no_kms_keys_when_not_configured(self, check_job_config_no_kms, bucket):
-        """KMS keys are absent from arguments when not set in CheckJobConfig."""
+    def test_no_kms_keys_or_tags_when_not_configured(self, check_job_config_no_kms, bucket):
+        """KMS keys and tags are absent from arguments when not set in CheckJobConfig."""
         step = self._build_step(check_job_config_no_kms, bucket)
         args = step.arguments
 
-        s3_output = args["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]
-        assert "KmsKeyId" not in s3_output
+        output_config = args["ProcessingOutputConfig"]
+        assert "KmsKeyId" not in output_config
+        assert "KmsKeyId" not in output_config["Outputs"][0]["S3Output"]
 
         cluster_config = args["ProcessingResources"]["ClusterConfig"]
         assert "VolumeKmsKeyId" not in cluster_config
+
+        assert "Tags" not in args
 
     def test_arguments_are_json_serializable(self, check_job_config_with_kms, bucket):
         """The compiled arguments dict is valid JSON (required for pipeline definitions)."""
@@ -245,10 +273,8 @@ class TestDataBiasCheckStepKms:
 
         json_str = json.dumps(args, default=str)
         parsed = json.loads(json_str)
-        assert (
-            parsed["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["KmsKeyId"]
-            == _TEST_OUTPUT_KMS_KEY
-        )
+        assert parsed["ProcessingOutputConfig"]["KmsKeyId"] == _TEST_OUTPUT_KMS_KEY
         assert (
             parsed["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"] == _TEST_VOLUME_KMS_KEY
         )
+        assert parsed["Tags"] == _TEST_TAGS

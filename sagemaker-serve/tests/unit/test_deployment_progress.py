@@ -3,6 +3,7 @@
 import unittest
 from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
+from sagemaker.core.helper.session_helper import _EndpointNotFoundBudget
 from sagemaker.serve.deployment_progress import (
     EndpointDeploymentProgress,
     _deploy_done_with_progress,
@@ -196,6 +197,93 @@ class TestLiveLoggingDeployDoneWithProgress(unittest.TestCase):
         )
 
         self.assertEqual(paginator_config.get("StartingToken"), "token123")
+
+    def test_inservice_endpoint_without_log_group_returns_desc(self):
+        """An InService endpoint with no log group (IC-based endpoint) is finished."""
+        mock_client = Mock()
+        expected_desc = {"EndpointStatus": "InService"}
+        mock_client.describe_endpoint.return_value = expected_desc
+        mock_paginator = Mock()
+        mock_paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "FilterLogEvents"
+        )
+        mock_tracker = Mock()
+
+        result = _live_logging_deploy_done_with_progress(
+            mock_client, "test-endpoint", mock_paginator, {}, 5, mock_tracker
+        )
+
+        self.assertEqual(result, expected_desc)
+        mock_tracker.update_status.assert_called_once_with("InService")
+
+    @patch("time.sleep")
+    def test_failed_endpoint_without_log_group_returns_desc(self, mock_sleep):
+        """An endpoint that failed before any container started (no log group) is finished."""
+        mock_client = Mock()
+        expected_desc = {
+            "EndpointStatus": "Failed",
+            "FailureReason": "Unable to provision requested ML compute capacity due to "
+            "InsufficientInstanceCapacity error.",
+        }
+        mock_client.describe_endpoint.return_value = expected_desc
+        mock_paginator = Mock()
+        mock_paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "FilterLogEvents"
+        )
+
+        result = _live_logging_deploy_done_with_progress(
+            mock_client, "test-endpoint", mock_paginator, {}, 5
+        )
+
+        self.assertEqual(result, expected_desc)
+        mock_sleep.assert_called_once_with(5)
+
+    def test_updating_endpoint_keeps_waiting(self):
+        """Updating is in progress, matching _deploy_done_with_progress."""
+        mock_client = Mock()
+        mock_client.describe_endpoint.return_value = {"EndpointStatus": "Updating"}
+        mock_paginator = Mock()
+        mock_paginator.paginate.return_value = []
+
+        result = _live_logging_deploy_done_with_progress(
+            mock_client, "test-endpoint", mock_paginator, {}, 5
+        )
+
+        self.assertIsNone(result)
+
+    def test_other_log_errors_are_raised(self):
+        """Log-fetch errors other than a missing log group still propagate."""
+        mock_client = Mock()
+        mock_client.describe_endpoint.return_value = {"EndpointStatus": "InService"}
+        mock_paginator = Mock()
+        mock_paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "ThrottlingException"}}, "FilterLogEvents"
+        )
+
+        with self.assertRaises(ClientError):
+            _live_logging_deploy_done_with_progress(
+                mock_client, "test-endpoint", mock_paginator, {}, 5
+            )
+
+    def test_missing_endpoint_raises_once_budget_is_spent(self):
+        """A missing endpoint is tolerated only for the budgeted number of polls."""
+        mock_client = Mock()
+        mock_client.describe_endpoint.side_effect = ClientError(
+            {"Error": {"Code": "ValidationException", "Message": "Could not find endpoint"}},
+            "DescribeEndpoint",
+        )
+        budget = _EndpointNotFoundBudget(max_polls=2)
+
+        for _ in range(2):
+            self.assertIsNone(
+                _live_logging_deploy_done_with_progress(
+                    mock_client, "test-endpoint", Mock(), {}, 5, not_found_budget=budget
+                )
+            )
+        with self.assertRaises(ClientError):
+            _live_logging_deploy_done_with_progress(
+                mock_client, "test-endpoint", Mock(), {}, 5, not_found_budget=budget
+            )
 
 
 if __name__ == "__main__":

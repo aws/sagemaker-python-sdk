@@ -40,6 +40,7 @@ DJL_LMI_VERSION = "0.31.0"
 
 
 @pytest.mark.slow_test
+@pytest.mark.xfail_on_insufficient_capacity
 def test_optimize_build_deploy_invoke_cleanup():
     """Integration test for Optimize workflow"""
     logger.info("Starting Optimize integration test...")

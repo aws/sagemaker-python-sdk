@@ -55,6 +55,19 @@ DEFAULT_STOPPING_CONDITION = StoppingCondition(
     max_wait_time_in_seconds=None,
 )
 
+# The shell-expansion assertions below need a variable that is guaranteed to be exported with a
+# known, non-empty value, so this module sets one itself rather than reading the ambient
+# environment. CI runs these tests under tox, whose filtered environment does not pass HOME
+# through, so os.environ["HOME"] is not available here.
+EXPANDABLE_VAR = "SM_TEST_SOURCECODE_ARGS_VALUE"
+EXPANDABLE_VAR_VALUE = "expanded-by-the-shell"
+
+
+@pytest.fixture(autouse=True)
+def expandable_env_var(monkeypatch):
+    """Export a known variable for the tests that run the generated command block."""
+    monkeypatch.setenv(EXPANDABLE_VAR, EXPANDABLE_VAR_VALUE)
+
 
 @pytest.fixture(autouse=True)
 def modules_session():
@@ -237,8 +250,8 @@ requires_bash = pytest.mark.skipif(
     "value",
     [
         "hello world",
-        "$HOME",
-        "${HOME}",
+        "$" + EXPANDABLE_VAR,
+        "${" + EXPANDABLE_VAR + "}",
         "$(id -u)",
         "`id -u`",
         'a"b',
@@ -301,12 +314,12 @@ def test_environment_variables_in_command_still_expand():
     The heredoc stops expansion at *assignment* time only; ``eval`` still parses the command
     once, which is the behavior users of ``command`` rely on.
     """
-    source_code = SourceCode(source_dir="scripts", command="capture_args $HOME")
+    source_code = SourceCode(source_dir="scripts", command=f"capture_args ${EXPANDABLE_VAR}")
     trainer = _make_trainer(source_code)
     script = _written_train_script(trainer, source_code)
 
     argv = _argv_from_running_base_command(script)
-    assert argv == [os.environ["HOME"]]
+    assert argv == [EXPANDABLE_VAR_VALUE]
 
 
 @requires_bash

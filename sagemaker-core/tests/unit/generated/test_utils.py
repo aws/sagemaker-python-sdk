@@ -174,6 +174,41 @@ def test_next_client_returns_empty_list(resource_iterator):
         next(iterator)
 
 
+def test_next_follows_next_token_past_empty_pages(resource_iterator):
+    iterator, client, _ = resource_iterator
+    client.list_training_jobs.side_effect = [
+        {"TrainingJobSummaries": [], "NextToken": "token-1"},
+        {"TrainingJobSummaries": [], "NextToken": "token-2"},
+        LIST_TRAINING_JOB_RESPONSE_WITHOUT_NEXT_TOKEN,
+    ]
+
+    with patch.object(TrainingJob, "refresh"):
+        names = [job.training_job_name for job in iterator]
+
+    assert names == [
+        summary["TrainingJobName"]
+        for summary in LIST_TRAINING_JOB_RESPONSE_WITHOUT_NEXT_TOKEN["TrainingJobSummaries"]
+    ]
+    assert client.list_training_jobs.call_args_list == [
+        call(),
+        call(NextToken="token-1"),
+        call(NextToken="token-2"),
+    ]
+
+
+def test_next_stops_when_empty_pages_repeat_the_next_token(resource_iterator):
+    iterator, client, _ = resource_iterator
+    client.list_training_jobs.side_effect = [
+        {"TrainingJobSummaries": [], "NextToken": "token-1"},
+        {"TrainingJobSummaries": [], "NextToken": "token-1"},
+    ]
+
+    with pytest.raises(StopIteration):
+        next(iterator)
+
+    assert client.list_training_jobs.call_count == 2
+
+
 def test_next_without_next_token(resource_iterator):
     iterator, client, _ = resource_iterator
     client.list_training_jobs.return_value = LIST_TRAINING_JOB_RESPONSE_WITHOUT_NEXT_TOKEN

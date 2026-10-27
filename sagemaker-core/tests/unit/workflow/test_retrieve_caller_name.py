@@ -19,6 +19,7 @@ namespace from the `func_name` passed to `PipelineSession._intercept_create_requ
 -- `ProcessingStep` expects `"run"` from here while interception is called with
 `"process"` -- so a step guard cannot be satisfied by the interception name alone.
 """
+
 from __future__ import absolute_import
 
 import pytest

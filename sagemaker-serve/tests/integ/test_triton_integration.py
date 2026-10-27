@@ -16,7 +16,6 @@ import os
 import json
 import uuid
 import tempfile
-import pytest
 import logging
 
 from sagemaker.serve.model_builder import ModelBuilder

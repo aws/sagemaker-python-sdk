@@ -278,11 +278,12 @@ class Processor(object):
         self.role = resolve_value_from_config(
             role, PROCESSING_JOB_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not self.role:
+        if not self.role and self.instance_type not in ("local", "local_gpu"):
             # Originally IAM role was a required parameter.
             # Now we marked that as Optional because we can fetch it from SageMakerConfig
             # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
+            # after fetching the config. In Local Mode the role is never used
+            # (LocalSagemakerClient.create_processing_job discards it), so it is not required.
             raise ValueError("An AWS IAM role is required to create a Processing job.")
 
         self.env = resolve_value_from_config(
@@ -332,7 +333,8 @@ class Processor(object):
                 is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
                 However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
+                user code file. If not provided, the processor's configured
+                ``output_kms_key`` is used (default: None).
         Returns:
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
@@ -342,6 +344,12 @@ class Processor(object):
         if logs and not wait:
             raise ValueError("""Logs can only be shown if wait is set to True.
                 Please either set wait to True or set logs to False.""")
+
+        # When no explicit code-encryption key is given, fall back to the
+        # configured output KMS key so the uploaded code and job outputs are
+        # encrypted with the same key.
+        if kms_key is None:
+            kms_key = self.output_kms_key
 
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -361,7 +369,17 @@ class Processor(object):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
         """Extend inputs and outputs based on extra parameters"""
@@ -750,11 +768,12 @@ class Processor(object):
             process_request_args["network_config"] = self.network_config._to_request_dict()
         else:
             process_request_args["network_config"] = None
-        process_request_args["role_arn"] = (
-            self.role
-            if is_pipeline_variable(self.role)
-            else self.sagemaker_session.expand_role(self.role)
-        )
+        if self.role is None or is_pipeline_variable(self.role):
+            # No role in Local Mode (see __init__): the local client discards RoleArn,
+            # and expand_role(None) would raise.
+            process_request_args["role_arn"] = self.role
+        else:
+            process_request_args["role_arn"] = self.sagemaker_session.expand_role(self.role)
         process_request_args["tags"] = self.tags
         return process_request_args
 
@@ -903,7 +922,8 @@ class ScriptProcessor(Processor):
                 is built with :class:`~sagemaker.workflow.pipeline_context.PipelineSession`.
                 However, the value of `TrialComponentDisplayName` is honored for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
+                user code file. If not provided, the processor's configured
+                ``output_kms_key`` is used (default: None).
         Returns:
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
@@ -914,7 +934,7 @@ class ScriptProcessor(Processor):
             inputs=inputs,
             outputs=outputs,
             code=code,
-            kms_key=kms_key,
+            kms_key=kms_key if kms_key is not None else self.output_kms_key,
         )
 
         experiment_config = check_and_get_run_experiment_config(experiment_config)
@@ -929,7 +949,17 @@ class ScriptProcessor(Processor):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                if logs:
+                    logs_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                        wait=True,
+                    )
+                else:
+                    _wait_for_processing_job(
+                        sagemaker_session=self.sagemaker_session,
+                        job_name=self.latest_job.processing_job_name,
+                    )
 
     def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.
@@ -1306,12 +1336,24 @@ class FrameworkProcessor(ScriptProcessor):
                         raise ValueError(f"Dependency path does not exist: {dep_path}")
                     tar.add(dep_path, arcname=os.path.basename(dep_path))
 
-            s3_uri = s3.s3_path_join(
-                self._s3_code_prefix(),
-                job_name,
-                "source",
-                "sourcedir.tar.gz",
-            )
+            # Use pipeline code_hash for content-addressed caching when available
+            from sagemaker.core.workflow.utilities import _pipeline_config
+
+            if _pipeline_config and _pipeline_config.code_hash:
+                s3_uri = s3.s3_path_join(
+                    self._s3_code_prefix(),
+                    _pipeline_config.pipeline_name,
+                    "source",
+                    _pipeline_config.code_hash,
+                    "sourcedir.tar.gz",
+                )
+            else:
+                s3_uri = s3.s3_path_join(
+                    self._s3_code_prefix(),
+                    job_name,
+                    "source",
+                    "sourcedir.tar.gz",
+                )
 
             with open(tmp.name, "rb") as tar_file:
                 tar_bytes = tar_file.read()
@@ -1384,6 +1426,13 @@ class FrameworkProcessor(ScriptProcessor):
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
+        if requirements and is_pipeline_variable(requirements):
+            raise ValueError(
+                "requirements argument has to be a path relative to source_dir "
+                + "rather than a pipeline variable, because it is baked into the "
+                + "generated runproc.sh script"
+            )
+
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
             code,
             source_dir,
@@ -1426,6 +1475,14 @@ class FrameworkProcessor(ScriptProcessor):
         if job_name is None:
             job_name = self._generate_current_job_name(job_name)
 
+        # Resolve the KMS key once, before any upload, so every artifact this method
+        # produces -- the source bundle, install_requirements.py and runproc.sh -- is
+        # encrypted with the same key. An explicitly passed kms_key always wins; when it
+        # is not set we fall back to the configured output_kms_key. This must happen
+        # before _package_code so sourcedir.tar.gz (the largest, most sensitive artifact)
+        # is not left unencrypted (issue #4874).
+        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
+
         # Package and upload code
         s3_payload = self._package_code(
             entry_point=code,
@@ -1433,7 +1490,7 @@ class FrameworkProcessor(ScriptProcessor):
             dependencies=dependencies,
             requirements=requirements,
             job_name=job_name,
-            kms_key=kms_key,
+            kms_key=evaluated_kms_key,
         )
 
         inputs = self._patch_inputs_with_payload(inputs, s3_payload)
@@ -1469,7 +1526,6 @@ class FrameworkProcessor(ScriptProcessor):
         # Upload install_requirements helper
         import sagemaker.core.utils.install_requirements as _ir_mod
 
-        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         with open(_ir_mod.__file__, "r") as _ir_file:
             _ir_body = _ir_file.read()
         s3.S3Uploader.upload_string_as_file_body(
@@ -1487,6 +1543,7 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point,
             source_dir,
             install_requirements_dir,
+            requirements=requirements,
         )
 
         return s3_runproc_sh, inputs, job_name
@@ -1532,13 +1589,14 @@ class FrameworkProcessor(ScriptProcessor):
         entry_point=None,
         source_dir=None,
         install_requirements_dir=None,
+        requirements=None,
     ):
         """Create runproc shell script and upload to S3 bucket."""
         from sagemaker.core.workflow.utilities import _pipeline_config, hash_object
 
         if _pipeline_config and _pipeline_config.pipeline_name:
             runproc_file_str = self._generate_framework_script(
-                user_script, entry_point, source_dir, install_requirements_dir
+                user_script, entry_point, source_dir, install_requirements_dir, requirements
             )
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
@@ -1557,7 +1615,7 @@ class FrameworkProcessor(ScriptProcessor):
         else:
             s3_runproc_sh = s3.S3Uploader.upload_string_as_file_body(
                 self._generate_framework_script(
-                    user_script, entry_point, source_dir, install_requirements_dir
+                    user_script, entry_point, source_dir, install_requirements_dir, requirements
                 ),
                 desired_s3_uri=entrypoint_s3_uri,
                 kms_key=kms_key,
@@ -1566,20 +1624,36 @@ class FrameworkProcessor(ScriptProcessor):
 
         return s3_runproc_sh
 
+    @staticmethod
+    def _requirements_file_in_container(requirements: Optional[str]) -> str:
+        """Return the requirements path as it appears inside the extracted source bundle.
+
+        ``requirements`` is documented as relative to ``source_dir`` and ``_package_code``
+        preserves the directory layout, so a relative path (``reqs/cpu.txt``) is kept. An
+        absolute path cannot be located inside the bundle, so only its basename is used.
+        """
+        if not requirements:
+            return "requirements.txt"
+        if os.path.isabs(requirements):
+            return os.path.basename(requirements)
+        return os.path.normpath(requirements).replace(os.sep, "/")
+
     def _generate_framework_script(
         self,
         user_script: str,
         entry_point: str = None,
         source_dir: str = None,
         install_requirements_dir: str = None,
+        requirements: str = None,
     ) -> str:
         """Generate the framework entrypoint file (as text) for a processing job."""
         if entry_point:
             return self._generate_custom_framework_script(
-                user_script, entry_point, source_dir, install_requirements_dir
+                user_script, entry_point, source_dir, install_requirements_dir, requirements
             )
 
         install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
+        requirements_file = self._requirements_file_in_container(requirements)
 
         return dedent("""\
             #!/bin/bash
@@ -1603,16 +1677,17 @@ class FrameworkProcessor(ScriptProcessor):
                 exit 1
             fi
 
-            if [[ -f 'requirements.txt' ]]; then
+            if [[ -f '{requirements_file}' ]]; then
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
-                python3 {install_requirements_dir}/install_requirements.py requirements.txt
+                python3 {install_requirements_dir}/install_requirements.py {requirements_file}
             fi
 
             {entry_point_command} {entry_point} "$@"
         """).format(
             install_requirements_dir=install_requirements_dir,
+            requirements_file=requirements_file,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )
@@ -1623,6 +1698,7 @@ class FrameworkProcessor(ScriptProcessor):
         entry_point: str,
         source_dir: str = None,
         install_requirements_dir: str = None,
+        requirements: str = None,
     ) -> str:
         """Generate a custom framework script with a user-provided entrypoint embedded.
 
@@ -1636,6 +1712,8 @@ class FrameworkProcessor(ScriptProcessor):
                 is relative, it will be combined with source_dir.
             install_requirements_dir (str): Container directory that holds
                 ``install_requirements.py`` (default: the extracted source code dir).
+            requirements (str): Path to the requirements file relative to source_dir
+                (default: ``requirements.txt``).
 
         Returns:
             str: The generated script content
@@ -1645,6 +1723,7 @@ class FrameworkProcessor(ScriptProcessor):
         # source bundle on the container.
         if self._is_s3_uri(source_dir):
             install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
+            requirements_file = self._requirements_file_in_container(requirements)
             return dedent("""\
                 #!/bin/bash
 
@@ -1661,9 +1740,9 @@ class FrameworkProcessor(ScriptProcessor):
                     exit 1
                 fi
 
-                if [[ -f 'requirements.txt' ]]; then
+                if [[ -f '{requirements_file}' ]]; then
                     pip uninstall --yes typing
-                    python3 {install_requirements_dir}/install_requirements.py requirements.txt
+                    python3 {install_requirements_dir}/install_requirements.py {requirements_file}
                 fi
 
                 # Execute custom entrypoint
@@ -1673,6 +1752,7 @@ class FrameworkProcessor(ScriptProcessor):
                 {entry_point_command} {user_script} "$@"
             """).format(
                 install_requirements_dir=install_requirements_dir,
+                requirements_file=requirements_file,
                 entry_point=entry_point,
                 entry_point_command=" ".join(self.command),
                 user_script=user_script,
@@ -1832,6 +1912,36 @@ def _get_process_request(
     return process_request
 
 
+def _wait_for_processing_job(sagemaker_session, job_name, poll=10):
+    """Wait for a processing job to reach a terminal state, respecting the session region.
+
+    Unlike ``ProcessingJob.wait()`` (which resolves a default, global SageMaker client),
+    this describes the job through ``sagemaker_session.sagemaker_client`` so the job is
+    polled in the same region it was created in (issue #5796).
+
+    Args:
+        sagemaker_session: The session used to create the job; its region-aware
+            ``sagemaker_client`` is used to describe the job.
+        job_name (str): Name of the processing job to wait for.
+        poll (int): The interval in seconds between polling for job completion.
+
+    Raises:
+        ValueError: If the processing job fails.
+    """
+    terminal_states = ("Completed", "Failed", "Stopped")
+
+    def _describe_if_terminal():
+        description = sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        )
+        if description["ProcessingJobStatus"] in terminal_states:
+            return description
+        return None
+
+    description = _wait_until(_describe_if_terminal, poll)
+    _check_job_status(job_name, description, "ProcessingJobStatus")
+
+
 def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """Display logs for a given processing job, optionally tailing them until the is complete.
 
@@ -1847,11 +1957,9 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
     """
 
     description = _wait_until(
-        lambda: ProcessingJob.get(
-            processing_job_name=job_name, session=sagemaker_session.boto_session
-        )
-        .refresh()
-        .__dict__,
+        lambda: sagemaker_session.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        ),
         poll,
     )
 
@@ -1901,12 +2009,8 @@ def logs_for_processing_job(sagemaker_session, job_name, wait=False, poll=10):
         if state == LogState.JOB_COMPLETE:
             state = LogState.COMPLETE
         elif time.time() - last_describe_job_call >= 30:
-            description = (
-                ProcessingJob.get(
-                    processing_job_name=job_name, session=sagemaker_session.boto_session
-                )
-                .refresh()
-                .__dict__
+            description = sagemaker_session.sagemaker_client.describe_processing_job(
+                ProcessingJobName=job_name
             )
             last_describe_job_call = time.time()
 

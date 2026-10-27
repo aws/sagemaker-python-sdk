@@ -8,8 +8,6 @@ import logging
 import threading
 from typing import Optional, Type
 
-import torch
-
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
 
@@ -62,6 +60,10 @@ class InProcessServer:
                     logger.error(
                         "Unable to import transformers, check if transformers is installed."
                     )
+
+                # torch is an optional backend (sagemaker-serve[torch]); import it
+                # here so the base install does not pull it in.
+                import torch
 
                 device = 0 if torch.cuda.is_available() else -1
 

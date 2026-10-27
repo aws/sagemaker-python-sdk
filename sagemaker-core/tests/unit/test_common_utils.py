@@ -1100,6 +1100,16 @@ class TestVolumeSupported:
 
         assert volume_size_supported("ml.g5.xlarge") is False
 
+    @pytest.mark.parametrize(
+        "instance_type",
+        ["ml.g7e.2xlarge", "ml.p6-b200.48xlarge", "ml.trn2.48xlarge"],
+    )
+    def test_volume_size_supported_unsupported_families(self, instance_type):
+        """Test g7e, p6-b200 and trn2 instances."""
+        from sagemaker.core.common_utils import volume_size_supported
+
+        assert volume_size_supported(instance_type) is False
+
     def test_volume_size_supported_local(self):
         """Test local mode."""
         from sagemaker.core.common_utils import volume_size_supported

@@ -156,7 +156,7 @@ def update(
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info("Updating {resource_lower} resource.")
-    client = Base.get_sagemaker_client()
+    client = self._get_client()
 
     operation_input_args = {{
 {operation_input_args}
@@ -183,7 +183,7 @@ def update(
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info("Updating {resource_lower} resource.")
-    client = Base.get_sagemaker_client()
+    client = self._get_client()
 
     operation_input_args = {{
 {operation_input_args}
@@ -240,7 +240,8 @@ def get(
 
     # deserialize the response
     transformed_response = transform(response, '{describe_operation_output_shape}')
-    {resource_lower} = cls(**transformed_response){post_processing}
+    {resource_lower} = cls(**transformed_response)
+    {resource_lower}._set_client_context(session=session, region=region){post_processing}
     return {resource_lower}
 """
 
@@ -258,7 +259,7 @@ def refresh(
     operation_input_args = serialize(operation_input_args)
     logger.debug(f"Serialized input request: {{operation_input_args}}")
 
-    client = Base.get_sagemaker_client()
+    client = self._get_client()
     response = client.{operation}(**operation_input_args)
 
     # deserialize response and update self
@@ -483,7 +484,7 @@ def delete(
 {delete_args}
     ) -> None:
 {docstring}
-    client = Base.get_sagemaker_client()
+    client = self._get_client()
 
     operation_input_args = {{
 {operation_input_args}
@@ -501,7 +502,7 @@ STOP_METHOD_TEMPLATE = """
 @Base.add_validate_call
 def stop(self) -> None:
 {docstring}
-    client = SageMakerClient().sagemaker_client
+    client = self._get_client()
 
     operation_input_args = {{
 {operation_input_args}
@@ -590,6 +591,9 @@ SERIALIZE_INPUT_TEMPLATE = """
 INITIALIZE_CLIENT_TEMPLATE = """
     client = Base.get_sagemaker_client(session=session, region_name=region, service_name='{service_name}')"""
 
+INITIALIZE_OBJECT_CLIENT_TEMPLATE = """
+    client = self._get_client(service_name='{service_name}', session=session, region=region)"""
+
 CALL_OPERATION_API_TEMPLATE = """
     logger.debug(f"Calling {operation} API")
     response = client.{operation}(**operation_input_args)
@@ -625,10 +629,32 @@ class Base(BaseModel):
         arbitrary_types_allowed=True,
     )
     config_manager: ClassVar[SageMakerConfig] = SageMakerConfig()
+    # Session and region the resource was created or loaded with. Object methods
+    # (refresh, wait, update, delete, stop, ...) reuse them so a resource obtained
+    # with an explicit session keeps talking to the same account and region.
+    _session: Optional[Session] = PrivateAttr(default=None)
+    _region: Optional[str] = PrivateAttr(default=None)
 
     @classmethod
     def get_sagemaker_client(cls, session = None, region_name = None, service_name = 'sagemaker'):
         return SageMakerClient(session=session, region_name=region_name).get_client(service_name=service_name)
+
+    def _set_client_context(self, session: Optional[Session] = None, region: Optional[str] = None):
+        self._session = session
+        self._region = region
+        return self
+
+    def _get_client(
+        self,
+        service_name: str = 'sagemaker',
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ):
+        return Base.get_sagemaker_client(
+            session=session or self._session,
+            region_name=region or self._region,
+            service_name=service_name,
+        )
 
     @staticmethod
     def get_updated_kwargs_with_configured_attributes(

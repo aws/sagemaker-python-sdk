@@ -1,5 +1,72 @@
 # Changelog
 
+## v2.27.0 (2026-10-21)
+
+### Bug Fixes
+
+- fix: keep the Transformer's configured session when waiting on or stopping a transform job (#6509)
+- fix: add g7e, p6-b200 and trn2 to volume size unsupported instance families (#6505)
+
+
+## v2.26.0 (2026-10-19)
+
+### New Features
+
+- Add sa-west-1 to JumpStart region_config and djl-neuronx image_uri config (#6478)
+- Add me-west-1 (RUH) JumpStart bucket info to region_config.json (#6455)
+
+
+## v2.25.0 (2026-10-13)
+
+### Bug Fixes
+
+- fix(core): prevent false-positive RoleValidationError under conditional access (#6029)
+- fix(core): resolve HuggingFace version alias in image URI tag (#5722)
+- fix(local): align local mode with the SageMaker service (#6317)
+- fix: make local mode health-check timeout configurable via session config (#5778)
+- fix(model-monitor): honor base_job_name for job definition names (#6372)
+- fix(processing): fix V3 shape regressions + KMS/requirements gaps in processors (#6364)
+- fix: accept CUSTOMIZATION capability in JumpStart hub documents (#6456)
+
+### Tests
+
+- chore(core): sync the bundled SageMaker service model with botocore (#6453)
+
+
+## v2.24.0 (2026-10-07)
+
+### New Features
+
+- feat(core): add image_uris list_frameworks/list_versions/list_py_versions helpers (#6357)
+- feat(core): advertise Python 3.13 support (#6348)
+- feat(core): add shared pipeline capture for CreateJob producers (#6292)
+
+### Bug Fixes
+
+- fix(core): fall back to ARN in ModelPackage.refresh for versioned packages (#6378)
+- fix(core): allow Constraints.set_monitoring to disable monitoring for non-string features (#6312)
+- fix(core): respect session region when waiting for processing jobs (#6369)
+- fix(core): reject unsupported container_version instead of returning a bad URI (#6376)
+- fix(core): SageMakerClient honors the passed boto3 session and config (#6273)
+- fix(core): close temp tarball before reading it (#6319)
+- fix(core): make all pipeline Parameters hashable (#6351)
+- fix(core): stop LineIterator hanging when the stream ends without a trailing newline (#6279)
+- fix(core): stop mutating global logging state on import (#6341)
+- fix(core): freeze credentials before signing bearer token (#6360)
+- fix(core): make DataCaptureConfigSummary.kms_key_id optional (#6346)
+- fix(core): lazily initialize DEFAULT_JUMPSTART_SAGEMAKER_SESSION (#6330)
+- fix(core): add PyTorch 2.6 graviton (arm64) inference image (#6342)
+
+### Tests
+
+- test(image_uris): derive pytorch-amzn2023 versions from config (#6385)
+
+### Other
+
+- change: update image_uri_configs (#6374)
+- docs: fix typo in shapes.py docstring (#5545)
+
+
 ## v2.23.0 (2026-09-24)
 
 ### Bug Fixes

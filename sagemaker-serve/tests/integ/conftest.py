@@ -34,11 +34,21 @@ Throttling that still exhausts the adaptive retry budget is deliberately left to
 fail the test loudly (rather than being converted to a skip), so a persistent
 rate-limit regression stays visible instead of silently disappearing from the
 results.
+
+GPU capacity is a separate environmental failure: in us-west-2 SageMaker
+regularly cannot provision the requested GPU instances and fails the endpoint /
+job with an InsufficientInstanceCapacity reason after tens of minutes. Tests
+marked ``xfail_on_insufficient_capacity`` report XFAIL instead of FAIL when they
+fail for exactly that reason. The failure reason set by SageMaker is the signal:
+the test still ends when SageMaker gives up (no client-side timeout that could
+misclassify a slow but healthy deployment), and any other failure still fails
+the test.
 """
 
 from __future__ import absolute_import
 
 import os
+import re
 
 import pytest
 
@@ -66,3 +76,54 @@ def _configure_boto_adaptive_retries():
             os.environ.pop(key, None)
         else:
             os.environ[key] = value
+
+
+# Failure reasons SageMaker reports when it cannot provision the requested
+# instance capacity, as seen in this account:
+#   Endpoint:          "Unable to provision requested ML compute capacity due to
+#                       InsufficientInstanceCapacity error ..."
+#   AIRecommendationJob: "... Could not deploy an endpoint for instance type
+#                       'ml.g5.2xlarge': all reservation and on-demand capacity
+#                       attempts were exhausted."
+#   OptimizationJob:   "EC2InsufficientCapacityException: ... not available due
+#                       to insufficient capacity."
+_INSUFFICIENT_CAPACITY_REASON = re.compile(
+    r"insufficient\s*(?:instance\s*)?capacity|capacity attempts were exhausted",
+    re.IGNORECASE,
+)
+_XFAIL_REASON_MAX_CHARS = 500
+
+
+def pytest_configure(config):
+    """Register the ``xfail_on_insufficient_capacity`` marker."""
+    config.addinivalue_line(
+        "markers",
+        "xfail_on_insufficient_capacity: report the test as XFAIL instead of FAIL when it "
+        "fails because SageMaker could not provision the requested instance capacity.",
+    )
+
+
+def _is_insufficient_capacity(exc):
+    """True if ``exc``, or an exception it was raised from, reports a capacity shortage."""
+    seen = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if _INSUFFICIENT_CAPACITY_REASON.search(str(exc)):
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_call(item):
+    """XFAIL a marked test whose failure is an insufficient-capacity error."""
+    try:
+        return (yield)
+    except Exception as exc:
+        marked = item.get_closest_marker("xfail_on_insufficient_capacity") is not None
+        if marked and _is_insufficient_capacity(exc):
+            pytest.xfail(
+                "SageMaker could not provision the requested instance capacity: "
+                f"{str(exc)[:_XFAIL_REASON_MAX_CHARS]}"
+            )
+        raise

@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 import tempfile
 import os
 
+from sagemaker.core.exceptions import UnexpectedStatusException
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
@@ -55,6 +56,35 @@ class TestModelBuilderSaveModel(unittest.TestCase):
         args = mock_save_pkl.call_args[0]
         self.assertIn("code", str(args[0]))
         self.assertEqual(args[1], (mock_inference_spec, mock_schema))
+
+    @patch("sagemaker.serve.model_builder.save_pkl")
+    def test_save_model_inference_spec_omits_schema_for_custom_orchestrator(self, mock_save_pkl):
+        """Custom orchestrators pickle without the SchemaBuilder.
+
+        Regression test for issue #6200: the SMD entrypoint discards the second element
+        of the tuple, and a SchemaBuilder pickles with references to sagemaker.core
+        modules that an older sagemaker in the serving container cannot import, so
+        including it made cloudpickle.load() fail at container startup.
+        """
+        from sagemaker.serve.builder.schema_builder import SchemaBuilder
+        from sagemaker.serve.spec.inference_base import CustomOrchestrator
+
+        mock_orchestrator = Mock(spec=CustomOrchestrator)
+        mock_schema = Mock(spec=SchemaBuilder)
+
+        builder = ModelBuilder(
+            inference_spec=mock_orchestrator,
+            schema_builder=mock_schema,
+            model_path=self.temp_dir,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        builder.env_vars = {}
+
+        builder._save_model_inference_spec()
+
+        mock_save_pkl.assert_called_once()
+        self.assertEqual(mock_save_pkl.call_args[0][1], (mock_orchestrator, None))
 
     @patch("sagemaker.serve.model_builder.save_pkl")
     @patch("sagemaker.serve.model_builder._detect_framework_and_version")
@@ -520,8 +550,9 @@ class TestModelBuilderWaitForEndpoint(unittest.TestCase):
             sagemaker_session=self.mock_session,
         )
 
-        # _wait_for_endpoint doesn't raise, just waits
-        builder._wait_for_endpoint("test-endpoint", wait=True, show_progress=False)
+        # A deployment that does not reach InService raises
+        with self.assertRaises(UnexpectedStatusException):
+            builder._wait_for_endpoint("test-endpoint", wait=True, show_progress=False)
 
         # Verify wait was called
         mock_wait.assert_called_once()

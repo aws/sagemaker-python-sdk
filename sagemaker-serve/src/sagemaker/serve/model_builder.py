@@ -58,6 +58,7 @@ from sagemaker.core.resources import (
     ModelPackageModelCard,
 )
 from sagemaker.core.utils.utils import logger
+from sagemaker.core.exceptions import CapacityError, UnexpectedStatusException
 from sagemaker.core.helper import session_helper
 from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.helper.session_helper import (
@@ -473,6 +474,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             logger.setLevel(self.log_level)
 
         self._warn_about_deprecated_parameters(warnings)
+        self._initialize_region()
         self._initialize_compute_config()
         self._initialize_network_config()
         self._initialize_defaults()
@@ -541,17 +543,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not hasattr(self, "_enable_network_isolation"):
                 self._enable_network_isolation = False
 
-    def _initialize_defaults(self) -> None:
-        """Initialize default values for unset parameters."""
-        if not hasattr(self, "model_name") or self.model_name is None:
-            self.model_name = "model-" + str(uuid.uuid4())[:8]
+    def _initialize_region(self) -> None:
+        """Resolve the region before any spec lookups that depend on it.
 
-        if not hasattr(self, "mode") or self.mode is None:
-            self.mode = Mode.SAGEMAKER_ENDPOINT
-
-        if not hasattr(self, "env_vars") or self.env_vars is None:
-            self.env_vars = {}
-
+        Must run before _initialize_compute_config: JumpStart default
+        instance type resolution requires self.region to exist.
+        """
         # Set region with priority: user input > sagemaker session > AWS account region > default
         if not hasattr(self, "region") or not self.region:
             if self.sagemaker_session and self.sagemaker_session.boto_region_name:
@@ -564,6 +561,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     self.region = boto3.Session().region_name or None
                 except Exception:
                     self.region = None  # Default fallback
+
+    def _initialize_defaults(self) -> None:
+        """Initialize default values for unset parameters."""
+        if not hasattr(self, "model_name") or self.model_name is None:
+            self.model_name = "model-" + str(uuid.uuid4())[:8]
+
+        if not hasattr(self, "mode") or self.mode is None:
+            self.mode = Mode.SAGEMAKER_ENDPOINT
+
+        if not hasattr(self, "env_vars") or self.env_vars is None:
+            self.env_vars = {}
+
+        # Region is resolved earlier in _initialize_region(); re-run for safety
+        # in case callers invoke _initialize_defaults directly.
+        self._initialize_region()
 
         # At construction, only resolve a default role when none was supplied (so
         # building a ModelBuilder does no IAM work when a role is given). The
@@ -1932,7 +1944,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         code_path = Path(self.model_path).joinpath("code")
 
         if self.inference_spec:
-            save_pkl(code_path, (self.inference_spec, self.schema_builder))
+            if isinstance(self.inference_spec, (CustomOrchestrator, AsyncCustomOrchestrator)):
+                # The SMD orchestrator entrypoint discards the second element of the
+                # tuple, and a SchemaBuilder pickles with references to sagemaker.core
+                # modules that an older sagemaker in the serving container cannot
+                # import. Leave it out so serve.pkl stays loadable there.
+                save_pkl(code_path, (self.inference_spec, None))
+            else:
+                save_pkl(code_path, (self.inference_spec, self.schema_builder))
         elif self.model:
             if isinstance(self.model, str):
                 self.framework = None
@@ -2091,6 +2110,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self.model_path and self.model_path.startswith("s3://"):
             model_artifact_uri = self.model_path
         elif isinstance(self.s3_model_data_url, str) and self.s3_model_data_url.startswith("s3://"):
+            model_artifact_uri = self.s3_model_data_url
+        elif is_pipeline_variable(self.s3_model_data_url):
+            # The artifact does not exist yet: it is produced by an upstream
+            # pipeline step. ``_upload_code(repack=True)`` defers the repack to a
+            # ``_RepackModelStep`` created by ``ModelStep``.
             model_artifact_uri = self.s3_model_data_url
 
         has_source_code = bool(
@@ -2451,7 +2475,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             model_name = variants[0].get("ModelName")
             if not model_name:
                 return None
-            return Model.get(model_name=model_name, region=self.region)
+            return Model.get(
+                model_name=model_name,
+                session=self.sagemaker_session.boto_session,
+                region=self.region,
+            )
         except Exception as e:
             logger.warning(
                 "Could not resolve the Model backing endpoint %s: %s.",
@@ -2481,7 +2509,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if model_arn:
                 # Extract model name from ARN: arn:aws:sagemaker:region:account:model/name
                 model_name = model_arn.rsplit("/", 1)[-1]
-                return Model.get(model_name=model_name, region=self.region)
+                return Model.get(
+                    model_name=model_name,
+                    session=self.sagemaker_session.boto_session,
+                    region=self.region,
+                )
         except Exception as e:
             logger.warning("Could not search Models for reuse: %s", e)
 
@@ -3081,38 +3113,42 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return containers
 
     def _core_container_to_dict(self, container):
-        """Convert core ContainerDefinition to dict using container_def helper."""
-        from sagemaker.core.utils.utils import Unassigned
+        """Convert a core ContainerDefinition into a CreateModel container dict.
 
-        # Helper to check if value is Unassigned
-        def get_value(obj, attr, default=None):
-            if not hasattr(obj, attr):
-                return default
-            val = getattr(obj, attr)
-            return default if isinstance(val, Unassigned) else val
+        The core serializer already emits the exact CreateModel request shape for
+        every field a ``ContainerDefinition`` supports, so the container is routed
+        through it instead of copying a fixed subset of fields. Copying a subset
+        dropped fields such as ``ModelPackageName`` and ``ModelDataSource``.
 
-        return container_def(
-            container.image,
-            get_value(container, "model_data_url"),
-            get_value(container, "environment", {}),
-            image_config=get_value(container, "image_config"),
-        )
+        Args:
+            container (sagemaker.core.shapes.ContainerDefinition): The container to convert.
+
+        Returns:
+            dict: A container definition usable with the CreateModel API.
+        """
+        from sagemaker.core.utils.utils import serialize
+
+        return serialize(container) or {}
 
     def _create_sagemaker_model(self):
         """Create a SageMaker Model Entity."""
         container_def = self._prepare_container_def()
 
+        # A container does not always carry an image: a model-package reference
+        # identifies its image through ModelPackageName instead, so Image is
+        # looked up rather than indexed.
+        resolved_image_uri = (
+            container_def.get("Image")
+            if isinstance(container_def, dict)
+            else container_def[0].get("Image")
+        )
+
         if not isinstance(self.sagemaker_session, PipelineSession):
             # _base_name, model_name are not needed under PipelineSession.
             # the model_data may be Pipeline variable
             # which may break the _base_name generation
-            image_uri = (
-                container_def["Image"]
-                if isinstance(container_def, dict)
-                else container_def[0]["Image"]
-            )
             self._ensure_base_name_if_needed(
-                image_uri=image_uri,
+                image_uri=resolved_image_uri,
                 script_uri=self.source_dir,
                 model_uri=self._get_model_uri(),
             )
@@ -3145,9 +3181,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # A pipeline-variable image is only resolved at execution time, so it
         # cannot be inspected here; set enable_network_isolation explicitly then.
         enable_network_isolation = self._enable_network_isolation
-        resolved_image_uri = (
-            container_def["Image"] if isinstance(container_def, dict) else container_def[0]["Image"]
-        )
         if (
             not enable_network_isolation
             and isinstance(resolved_image_uri, str)
@@ -3167,7 +3200,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.sagemaker_session.create_model(**create_model_args)
         if isinstance(self.sagemaker_session, PipelineSession):
             return
-        return Model.get(model_name=self.model_name, region=self.region)
+        # CreateModel above went through the configured session, so the reload
+        # must use it too: a session-less get() describes the model in the
+        # default boto session's account and fails cross-account.
+        return Model.get(
+            model_name=self.model_name,
+            session=self.sagemaker_session.boto_session,
+            region=self.region,
+        )
 
     def _create_model(self):
         """Create a SageMaker Model instance from the current configuration."""
@@ -3767,9 +3807,27 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return LocalEndpoint.get(endpoint_name=endpoint_name, local_session=local_session)
 
     def _wait_for_endpoint(
-        self, endpoint, poll=30, live_logging=False, show_progress=True, wait=True
+        self,
+        endpoint,
+        poll=30,
+        live_logging=False,
+        show_progress=True,
+        wait=True,
+        stream_endpoint_logs=True,
     ):
-        """Enhanced wait with rich progress bar and status logging"""
+        """Wait for an endpoint deployment to finish, with a rich progress bar.
+
+        Args:
+            stream_endpoint_logs (bool): Stream the endpoint's CloudWatch logs while
+                waiting (default: True). Inference-component based endpoints host no
+                model themselves and never get an endpoint log group, so they wait on
+                status only.
+
+        Raises:
+            CapacityError: If the endpoint fails with a CapacityError.
+            UnexpectedStatusException: If the endpoint finishes in any state other
+                than ``InService``.
+        """
         if not wait:
             logger.info(
                 "🚀 Deployment started: Endpoint '%s' using %s in %s mode (deployment in progress)",
@@ -3793,16 +3851,20 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 # Check if we have permission for live logging
                 from sagemaker.core.helper.session_helper import _has_permission_for_live_logging
 
-                if _has_permission_for_live_logging(self.sagemaker_session.boto_session, endpoint):
+                if stream_endpoint_logs and _has_permission_for_live_logging(
+                    self.sagemaker_session.boto_session, endpoint
+                ):
                     # Use live logging with Rich progress tracker
                     cloudwatch_client = self.sagemaker_session.boto_session.client("logs")
                     paginator = cloudwatch_client.get_paginator("filter_log_events")
                     from sagemaker.core.helper.session_helper import (
                         create_paginator_config,
                         EP_LOGGER_POLL,
+                        _EndpointNotFoundBudget,
                     )
 
                     paginator_config = create_paginator_config()
+                    not_found_budget = _EndpointNotFoundBudget()
                     desc = _wait_until(
                         lambda: _live_logging_deploy_done_with_progress(
                             sagemaker_client,
@@ -3811,6 +3873,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                             paginator_config,
                             EP_LOGGER_POLL,
                             progress,
+                            not_found_budget=not_found_budget,
                         ),
                         poll=EP_LOGGER_POLL,
                     )
@@ -3824,29 +3887,37 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             # Existing implementation
             desc = _wait_until(lambda: _deploy_done(sagemaker_client, endpoint), poll)
 
-        # Check final endpoint status and log accordingly
-        try:
-            endpoint_desc = sagemaker_client.describe_endpoint(EndpointName=endpoint)
-            endpoint_status = endpoint_desc["EndpointStatus"]
-            if endpoint_status == "InService":
-                endpoint_arn_info = (
-                    f" (ARN: {endpoint_desc['EndpointArn']})"
-                    if self.mode == Mode.SAGEMAKER_ENDPOINT
-                    else ""
-                )
-                logger.info(
-                    "✅ Deployment successful: Endpoint '%s' using %s in %s mode%s",
-                    endpoint,
-                    self.model_server,
-                    self.mode,
-                    endpoint_arn_info,
-                )
-            else:
-                logger.error(
-                    "❌ Deployment failed: Endpoint '%s' status is '%s'", endpoint, endpoint_status
-                )
-        except Exception as e:
-            logger.error("❌ Deployment failed: Unable to verify endpoint status - %s", str(e))
+        # _wait_until returns the DescribeEndpoint response of the final status.
+        endpoint_status = desc.get("EndpointStatus")
+        if endpoint_status != "InService":
+            reason = desc.get("FailureReason")
+            logger.error(
+                "Deployment failed: Endpoint '%s' status is '%s'. Reason: %s",
+                endpoint,
+                endpoint_status,
+                reason,
+            )
+            error_class = (
+                CapacityError if "CapacityError" in str(reason) else UnexpectedStatusException
+            )
+            raise error_class(
+                message=f"Error hosting endpoint {endpoint}: {endpoint_status}. Reason: {reason}.",
+                allowed_statuses=["InService"],
+                actual_status=endpoint_status,
+            )
+
+        endpoint_arn_info = (
+            f" (ARN: {desc['EndpointArn']})"
+            if self.mode == Mode.SAGEMAKER_ENDPOINT and desc.get("EndpointArn")
+            else ""
+        )
+        logger.info(
+            "Deployment successful: Endpoint '%s' using %s in %s mode%s",
+            endpoint,
+            self.model_server,
+            self.mode,
+            endpoint_arn_info,
+        )
 
         return desc
 
@@ -4110,7 +4181,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     live_logging=False,  # TODO: enable when IC supports this
                     wait=False,
                 )
-                self._wait_for_endpoint(endpoint=self.endpoint_name, show_progress=True, wait=wait)
+                # An IC-based endpoint hosts no model itself, so it never gets an
+                # endpoint log group to stream: wait on its status only.
+                self._wait_for_endpoint(
+                    endpoint=self.endpoint_name,
+                    show_progress=True,
+                    wait=wait,
+                    stream_endpoint_logs=False,
+                )
 
             core_endpoint = Endpoint.get(
                 endpoint_name=self.endpoint_name,
@@ -4151,7 +4229,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 tags=tags,
                 wait=False,
             )
-            self._wait_for_endpoint(endpoint=self.endpoint_name, show_progress=True, wait=wait)
+            self._wait_for_endpoint(
+                endpoint=self.endpoint_name,
+                show_progress=True,
+                wait=wait,
+                stream_endpoint_logs=False,
+            )
 
             return core_endpoint
 
@@ -4434,6 +4517,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         sagemaker_session: Optional[Session] = None,
         region: Optional[str] = None,
         reuse_resources: bool = False,
+        tags: Optional[Tags] = None,
     ) -> Union[Model, "ModelBuilder", None]:
         """Build a deployable ``Model`` instance with ``ModelBuilder``.
 
@@ -4462,6 +4546,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 no new Model and sets ``built_model`` to the existing Model; on a miss, it
                 creates a new Model. Endpoint reuse is handled independently by passing
                 ``reuse_resources=True`` to deploy(). (Default: False).
+            tags (Optional[Tags]): Tags to attach to the SageMaker Model resource that
+                build() creates, as boto-style ``{"Key": ..., "Value": ...}`` dicts or
+                ``sagemaker.core.shapes.Tag`` objects. Tags passed here are merged with
+                any added through ``add_tags()`` and are preserved when the build is
+                captured by a pipeline ``ModelStep``. Pass tags here rather than to
+                ``deploy()`` when the model is built without an endpoint — for a pipeline
+                step, batch transform, evaluation, or an inference pipeline.
+                (Default: None).
 
         Returns:
             Union[Model, ModelBuilder, None]: A ``sagemaker.core.resources.Model`` resource
@@ -4475,6 +4567,18 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             >>> result = endpoint.invoke(data=input_data)
         """
         self._built_model_was_reused = False
+
+        # Tag the Model resource that build() creates. Without this the only way to
+        # set _tags was deploy(), so every model built without an endpoint -- a
+        # pipeline ModelStep, batch transform, evaluation, an inference pipeline --
+        # was created untagged with no public way to fix it (#6501).
+        # format_tags() expands the {key: value} mapping form; serialize() turns
+        # sagemaker.core.shapes.Tag objects into the boto-style {"Key", "Value"}
+        # dicts the CreateModel request needs, so both representations are accepted.
+        if tags is not None:
+            from sagemaker.core.utils.utils import serialize
+
+            self.add_tags(serialize(format_tags(tags)))
 
         if hasattr(self, "built_model") and self.built_model is not None:
             logger.warning(
@@ -6060,6 +6164,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
                 or a ``Transformer`` for batch transform inference.
 
+        Raises:
+            UnexpectedStatusException: If ``wait`` is True and the endpoint finishes in a
+                state other than ``InService`` (``CapacityError`` for capacity failures).
+                Model customization and recommendation deployments raise
+                ``FailedStatusError`` instead.
+
         Example:
             >>> model_builder = ModelBuilder(model=my_model, role_arn=role, instance_type="ml.m5.xlarge")
             >>> model = model_builder.build()  # Creates Model resource
@@ -6825,9 +6935,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         Args:
             content_types (list[str] or list[PipelineVariable]): The supported MIME types
-                for the input data.
+                for the input data. When omitted, any value supplied to an earlier
+                ``register()`` call is reused, otherwise it is left out of the request
+                (default: None).
             response_types (list[str] or list[PipelineVariable]): The supported MIME types
-                for the output data.
+                for the output data. When omitted, any value supplied to an earlier
+                ``register()`` call is reused, otherwise it is left out of the request
+                (default: None).
             inference_instances (list[str] or list[PipelineVariable]): A list of the instance
                 types that are used to generate inferences in real-time (default: None).
             transform_instances (list[str] or list[PipelineVariable]): A list of the instance
@@ -6936,8 +7050,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         container_def_list = container_def if isinstance(container_def, list) else [container_def]
 
         model_pkg_args = get_model_package_args(
-            self.content_types,
-            self.response_types,
+            getattr(self, "content_types", None),
+            getattr(self, "response_types", None),
             inference_instances=inference_instances,
             transform_instances=transform_instances,
             model_package_name=model_package_name,
