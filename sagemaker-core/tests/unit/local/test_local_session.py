@@ -510,6 +510,26 @@ class TestLocalSession:
                 assert session.s3_endpoint_url == "http://localhost:9000"
 
     @patch("boto3.Session")
+    def test_local_session_with_s3_endpoint_and_default_boto_session(self, mock_boto_session_class):
+        """Test custom S3 endpoint when no boto session is passed in"""
+        mock_boto_session = Mock()
+        mock_boto_session.region_name = "us-west-2"
+        mock_boto_session_class.return_value = mock_boto_session
+
+        with patch("sagemaker.core.local.local_session.load_sagemaker_config", return_value={}):
+            with patch(
+                "sagemaker.core.local.local_session.load_local_mode_config",
+                return_value={"local": {}},
+            ):
+                session = LocalSession(s3_endpoint_url="http://localhost:9000")
+
+        mock_boto_session.resource.assert_called_once_with(
+            "s3", endpoint_url="http://localhost:9000"
+        )
+        mock_boto_session.client.assert_any_call("s3", endpoint_url="http://localhost:9000")
+        assert session.s3_resource is mock_boto_session.resource.return_value
+
+    @patch("boto3.Session")
     def test_local_session_no_region_raises(self, mock_boto_session_class):
         """Test that missing region raises error"""
         mock_boto_session = Mock()
