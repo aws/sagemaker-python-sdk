@@ -144,6 +144,15 @@ class _LazySerializerRegistry(Mapping):
             self._instances[framework] = (serializer_cls(), deserializer_cls())
         return self._instances[framework]
 
+    def __contains__(self, framework) -> bool:
+        """Return whether the framework has a default pair, without building it.
+
+        ``Mapping.__contains__`` would answer this by calling ``__getitem__``,
+        which defeats the laziness and surfaces an optional backend's
+        ``ImportError`` out of a membership test.
+        """
+        return framework in self._factories
+
     def __iter__(self):
         """Iterate over the frameworks that have a default pair."""
         return iter(self._factories)

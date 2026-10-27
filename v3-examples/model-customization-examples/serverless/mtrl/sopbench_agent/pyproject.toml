@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sopbench-agentcore"
+version = "0.1.0"
+description = "SOP-Bench rollout agent for multi-turn RL on Amazon SageMaker AI, hosted on Amazon Bedrock AgentCore"
+requires-python = ">=3.10"
+dependencies = [
+    "bedrock-agentcore",
+    # Modular SageMaker: train (RFT) + core (token_generator) only, not the full sagemaker
+    # meta-package (keeps the AgentCore image under the 2048 MB cap).
+    "sagemaker-train",
+    "sagemaker-core",
+    "openai",
+    # public OSS; bundles benchmark data in-package. Pinned to the tested commit (not on PyPI yet).
+    "amazon-sop-bench @ git+https://github.com/amazon-science/SOP-Bench.git@f6d43858b94cf439854038101bce0eecd3e16eae",
+]
+
+# Dev/launch/notebook tooling -- NOT in the container image (Dockerfile runs `pip install .`, which
+# ignores extras). Install with: pip install -e .[dev]  (or: uv pip install -r requirements-dev.txt)
+[project.optional-dependencies]
+dev = [
+    # deploy CLI (`agentcore`); distinct from the bedrock-agentcore runtime SDK
+    "bedrock-agentcore-starter-toolkit",
+    # launcher CreateJob floor (deployed agent never calls CreateJob, so this is dev-only)
+    "boto3>=1.43.37",
+    "botocore>=1.43.37",
+    # preprocess.py (prompts -> parquet)
+    "pandas",
+    "numpy",
+    "pyarrow",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
