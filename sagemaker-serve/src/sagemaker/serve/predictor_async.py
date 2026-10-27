@@ -335,7 +335,13 @@ class AsyncPredictor:
         output_thread.start()
         failure_thread.start()
 
-        while not output_file_found.is_set() and not failure_file_found.is_set():
+        # Stop once either file is found, or once both waiters have given up (WaiterError);
+        # otherwise a timeout on both would leave this loop spinning forever.
+        while (
+            not output_file_found.is_set()
+            and not failure_file_found.is_set()
+            and (output_thread.is_alive() or failure_thread.is_alive())
+        ):
             time.sleep(1)
 
         if output_file_found.is_set():
@@ -343,17 +349,15 @@ class AsyncPredictor:
             result = self.predictor._handle_response(response=s3_object)
             return result
 
-        failure_object = self.s3_client.get_object(Bucket=failure_bucket, Key=failure_key)
-        failure_response = self.predictor._handle_response(response=failure_object)
+        if failure_file_found.is_set():
+            failure_object = self.s3_client.get_object(Bucket=failure_bucket, Key=failure_key)
+            failure_response = self.predictor._handle_response(response=failure_object)
+            raise AsyncInferenceModelError(message=failure_response)
 
-        raise (
-            AsyncInferenceModelError(message=failure_response)
-            if failure_file_found.is_set()
-            else PollingTimeoutError(
-                message="Inference could still be running",
-                output_path=output_path,
-                seconds=waiter_config.delay * waiter_config.max_attempts,
-            )
+        raise PollingTimeoutError(
+            message="Inference could still be running",
+            output_path=output_path,
+            seconds=waiter_config.delay * waiter_config.max_attempts,
         )
 
     def update_endpoint(
