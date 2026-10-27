@@ -194,7 +194,7 @@ def wait_for_athena_query(session: Session, query_execution_id: str, poll: int =
         state = get_query_execution(session, query_execution_id)["QueryExecution"]["Status"][
             "State"
         ]
-        if state in ("SUCCEEDED", "FAILED"):
+        if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
             logger.info("Query %s %s.", query_execution_id, state.lower())
             break
         logger.info("Query %s is being executed.", query_execution_id)
