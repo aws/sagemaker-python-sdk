@@ -386,7 +386,9 @@ PIPELINE_VERSION_CONTEXT: Context = Context(
     context_arn=f"{PIPELINE_NAME}-version-context-arn",
     context_name=f"sm-fs-fe-{PIPELINE_NAME}-{LAST_UPDATE_TIME}-fep-ver",
     context_type=f"FeatureEngineeringPipelineVersion-{PIPELINE_NAME}",
-    source=ContextSource(source_uri=PIPELINE_ARN, source_types=LAST_UPDATE_TIME),
+    source=ContextSource(
+        source_uri=f"{PIPELINE_ARN}/{LAST_UPDATE_TIME}", source_types=LAST_UPDATE_TIME
+    ),
     properties={"PipelineName": PIPELINE_NAME, "LastUpdateTime": LAST_UPDATE_TIME},
 )
 
