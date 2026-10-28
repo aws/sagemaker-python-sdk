@@ -13,6 +13,8 @@
 
 """Utility functions for AI Registry Hub."""
 
+from typing import Dict, List
+
 import boto3
 
 from sagemaker.ai_registry.air_hub import AIRHub
@@ -20,6 +22,25 @@ from sagemaker.ai_registry.air_constants import (
     RESPONSE_KEY_HUB_CONTENT_VERSION,
     AIR_HUB_CONTENT_DEFAULT_VERSION,
 )
+
+
+def _parse_keywords(search_keywords: List[str]) -> Dict[str, str]:
+    """Parse Hub search keywords into a dictionary.
+
+    Args:
+        search_keywords: List of keyword strings in ``key:value`` form.
+
+    Returns:
+        Dictionary mapping keyword keys to values. Keywords without a ``:`` are
+        skipped. Only the first ``:`` separates the pair, so a value containing
+        colons — an ARN, for one — is preserved whole.
+    """
+    keywords: Dict[str, str] = {}
+    for kw in search_keywords or []:
+        if isinstance(kw, str) and ":" in kw:
+            key, value = kw.split(":", 1)
+            keywords[key] = value
+    return keywords
 
 
 def _determine_new_version(hub_content_type: str, hub_content_name: str, session=None) -> str:

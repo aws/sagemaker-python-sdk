@@ -124,6 +124,7 @@ class TestEvaluator:
         mock_lambda_client.create_function.assert_called_once()
         call_kwargs = mock_lambda_client.create_function.call_args[1]
         assert call_kwargs["Handler"] == "lambda_function.lambda_handler"
+        assert call_kwargs["Timeout"] == 120
 
     @patch("sagemaker.ai_registry.evaluator.AIRHub")
     def test_create_reward_function_always_sets_identity_keywords(self, mock_air_hub):

@@ -16,3 +16,4 @@ tensorflow>=2.16.2,<=2.19.0
 build
 docker>=5.0.2,<8.0
 filelock>=3.0.0
+hypothesis>=6.100.0

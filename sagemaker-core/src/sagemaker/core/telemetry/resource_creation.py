@@ -19,6 +19,9 @@ from __future__ import absolute_import
 _RESOURCE_ARN_ATTRIBUTES = {
     "TrainingJob": "training_job_arn",
     "AgentRFTJob": "job_arn",
+    "Job": "job_arn",
+    "DataSet": "job_arn",
+    "RecommendationResult": "_job_arn",
 }
 
 
@@ -35,6 +38,18 @@ def get_resource_arn(response):
     """
     if response is None:
         return None
+
+    # Multi-output verbs return a sequence of resources rather than a single one
+    # (DataPreparer.transform() returns List[DataSet], since operators like Split
+    # produce several outputs). Every element carries the same originating job
+    # ARN, so unwrap to the first and look the type up as usual — otherwise the
+    # lookup below sees "list", misses, and the call emits no ARN at all.
+    if isinstance(response, (list, tuple)):
+        if not response:
+            return None
+        response = response[0]
+        if response is None:
+            return None
 
     arn_attr = _RESOURCE_ARN_ATTRIBUTES.get(type(response).__name__)
     if not arn_attr:

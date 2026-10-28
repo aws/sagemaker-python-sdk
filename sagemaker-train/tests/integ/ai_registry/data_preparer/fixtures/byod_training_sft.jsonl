@@ -1,0 +1,5 @@
+{"prompt": "Classify the sentiment of the following product review as positive, negative, or neutral:\n\nThis blender is amazing! It crushes ice perfectly and the smoothies come out so creamy.", "completion": "positive"}
+{"prompt": "Classify the sentiment of the following product review as positive, negative, or neutral:\n\nThe laptop arrived with a cracked screen and customer service was unhelpful.", "completion": "negative"}
+{"prompt": "Classify the sentiment of the following product review as positive, negative, or neutral:\n\nThe shoes fit as expected. Nothing special but they work fine for daily use.", "completion": "neutral"}
+{"prompt": "Classify the sentiment of the following product review as positive, negative, or neutral:\n\nAbsolutely love this coffee maker. Best purchase I've made all year!", "completion": "positive"}
+{"prompt": "Classify the sentiment of the following product review as positive, negative, or neutral:\n\nThe product broke after two days. Complete waste of money.", "completion": "negative"}
