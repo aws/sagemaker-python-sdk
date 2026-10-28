@@ -1625,3 +1625,109 @@ class TestOSSModelReuseDeploy:
         assert user_tag in tags
         source_tag = {"key": "sagemaker.amazonaws.com/model-source", "value": "s3://bucket/path/"}
         assert source_tag in tags
+
+
+# ── _extract_tar_gz_to_s3 ───────────────────────────────────────────────────
+
+
+def _tar_gz_bytes(members):
+    """Build an in-memory tar.gz from (name, content) pairs."""
+    import io
+    import tarfile
+
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for name, content in members:
+            info = tarfile.TarInfo(name=name)
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
+    return buf.getvalue()
+
+
+def _extract_with_members(members):
+    """Run _extract_tar_gz_to_s3 against a fake S3 client and return put_object keys."""
+    import io
+
+    s3_client = Mock()
+    s3_client.list_objects_v2.return_value = {"KeyCount": 0}
+    s3_client.get_object.return_value = {"Body": io.BytesIO(_tar_gz_bytes(members))}
+    b = object.__new__(BedrockModelBuilder)
+    b.boto_session = Mock()
+    b.boto_session.client.return_value = s3_client
+
+    uri = b._extract_tar_gz_to_s3("s3://bucket/jobs/run/output/model.tar.gz")
+
+    assert uri == "s3://bucket/jobs/run/output/extracted/"
+    return {c.kwargs["Key"]: c.kwargs["Body"] for c in s3_client.put_object.call_args_list}
+
+
+class TestTarMemberRelativeKey:
+    @pytest.mark.parametrize(
+        "name,expected",
+        [
+            ("config.json", "config.json"),
+            ("checkpoints/hf/config.json", "checkpoints/hf/config.json"),
+            ("./config.json", "config.json"),
+            ("./checkpoints//hf/./config.json", "checkpoints/hf/config.json"),
+            ("model..safetensors", "model..safetensors"),
+        ],
+    )
+    def test_normalizes_relative_names(self, name, expected):
+        from sagemaker.serve.bedrock_model_builder import _tar_member_relative_key
+
+        assert _tar_member_relative_key(name) == expected
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "",
+            ".",
+            "./",
+            "/config.json",
+            "\\config.json",
+            "C:/config.json",
+            "../config.json",
+            "a/../../config.json",
+            "a\\..\\config.json",
+        ],
+    )
+    def test_rejects_non_relative_names(self, name):
+        from sagemaker.serve.bedrock_model_builder import _tar_member_relative_key
+
+        assert _tar_member_relative_key(name) is None
+
+
+class TestExtractTarGzToS3:
+    def test_uploads_members_under_extract_prefix(self):
+        keys = _extract_with_members(
+            [("config.json", b"{}"), ("./checkpoints/hf/model.safetensors", b"weights")]
+        )
+
+        assert keys == {
+            "jobs/run/output/extracted/config.json": b"{}",
+            "jobs/run/output/extracted/checkpoints/hf/model.safetensors": b"weights",
+        }
+
+    def test_skips_members_with_unsupported_paths(self):
+        keys = _extract_with_members(
+            [("config.json", b"{}"), ("../other/file.txt", b"x"), ("/abs/file.txt", b"y")]
+        )
+
+        assert keys == {"jobs/run/output/extracted/config.json": b"{}"}
+
+    def test_raises_when_no_members_extracted(self):
+        with pytest.raises(RuntimeError, match="No files found"):
+            _extract_with_members([("../file.txt", b"x")])
+
+    def test_skips_extraction_when_prefix_exists(self):
+        s3_client = Mock()
+        s3_client.list_objects_v2.return_value = {"KeyCount": 1}
+        b = object.__new__(BedrockModelBuilder)
+        b.boto_session = Mock()
+        b.boto_session.client.return_value = s3_client
+
+        uri = b._extract_tar_gz_to_s3("s3://bucket/jobs/model.tar.gz")
+
+        assert uri == "s3://bucket/jobs/extracted/"
+        s3_client.get_object.assert_not_called()
+        s3_client.put_object.assert_not_called()

@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import re
 import time
 import logging
 from datetime import datetime, timezone
@@ -93,6 +94,28 @@ def _log_bedrock_api_call(api_name: str, params: Dict[str, Any], response: Dict[
         json.dump(log_entry, f, indent=2, default=str)
     logger.info("Bedrock API call logged to %s", filepath)
     print(f"[BedrockModelBuilder] API call logged to: {filepath}")
+
+
+def _tar_member_relative_key(name: str) -> Optional[str]:
+    """Normalize a tar member name into a key relative to the extraction prefix.
+
+    Leading ``./`` segments and empty segments are removed so that archives
+    created with ``tar -C <dir> .`` map to the same keys as archives created
+    from the directory contents.
+
+    Args:
+        name: The tar member name.
+
+    Returns:
+        The normalized relative key, or None if the name is absolute, contains
+        parent directory references, or does not name a file.
+    """
+    if not name or name.startswith(("/", "\\")) or re.match(r"^[A-Za-z]:", name):
+        return None
+    if ".." in re.split(r"[\\/]", name):
+        return None
+    relative = "/".join(part for part in name.split("/") if part not in ("", "."))
+    return relative or None
 
 
 class BedrockModelBuilder:
@@ -1080,10 +1103,14 @@ class BedrockModelBuilder:
             for member in tar:
                 if not member.isfile():
                     continue
+                relative_key = _tar_member_relative_key(member.name)
+                if relative_key is None:
+                    logger.warning("Skipping archive member with unsupported path: %s", member.name)
+                    continue
                 f = tar.extractfile(member)
                 if f is None:
                     continue
-                dest_key = extract_prefix + member.name
+                dest_key = extract_prefix + relative_key
                 size_mb = member.size / (1024 * 1024)
                 extracted_count += 1
                 logger.info("Extracting [%d]: %s (%.1f MB)", extracted_count, member.name, size_mb)
