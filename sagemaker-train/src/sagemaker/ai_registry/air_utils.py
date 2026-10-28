@@ -13,6 +13,8 @@
 
 """Utility functions for AI Registry Hub."""
 
+from typing import Optional
+
 import boto3
 
 from sagemaker.ai_registry.air_hub import AIRHub
@@ -22,20 +24,30 @@ from sagemaker.ai_registry.air_constants import (
 )
 
 
-def _determine_new_version(hub_content_type: str, hub_content_name: str, session=None) -> str:
+def _determine_new_version(
+    hub_content_type: str,
+    hub_content_name: str,
+    session=None,
+    hub_name: Optional[str] = None,
+) -> str:
     """Determine new version for hub content.
 
     Args:
         hub_content_type: Type of hub content
         hub_content_name: Name of hub content
         session: Optional SageMaker session
+        hub_name: Hub to look in. Defaults to the derived AI Registry hub.
 
     Returns:
         New version string (e.g., "2.0.0" if current is "1.0.0", or default if doesn't exist)
     """
     try:
+        describe_kwargs = {"hub_name": hub_name} if hub_name else {}
         response = AIRHub.describe_hub_content(
-            hub_content_type=hub_content_type, hub_content_name=hub_content_name, session=session
+            hub_content_type=hub_content_type,
+            hub_content_name=hub_content_name,
+            session=session,
+            **describe_kwargs,
         )
         current_version = response[RESPONSE_KEY_HUB_CONTENT_VERSION]
         major_version = int(current_version.split(".")[0]) + 1
