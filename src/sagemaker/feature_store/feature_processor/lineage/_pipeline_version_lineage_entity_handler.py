@@ -59,7 +59,9 @@ class PipelineVersionLineageEntityHandler:
                 pipeline_name, last_update_time
             ),
             context_type=f"{PIPELINE_VERSION_CONTEXT_TYPE}-{pipeline_name}",
-            source_uri=pipeline_arn,
+            # Suffix the version key so this context's source URI is distinct from the
+            # pipeline context's, which is also the pipeline ARN.
+            source_uri=f"{pipeline_arn}/{last_update_time}",
             source_type=last_update_time,
             properties={
                 PIPELINE_NAME_KEY: pipeline_name,
