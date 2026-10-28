@@ -22,13 +22,41 @@ AIR_HUB_CONTENT_DEFAULT_VERSION = "1.0.0"
 # Dataset constants
 DATASET_HUB_CONTENT_TYPE = "DataSet"
 DATASET_HUB_CONTENT_SUBTYPE = "AWS/DataSets"
-DATASET_DOCUMENT_SCHEMA_VERSION = "2.0.0"
+DATASET_DOCUMENT_SCHEMA_VERSION = "5.0.0"
+DATASET_SUPPORTED_SCHEMA_VERSIONS = ["2.0.0", "3.0.0", "4.0.0", "5.0.0"]
 DATASET_DEFAULT_METHOD = "generated"
 
 # TODO: Fetch these from intelligent defaults rather than hardcoding
 DATASET_DEFAULT_TYPE = "CUSTOMER_PROVIDED"
 DATASET_DEFAULT_CONVERSATION_ID = "default-conversation"
 DATASET_DEFAULT_CHECKPOINT_ID = "default-checkpoint"
+
+
+class DatasetFileFormat(str, Enum):
+    """Valid values for a DataSet's ``dataset_file_format``.
+
+    Inherits from ``str`` so members compare equal to their wire value and
+    serialize directly into the hub content document. ``CUSTOM`` is the default
+    and means the caller brings their own (arbitrary) schema: DataTransformation
+    supports transforming arbitrary input to arbitrary output, so a Custom
+    dataset is registered without format validation.
+
+    These values must stay aligned with the server-side admission list the hub
+    validates against (SageMakerHubService ``Constants.DATASET_FILE_FORMATS``); a
+    value not in that list is rejected by ImportHubContent.
+    """
+
+    BEDROCK_CONVERSE = "Bedrock_Converse"
+    HF_PROMPT_COMPLETION = "HF_Prompt_Completion"
+    HF_PREFERENCE = "HF_Preference"
+    VERL = "Verl"
+    NOVA_PPO = "Nova_PPO"
+    NOVA_CPT = "Nova_CPT"
+    OPENAI_MESSAGES = "OpenAI_Messages"
+    SAGEMAKER_EVAL = "SageMaker_Eval"
+    NOVA_RLVR = "Nova_RLVR"
+    CUSTOM = "Custom"
+
 
 # Evaluator constants
 EVALUATOR_HUB_CONTENT_TYPE = "JsonDoc"
@@ -79,6 +107,7 @@ DOC_KEY_JSON_CONTENT = "JsonContent"
 DOC_KEY_REFERENCE = "Reference"
 DOC_KEY_DATASET_S3_BUCKET = "DatasetS3Bucket"
 DOC_KEY_DATASET_S3_PREFIX = "DatasetS3Prefix"
+DOC_KEY_DATASET_S3_URI = "DatasetS3Uri"
 
 
 class HubContentStatus(Enum):

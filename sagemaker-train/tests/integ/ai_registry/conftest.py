@@ -117,7 +117,8 @@ def sample_hub_content_document():
         conversation_checkpoint_id=DATASET_DEFAULT_CHECKPOINT_ID,
         dependencies=[],
     )
-    return document.to_json()
+    # Legacy-shaped document (conversation_id, dependencies, ...) -> v2 schema.
+    return document.to_json(schema_version="2.0.0")
 
 
 @pytest.fixture
