@@ -863,22 +863,24 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
         logger.info(f"llama SFT — User-override-only HP keys: {len(result_hp)}")
         logger.info(f"llama SFT — Full recipe HP keys: {len(full_hp)}")
 
-        # Override VALUES must flow through (asserted by value, robust to the
-        # recipe's leaf renames e.g. learning_rate -> optim.lr).
-        result_values = set(result_hp.values())
+        # Override VALUES flow into the resolved recipe (resolver correctness).
+        # Asserted against the resolved recipe (not the serverless-filtered
+        # hyperparameters) so it is robust to recipe leaf renames, e.g.
+        # dataset_max_len -> training_config.data.max_length.
+        resolved_recipe = sft_trainer.get_resolved_recipe()
+        flat_recipe = flatten_resolved_recipe(resolved_recipe)
+        resolved_values = {v for v in flat_recipe.values() if v is not None}
         for key, val in override_values.items():
             assert (
-                str(val) in result_values
-            ), f"override {key}={val} did not flow into serverless hyperparameters"
+                val in resolved_values
+            ), f"override {key}={val} did not flow into the resolved recipe"
 
         # All values are strings (SageMaker API requirement).
         for k, v in result_hp.items():
             assert isinstance(v, str), f"Key '{k}' non-string: {type(v).__name__}"
 
         # Dynamically compute recipe keys NOT in the override spec, then assert
-        # they are excluded from the serverless result but present in the full one.
-        resolved_recipe = sft_trainer.get_resolved_recipe()
-        flat_recipe = flatten_resolved_recipe(resolved_recipe)
+        # they are excluded from the serverless result (reusing flat_recipe above).
         all_recipe_keys = {k for k, v in flat_recipe.items() if v is not None}
         override_spec_keys = set(sft_trainer.hyperparameters._specs.keys())
         user_leaf_keys = set(flatten_resolved_recipe({"training_config": override_values}).keys())
