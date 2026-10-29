@@ -12,7 +12,10 @@
 # language governing permissions and limitations under the License.
 """Unit tests for BedrockModelBuilder."""
 
+import io
 import json
+import tarfile
+
 import pytest
 from unittest.mock import Mock, patch
 from botocore.exceptions import ClientError
@@ -20,7 +23,11 @@ from botocore.exceptions import ClientError
 from sagemaker.core.resources import TrainingJob
 from sagemaker.core.shapes import ModelArtifacts, OutputDataConfig
 from sagemaker.core.utils.utils import Unassigned
-from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder, _is_nova_model
+from sagemaker.serve.bedrock_model_builder import (
+    BedrockModelBuilder,
+    _is_nova_model,
+    _tar_member_relative_key,
+)
 
 MODULE = "sagemaker.serve.bedrock_model_builder"
 
@@ -1631,23 +1638,25 @@ class TestOSSModelReuseDeploy:
 
 
 def _tar_gz_bytes(members):
-    """Build an in-memory tar.gz from (name, content) pairs."""
-    import io
-    import tarfile
+    """Build an in-memory tar.gz from (name, content) pairs.
 
+    A content of None adds a directory entry instead of a file.
+    """
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
         for name, content in members:
             info = tarfile.TarInfo(name=name)
-            info.size = len(content)
-            tar.addfile(info, io.BytesIO(content))
+            if content is None:
+                info.type = tarfile.DIRTYPE
+                tar.addfile(info)
+            else:
+                info.size = len(content)
+                tar.addfile(info, io.BytesIO(content))
     return buf.getvalue()
 
 
 def _extract_with_members(members):
     """Run _extract_tar_gz_to_s3 against a fake S3 client and return put_object keys."""
-    import io
-
     s3_client = Mock()
     s3_client.list_objects_v2.return_value = {"KeyCount": 0}
     s3_client.get_object.return_value = {"Body": io.BytesIO(_tar_gz_bytes(members))}
@@ -1670,11 +1679,10 @@ class TestTarMemberRelativeKey:
             ("./config.json", "config.json"),
             ("./checkpoints//hf/./config.json", "checkpoints/hf/config.json"),
             ("model..safetensors", "model..safetensors"),
+            ("a\\b.json", "a\\b.json"),
         ],
     )
     def test_normalizes_relative_names(self, name, expected):
-        from sagemaker.serve.bedrock_model_builder import _tar_member_relative_key
-
         assert _tar_member_relative_key(name) == expected
 
     @pytest.mark.parametrize(
@@ -1691,9 +1699,7 @@ class TestTarMemberRelativeKey:
             "a\\..\\config.json",
         ],
     )
-    def test_rejects_non_relative_names(self, name):
-        from sagemaker.serve.bedrock_model_builder import _tar_member_relative_key
-
+    def test_rejects_unsupported_names(self, name):
         assert _tar_member_relative_key(name) is None
 
 
@@ -1708,16 +1714,34 @@ class TestExtractTarGzToS3:
             "jobs/run/output/extracted/checkpoints/hf/model.safetensors": b"weights",
         }
 
-    def test_skips_members_with_unsupported_paths(self):
+    def test_skips_directory_members(self):
         keys = _extract_with_members(
-            [("config.json", b"{}"), ("../other/file.txt", b"x"), ("/abs/file.txt", b"y")]
+            [("./", None), ("./checkpoints", None), ("./checkpoints/config.json", b"{}")]
         )
 
-        assert keys == {"jobs/run/output/extracted/config.json": b"{}"}
+        assert keys == {"jobs/run/output/extracted/checkpoints/config.json": b"{}"}
 
-    def test_raises_when_no_members_extracted(self):
+    def test_names_normalizing_to_same_key_keep_last_member(self):
+        keys = _extract_with_members([("./config.json", b"first"), ("config.json", b"second")])
+
+        assert keys == {"jobs/run/output/extracted/config.json": b"second"}
+
+    def test_skips_members_with_unsupported_paths(self, caplog):
+        with caplog.at_level("WARNING"):
+            keys = _extract_with_members(
+                [("config.json", b"{}"), ("../other/file.txt", b"x"), ("/abs/file.txt", b"y")]
+            )
+
+        assert keys == {"jobs/run/output/extracted/config.json": b"{}"}
+        assert "Skipped 2 archive member(s)" in caplog.text
+
+    def test_raises_with_skipped_count_when_all_members_skipped(self):
+        with pytest.raises(RuntimeError, match="2 archive member\\(s\\) were skipped"):
+            _extract_with_members([("../file.txt", b"x"), ("/abs/file.txt", b"y")])
+
+    def test_raises_when_archive_has_no_files(self):
         with pytest.raises(RuntimeError, match="No files found"):
-            _extract_with_members([("../file.txt", b"x")])
+            _extract_with_members([("./", None)])
 
     def test_skips_extraction_when_prefix_exists(self):
         s3_client = Mock()
