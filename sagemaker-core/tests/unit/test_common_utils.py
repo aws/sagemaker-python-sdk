@@ -2880,6 +2880,40 @@ class TestValidateSymlinksWithinRoot:
         with pytest.raises(ValueError, match="symlink that resolves outside"):
             _validate_symlinks_within_root(str(source), "source_directory")
 
+    def test_rejects_dangling_symlink_outside_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        os.symlink(tmp_path / "does-not-exist", source / "missing.txt")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_allows_dangling_symlink_inside_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        os.symlink("pkg/not-created-yet.py", source / "pending.py")
+
+        _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_virtualenv_layout_error_is_actionable(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        interpreter = tmp_path / "python3"
+        interpreter.write_text("")
+        (source / ".venv" / "bin").mkdir(parents=True)
+        os.symlink(interpreter, source / ".venv" / "bin" / "python")
+
+        with pytest.raises(ValueError) as exc_info:
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+        message = str(exc_info.value)
+        assert os.path.join(".venv", "bin", "python") in message
+        assert "Replace the symlink with a copy of its target" in message
+        assert "virtual environment" in message
+
     def test_ignores_files_and_missing_paths(self, tmp_path):
         from sagemaker.core.common_utils import _validate_symlinks_within_root
 
@@ -2945,6 +2979,24 @@ class TestSensitiveSystemPathMatching:
             _validate_dependency_path(str(lookalike))
             with pytest.raises(ValueError, match="cannot access sensitive system paths"):
                 _validate_dependency_path(str(home / ".aws"))
+
+    def test_allows_shared_memory_scratch_space(self):
+        from sagemaker.core.common_utils import _is_sensitive_system_path
+
+        assert _is_sensitive_system_path("/dev/shm") is False
+        assert _is_sensitive_system_path("/dev/shm/model/code") is False
+        assert _is_sensitive_system_path("/dev/null") is True
+
+    def test_reflects_updates_to_sensitive_paths(self, tmp_path):
+        from sagemaker.core.common_utils import _is_sensitive_system_path
+
+        target = tmp_path / "restricted"
+        target.mkdir()
+
+        assert _is_sensitive_system_path(str(target)) is False
+        with patch("sagemaker.core.common_utils._SENSITIVE_SYSTEM_PATHS", [str(target)]):
+            assert _is_sensitive_system_path(str(target / "file")) is True
+        assert _is_sensitive_system_path(str(target)) is False
 
     def test_root_directory_is_not_matched(self):
         from sagemaker.core.common_utils import _is_sensitive_system_path

@@ -97,6 +97,12 @@ _SENSITIVE_SYSTEM_PATHS = [
     "/dev",
 ]
 
+# Locations under _SENSITIVE_SYSTEM_PATHS that are allowed, such as shared memory used
+# as scratch space.
+_SENSITIVE_SYSTEM_PATH_EXCEPTIONS = [
+    "/dev/shm",
+]
+
 logger = logging.getLogger(__name__)
 
 TagsDict = Dict[str, Union[str, PipelineVariable]]
@@ -733,20 +739,34 @@ def _resolved_sensitive_system_paths():
     (for example ``/private/etc`` on macOS), so both forms are checked.
 
     Returns:
-        list[str]: Normalized absolute sensitive paths.
+        tuple[str, ...]: Normalized absolute sensitive paths.
+    """
+    return _resolve_path_variants(tuple(_SENSITIVE_SYSTEM_PATHS))
+
+
+@lru_cache(maxsize=8)
+def _resolve_path_variants(paths):
+    """Return each path both as configured and with symlinks resolved, without duplicates.
+
+    Args:
+        paths (tuple[str, ...]): Paths to resolve.
+
+    Returns:
+        tuple[str, ...]: Normalized absolute paths.
     """
     resolved = []
-    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        for candidate in (normpath(abspath(sensitive_path)), normpath(realpath(sensitive_path))):
+    for path in paths:
+        for candidate in (normpath(abspath(path)), normpath(realpath(path))):
             if candidate not in resolved:
                 resolved.append(candidate)
-    return resolved
+    return tuple(resolved)
 
 
 def _is_sensitive_system_path(resolved_path):
     """Check whether an already resolved absolute path is under a sensitive system path.
 
     Matching is done on whole path components, so ``~/.aws`` does not match ``~/.awsfoo``.
+    Paths under ``_SENSITIVE_SYSTEM_PATH_EXCEPTIONS`` (for example ``/dev/shm``) are allowed.
 
     Args:
         resolved_path (str): An absolute path with symlinks resolved.
@@ -756,6 +776,11 @@ def _is_sensitive_system_path(resolved_path):
     """
     resolved_path = normpath(resolved_path)
     if resolved_path == os.path.sep:
+        return False
+    if any(
+        _is_within_base(resolved_path, allowed_path)
+        for allowed_path in _resolve_path_variants(tuple(_SENSITIVE_SYSTEM_PATH_EXCEPTIONS))
+    ):
         return False
     return any(
         _is_within_base(resolved_path, sensitive_path)
@@ -791,7 +816,10 @@ def _validate_symlinks_within_root(path, description):
             if not _is_within_base(target, root):
                 raise ValueError(
                     f"{description} contains a symlink that resolves outside of {path}: "
-                    f"{entry} -> {target}"
+                    f"{entry} -> {target}. Symlinks under {description} must point to files "
+                    f"or directories inside it. Replace the symlink with a copy of its "
+                    f"target, or remove it from {path} (for example, move a virtual "
+                    f"environment or other tooling directory out of {description})."
                 )
 
 
