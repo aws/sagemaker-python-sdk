@@ -104,6 +104,70 @@ class TestSmdPrepare(unittest.TestCase):
         # Verify copy2 was called for shared lib
         self.assertTrue(any(str(shared_lib) in str(call) for call in mock_copy.call_args_list))
 
+    @patch("sagemaker.serve.model_server.smd.prepare.capture_dependencies")
+    def test_prepare_for_smd_returns_none(self, mock_capture):
+        """prepare_for_smd records the digest in metadata.json and returns nothing.
+
+        The secret key it used to return was removed for CVE-2026-8596; the digest is
+        verified against metadata.json in the container instead. See issue #6200 --
+        callers must not resurrect ``secret_key = prepare_for_smd(...)``.
+        """
+        import hashlib
+        import json
+
+        from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
+
+        model_path = Path(self.temp_dir) / "model"
+        code_dir = model_path / "code"
+        code_dir.mkdir(parents=True)
+        (code_dir / "serve.pkl").write_bytes(b"test data")
+
+        result = prepare_for_smd(model_path=str(model_path), shared_libs=[], dependencies={})
+
+        self.assertIsNone(result)
+        metadata = json.loads((code_dir / "metadata.json").read_bytes())
+        self.assertEqual(metadata["sha256_hash"], hashlib.sha256(b"test data").hexdigest())
+
+    @patch("sagemaker.serve.model_server.smd.prepare.capture_dependencies")
+    def test_prepare_for_smd_writes_sagemaker_free_entrypoint(self, mock_capture):
+        """The copied inference.py must not import the container's sagemaker package.
+
+        Regression test for issue #6200: the container's bundled sagemaker version is set
+        by the SMD image, not by the SDK that built the artifacts.
+        """
+        import ast
+
+        from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
+        from sagemaker.serve.spec.inference_base import CustomOrchestrator
+
+        model_path = Path(self.temp_dir) / "model"
+        code_dir = model_path / "code"
+        code_dir.mkdir(parents=True)
+        (code_dir / "serve.pkl").write_bytes(b"test data")
+
+        class _Orchestrator(CustomOrchestrator):
+            def handle(self, data, context=None):
+                return data
+
+        prepare_for_smd(
+            model_path=str(model_path),
+            shared_libs=[],
+            dependencies={},
+            inference_spec=_Orchestrator(),
+        )
+
+        tree = ast.parse((code_dir / "inference.py").read_text())
+        imported = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported.add(node.module)
+
+        self.assertEqual(
+            sorted(n for n in imported if n == "sagemaker" or n.startswith("sagemaker.")), []
+        )
+
     def test_prepare_for_smd_invalid_dir(self):
         """Test prepare_for_smd raises exception for invalid directory."""
         from sagemaker.serve.model_server.smd.prepare import prepare_for_smd

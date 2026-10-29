@@ -1,0 +1,466 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Prerequisites for the SageMaker AI multi-turn RL (MTRL) SOP-Bench example. Creates the
+  MTRL training job role, the Amazon Bedrock AgentCore agent execution role, a private S3
+  bucket for prompts and job output, a managed MLflow app, and two managed policies to attach
+  to the identity that runs the notebooks. Deploy in a sandbox/dev account, in a region with
+  SageMaker AI multi-turn RL and Amazon Bedrock AgentCore.
+
+Parameters:
+  ExistingMlflowAppArn:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. ARN of an existing SageMaker MLflow app to log to. Leave empty to create one
+      (accounts have a default quota of 3 MLflow apps).
+
+Conditions:
+  CreateMlflowApp: !Equals [!Ref ExistingMlflowAppArn, ""]
+
+Resources:
+
+  # Training prompts + job output. Private, encrypted, versioned.
+  PromptsBucket:
+    Type: AWS::S3::Bucket
+    # checkov:skip=CKV_AWS_18: Sample-scoped bucket (private, KMS-encrypted, versioned, all public access blocked) for training prompts and job output. Server access logging would require a second log bucket; enable it if your account policy requires it.
+    Properties:
+      BucketName: !Sub "sm-mtrl-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      VersioningConfiguration:
+        Status: Enabled
+
+  # SageMaker AI assumes this role during an AgentRFT job. At run time the job needs
+  # to: invoke the AgentCore runtime, read prompts + write output/checkpoints to S3,
+  # DECRYPT the KMS-encrypted prompts bucket, access the gated model package, write
+  # MLflow traces, and emit CloudWatch logs. This is exactly the AWS-published,
+  # purpose-built AmazonSageMakerJobFullAccess policy (S3/KMS/model-package/MLflow/
+  # AgentCore/logs, all same-account-conditioned). It replaces the older
+  # AmazonSageMakerFullAccess + hand-rolled inline, which lacked KMS (encrypted-bucket
+  # decrypt) and model-package access -- both would fail a real job at run time.
+  # Ref: docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonSageMakerJobFullAccess.html
+  SageMakerFineTuningJobRole:
+    Type: AWS::IAM::Role
+    # checkov:skip=CKV_AWS_111: TrainingWorkloadSupplemental grants only ec2 Describe*/network-interface, ecr GetAuthorizationToken/image-pull, and cloudwatch:PutMetricData -- standard SageMaker training actions without resource-level support, which must be Resource:"*". Narrowing them makes the MTRL SDK's pre-flight role validation fail.
+    # checkov:skip=CKV_AWS_109: The only IAM action granted is iam:PassRole (EvaluationPipelinePassRole), scoped to passing THIS role only and conditioned to the SageMaker services (iam:PassedToService), so the evaluation pipeline can run its evaluation job under this role. No permissions-management actions are granted.
+    # checkov:skip=CKV_AWS_63: EvaluationPipelineSageMakerFull uses sagemaker:* bounded to arn:aws:sagemaker:<region>:<account>:* because the MultiTurnRLEvaluator pipeline calls a broad server-side set of SageMaker APIs (CreateAction/AddTags/CreateJob/...) not covered by AmazonSageMakerJobFullAccess. Deploy in a dedicated sandbox account; narrow it for shared accounts.
+    Properties:
+      RoleName: !Sub "SageMakerFineTuningJobRole-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # The SageMaker AI MTRL (AgentRFT) service assumes this job role as principal
+          # 'job.sagemaker.amazonaws.com' at CreateJob time (verified: without it,
+          # CreateJob fails "Could not assume role ... allows principal
+          # 'job.sagemaker.amazonaws.com'"). We keep the classic 'sagemaker.amazonaws.com'
+          # too so any non-AgentRFT SageMaker path that assumes the role still works.
+          - Effect: Allow
+            Principal:
+              Service:
+                - job.sagemaker.amazonaws.com
+                - sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerJobFullAccess
+      # Supplement to JobFullAccess. The MTRL SDK's IamRoleResolver validates this
+      # role via context-free iam:SimulatePrincipalPolicy against the generic
+      # 'training' action set. JobFullAccess condition-gates its ec2 statements on
+      # aws:ResourceAccount and omits ecr pull + cloudwatch:PutMetricData entirely,
+      # so the context-free simulation reports all 14 as missing -> RoleValidationError.
+      # These must be granted UNCONDITIONALLY: any condition needs request context the
+      # validator does not supply, which re-triggers the false-missing (verified via
+      # simulate-principal-policy). This is the AWS-standard SageMaker training action
+      # set (ec2 VPC networking, ecr image pull, cloudwatch metrics); ec2:Describe* and
+      # ecr:GetAuthorizationToken are *-only by definition.
+      Policies:
+        - PolicyName: TrainingWorkloadSupplemental
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: Ec2VpcNetworking
+                Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:CreateNetworkInterfacePermission
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DeleteNetworkInterfacePermission
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeDhcpOptions
+                Resource: "*"
+              - Sid: EcrImagePull
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: "*"
+              - Sid: CloudWatchMetrics
+                Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: "*"
+              # MultiTurnRLEvaluator runs as a SageMaker Pipeline (JobCategory=AgentRFTEvaluation)
+              # under THIS role. That pipeline creates its own AgentRFTEvaluation job and records
+              # lineage (Actions/Artifacts/Contexts + associations), calling a broad set of
+              # SageMaker APIs (CreateAction, AddTags, CreateJob, ...) that the training-scoped
+              # AmazonSageMakerJobFullAccess does not grant -- each surfaces as a separate
+              # "not authorized to perform: sagemaker:<Action>" one run at a time. Rather than
+              # enumerate the full server-side call set, grant sagemaker:* scoped to this
+              # account+region only. Deploy this stack in a dedicated sandbox account.
+              - Sid: EvaluationPipelineSageMakerFull
+                Effect: Allow
+                Action: sagemaker:*
+                Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:*"
+              # The eval pipeline's CreateJob launches the AgentRFTEvaluation job to RUN UNDER
+              # this same role, which requires iam:PassRole on it -- otherwise CreateJob fails
+              # "not authorized to perform: iam:PassRole". Scoped to passing THIS role only, and
+              # conditioned to SageMaker services so the role can't be handed to anything else.
+              - Sid: EvaluationPipelinePassRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/SageMakerFineTuningJobRole-${AWS::Region}"
+                Condition:
+                  StringEquals:
+                    iam:PassedToService:
+                      - sagemaker.amazonaws.com
+                      - job.sagemaker.amazonaws.com
+
+  # The AgentCore-hosted agent runs under this role: it calls the RFT Runtime
+  # for inference + reward reporting (managed policy) and pulls its image / logs.
+  # Point `agentcore configure --execution-role` at this role's ARN.
+  AgentCoreExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "AmazonBedrockAgentCoreSDKRuntime-${AWS::Region}-sopbench"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref "AWS::AccountId"
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerJobRuntimeAccess
+      Policies:
+        - PolicyName: AgentRuntimeBaseline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: EcrPull
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*"
+              - Sid: EcrAuthToken
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/*"
+
+  # MLflow assumes this role to read/write the tracking artifact store in S3.
+  # Trust is service-scoped to SageMaker; permissions are scoped to the mlflow/
+  # prefix of the prompts bucket only.
+  MlflowServiceRole:
+    Type: AWS::IAM::Role
+    Condition: CreateMlflowApp
+    Properties:
+      RoleName: !Sub "SageMakerMlflowRole-${AWS::Region}-sopbench"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MlflowArtifactStoreAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ArtifactStoreReadWrite
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt PromptsBucket.Arn
+                  - !Sub "${PromptsBucket.Arn}/mlflow/*"
+
+  # Managed MLflow tracking server. Pass its ARN to
+  # MultiTurnRLTrainer(mlflow_app_arn=...) to log reward + token curves.
+  MlflowApp:
+    Type: AWS::SageMaker::MlflowApp
+    Condition: CreateMlflowApp
+    Properties:
+      Name: !Sub "sm-mtrl-${AWS::AccountId}"
+      ArtifactStoreUri: !Sub "s3://${PromptsBucket}/mlflow"
+      RoleArn: !GetAtt MlflowServiceRole.Arn
+      ModelRegistrationMode: AutoModelRegistrationDisabled
+
+  # Attach these two managed policies (plus the AWS managed AmazonSageMakerFullAccess and
+  # BedrockAgentCoreFullAccess) to the IAM identity that runs the notebooks, e.g. your
+  # SageMaker Studio execution role. They cover: launching MTRL jobs, deploying the AgentCore
+  # agent (CodeBuild + ECR), the prompts bucket, MLflow, and passing the roles above.
+  MtrlNotebookPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    # checkov:skip=CKV_AWS_111: The Resource:"*" write statements are account/global-level actions with no resource-level support -- ecr:GetAuthorizationToken, the CloudWatch Logs delivery APIs (AgentCoreObservabilityDelivery), cloudformation:ListStacks/DescribeStacks (notebook stack-output lookup), and codebuild:ListProjects. IAM permission-management actions are scoped to *BedrockAgentCore* verbatim from the AgentCore starter-toolkit docs. Verified narrowing breaks `agentcore deploy` and the training notebook.
+    Properties:
+      ManagedPolicyName: !Sub "sm-mtrl-notebook-${AWS::Region}"
+      Description: Runtime permissions for the SageMaker AI MTRL SOP-Bench example notebooks.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PromptsBucket
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:ListBucket
+              - s3:GetBucketLocation
+              # Cleanup (notebook 3): empty the versioned bucket before deleting the stack.
+              - s3:ListBucketVersions
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+            Resource:
+              - !GetAtt PromptsBucket.Arn
+              - !Sub "${PromptsBucket.Arn}/*"
+          # Cleanup (notebook 3): `agentcore destroy --delete-ecr-repo` deletes the agent's ECR
+          # repository.
+          - Sid: AgentCoreEcrCleanup
+            Effect: Allow
+            Action: ecr:DeleteRepository
+            Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/bedrock-agentcore-*"
+          # MTRL SDK (MultiTurnRLTrainer.__init__) reads the gated model's
+          # fine-tuning-options JSON from the public JumpStart metadata bucket
+          # at trainer-construction time. AmazonSageMakerFullAccess only covers
+          # *sagemaker* buckets, so JumpStart (no "sagemaker" substring) needs an
+          # explicit GetObject grant. Gated model *artifacts* live in the private
+          # JumpStart bucket and are pulled by the JOB role at run time via the
+          # model subscription -- not IAM-grantable here.
+          - Sid: JumpStartModelOptionsRead
+            Effect: Allow
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::jumpstart-cache-prod-${AWS::Region}/*"
+          # bedrock-agentcore:* is granted via the BedrockAgentCoreFullAccess
+          # managed policy above (covers runtime, runtime-endpoint, workload-identity,
+          # memory, etc.) -- do not re-enumerate control-plane actions here.
+          - Sid: EcrPush
+            Effect: Allow
+            Action:
+              - ecr:CreateRepository
+              - ecr:DescribeRepositories
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:InitiateLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:CompleteLayerUpload
+              - ecr:PutImage
+            Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*"
+          - Sid: EcrAuthToken
+            Effect: Allow
+            Action: ecr:GetAuthorizationToken
+            Resource: "*"
+          - Sid: CodeBuildForArm64AgentBuild
+            Effect: Allow
+            Action:
+              - codebuild:CreateProject
+              - codebuild:UpdateProject
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+              - codebuild:BatchGetProjects
+            Resource: !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/bedrock-agentcore-*"
+          - Sid: MlflowTracking
+            Effect: Allow
+            Action:
+              - sagemaker-mlflow:*
+              - sagemaker:CreatePresignedMlflowTrackingServerUrl
+              - sagemaker:DescribeMlflowTrackingServer
+            Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:mlflow-app/*"
+          - Sid: AgentCoreObservabilityDelivery
+            Effect: Allow
+            Action:
+              - logs:PutDeliverySource
+              - logs:GetDeliverySource
+              - logs:DeleteDeliverySource
+              - logs:PutDeliveryDestination
+              - logs:GetDeliveryDestination
+              - logs:DeleteDeliveryDestination
+              - logs:PutDeliveryDestinationPolicy
+              - logs:CreateDelivery
+              - logs:GetDelivery
+              - logs:DeleteDelivery
+              - logs:DescribeDeliveries
+              - logs:DescribeDeliverySources
+              - logs:DescribeDeliveryDestinations
+              - logs:CreateLogGroup
+              - logs:PutRetentionPolicy
+            Resource: "*"
+          # The notebooks auto-resolve stack outputs (bucket/role/MlflowAppArn). ListStacks/DescribeStacks do not support
+          # resource-level scoping (must be "*"); read-only.
+          - Sid: CloudFormationOutputScan
+            Effect: Allow
+            Action:
+              - cloudformation:ListStacks
+              - cloudformation:DescribeStacks
+            Resource: "*"
+          # iam:PassRole is scoped to the three provisioned role ARNs (same-account).
+          # We intentionally do NOT add an iam:PassedToService condition: the SageMaker
+          # AgentRFT CreateJob API does not populate that context key (verified via IAM
+          # policy simulation -- the call implicitDenies when the condition is present),
+          # so it would block the legitimate trainer.train() call. Confused-deputy
+          # protection remains enforced by each target role's TRUST POLICY, which only
+          # allows its intended service principal (sagemaker / bedrock-agentcore) to
+          # assume it -- passing these roles to any other service is inert.
+          - Sid: PassProvisionedServiceRoles
+            Effect: Allow
+            Action: iam:PassRole
+            Resource:
+              - !GetAtt SageMakerFineTuningJobRole.Arn
+              - !GetAtt AgentCoreExecRole.Arn
+              - !If [CreateMlflowApp, !GetAtt MlflowServiceRole.Arn, !Ref AWS::NoValue]
+          # The MTRL SDK's IamRoleResolver pre-flight-verifies the job role's
+          # permissions via iam:SimulatePrincipalPolicy before submitting. Without
+          # this the notebook logs a scary (non-fatal) warning and skips the check.
+          # Read-only action, scoped to the three provisioned roles it may simulate.
+          - Sid: SimulateProvisionedRoles
+            Effect: Allow
+            Action: iam:SimulatePrincipalPolicy
+            Resource:
+              - !GetAtt SageMakerFineTuningJobRole.Arn
+              - !GetAtt AgentCoreExecRole.Arn
+              - !If [CreateMlflowApp, !GetAtt MlflowServiceRole.Arn, !Ref AWS::NoValue]
+
+  # Verbatim from the AgentCore starter-toolkit docs (runtime-permissions
+  # #runtime-permissions-starter-toolkit). Required because `agentcore deploy`
+  # CREATES its own CodeBuild + runtime IAM roles, ECR repo, and source bucket.
+  AgentCoreStarterToolkitPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "sm-mtrl-agentcore-toolkit-${AWS::Region}"
+      Description: Permissions for the AgentCore starter toolkit CLI (agentcore configure/deploy).
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: IAMRoleManagement
+            Effect: Allow
+            Action:
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:GetRole
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:TagRole
+              - iam:ListRolePolicies
+              - iam:ListAttachedRolePolicies
+            Resource:
+              - arn:aws:iam::*:role/*BedrockAgentCore*
+          - Sid: CodeBuildProjectAccess
+            Effect: Allow
+            Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+              - codebuild:ListBuildsForProject
+              - codebuild:CreateProject
+              - codebuild:UpdateProject
+              - codebuild:BatchGetProjects
+            Resource:
+              - arn:aws:codebuild:*:*:project/bedrock-agentcore-*
+              - arn:aws:codebuild:*:*:build/bedrock-agentcore-*
+          - Sid: CodeBuildListAccess
+            Effect: Allow
+            Action: codebuild:ListProjects
+            Resource: "*"
+          - Sid: IAMPassRoleAccess
+            Effect: Allow
+            Action: iam:PassRole
+            Resource:
+              - arn:aws:iam::*:role/AmazonBedrockAgentCore*
+              - arn:aws:iam::*:role/service-role/AmazonBedrockAgentCore*
+          - Sid: CloudWatchLogsAccess
+            Effect: Allow
+            Action:
+              - logs:GetLogEvents
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+            Resource:
+              - arn:aws:logs:*:*:log-group:/aws/bedrock-agentcore/*
+              - arn:aws:logs:*:*:log-group:/aws/codebuild/*
+          - Sid: S3Access
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:ListBucket
+              - s3:CreateBucket
+              - s3:PutLifecycleConfiguration
+            Resource:
+              - arn:aws:s3:::bedrock-agentcore-*
+              - arn:aws:s3:::bedrock-agentcore-*/*
+          - Sid: ECRRepositoryAccess
+            Effect: Allow
+            Action:
+              - ecr:CreateRepository
+              - ecr:DescribeRepositories
+              - ecr:GetRepositoryPolicy
+              - ecr:InitiateLayerUpload
+              - ecr:CompleteLayerUpload
+              - ecr:PutImage
+              - ecr:UploadLayerPart
+              - ecr:BatchCheckLayerAvailability
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:ListImages
+              - ecr:TagResource
+            Resource: arn:aws:ecr:*:*:repository/bedrock-agentcore-*
+          - Sid: ECRAuthorizationAccess
+            Effect: Allow
+            Action: ecr:GetAuthorizationToken
+            Resource: "*"
+
+Outputs:
+  PromptsBucketName:
+    Description: S3 bucket for training prompts and job output.
+    Value: !Ref PromptsBucket
+  JobRoleArn:
+    Description: Pass this as the SageMaker AgentRFT job role.
+    Value: !GetAtt SageMakerFineTuningJobRole.Arn
+  AgentCoreExecRoleArn:
+    Description: Use with `agentcore configure --execution-role`.
+    Value: !GetAtt AgentCoreExecRole.Arn
+  MlflowAppArn:
+    Description: Pass this as MultiTurnRLTrainer(mlflow_app_arn=...).
+    Value: !If [CreateMlflowApp, !GetAtt MlflowApp.Arn, !Ref ExistingMlflowAppArn]
+  NotebookPolicyArn:
+    Description: Attach to the identity that runs the notebooks.
+    Value: !Ref MtrlNotebookPolicy
+  AgentCoreToolkitPolicyArn:
+    Description: Attach to the identity that runs `agentcore configure/deploy`.
+    Value: !Ref AgentCoreStarterToolkitPolicy

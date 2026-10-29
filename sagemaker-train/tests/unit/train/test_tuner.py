@@ -70,6 +70,7 @@ def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
     trainer.compute.volume_size_in_gb = 30
+    trainer.compute.volume_kms_key_id = None
     trainer.stopping_condition = MagicMock()
     trainer.stopping_condition.max_runtime_in_seconds = 3600
     trainer.input_data_config = None
@@ -703,6 +704,40 @@ class TestHyperparameterTunerStaticMethods:
             definition.stopping_condition.max_wait_time_in_seconds, int
         ), "Max wait time should be set"
 
+    def test_pipeline_session_request_keeps_tuning_job_name(self):
+        """Regression for #6299 / #5776.
+
+        Under a PipelineSession the tuning request must KEEP HyperParameterTuningJobName. The
+        TuningStep strips it via trim_request_dict (dropped by default, prefix preserved when
+        use_custom_job_prefix=True); popping it here left use_custom_job_prefix nothing to preserve.
+        """
+        from unittest.mock import Mock
+        from sagemaker.core.workflow.pipeline_context import PipelineSession
+
+        pipeline_session = Mock(spec=PipelineSession)
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.sagemaker_session = pipeline_session
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+        tuner._current_job_name = "my-prefix-2026-01-01-00-00-00-000"
+
+        tuner._start_tuning_job(inputs=None)
+
+        pipeline_session._intercept_create_request.assert_called_once()
+        serialized_request = pipeline_session._intercept_create_request.call_args.args[0]
+        assert "HyperParameterTuningJobName" in serialized_request
+        assert serialized_request["HyperParameterTuningJobName"].startswith("my-prefix")
+
+        # The name must be strippable back to the base, or trim_request_dict would preserve a
+        # definition-time timestamp instead of the prefix when use_custom_job_prefix=True.
+        from sagemaker.core.common_utils import base_from_name
+
+        assert base_from_name(serialized_request["HyperParameterTuningJobName"]) == "my-prefix"
+
     def test_build_training_job_definition_includes_environment_variables(self):
         """Test that _build_training_job_definition includes environment variables.
 
@@ -863,6 +898,66 @@ class TestBuildTrainingJobDefinitionCheckpointAndRetry:
 
         assert not isinstance(definition.checkpoint_config, CheckpointConfig)
         assert not isinstance(definition.retry_strategy, RetryStrategy)
+
+
+class TestBuildTrainingJobDefinitionVolumeKmsKey:
+    """Regression for #6521.
+
+    ``_build_training_job_definition`` dropped ``volume_kms_key_id`` from
+    ``ModelTrainer.compute``, so HPO child training jobs silently failed to
+    encrypt their storage volumes with the configured customer-managed KMS key.
+    """
+
+    @staticmethod
+    def _tuner(trainer):
+        return HyperparameterTuner(
+            model_trainer=trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+    def test_explicit_key_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        trainer.compute.volume_kms_key_id = (
+            "arn:aws:kms:us-east-2:123456789012:key/00000000-0000-0000-0000-000000000000"
+        )
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.resource_config.volume_kms_key_id == (
+            "arn:aws:kms:us-east-2:123456789012:key/00000000-0000-0000-0000-000000000000"
+        )
+
+    def test_plain_string_key_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        trainer.compute.volume_kms_key_id = "1234abcd-12ab-34cd-56ef-1234567890ab"
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert (
+            definition.resource_config.volume_kms_key_id == "1234abcd-12ab-34cd-56ef-1234567890ab"
+        )
+
+    def test_pipeline_variable_key_is_propagated(self):
+        trainer = _create_mock_model_trainer()
+        kms_param = ParameterString(name="VolumeKmsKeyId")
+        trainer.compute.volume_kms_key_id = kms_param
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        assert definition.resource_config.volume_kms_key_id is kms_param
+
+    def test_omitted_key_stays_unassigned(self):
+        from sagemaker.core.utils.utils import Unassigned
+
+        trainer = _create_mock_model_trainer()
+        trainer.compute.volume_kms_key_id = None
+
+        definition = self._tuner(trainer)._build_training_job_definition(None)
+
+        # Leaving the field Unassigned keeps VolumeKmsKeyId out of the
+        # serialized CreateHyperParameterTuningJob request.
+        assert isinstance(definition.resource_config.volume_kms_key_id, Unassigned)
 
 
 class TestHyperparameterTunerTagInheritance:

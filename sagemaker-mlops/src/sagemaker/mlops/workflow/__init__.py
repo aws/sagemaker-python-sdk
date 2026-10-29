@@ -44,6 +44,7 @@ from sagemaker.mlops.workflow.steps import (
 
 # Step implementations
 from sagemaker.mlops.workflow.automl_step import AutoMLStep
+from sagemaker.mlops.workflow.athena_step import AthenaQueryConfig, AthenaStep
 from sagemaker.mlops.workflow.callback_step import CallbackStep, CallbackOutput
 from sagemaker.mlops.workflow.clarify_check_step import ClarifyCheckStep
 from sagemaker.mlops.workflow.cleanup_step import CleanupStep, S3CleanupSource
@@ -113,6 +114,8 @@ __all__ = [
     "TuningStep",
     # Step implementations
     "AutoMLStep",
+    "AthenaQueryConfig",
+    "AthenaStep",
     "CallbackStep",
     "CallbackOutput",
     "ClarifyCheckStep",
