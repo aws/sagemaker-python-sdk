@@ -30,6 +30,7 @@ DEST = "/tmp/dest"
     [
         ("https://oauth2:abc123@example.com/org/repo.git", "oauth2:abc123"),
         ("https://user:p%40ss@example.com/org/repo.git", "user:p%40ss"),
+        ("https://user:p@ss@example.com/org/repo.git", "user:p@ss"),
     ],
 )
 def test_clone_failure_uses_sanitized_url(repo_url, userinfo, caplog):

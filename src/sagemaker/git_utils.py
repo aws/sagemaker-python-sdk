@@ -337,7 +337,9 @@ def _redact_credentials_from_url(url):
 
     Replaces any username, password, or token embedded before the '@' in an
     HTTPS URL with a placeholder so that credentials are never exposed in
-    logs or exception messages.
+    logs or exception messages. Only the authority (the part before the first
+    '/', '?' or '#') is considered, up to its last '@'. URLs without userinfo,
+    including ones with an '@' later in the path, are returned unchanged.
 
     Args:
         url (str): The Git repository URL that may contain embedded credentials.
@@ -345,7 +347,7 @@ def _redact_credentials_from_url(url):
     Returns:
         str: The URL with credentials replaced by '<credentials-redacted>'.
     """
-    return re.sub(r"(https://)([^@]+)@", r"\1<credentials-redacted>@", url)
+    return re.sub(r"^(https://)[^/?#]*@", r"\1<credentials-redacted>@", url)
 
 
 def _run_clone_command(repo_url, dest_dir):
