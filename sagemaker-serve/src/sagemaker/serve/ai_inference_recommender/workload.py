@@ -15,15 +15,21 @@
 from __future__ import absolute_import
 
 import json
+import logging
+import math
 import os
 import re
 import uuid
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from sagemaker.serve.ai_inference_recommender.secrets import Secret
+from sagemaker.serve.ai_inference_recommender.traffic import describe_endpoint_traffic
+
+logger = logging.getLogger(__name__)
 
 # Default input-data channel names; the channel is mounted at
 # {_CONTAINER_INPUT_DATA_DIR}/{channel_name}/ inside the benchmark container.
@@ -205,6 +211,115 @@ class Workload(BaseModel):
             dataset_channels=[
                 _DatasetChannel(channel_name=channel_name, s3_uri=s3_uri),
             ],
+        )
+
+    @classmethod
+    def from_endpoint(
+        cls,
+        endpoint_name: str,
+        *,
+        inference_component_name: Optional[str] = None,
+        variant_name: Optional[str] = None,
+        lookback: Optional[timedelta] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        concurrency: Optional[int] = None,
+        use_data_capture: bool = False,
+        sagemaker_session: Optional[Any] = None,
+        **params: Any,
+    ) -> "Workload":
+        """Build a workload from the traffic one model on an endpoint served.
+
+        Describes the endpoint with :func:`describe_endpoint_traffic`. The workload uses synthetic
+        prompts, as :meth:`Workload.synthetic` does, with the mean and standard deviation of the
+        prompt and response lengths of the requests the model completed in the window; those need
+        detailed observability on the endpoint and a vLLM serving container. With
+        ``use_data_capture``, it replays the requests SageMaker Data Capture recorded instead, as
+        :meth:`Workload.from_dataset` does. Either way, the concurrency is the window's busiest
+        hour for the whole deployment.
+
+        Args:
+            endpoint_name: The SageMaker endpoint name.
+            inference_component_name: The inference component to read, for an endpoint that has
+                them. Found for you when the endpoint has only one.
+            variant_name: The production variant to read, for a model deployed on a variant.
+                Found for you when the endpoint has only one.
+            lookback: How far back from ``end_time`` to read, up to seven days (the default).
+            start_time: The window's start, a timezone-aware ``datetime``, instead of
+                ``lookback``.
+            end_time: The window's end, a timezone-aware ``datetime``. Defaults to now.
+            concurrency: Number of in-flight requests. Defaults to the busiest hour's.
+            use_data_capture: Replay the requests SageMaker Data Capture recorded for the variant,
+                when the endpoint captures them, instead of using synthetic prompts. Off by
+                default: the replay is every request under the variant's capture prefix, from all
+                of its inference components and all the history Data Capture kept, not just the
+                window, and the captures can hold your endpoint users' data. If they're encrypted
+                with a KMS key, the job's role needs ``kms:Decrypt`` on it.
+            sagemaker_session: Optional session used to read the endpoint — a
+                ``boto3.session.Session`` or a sagemaker ``Session`` wrapping one.
+            **params: Passed on to :meth:`Workload.from_dataset` or :meth:`Workload.synthetic`,
+                for example ``tokenizer`` (required for synthetic prompts), ``hf_token``,
+                ``request_count`` and ``streaming``.
+
+        Returns:
+            A ``Workload`` that replays captured requests or uses synthetic prompts.
+
+        Raises:
+            ValueError: If the endpoint served no traffic in the window and ``concurrency``
+                isn't given, or the workload needs synthetic prompts and the endpoint published
+                no token metrics in the window.
+        """
+        traffic = describe_endpoint_traffic(
+            endpoint_name,
+            inference_component_name=inference_component_name,
+            variant_name=variant_name,
+            lookback=lookback,
+            start_time=start_time,
+            end_time=end_time,
+            sagemaker_session=sagemaker_session,
+        )
+        window = f"from {traffic.start_time} to {traffic.end_time}"
+        if concurrency is None:
+            if traffic.concurrency is None:
+                raise ValueError(
+                    f"Endpoint {endpoint_name!r} served no requests {window}; pass concurrency."
+                )
+            concurrency = math.ceil(traffic.concurrency.max)
+        if use_data_capture and traffic.data_capture_s3_uri:
+            logger.warning(
+                "The workload replays every request SageMaker Data Capture recorded under %s. They "
+                "can hold your endpoint users' data.",
+                traffic.data_capture_s3_uri,
+            )
+            return cls.from_dataset(
+                traffic.data_capture_s3_uri,
+                custom_dataset_type="sagemaker-datacapture",
+                concurrency=concurrency,
+                **params,
+            )
+        if use_data_capture:
+            logger.warning(
+                "Endpoint %s doesn't capture its requests, so the workload uses synthetic prompts.",
+                endpoint_name,
+            )
+        if traffic.input_tokens is None or traffic.output_tokens is None:
+            if traffic.token_metrics_error:
+                reason = f"they couldn't be read ({traffic.token_metrics_error})"
+            elif traffic.detailed_observability is False:
+                reason = "its endpoint configuration turns detailed observability off"
+            else:
+                reason = "they need detailed observability on and a vLLM serving container"
+            raise ValueError(
+                f"Endpoint {endpoint_name!r} published no token metrics {window}: {reason}. "
+                "Use Workload.synthetic(...) with your own token sizes instead."
+            )
+        return cls.synthetic(
+            concurrency=concurrency,
+            prompt_input_tokens_mean=round(traffic.input_tokens.mean),
+            prompt_input_tokens_stddev=traffic.input_tokens.stddev,
+            output_tokens_mean=round(traffic.output_tokens.mean),
+            output_tokens_stddev=traffic.output_tokens.stddev,
+            **params,
         )
 
     @classmethod
