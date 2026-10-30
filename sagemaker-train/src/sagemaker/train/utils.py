@@ -137,9 +137,9 @@ def _get_unique_name(base, max_length=63):
         str: The unique name
     """
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    base = base.replace("_", "-")
+    # Truncate the base, not the timestamp, so the name stays unique
+    base = base.replace("_", "-")[: max_length - len(current_time) - 1]
     unique_name = f"{base}-{current_time}"
-    unique_name = unique_name[:max_length]  # Truncate to max_length
     return unique_name
 
 

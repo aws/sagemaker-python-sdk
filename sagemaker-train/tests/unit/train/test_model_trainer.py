@@ -2774,3 +2774,14 @@ def test_pipeline_and_interactive_emit_identical_tags(model_trainer):
     pipeline_tags = _pipeline_trainer([TAG])._create_training_job_args()["Tags"]
 
     assert pipeline_tags == _train_wire_tags(model_trainer)
+
+
+@patch("sagemaker.train.utils.datetime")
+def test_get_unique_name_keeps_timestamp_for_long_base_name(mock_datetime):
+    from datetime import datetime
+
+    from sagemaker.train.utils import _get_unique_name
+
+    mock_datetime.now.return_value = datetime(2026, 9, 26, 12, 34, 56)
+
+    assert _get_unique_name("a" * 60) == "a" * 48 + "-20260926123456"
