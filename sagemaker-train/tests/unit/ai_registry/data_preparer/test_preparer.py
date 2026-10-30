@@ -376,31 +376,6 @@ class TestTags:
         call_kwargs = mock_job_cls.create.call_args[1]
         assert call_kwargs["tags"] == tags
 
-    @pytest.mark.skip(reason="DataPreparer.analyze() is disabled until GapAnalysis is available")
-    @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    def test_analyze_threads_tags_to_create_job(self, mock_get_job, mock_session):
-        from sagemaker.core.shapes import Tag
-
-        cfg = DatasetJobConfig(
-            job_category=JobCategory.GAP_ANALYSIS,
-        )
-        cfg._resolved_schema_version = "1.0.0"
-        cfg._resolved_schema = {"properties": {}}
-        cfg._dynamic_model = MagicMock()
-        cfg._validated_payload = {}
-        cfg._serialized_document = json.dumps({})
-
-        mock_job_cls = MagicMock()
-        mock_get_job.return_value = mock_job_cls
-        mock_job_cls.create.return_value = MagicMock()
-        dc = DataPreparer(sagemaker_session=mock_session, role="arn:role")
-
-        tags = [Tag(key="owner", value="gary")]
-        dc.analyze(cfg, tags=tags, wait=False)
-
-        call_kwargs = mock_job_cls.create.call_args[1]
-        assert call_kwargs["tags"] == tags
-
     def test_tags_reach_boto_client_create_job(self, mock_session):
         """Deeper test: verify tags are serialized and reach client.create_job (boto layer).
 
@@ -1132,6 +1107,21 @@ class TestAttach:
     def test_attach_invalid_arn_raises(self):
         with pytest.raises(ValueError, match="Invalid job ARN"):
             DataPreparer.attach("garbage")
+
+    @pytest.mark.parametrize("category", ["SomeOtherCategory", "AgentRFT"])
+    @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
+    def test_attach_unsupported_category_raises_before_any_call(self, mock_get_job_cls, category):
+        """A job of a category DataPreparer does not handle is rejected up front,
+        with the supported categories listed, and no DescribeJob call is made."""
+        with pytest.raises(ValueError, match="Unsupported job category") as exc_info:
+            DataPreparer.attach(
+                f"arn:aws:sagemaker:us-west-2:123456789012:job/{category}/some-job",
+                sagemaker_session=MagicMock(),
+            )
+        message = str(exc_info.value)
+        for supported in ("SyntheticDataGeneration", "DataQualityEvaluation", "DataTransformation"):
+            assert supported in message
+        mock_get_job_cls.assert_not_called()
 
 
 class _JobStub:

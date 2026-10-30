@@ -18,6 +18,7 @@ Scans the following paths relative to the repo root:
   - sagemaker-train/tests/integ/ai_registry/data_preparer/
   - docs/data_preparation/
   - docs/training/data_preparer.rst
+  - sagemaker-train/tests/unit/ai_registry/data_preparer/ (hashed internal names only)
   - v3-examples/data-preparer-*.ipynb (except entries in ``_FILE_ALLOWLIST``)
 
 Reports any match as a file:line failure.
@@ -68,6 +69,10 @@ _BANNED_IDENTIFIER_HASHES = frozenset(
         "cfce86f824f6456fc848a54ca2362d4f1b463a47c5718dc157a47a394ef63b5d",
         "e05e02f39f81dd081a058f3606eac1715831ee8183d5de6958f310181d9e40a1",
         "a67a9eea354757c05d9f5cc8f2e80c708fc47b6e696991bd1c9292f6c72a5924",
+        "f73d3b17f5c5ca935ac16403f4358c6f4bf6ed772104439ee76461702ab2194e",
+        "9ff31e78943bf133aa635becbef429d94d775a4d7d07832c163a553c2915eaaf",
+        "b109ae687fd57e7962e3d401c43c284b0662cc83547bd04ed76f4db6be25e64c",
+        "ff7c72b295126756d83c880cda4ec21d9fc5197636ee4c035a80602e3d366201",
     }
 )
 _BANNED_PHRASE_HASHES = frozenset(
@@ -76,6 +81,7 @@ _BANNED_PHRASE_HASHES = frozenset(
         "bca4448761ced653d0fa7217bcd5ded46c9cb1d2e03812be758997fc8577bf36",
         "8ccb0c861c201ac1a589a62baf9c13c7ad760e02b2607cd6bf48ec5dcaef3e41",
         "2b721bb50ce3654dcae442ad216882aa2ac3036a886cd45e6b72802561d20bc9",
+        "87dbca0746da73be012a45c7f5a969dd6a7db047cb914fe4bd3b06c76eacebb9",
     }
 )
 
@@ -194,6 +200,17 @@ def _collect_files(repo_root: Path) -> List[Path]:
     return paths
 
 
+def _collect_unit_test_files(repo_root: Path) -> List[Path]:
+    """Return DataPreparer unit-test files, minus this guard itself.
+
+    These are scanned for hashed internal names only: they use placeholder
+    account IDs and generic wording on purpose.
+    """
+    d = repo_root / "sagemaker-train/tests/unit/ai_registry/data_preparer"
+    here = Path(__file__).resolve()
+    return [p for p in sorted(d.rglob("*.py")) if p.is_file() and p.resolve() != here]
+
+
 def _extract_text_lines(path: Path) -> List[str]:
     """Extract plain text lines from a file.
 
@@ -293,8 +310,8 @@ class TestScannerSelfTest:
     def test_hash_lists_are_well_formed(self):
         for h in _BANNED_IDENTIFIER_HASHES | _BANNED_PHRASE_HASHES:
             assert re.fullmatch(r"[0-9a-f]{64}", h), h
-        assert len(_BANNED_IDENTIFIER_HASHES) == 16
-        assert len(_BANNED_PHRASE_HASHES) == 4
+        assert len(_BANNED_IDENTIFIER_HASHES) == 20
+        assert len(_BANNED_PHRASE_HASHES) == 5
 
     @pytest.mark.parametrize(
         "text",
@@ -390,3 +407,16 @@ class TestNoInternalReferences:
                 f"Found {len(violations)} internal reference(s) in shipped DataPreparer files:\n"
                 f"{report}"
             )
+
+    def test_no_internal_names_in_unit_tests(self):
+        files = _collect_unit_test_files(_repo_root())
+        assert files, "No DataPreparer unit-test files found to scan."
+        violations = [
+            f"{path}:{lineno}: internal name: {line.strip()}"
+            for path in files
+            for lineno, line in enumerate(_extract_text_lines(path), start=1)
+            if _hashed_hits(line)
+        ]
+        assert not violations, "Internal names in DataPreparer unit tests:\n" + "\n".join(
+            violations
+        )

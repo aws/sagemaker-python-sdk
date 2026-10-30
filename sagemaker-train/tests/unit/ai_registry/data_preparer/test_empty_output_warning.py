@@ -235,7 +235,7 @@ class TestWarnIfEmptyOutput:
     def test_other_categories_are_ignored(self, preparer):
         with patch.object(preparer, "_resolve_output_records_uri") as resolve:
             preparer._warn_if_empty_output(
-                [_dataset("s3://b/x.jsonl")], JobCategory.GAP_ANALYSIS, _job()
+                [_dataset("s3://b/x.jsonl")], "SomeOtherCategory", _job()
             )
         resolve.assert_not_called()
 

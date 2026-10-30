@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 
 import json
-import os
 import re
 from urllib.parse import urlparse
 
@@ -125,39 +124,3 @@ class TestSDGThenDQ:
             "A8: DQ preview path does not contain 'record_level/evaluated_data.jsonl'; "
             f"stdout: {captured.out!r}"
         )
-
-    @pytest.mark.skip(reason="DataPreparer.analyze() is disabled until GapAnalysis is available")
-    def test_03_analyze_gaps(self, sagemaker_session, test_role, s3_fixtures):
-        """Submit a GapAnalysis job over a completed model-evaluation job.
-
-        GapAnalysis consumes model-evaluation job ARNs, not a dataset ARN, so it
-        cannot be chained off the SDG output above. Supply a completed
-        GenAIEvaluation job ARN via DATA_PREPARER_INTEG_MODEL_EVAL_JOB_ARN and a
-        metric that job reports via DATA_PREPARER_INTEG_KEY_METRIC.
-        """
-        eval_job_arn = os.environ.get("DATA_PREPARER_INTEG_MODEL_EVAL_JOB_ARN")
-        key_metric = os.environ.get("DATA_PREPARER_INTEG_KEY_METRIC")
-        if not eval_job_arn or not key_metric:
-            pytest.skip(
-                "Set DATA_PREPARER_INTEG_MODEL_EVAL_JOB_ARN and "
-                "DATA_PREPARER_INTEG_KEY_METRIC to run GapAnalysis"
-            )
-
-        dataset = DatasetJobConfig(
-            job_category=JobCategory.GAP_ANALYSIS,
-            model_evaluation_job_arns=[eval_job_arn],
-            key_metrics=[key_metric],
-            output_data_config={
-                "S3OutputPath": (f"s3://{sagemaker_session.default_bucket()}/integ-ga-output/"),
-            },
-        )
-        preparer = DataPreparer(
-            sagemaker_session=sagemaker_session,
-            role=test_role,
-        )
-        result = preparer.analyze(dataset)
-
-        assert result is not None
-        assert getattr(result, "job_status", None) == "Completed"
-        doc = json.loads(getattr(result, "job_config_document", "{}"))
-        assert "MetadataS3Uri" in doc

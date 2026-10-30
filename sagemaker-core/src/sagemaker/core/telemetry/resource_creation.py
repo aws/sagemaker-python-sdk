@@ -21,7 +21,6 @@ _RESOURCE_ARN_ATTRIBUTES = {
     "AgentRFTJob": "job_arn",
     "Job": "job_arn",
     "DataSet": "job_arn",
-    "RecommendationResult": "_job_arn",
 }
 
 

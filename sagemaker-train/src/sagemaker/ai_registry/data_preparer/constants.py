@@ -52,16 +52,14 @@ def data_preparer_job_path(category: "JobCategory") -> str:
 
 
 # ---------------------------------------------------------------------------
-# Temporary local enums. Delete and re-import from sagemaker.core.shapes once
-# these enums are generated into sagemaker-core. The public import path
-# (sagemaker.ai_registry.JobCategory) stays stable across the swap.
+# Local enums (see the module docstring for why they are not generated).
+# Keep the public import path (sagemaker.ai_registry.JobCategory) stable.
 # ---------------------------------------------------------------------------
 class JobCategory(str, Enum):
     """Job category for DataPreparer operations."""
 
     SYNTHETIC_DATA_GENERATION = "SyntheticDataGeneration"
     DATA_QUALITY_EVALUATION = "DataQualityEvaluation"
-    GAP_ANALYSIS = "GapAnalysis"
     DATA_TRANSFORMATION = "DataTransformation"
 
 
@@ -82,11 +80,10 @@ class JobCategory(str, Enum):
 # plural list so a v1-style single-model caller survives the bump. Explicit
 # schema_version="1.0.0" pins still resolve to v1.
 #
-# GapAnalysis and DataTransformation only publish a v1 schema, so they stay at 1.
+# DataTransformation only publishes a v1 schema, so it stays at 1.
 SCHEMA_VERSION_CEILING = {
     JobCategory.SYNTHETIC_DATA_GENERATION: 2,
     JobCategory.DATA_QUALITY_EVALUATION: 3,
-    JobCategory.GAP_ANALYSIS: 1,
     JobCategory.DATA_TRANSFORMATION: 1,
 }
 

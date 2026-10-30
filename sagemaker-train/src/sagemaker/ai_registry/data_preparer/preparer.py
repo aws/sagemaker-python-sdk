@@ -261,13 +261,13 @@ class DataPreparer(BaseModel):
             - If ``wait=False``: the ``Job`` handle (call ``.wait()`` or
               ``.refresh()`` to poll).
             - If ``wait=True`` and the job completed: a ``DataSet`` (for SDG,
-              DQ) or ``List[DataSet]`` (for DataTransformation) or ``Job``
-              (for GapAnalysis).
+              DQ) or ``List[DataSet]`` (for DataTransformation).
             - If the job already completed before attach: returns the result
               immediately.
 
         Raises:
-            ValueError: If the ARN format is invalid.
+            ValueError: If the ARN format is invalid, or its category is not one
+                DataPreparer supports.
             DataPreparerJobFailedError: If the job failed.
             DataPreparerJobStoppedError: If the job was stopped.
             DataPreparerJobTimeoutError: If waiting exceeds the timeout.
@@ -289,6 +289,12 @@ class DataPreparer(BaseModel):
         parsed = _parse_job_arn(job_arn)
         job_name = parsed["job_name"]
         job_category = parsed["category"]
+        supported = [c.value for c in JobCategory]
+        if job_category not in supported:
+            raise ValueError(
+                f"Unsupported job category '{job_category}' in ARN '{job_arn}'. "
+                f"DataPreparer.attach supports: {', '.join(supported)}."
+            )
 
         session = sagemaker_session or DataPreparerDefaults.get_sagemaker_session(None)
 
@@ -325,8 +331,6 @@ class DataPreparer(BaseModel):
         status = job.job_status
         if status == "Completed":
             category_enum = JobCategory(job_category)
-            if category_enum == JobCategory.GAP_ANALYSIS:
-                return job
             # Rehydrate datasets from completed job
             preparer = cls(sagemaker_session=session)
             datasets = preparer._rehydrate_datasets(job, category_enum)
@@ -697,96 +701,8 @@ class DataPreparer(BaseModel):
             tags=tags,
         )
 
-    @_telemetry_emitter(feature=Feature.DATA_PREPARATION, func_name="DataPreparer.analyze")
-    def _analyze_impl(
-        self,
-        dataset: DatasetJobConfig,
-        *,
-        job_name: Optional[str] = None,
-        base_job_name: Optional[str] = None,
-        wait: bool = True,
-        logs: bool = False,
-        tags: Optional[List[Tag]] = None,
-    ):
-        """Submit a GapAnalysis job.
-
-        Not exposed publicly yet: ``DataPreparer.analyze`` is disabled until
-        GapAnalysis is available. The call shapes below apply once it is
-        re-enabled.
-
-        Analyzes the results of a completed model-evaluation job to identify
-        where the model underperforms. Two equivalent call shapes, as for
-        :attr:`generate`::
-
-            # instance
-            preparer.analyze(config, wait=..., logs=...)
-
-            # class — also accepts role / sagemaker_session / base_job_name
-            DataPreparer.analyze(config, role=..., sagemaker_session=...)
-
-        Both resolve intelligent defaults (``SageMakerConfig`` → well-known
-        fallbacks → schema defaults) through the same ``_run`` pipeline.
-
-        GapAnalysis takes no dataset input. Despite the shared parameter name,
-        ``dataset`` here carries references to prior jobs, not a dataset ARN.
-        Use ``DatasetJobConfig.print_schema(JobCategory.GAP_ANALYSIS)`` to
-        inspect the fields the service currently accepts.
-
-        Args:
-            dataset (DatasetJobConfig): Job configuration. For GapAnalysis this
-                carries:
-
-                * ``model_evaluation_job_arns`` (required): a list holding the
-                  ARN of one completed ``GenAIEvaluation`` job.
-                * ``key_metrics`` (required): a list holding the name of one
-                  metric to optimize (the primary metric).
-                * ``output_data_config`` (required): ``{"S3OutputPath": ...}``.
-                * ``data_quality_evaluation_job_arn`` (optional): the ARN of a
-                  completed ``DataQualityEvaluation`` job, used as quality
-                  signals.
-                * ``prior_gap_analysis_job_arns`` (optional): a list holding the
-                  ARN of at most one prior ``GapAnalysis`` job, used as a
-                  baseline for incremental analysis.
-                * ``mlflow_config`` and ``vpc_config`` (optional).
-            job_name (Optional[str]): Exact name for the job. Must be unique
-                within the account and region; jobs are immutable, so a failed
-                job cannot be retried under the same name. Mutually exclusive
-                with ``base_job_name``.
-            base_job_name (Optional[str]): Prefix to which a timestamp is
-                appended to derive the job name.
-            wait (bool): Whether to block until the job reaches a terminal
-                state. Defaults to ``True``.
-            logs (bool): Whether to stream job logs while waiting. Requires
-                ``wait=True``. Defaults to ``False``.
-            tags (Optional[List[Tag]]): Tags to apply to the job.
-
-        Returns:
-            Job: The job handle. GapAnalysis produces a report rather than a
-                dataset, so no ``DataSet`` is returned. With ``wait=True`` the
-                handle is returned once the job has completed.
-
-        Raises:
-            DataPreparerConfigurationError: If ``dataset.job_category`` is set to
-                a category other than ``GAP_ANALYSIS``.
-            DataPreparerJobFailedError: If the job terminates as ``Failed``
-                while ``wait=True``.
-            DataPreparerJobStoppedError: If the job terminates as ``Stopped``
-                while ``wait=True``.
-            DataPreparerJobTimeoutError: If the job does not reach a terminal
-                state before the waiter expires.
-        """
-        return self._run(
-            dataset,
-            JobCategory.GAP_ANALYSIS,
-            job_name=job_name,
-            base_job_name=base_job_name,
-            wait=wait,
-            logs=logs,
-            tags=tags,
-        )
-
     # Public dual-callable methods. Accept the same kwargs as
-    # _{generate,evaluate,transform,analyze}_impl when called on an instance.
+    # _{generate,evaluate,transform}_impl when called on an instance.
     # When called on the class, also accept ``sagemaker_session=`` / ``role=`` /
     # ``base_job_name=`` for constructing the transient instance.
     generate = _DualCallable(_generate_impl)
@@ -803,10 +719,6 @@ class DataPreparer(BaseModel):
     # functools.wraps-decorated function at class level, so autodoc documents
     # this as a method and reads __doc__ (the impl's) rather than this
     # attribute docstring.
-
-    # GapAnalysis is not yet available, so ``analyze`` is not exposed.
-    # _analyze_impl is kept so it can be re-enabled by restoring:
-    #     analyze = _DualCallable(_analyze_impl)
 
     @runnable_by_pipeline
     def _run(
@@ -902,8 +814,6 @@ class DataPreparer(BaseModel):
             # Dispatch on terminal status
             status = getattr(job, "job_status", None)
             if status == "Completed":
-                if category == JobCategory.GAP_ANALYSIS:
-                    return job
                 datasets = self._rehydrate_datasets(job, category)
                 job_arn = getattr(job, "job_arn", None)
                 for ds in datasets:
