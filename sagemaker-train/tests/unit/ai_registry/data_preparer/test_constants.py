@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.ai_registry.data_preparer.constants."""
+
 from __future__ import absolute_import
 
 from sagemaker.ai_registry.data_preparer.constants import (
@@ -69,7 +70,9 @@ class TestConfigPathConstants:
         assert DATA_PREPARER_BASE_PATH == "SageMaker.PythonSDK.Modules.DataPreparer"
 
     def test_data_preparer_global_path(self):
-        assert DATA_PREPARER_GLOBAL_PATH == "SageMaker.PythonSDK.Modules.DataPreparer.GlobalDefaults"
+        assert (
+            DATA_PREPARER_GLOBAL_PATH == "SageMaker.PythonSDK.Modules.DataPreparer.GlobalDefaults"
+        )
 
     def test_data_preparer_job_path(self):
         assert DATA_PREPARER_JOB_PATH == "SageMaker.PythonSDK.Modules.DataPreparer.Job"

@@ -21,55 +21,115 @@ Scans the following paths relative to the repo root:
   - v3-examples/data-preparer-*.ipynb (except entries in ``_FILE_ALLOWLIST``)
 
 Reports any match as a file:line failure.
+
+Internal names are stored only as SHA-256 hashes so this file does not itself
+publish them. To add a name, hash its normalized key and append it to the
+matching list:
+
+  identifier names (matched inside one token, any case, e.g. ``FooBar``,
+  ``foobar``, ``XFooBar``, ``foo_bar``): key = the CamelCase / underscore parts
+  of the name, lowercased and concatenated (``FooBar`` -> ``foobar``)::
+
+      python -c "import hashlib; print(hashlib.sha256(b'foobar').hexdigest())"
+
+  phrases (matched across consecutive words, any case or separator): key = the
+  words lowercased and joined by single spaces (``Foo Bar`` -> ``foo bar``).
 """
+
 from __future__ import absolute_import
 
 import glob
+import hashlib
 import json
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import Iterator, List, Tuple
+
+import pytest
+
+# ---------------------------------------------------------------------------
+# Hashed internal names (see module docstring for how to add one).
+# ---------------------------------------------------------------------------
+_BANNED_IDENTIFIER_HASHES = frozenset(
+    {
+        "ec4f5d7aae5c8908eefc7edd0058e37189f26eda72c8dbd5b94e5166ef70e64d",
+        "afb1b81f6e54590f7faf23feb2f7f27334cde8840e6a27e007dcee8e75f7305d",
+        "8758607d0bcaa8a6efc8f92aa63bf367a6f088001d8fd2f16d1583c356a1a23f",
+        "2a0abe451aede7f7139e3b7be00c2adff97b5ef4a50c6b5f4a2165125b55cc15",
+        "caddda9701a92268812392382b0d2d4aa1af5ff495159bfaf7904f5d16e2a517",
+        "c42e18f7977c78a4ed8895384e5bdd76d66b30f9cb41fb56e35516f3081ce87d",
+        "d5220eb13adce7752282ad04c417cb10ae5b698ee92ccd773f8df17c5153b7fa",
+        "6d94f54ea44d03bfa323831fc80386adf89f7353f45731671e6eb4bd3055f9ef",
+        "b002c7748bf0f65e4a3ab1bffc483eebdc1d126277e6dc5448399da9ad5b7c26",
+        "281692523ae08146631c8f5ec31ad076ca035138a92907597ac186325f563757",
+        "4f278cdddf52263fe21c64c94932f2b2ec316acecd39a7adcc01eb2e6592a678",
+        "e67720146b51ea99c80b5333aceb6b07334d6a827f882dc34ef38c82d96b7c5e",
+        "6c6ea56757d47fc8827e5e1a28ec7f6018c593142fc731c274c6e968717535ac",
+        "cfce86f824f6456fc848a54ca2362d4f1b463a47c5718dc157a47a394ef63b5d",
+        "e05e02f39f81dd081a058f3606eac1715831ee8183d5de6958f310181d9e40a1",
+        "a67a9eea354757c05d9f5cc8f2e80c708fc47b6e696991bd1c9292f6c72a5924",
+    }
+)
+_BANNED_PHRASE_HASHES = frozenset(
+    {
+        "bce3903215e56ecf32bdf102da0115700753c98f19b325ad3a4769aa5b15454f",
+        "bca4448761ced653d0fa7217bcd5ded46c9cb1d2e03812be758997fc8577bf36",
+        "8ccb0c861c201ac1a589a62baf9c13c7ad760e02b2607cd6bf48ec5dcaef3e41",
+        "2b721bb50ce3654dcae442ad216882aa2ac3036a886cd45e6b72802561d20bc9",
+    }
+)
+
+# Identifier parts: CamelCase words, keeping letter/digit runs together so that
+# e.g. "ec9x" stays one part and does not contain a shorter banned key.
+_PART_RE = re.compile(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z0-9]+|[A-Z0-9]+")
+_TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
+_WORD_RE = re.compile(r"[A-Za-z0-9]+")
+_MAX_PARTS = 6
+_MAX_PHRASE_WORDS = 3
+
+
+def _sha256(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _identifier_keys(line: str) -> Iterator[str]:
+    """Yield every run of consecutive CamelCase/underscore parts within a token."""
+    for token in _TOKEN_RE.findall(line):
+        parts = [p.lower() for p in _PART_RE.findall(token)]
+        for i in range(len(parts)):
+            for j in range(i + 1, min(i + _MAX_PARTS, len(parts)) + 1):
+                yield "".join(parts[i:j])
+
+
+def _phrase_keys(line: str) -> Iterator[str]:
+    """Yield every run of 2..3 consecutive words, lowercased and space-joined."""
+    words = [w.lower() for w in _WORD_RE.findall(line)]
+    for i in range(len(words)):
+        for n in range(2, _MAX_PHRASE_WORDS + 1):
+            if i + n <= len(words):
+                yield " ".join(words[i : i + n])
+
+
+def _hashed_hits(line: str) -> List[str]:
+    hits = [k for k in _identifier_keys(line) if _sha256(k) in _BANNED_IDENTIFIER_HASHES]
+    hits += [k for k in _phrase_keys(line) if _sha256(k) in _BANNED_PHRASE_HASHES]
+    return hits
 
 
 # ---------------------------------------------------------------------------
-# Patterns that must NOT appear in scanned files (case-insensitive).
+# Generic patterns that must NOT appear in scanned files.
 # ---------------------------------------------------------------------------
 _BANNED_PATTERNS: List[Tuple[str, re.Pattern]] = [
-    ("c2j", re.compile(r"\bc2j\b", re.IGNORECASE)),
-    ("duplo", re.compile(r"duplo", re.IGNORECASE)),
-    ("isengard", re.compile(r"isengard", re.IGNORECASE)),
-    ("ada credentials", re.compile(r"ada\s+credentials", re.IGNORECASE)),
     ("alpha endpoint", re.compile(r"alpha\s+endpoint", re.IGNORECASE)),
-    ("internal api/model/c2j", re.compile(r"\binternal\s+(?:api|apis|model|c2j)\b", re.IGNORECASE)),
-    ("a2z.com", re.compile(r"a2z\.com", re.IGNORECASE)),
-    ("corp.amazon", re.compile(r"corp\.amazon", re.IGNORECASE)),
-    ("midway", re.compile(r"\bmidway\b", re.IGNORECASE)),
+    ("internal api/model", re.compile(r"\binternal\s+(?:api|apis|model)\b", re.IGNORECASE)),
     # Backend Java class / file names
     ("java file reference", re.compile(r"\.java\b")),
-    ("JobMetadataValidator", re.compile(r"JobMetadataValidator")),
-    ("networknt validator", re.compile(r"networknt")),
-    ("OperatorType enum", re.compile(r"\bOperatorType\b")),
-    ("DataCurator service", re.compile(r"DataCurator")),
-    ("MetricEngine", re.compile(r"MetricEngine")),
-    ("TransformComputeRouter", re.compile(r"TransformComputeRouter")),
-    # Internal service names
-    ("IronMan internal name", re.compile(r"\bIronMan\b")),
-    ("RoleProxy", re.compile(r"\bRoleProxy\b")),
     # Internal-only service principals (e.g. "<name>.im.aws.internal"); customers
     # can only trust public principals such as "sagemaker.amazonaws.com".
     ("internal service principal", re.compile(r"[a-z0-9-]+\.aws\.internal\b", re.IGNORECASE)),
-    # Internal infrastructure / implementation details
-    ("DDB stream", re.compile(r"DDB stream", re.IGNORECASE)),
-    # Internal function names
-    ("lambda_dedup_dataset", re.compile(r"lambda_dedup_dataset")),
-    ("run_schema_conversion_operation", re.compile(r"run_schema_conversion_operation")),
-    # Internal exception type
-    ("CustomerFacingError", re.compile(r"CustomerFacingError")),
-    # Preview-era install wording and internal caller attribution; public docs
-    # install from PyPI and must not tag calls as an internal package.
+    # Preview-era install wording; public docs install from PyPI.
     ("beta installation instructions", re.compile(r"beta\s+installation", re.IGNORECASE)),
     ("preview access", re.compile(r"preview\s+access", re.IGNORECASE)),
-    ("SageMakerAIAgentSkills attribution", re.compile(r"SageMakerAIAgentSkills")),
 ]
 
 # AWS account ID: 12 consecutive digits, not preceded or followed by another digit.
@@ -170,6 +230,8 @@ def _scan_files(files: List[Path]) -> List[str]:
             for label, pattern in _BANNED_PATTERNS:
                 if pattern.search(line):
                     violations.append(f"{path}:{lineno}: banned term [{label}]: {line.strip()}")
+            if _hashed_hits(line):
+                violations.append(f"{path}:{lineno}: internal name: {line.strip()}")
 
             for match in _ACCOUNT_ID_RE.finditer(line):
                 candidate = match.group(1)
@@ -197,6 +259,8 @@ def _run_scanner_on_text(text: str) -> List[str]:
         for label, pattern in _BANNED_PATTERNS:
             if pattern.search(line):
                 violations.append(f"<memory>:{lineno}: banned term [{label}]: {line.strip()}")
+        if _hashed_hits(line):
+            violations.append(f"<memory>:{lineno}: internal name: {line.strip()}")
         for match in _ACCOUNT_ID_RE.finditer(line):
             candidate = match.group(1)
             if candidate not in _ACCOUNT_ID_ALLOWLIST:
@@ -207,74 +271,97 @@ def _run_scanner_on_text(text: str) -> List[str]:
 
 
 class TestScannerSelfTest:
-    """Verify the scanner flags each banned pattern correctly (in-memory)."""
+    """Verify the scanner's matching rules (in-memory).
 
-    def test_c2j_flagged(self):
-        assert _run_scanner_on_text("Loaded via the internal C2J fixture."), "Scanner missed 'C2J'"
+    Hashed names are exercised with stand-in terms patched into the hash sets,
+    so this file never spells out a real internal name.
+    """
 
-    def test_duplo_flagged(self):
-        assert _run_scanner_on_text(
-            "generated from the Duplo Smithy model"
-        ), "Scanner missed 'duplo'"
+    @staticmethod
+    def _with_terms(monkeypatch, identifiers=(), phrases=()):
+        monkeypatch.setattr(
+            __import__(__name__, fromlist=["_"]),
+            "_BANNED_IDENTIFIER_HASHES",
+            frozenset(_sha256(t) for t in identifiers),
+        )
+        monkeypatch.setattr(
+            __import__(__name__, fromlist=["_"]),
+            "_BANNED_PHRASE_HASHES",
+            frozenset(_sha256(t) for t in phrases),
+        )
 
-    def test_isengard_flagged(self):
-        assert _run_scanner_on_text(
-            "ada credentials update --provider=isengard"
-        ), "Scanner missed 'isengard'"
+    def test_hash_lists_are_well_formed(self):
+        for h in _BANNED_IDENTIFIER_HASHES | _BANNED_PHRASE_HASHES:
+            assert re.fullmatch(r"[0-9a-f]{64}", h), h
+        assert len(_BANNED_IDENTIFIER_HASHES) == 16
+        assert len(_BANNED_PHRASE_HASHES) == 4
 
-    def test_ada_credentials_flagged(self):
-        assert _run_scanner_on_text(
-            "run ada credentials update --account=1234"
-        ), "Scanner missed 'ada credentials'"
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "routed by FooBarService",
+            "see foobar for details",
+            "loaded from XFooBar library",
+            "call foo_bar() here",
+            "FOOBAR",
+        ],
+    )
+    def test_identifier_name_flagged_in_any_form(self, monkeypatch, text):
+        self._with_terms(monkeypatch, identifiers=["foobar"])
+        assert _run_scanner_on_text(text), f"missed stand-in identifier in {text!r}"
 
-    def test_alpha_endpoint_flagged(self):
-        assert _run_scanner_on_text(
-            "requires the alpha endpoint to be configured"
-        ), "Scanner missed 'alpha endpoint'"
+    @pytest.mark.parametrize("text", ["see xfoobar for details", "foobarbaz", "foo bar"])
+    def test_identifier_respects_part_boundaries(self, monkeypatch, text):
+        self._with_terms(monkeypatch, identifiers=["foobar"])
+        assert not _run_scanner_on_text(text), f"false positive on {text!r}"
 
-    def test_internal_model_flagged(self):
-        assert _run_scanner_on_text(
-            "loaded via an internal model path"
-        ), "Scanner missed 'internal model'"
+    def test_digit_runs_stay_one_part(self, monkeypatch):
+        # A short key with digits must not match inside a longer lowercase token.
+        self._with_terms(monkeypatch, identifiers=["c9x"])
+        assert _run_scanner_on_text("uses the C9X fixture")
+        assert not _run_scanner_on_text("some ec9x string")
 
-    def test_a2z_com_flagged(self):
-        assert _run_scanner_on_text(
-            "see https://a2z.com/some/internal/page"
-        ), "Scanner missed 'a2z.com'"
+    @pytest.mark.parametrize("text", ["run qux quux update", "Qux-Quux", "doc.qux.quux.com"])
+    def test_phrase_flagged_across_words(self, monkeypatch, text):
+        self._with_terms(monkeypatch, phrases=["qux quux"])
+        assert _run_scanner_on_text(text), f"missed stand-in phrase in {text!r}"
 
-    def test_corp_amazon_flagged(self):
-        assert _run_scanner_on_text(
-            "see https://doc.corp.amazon.com/page"
-        ), "Scanner missed 'corp.amazon'"
-
-    def test_midway_flagged(self):
-        assert _run_scanner_on_text(
-            "authenticate via midway before running"
-        ), "Scanner missed 'midway'"
+    def test_phrase_not_flagged_when_words_apart(self, monkeypatch):
+        self._with_terms(monkeypatch, phrases=["qux quux"])
+        assert not _run_scanner_on_text("qux then quux")
 
     def test_account_id_flagged(self):
-        assert _run_scanner_on_text("--account=925630940947"), "Scanner missed 12-digit account ID"
+        assert _run_scanner_on_text("--account=987654321098"), "Scanner missed 12-digit account ID"
 
-    def test_placeholder_account_id_not_flagged(self):
-        assert not _run_scanner_on_text(
-            "account_id = '123456789012'"
-        ), "Scanner incorrectly flagged placeholder account ID 123456789012"
+    @pytest.mark.parametrize("account_id", ["123456789012", "111122223333"])
+    def test_placeholder_account_ids_not_flagged(self, account_id):
+        assert not _run_scanner_on_text(f"account_id = '{account_id}'")
 
-    def test_placeholder_account_id_2_not_flagged(self):
-        assert not _run_scanner_on_text(
-            "account_id = '111122223333'"
-        ), "Scanner incorrectly flagged placeholder account ID 111122223333"
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "requires the alpha endpoint to be configured",
+            "loaded via an internal model path",
+            "calls the internal API directly",
+            "spellings come from Something.java",
+            '"Service": ["sagemaker.amazonaws.com", "example.im.aws.internal"]',
+            "see Beta Installation instructions",
+            "provided with your preview access",
+        ],
+    )
+    def test_generic_patterns_flagged(self, text):
+        assert _run_scanner_on_text(text), f"Scanner missed {text!r}"
 
-    def test_c2j_word_boundary_respected(self):
-        # 'ec2j' or 'c2js' should NOT be flagged (word boundary \b)
-        assert not _run_scanner_on_text(
-            "some ec2j string"
-        ), "Scanner incorrectly flagged 'ec2j' (should require word boundary)"
-
-    def test_internal_api_flagged(self):
-        assert _run_scanner_on_text(
-            "calls the internal API directly"
-        ), "Scanner missed 'internal api'"
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "see foo.javascript for details",
+            '"Service": "sagemaker.amazonaws.com"',
+            "pip install --upgrade sagemaker",
+        ],
+    )
+    def test_generic_patterns_not_flagged(self, text):
+        assert not _run_scanner_on_text(text), f"Scanner false-positived on {text!r}"
 
     def test_scanner_returns_empty_for_clean_text(self):
         clean = (
@@ -284,108 +371,6 @@ class TestScannerSelfTest:
         )
         result = _run_scanner_on_text(clean)
         assert not result, f"Scanner false-positived on clean text: {result}"
-
-    def test_java_file_reference_flagged(self):
-        assert _run_scanner_on_text(
-            "spellings come from OperatorType.java"
-        ), "Scanner missed '.java' file reference"
-
-    def test_java_boundary_not_flagged_for_javascript(self):
-        # ".java" should only match when followed by a word boundary.
-        # A path like "foo.javascript" must not be flagged.
-        assert not _run_scanner_on_text(
-            "see foo.javascript for details"
-        ), "Scanner incorrectly flagged '.javascript' (should require word boundary after .java)"
-
-    def test_job_metadata_validator_flagged(self):
-        assert _run_scanner_on_text(
-            "JobMetadataValidator.validate is called here"
-        ), "Scanner missed 'JobMetadataValidator'"
-
-    def test_networknt_flagged(self):
-        assert _run_scanner_on_text(
-            "the networknt JSON schema validator"
-        ), "Scanner missed 'networknt'"
-
-    def test_operator_type_enum_flagged(self):
-        assert _run_scanner_on_text(
-            "see OperatorType for the full list"
-        ), "Scanner missed 'OperatorType'"
-
-    def test_data_curator_flagged(self):
-        assert _run_scanner_on_text(
-            "loaded from AGIDataCurator library"
-        ), "Scanner missed 'DataCurator'"
-
-    def test_metric_engine_flagged(self):
-        assert _run_scanner_on_text(
-            "scores via MetricEngine"
-        ), "Scanner missed 'MetricEngine'"
-
-    def test_transform_compute_router_flagged(self):
-        assert _run_scanner_on_text(
-            "routed by TransformComputeRouter"
-        ), "Scanner missed 'TransformComputeRouter'"
-
-    def test_ironman_flagged(self):
-        assert _run_scanner_on_text(
-            "the IronMan service handles this"
-        ), "Scanner missed 'IronMan'"
-
-    def test_role_proxy_flagged(self):
-        assert _run_scanner_on_text(
-            "credentials vended via RoleProxy"
-        ), "Scanner missed 'RoleProxy'"
-
-    def test_internal_service_principal_flagged(self):
-        assert _run_scanner_on_text(
-            '"Service": ["sagemaker.amazonaws.com", "roleproxy.im.aws.internal"]'
-        ), "Scanner missed an internal '.aws.internal' service principal"
-
-    def test_public_service_principal_not_flagged(self):
-        assert not _run_scanner_on_text(
-            '"Service": "sagemaker.amazonaws.com"'
-        ), "Scanner flagged the public SageMaker service principal"
-
-    def test_ddb_stream_flagged(self):
-        assert _run_scanner_on_text(
-            "triggered off the DDB stream"
-        ), "Scanner missed 'DDB stream'"
-
-    def test_lambda_dedup_dataset_flagged(self):
-        assert _run_scanner_on_text(
-            "lambda_dedup_dataset raises NotImplementedError"
-        ), "Scanner missed 'lambda_dedup_dataset'"
-
-    def test_run_schema_conversion_operation_flagged(self):
-        assert _run_scanner_on_text(
-            "run_schema_conversion_operation compares formats"
-        ), "Scanner missed 'run_schema_conversion_operation'"
-
-    def test_customer_facing_error_flagged(self):
-        assert _run_scanner_on_text(
-            "raise CustomerFacingError('bad input')"
-        ), "Scanner missed 'CustomerFacingError'"
-
-    def test_beta_installation_flagged(self):
-        assert _run_scanner_on_text(
-            "see Beta Installation instructions"
-        ), "Scanner missed preview-era 'Beta Installation' wording"
-
-    def test_preview_access_flagged(self):
-        assert _run_scanner_on_text(
-            "provided with your preview access"
-        ), "Scanner missed preview-era 'preview access' wording"
-
-    def test_internal_caller_attribution_flagged(self):
-        assert _run_scanner_on_text(
-            'os.environ["SAGEMAKER_PYSDK_CREATED_BY"] = "SageMakerAIAgentSkills"'
-        ), "Scanner missed internal 'SageMakerAIAgentSkills' attribution"
-
-    def test_public_install_command_not_flagged(self):
-        assert not _run_scanner_on_text(
-            "pip install --upgrade sagemaker"
-        ), "Scanner flagged the public pip install command"
 
 
 class TestNoInternalReferences:

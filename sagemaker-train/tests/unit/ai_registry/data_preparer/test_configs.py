@@ -78,7 +78,7 @@ class TestResolveAndValidate:
         mock_defaults.resolve_into_payload.return_value = {"NumSamples": 500}
         mock_resolver.get_schema.return_value = ("1.0.0", SIMPLE_SCHEMA)
 
-        from pydantic import BaseModel, ConfigDict, Field
+        from pydantic import Field
         from sagemaker.ai_registry.data_preparer._schema_resolver import _DynamicBase, create_model
 
         model = create_model(

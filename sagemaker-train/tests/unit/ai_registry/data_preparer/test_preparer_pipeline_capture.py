@@ -19,12 +19,11 @@ service. Mirrors the MTRL capture suite; ``_intercept_create_request`` is
 deliberately NOT mocked, so assertions run against the ``_JobStepArguments`` the
 session really builds.
 """
+
 from __future__ import absolute_import
 
 import json
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from sagemaker.ai_registry.data_preparer.configs import DatasetJobConfig
 from sagemaker.ai_registry.data_preparer.constants import JobCategory
@@ -78,15 +77,11 @@ def _preparer(session):
 def _static_defaults():
     """Pin the definition-time resolutions that would otherwise call AWS."""
     return (
-        patch.object(
-            DataPreparerDefaults, "get_sagemaker_session", side_effect=lambda s: s
-        ),
+        patch.object(DataPreparerDefaults, "get_sagemaker_session", side_effect=lambda s: s),
         patch.object(
             DataPreparerDefaults, "get_customer_details", return_value=dict(ACCOUNT_DETAILS)
         ),
-        patch.object(
-            DataPreparerDefaults, "resolve_job_name", return_value=PINNED_JOB_NAME
-        ),
+        patch.object(DataPreparerDefaults, "resolve_job_name", return_value=PINNED_JOB_NAME),
         patch.object(DatasetJobConfig, "_resolve_and_validate"),
     )
 

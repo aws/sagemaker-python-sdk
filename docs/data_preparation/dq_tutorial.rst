@@ -70,13 +70,24 @@ Step 4: Configure and Run Evaluation
 
    eval_config = DatasetJobConfig(
        input_data_config=[{"DatasetArn": dataset_arn}],
-       evaluation_name="my-dataset-eval",
+       evaluation_config={"Operations": [{"Operator": "default_metrics"}]},
        output_data_config={"S3OutputPath": "s3://my-bucket/dq-output/"},
    )
 
    result = preparer.evaluate(eval_config)
    print("Evaluated DataSet ARN:", result.arn)
    print("Job ARN:", result.job_arn)
+
+``EvaluationConfig.Operations`` lists what the job runs:
+
+- ``default_metrics``: the built-in metrics recommended for the dataset's format.
+- A metric by name, with its settings in ``Config``, spelled exactly as the service's
+  operator catalog spells them, e.g.
+  ``{"Operator": "language_detection", "Config": {"View": [{"Role": "Text", "Column": "answer"}], "languages": ["en"]}}``.
+- ``spec_eval``: evaluates every record against a requirements document, e.g.
+  ``{"Operator": "spec_eval", "Config": {"SpecS3Uri": "s3://my-bucket/specs/requirements.md"}}``,
+  or re-runs the evaluation code of an earlier job (``CodeArtifactS3Uri``).
+- ``exploratory_analysis``: an agent reviews the dataset for issues no requirement anticipates.
 
 ``evaluate`` returns the evaluated (input) ``DataSet``; the scorecard and per-record scores
 are written under ``S3OutputPath``. If you omit ``output_data_config``, the SDK fills
@@ -93,66 +104,39 @@ The SDK automatically previews 10 scored records after completion.
 Step 5: Interpret Results
 -------------------------
 
-Each job writes its outputs to its own folder under ``S3OutputPath``, named
-``<job-name>-<timestamp>/``:
+Each job writes its outputs to its own folder under ``S3OutputPath``:
 
-- **Aggregate report**: ``aggregate/quality_report.json`` — summary scores
-- **Per-record scores**: ``record_level/evaluated_data.jsonl`` — each record with metrics
+- **Aggregate report**: ``aggregate/quality_report.json`` — dataset-level results
+- **Per-record scores**: ``record_level/evaluated_data.jsonl`` — each record with its scores
+- **Index**: ``metadata.json`` — the S3 URIs of the reports
+
+Find them through the job's ``MetadataS3Uri`` rather than building the folder path:
 
 .. code-block:: python
 
    import json, boto3
-   from urllib.parse import urlparse
 
-   output = urlparse("s3://my-bucket/dq-output/")
    job_name = result.job_arn.split("/")[-1]
+   job = session.sagemaker_client.describe_job(JobName=job_name, JobCategory="DataQualityEvaluation")
+   metadata_uri = json.loads(job["JobConfigDocument"])["MetadataS3Uri"]
+
    s3 = boto3.client("s3")
 
-   # Locate this job's output folder, then read the aggregate report
-   listing = s3.list_objects_v2(
-       Bucket=output.netloc, Prefix=output.path.lstrip("/") + job_name + "-"
-   )
-   report_key = next(
-       obj["Key"] for obj in listing["Contents"]
-       if obj["Key"].endswith("aggregate/quality_report.json")
-   )
-   report = json.loads(s3.get_object(Bucket=output.netloc, Key=report_key)["Body"].read())
+   def read_json(uri):
+       bucket, key = uri[len("s3://"):].split("/", 1)
+       return json.loads(s3.get_object(Bucket=bucket, Key=key)["Body"].read())
+
+   report = read_json(read_json(metadata_uri)["Reports"]["Aggregate"][0])
    print(json.dumps(report, indent=2))
 
 Metrics
 ~~~~~~~
 
-LLM-as-Judge metrics (scored 0.0–1.0 with explanations):
-
-.. list-table::
-   :header-rows: 1
-
-   * - Metric
-     - What it measures
-   * - ``dq_relevance``
-     - Does the response address the prompt?
-   * - ``dq_accuracy``
-     - Is the response factually correct?
-   * - ``dq_completeness``
-     - Does it fully answer the question?
-   * - ``dq_readability``
-     - Is it clear and well-written?
-   * - ``dq_harmlessness``
-     - Is it free of harmful content?
-   * - ``dq_reasoning_complexity``
-     - How much reasoning is demonstrated?
-   * - ``dq_linguistic_complexity``
-     - How sophisticated is the language?
-   * - ``dq_task_complexity``
-     - How complex is the task itself?
-   * - ``dq_knowledge_depth``
-     - What level of knowledge is required?
-
-Deterministic metrics (computed without LLM):
-
-- ``dq_word_length`` — word count
-- ``dq_character_length`` — character count
-- ``dq_content_structures`` — structural analysis (prose, code, lists)
+The built-in metrics are computed without a model: text statistics, diversity and
+repetition, toxicity, exact and near-duplicate detection, language identification, and
+distribution statistics for numeric and categorical columns. Each record's scores appear as
+``dq_<metric>__<column>`` fields. Qualities that need judgment ("answers the question",
+"factually correct") belong in the requirements document evaluated by ``spec_eval``.
 
 Next Steps
 ----------

@@ -18,6 +18,7 @@ the DataPreparer categories, so enums generated from it would drop them. Keep th
 definitions until the service model includes every DataPreparer category, and keep
 the import path (sagemaker.ai_registry.JobCategory / JobStatus) stable for callers.
 """
+
 from __future__ import absolute_import
 
 from enum import Enum
@@ -67,11 +68,9 @@ class JobCategory(str, Enum):
 # Major version ceiling per category. SDK resolves the latest version
 # within this major. Bumping requires an explicit SDK release.
 #
-# DataQualityEvaluation is at 2: the service renamed the preview "0.2.0" v2
-# schema to "2.0.0" and now publishes ["2.0.0", "1.0.0"]. With a ceiling of 1
-# the resolver filtered "2.0.0" out and silently fell back to the v1 shape,
-# so every completed v2 job failed to rehydrate. Ceiling 2 lets the resolver
-# select "2.0.0" as the default while explicit version="1.0.0" pins still work.
+# DataQualityEvaluation is at 3: an unpinned evaluate() resolves "3.0.0", the
+# Operations shape, wherever the service shows it to the account, and "2.0.0"
+# where it does not. Explicit schema_version="2.0.0" pins still resolve to v2.
 #
 # SyntheticDataGeneration is at 2 for the same reason: the service publishes a
 # "2.0.0" schema that adds the plural ModelConfig.SampleGenerationModelConfigs
@@ -86,7 +85,7 @@ class JobCategory(str, Enum):
 # GapAnalysis and DataTransformation only publish a v1 schema, so they stay at 1.
 SCHEMA_VERSION_CEILING = {
     JobCategory.SYNTHETIC_DATA_GENERATION: 2,
-    JobCategory.DATA_QUALITY_EVALUATION: 2,
+    JobCategory.DATA_QUALITY_EVALUATION: 3,
     JobCategory.GAP_ANALYSIS: 1,
     JobCategory.DATA_TRANSFORMATION: 1,
 }

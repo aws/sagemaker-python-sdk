@@ -17,6 +17,7 @@ caller consumes a single strategy object and never re-checks the schema version.
 Keeps the two field differences that matter to the SDK today — Output S3 URI
 field name and Dataset ARN location — in one place.
 """
+
 from __future__ import absolute_import
 
 import pytest
@@ -194,11 +195,11 @@ class TestForVersionDispatchA7:
         "version, expected_shape_cls",
         [
             # --- Two-part versions: the service returns these, old code mis-routes them ---
-            ("2.0", V2DqShape),      # [A7-fail] main regression case from live jobs
-            ("3.0", V3DqShape),      # [A7-fail] analogous v3 regression
+            ("2.0", V2DqShape),  # [A7-fail] main regression case from live jobs
+            ("3.0", V3DqShape),  # [A7-fail] analogous v3 regression
             # --- Single-component versions ---
-            ("2", V2DqShape),        # [A7-fail]
-            ("3", V3DqShape),        # [A7-fail]
+            ("2", V2DqShape),  # [A7-fail]
+            ("3", V3DqShape),  # [A7-fail]
             # --- Three-part versions (already worked, must still work) ---
             ("2.0.0", V2DqShape),
             ("3.0.0", V3DqShape),

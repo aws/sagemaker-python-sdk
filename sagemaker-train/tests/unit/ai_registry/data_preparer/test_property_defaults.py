@@ -14,6 +14,7 @@
 
 Requires hypothesis. Skipped if not installed.
 """
+
 from __future__ import absolute_import
 
 import re
@@ -26,7 +27,10 @@ from hypothesis import given, settings, assume  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 from unittest.mock import MagicMock  # noqa: E402
 
-from sagemaker.ai_registry.data_preparer.constants import JobCategory, MAX_JOB_NAME_LENGTH  # noqa: E402
+from sagemaker.ai_registry.data_preparer.constants import (  # noqa: E402
+    JobCategory,
+    MAX_JOB_NAME_LENGTH,
+)  # noqa: E402
 from sagemaker.ai_registry.data_preparer.defaults import DataPreparerDefaults  # noqa: E402
 from sagemaker.core.helper.session_helper import Session  # noqa: E402
 

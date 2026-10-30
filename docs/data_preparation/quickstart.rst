@@ -69,7 +69,7 @@ Data Quality Evaluation
        input_data_config=[{
            "DatasetArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/my-dataset/1.0.0",
        }],
-       evaluation_name="quality-check-v1",
+       evaluation_config={"Operations": [{"Operator": "default_metrics"}]},
        output_data_config={"S3OutputPath": "s3://my-bucket/dq-output/"},
    )
    dataset = preparer.evaluate(config)

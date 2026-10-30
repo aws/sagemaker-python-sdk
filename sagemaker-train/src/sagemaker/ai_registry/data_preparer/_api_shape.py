@@ -10,8 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Per-category, version-specific extraction strategies for
-``JobConfigDocument`` shapes.
+"""Per-category, version-specific extraction strategies for job config documents.
+
+Each strategy reads one ``JobConfigDocument`` shape.
 
 PRIVATE — not exported. This is where anything that has to branch on a
 category's ``JobConfigSchemaVersion`` lives. Version dispatch happens once at
@@ -34,11 +35,11 @@ DQ shapes today, plus a v1 fallback for missing / legacy / unknown versions:
 * v3 (``"3.0.0"``): ``EvaluationConfig.Operations: [{Operator, Config?}]``, with v2's
   ``InputDataConfig`` and ``OutputDataConfig``.
 """
+
 from __future__ import absolute_import
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
-
 
 # Version strings that select the v2 DQ shape. "0.2.0" is the preview number,
 # kept below "1.0.0" per semver so ``ListJobSchemaVersions`` "latest" callers
@@ -96,22 +97,27 @@ class DqShape(ABC):
 
     @abstractmethod
     def extract_output_s3_uri(self, document: Dict[str, Any]) -> Optional[str]:
-        """Return the resolved-payload S3 output URI, or ``None`` if the field
-        this version expects is missing or malformed. Never falls back to the
-        other version's field name — mixing shapes is a validation error and
-        should surface as ``None`` here."""
+        """Return the resolved-payload S3 output URI, or ``None``.
+
+        ``None`` means the field this version expects is missing or malformed.
+        Never falls back to the other version's field name: mixing shapes is a
+        validation error and should surface as ``None`` here.
+        """
 
     @abstractmethod
     def extract_dataset_arn(self, document: Dict[str, Any]) -> Optional[str]:
-        """Return the resolved-payload input dataset ARN, or ``None`` if the
-        field is missing or malformed. Same no-fallback contract as
-        :meth:`extract_output_s3_uri`."""
+        """Return the resolved-payload input dataset ARN, or ``None``.
+
+        ``None`` means the field is missing or malformed. Same no-fallback
+        contract as :meth:`extract_output_s3_uri`.
+        """
 
 
 class V1DqShape(DqShape):
     """Legacy DQ shape: scalar ``DatasetArn``, ``OutputDataConfig.OutputS3Uri``."""
 
     def extract_output_s3_uri(self, document: Dict[str, Any]) -> Optional[str]:
+        """Return ``OutputDataConfig.OutputS3Uri``, or ``None``."""
         output_cfg = document.get("OutputDataConfig")
         if not isinstance(output_cfg, dict):
             return None
@@ -119,15 +125,19 @@ class V1DqShape(DqShape):
         return value if isinstance(value, str) else None
 
     def extract_dataset_arn(self, document: Dict[str, Any]) -> Optional[str]:
+        """Return the top-level ``DatasetArn``, or ``None``."""
         value = document.get("DatasetArn")
         return value if isinstance(value, str) else None
 
 
 class V2DqShape(DqShape):
-    """v2 (0.2.0) shape: ``InputDataConfig: [{DatasetArn}]``,
-    ``OutputDataConfig.S3OutputPath``."""
+    """v2 (0.2.0) DQ shape.
+
+    ``InputDataConfig: [{DatasetArn}]`` and ``OutputDataConfig.S3OutputPath``.
+    """
 
     def extract_output_s3_uri(self, document: Dict[str, Any]) -> Optional[str]:
+        """Return ``OutputDataConfig.S3OutputPath``, or ``None``."""
         output_cfg = document.get("OutputDataConfig")
         if not isinstance(output_cfg, dict):
             return None
@@ -135,6 +145,7 @@ class V2DqShape(DqShape):
         return value if isinstance(value, str) else None
 
     def extract_dataset_arn(self, document: Dict[str, Any]) -> Optional[str]:
+        """Return ``InputDataConfig[0].DatasetArn``, or ``None``."""
         input_cfg = document.get("InputDataConfig")
         if not isinstance(input_cfg, list) or not input_cfg:
             return None
@@ -146,9 +157,11 @@ class V2DqShape(DqShape):
 
 
 class V3DqShape(V2DqShape):
-    """v3 (3.0.0) shape: ``EvaluationConfig.Operations`` replaces v2's metric
-    groups, and ``InputDataConfig`` and ``OutputDataConfig`` are unchanged from
-    v2, so both extractors are inherited."""
+    """v3 (3.0.0) DQ shape.
+
+    ``EvaluationConfig.Operations`` replaces v2's metric groups. ``InputDataConfig``
+    and ``OutputDataConfig`` are unchanged from v2, so both extractors are inherited.
+    """
 
 
 # Singletons — the strategies are stateless, so we avoid per-call allocation.

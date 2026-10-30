@@ -16,6 +16,7 @@ A job can reach ``Completed`` while producing no records (for example a filter
 that drops every row). The SDK keeps returning the dataset — zero records can be
 legitimate — but logs a warning so the result is not mistaken for real output.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -92,9 +93,7 @@ class TestOutputHasNoRecords:
     @patch("boto3.client")
     def test_large_object_is_not_downloaded(self, mock_boto3, preparer):
         s3 = MagicMock()
-        s3.head_object.return_value = {
-            "ContentLength": preparer_module._EMPTY_CHECK_MAX_BYTES + 1
-        }
+        s3.head_object.return_value = {"ContentLength": preparer_module._EMPTY_CHECK_MAX_BYTES + 1}
         mock_boto3.return_value = s3
         assert preparer._output_has_no_records("s3://b/out/big.jsonl") is False
         s3.get_object.assert_not_called()
@@ -140,32 +139,25 @@ class TestResolveOutputRecordsUri:
     def test_unusable_source_is_none(self, preparer, source):
         ds = _dataset(source)
         assert (
-            preparer._resolve_output_records_uri(ds, JobCategory.SYNTHETIC_DATA_GENERATION)
-            is None
+            preparer._resolve_output_records_uri(ds, JobCategory.SYNTHETIC_DATA_GENERATION) is None
         )
 
-    @patch("boto3.client")
-    def test_dq_v2_resolves_under_s3_output_path(self, mock_boto3, preparer):
-        s3 = MagicMock()
-        s3.list_objects_v2.return_value = {
-            "Contents": [
-                {"Key": "dq-out/other-job-1/record_level/evaluated_data.jsonl"},
-                {"Key": "dq-out/my-job-2026/record_level/evaluated_data.jsonl"},
-            ]
-        }
-        mock_boto3.return_value = s3
+    def test_dq_resolves_in_the_folder_of_metadata_s3_uri(self, preparer):
         job = _job(
             name="my-job",
             document={
                 "InputDataConfig": [{"DatasetArn": "arn:in"}],
                 "OutputDataConfig": {"S3OutputPath": "s3://b/dq-out/"},
+                "MetadataS3Uri": "s3://b/dq-out/my-job-2026-10-27T192836.911Z/metadata.json",
             },
             schema_version="2.0.0",
         )
         uri = preparer._resolve_output_records_uri(
             _dataset("s3://b/input/ds.jsonl"), JobCategory.DATA_QUALITY_EVALUATION, job
         )
-        assert uri == "s3://b/dq-out/my-job-2026/record_level/evaluated_data.jsonl"
+        assert (
+            uri == "s3://b/dq-out/my-job-2026-10-27T192836.911Z/record_level/evaluated_data.jsonl"
+        )
 
 
 class TestWarnIfEmptyOutput:
@@ -187,9 +179,7 @@ class TestWarnIfEmptyOutput:
 
     @patch("boto3.client")
     def test_warns_only_for_the_empty_split_output(self, mock_boto3, preparer, caplog):
-        mock_boto3.return_value = _s3_with(
-            {"dt/train.jsonl": b'{"a": 1}\n', "dt/test.jsonl": b""}
-        )
+        mock_boto3.return_value = _s3_with({"dt/train.jsonl": b'{"a": 1}\n', "dt/test.jsonl": b""})
         with caplog.at_level(logging.WARNING, logger=_LOGGER):
             preparer._warn_if_empty_output(
                 [_dataset("s3://b/dt/train.jsonl"), _dataset("s3://b/dt/test.jsonl")],
@@ -262,9 +252,11 @@ class TestCompletedPathsInvokeWarning:
         outputs = [MagicMock(), MagicMock()]
         config = MagicMock()
         config.job_category = JobCategory.DATA_TRANSFORMATION
-        with patch.object(dc, "_create_job", return_value=job), patch.object(
-            dc, "_rehydrate_datasets", return_value=outputs
-        ), patch.object(dc, "_warn_if_empty_output") as warn:
+        with (
+            patch.object(dc, "_create_job", return_value=job),
+            patch.object(dc, "_rehydrate_datasets", return_value=outputs),
+            patch.object(dc, "_warn_if_empty_output") as warn,
+        ):
             result = dc._run(config, JobCategory.DATA_TRANSFORMATION, wait=True, logs=False)
         assert result == outputs
         warn.assert_called_once_with(outputs, JobCategory.DATA_TRANSFORMATION, job)
@@ -283,9 +275,10 @@ class TestCompletedPathsInvokeWarning:
         job_cls.get.return_value = job
         mock_get_job_cls.return_value = job_cls
         outputs = [MagicMock()]
-        with patch.object(DataPreparer, "_rehydrate_datasets", return_value=outputs), patch.object(
-            DataPreparer, "_warn_if_empty_output"
-        ) as warn:
+        with (
+            patch.object(DataPreparer, "_rehydrate_datasets", return_value=outputs),
+            patch.object(DataPreparer, "_warn_if_empty_output") as warn,
+        ):
             result = DataPreparer.attach(job.job_arn)
         assert result == outputs
         warn.assert_called_once_with(outputs, JobCategory.DATA_TRANSFORMATION, job)

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests: schema not found and unknown field with fuzzy suggestion."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -50,9 +51,9 @@ class TestSchemaNotFound:
             f"transient=False; got transient={exc.transient}"
         )
         msg = str(exc)
-        assert "pin a schema_version" in msg.lower(), (
-            f"A2: error message lacks version-pinning guidance; got: {msg!r}"
-        )
+        assert (
+            "pin a schema_version" in msg.lower()
+        ), f"A2: error message lacks version-pinning guidance; got: {msg!r}"
         assert "[]" not in msg, (
             "A2: error message contains an empty available_versions list '[]'; "
             f"the resolver must return the published versions — got: {msg!r}"
@@ -90,7 +91,9 @@ class TestUnknownFieldSuggestion:
         )
         try:
             preparer.generate(dataset, wait=False, logs=False)
-            pytest.fail("Expected DataPreparerSchemaValidationError or DataPreparerSchemaNotFoundError")
+            pytest.fail(
+                "Expected DataPreparerSchemaValidationError or DataPreparerSchemaNotFoundError"
+            )
         except DataPreparerSchemaValidationError as e:
             msg = str(e)
             assert "print_schema" in msg

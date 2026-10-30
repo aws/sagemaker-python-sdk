@@ -14,6 +14,7 @@
 
 PRIVATE — used by DatasetJobConfig.print_schema only.
 """
+
 from __future__ import absolute_import
 
 import re
@@ -22,9 +23,18 @@ from typing import Any, Dict, List, Optional, Set
 _PASCAL_TO_SNAKE_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 _CONSTRAINT_KEYS = (
-    "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum",
-    "minLength", "maxLength", "pattern", "format",
-    "minItems", "maxItems", "multipleOf", "uniqueItems",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "minLength",
+    "maxLength",
+    "pattern",
+    "format",
+    "minItems",
+    "maxItems",
+    "multipleOf",
+    "uniqueItems",
 )
 
 
@@ -57,8 +67,17 @@ def _render_properties(
         is_last = i == len(items) - 1
         connector = "└── " if is_last else "├── "
         child_prefix = prefix + ("    " if is_last else "│   ")
-        _render_field(prop_name, prop_schema, prop_name in required, definitions,
-                      lines, prefix, connector, child_prefix, visited)
+        _render_field(
+            prop_name,
+            prop_schema,
+            prop_name in required,
+            definitions,
+            lines,
+            prefix,
+            connector,
+            child_prefix,
+            visited,
+        )
 
 
 def _render_field(
@@ -157,8 +176,9 @@ def _recurse_into(
         if resolved_items.get("properties"):
             lines.append(f"{prefix}[items]:")
             req = set(resolved_items.get("required", []))
-            _render_properties(resolved_items["properties"], req, definitions,
-                               lines, prefix + "    ", new_visited)
+            _render_properties(
+                resolved_items["properties"], req, definitions, lines, prefix + "    ", new_visited
+            )
         elif "oneOf" in resolved_items or "anyOf" in resolved_items:
             _render_union_branches(resolved_items, definitions, lines, prefix, new_visited)
         return
@@ -189,8 +209,9 @@ def _render_union_branches(
             lines.append(f"{child_prefix}{desc}")
         if resolved_branch.get("properties"):
             req = set(resolved_branch.get("required", []))
-            _render_properties(resolved_branch["properties"], req, definitions,
-                               lines, child_prefix, visited)
+            _render_properties(
+                resolved_branch["properties"], req, definitions, lines, child_prefix, visited
+            )
 
 
 def _type_string(schema: Dict[str, Any], definitions: Dict[str, Any]) -> str:
@@ -215,8 +236,11 @@ def _type_string(schema: Dict[str, Any], definitions: Dict[str, Any]) -> str:
         if has_null and len(non_null) == 1:
             inner = _type_string(_resolve_ref(non_null[0], definitions), definitions)
             return f"Optional[{inner}]"
-        parts = [_type_string(_resolve_ref(b, definitions), definitions) for b in branches
-                 if _resolve_ref(b, definitions).get("type") != "null"]
+        parts = [
+            _type_string(_resolve_ref(b, definitions), definitions)
+            for b in branches
+            if _resolve_ref(b, definitions).get("type") != "null"
+        ]
         result = " | ".join(parts)
         if has_null:
             result = f"Optional[{result}]"
@@ -256,8 +280,13 @@ def _type_string(schema: Dict[str, Any], definitions: Dict[str, Any]) -> str:
 
 
 def _primitive_name(t: str) -> str:
-    return {"string": "str", "integer": "int", "number": "float",
-            "boolean": "bool", "null": "None"}.get(t, t)
+    return {
+        "string": "str",
+        "integer": "int",
+        "number": "float",
+        "boolean": "bool",
+        "null": "None",
+    }.get(t, t)
 
 
 def _resolve_ref(schema: Dict[str, Any], definitions: Dict[str, Any]) -> Dict[str, Any]:

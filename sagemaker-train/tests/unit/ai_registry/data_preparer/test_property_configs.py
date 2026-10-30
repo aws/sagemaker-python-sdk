@@ -16,6 +16,7 @@ Validates:
 - P6: Cross-category schema isolation (Requirement 3.13).
 - P13: Dict input == typed-nested-model input (Requirements 13.1, 13.2, 13.3, 13.4).
 """
+
 from __future__ import absolute_import
 
 import pytest
@@ -36,7 +37,6 @@ from sagemaker.ai_registry.data_preparer.constants import JobCategory  # noqa: E
 from sagemaker.ai_registry.data_preparer.exceptions import (  # noqa: E402
     DataPreparerSchemaValidationError,
 )
-
 
 # -----------------------------------------------------------------------------
 # Helpers: schema pair generators that guarantee a non-equivalent required-field
@@ -98,14 +98,15 @@ class TestPropertySchemaIsolation:
         mock_session = MagicMock()
 
         # First, validate under schema_a — must succeed
-        with patch(
-            "sagemaker.ai_registry.data_preparer.configs._SchemaResolver"
-        ) as mock_resolver, patch(
-            "sagemaker.ai_registry.data_preparer.configs.DataPreparerDefaults"
-        ) as mock_defaults:
+        with (
+            patch("sagemaker.ai_registry.data_preparer.configs._SchemaResolver") as mock_resolver,
+            patch(
+                "sagemaker.ai_registry.data_preparer.configs.DataPreparerDefaults"
+            ) as mock_defaults,
+        ):
             mock_defaults.get_sagemaker_session.return_value = mock_session
-            mock_defaults.resolve_into_payload.side_effect = (
-                lambda user_payload, *a, **k: dict(user_payload)
+            mock_defaults.resolve_into_payload.side_effect = lambda user_payload, *a, **k: dict(
+                user_payload
             )
 
             # Build real dynamic models so validation actually runs
@@ -123,14 +124,15 @@ class TestPropertySchemaIsolation:
             assert cfg_a._serialized_document is not None
 
         # Now validate the same payload under schema_b — must fail
-        with patch(
-            "sagemaker.ai_registry.data_preparer.configs._SchemaResolver"
-        ) as mock_resolver, patch(
-            "sagemaker.ai_registry.data_preparer.configs.DataPreparerDefaults"
-        ) as mock_defaults:
+        with (
+            patch("sagemaker.ai_registry.data_preparer.configs._SchemaResolver") as mock_resolver,
+            patch(
+                "sagemaker.ai_registry.data_preparer.configs.DataPreparerDefaults"
+            ) as mock_defaults,
+        ):
             mock_defaults.get_sagemaker_session.return_value = mock_session
-            mock_defaults.resolve_into_payload.side_effect = (
-                lambda user_payload, *a, **k: dict(user_payload)
+            mock_defaults.resolve_into_payload.side_effect = lambda user_payload, *a, **k: dict(
+                user_payload
             )
 
             model_b = _SchemaResolver.build_dynamic_model(
@@ -159,7 +161,7 @@ NESTED_SCHEMA = {
             "title": "OutputDataConfig",
             "properties": {
                 "OutputS3Uri": {"type": "string"},
-                "KmsKeyId": {"type": "string"},
+                "HubName": {"type": "string"},
             },
             "required": ["OutputS3Uri"],
         },
@@ -291,12 +293,8 @@ class _patched_resolver:
         self.session = session
 
     def __enter__(self):
-        self._p_resolver = patch(
-            "sagemaker.ai_registry.data_preparer.configs._SchemaResolver"
-        )
-        self._p_defaults = patch(
-            "sagemaker.ai_registry.data_preparer.configs.DataPreparerDefaults"
-        )
+        self._p_resolver = patch("sagemaker.ai_registry.data_preparer.configs._SchemaResolver")
+        self._p_defaults = patch("sagemaker.ai_registry.data_preparer.configs.DataPreparerDefaults")
         mock_resolver = self._p_resolver.__enter__()
         mock_defaults = self._p_defaults.__enter__()
         mock_resolver.get_schema.return_value = ("1.0.0", self.schema)
@@ -304,8 +302,8 @@ class _patched_resolver:
         mock_defaults.get_sagemaker_session.return_value = self.session
         # Pass-through: the intelligent-defaults walk is orthogonal to the
         # dict-vs-typed equivalence property being tested here.
-        mock_defaults.resolve_into_payload.side_effect = (
-            lambda user_payload, *a, **k: dict(user_payload)
+        mock_defaults.resolve_into_payload.side_effect = lambda user_payload, *a, **k: dict(
+            user_payload
         )
         return self
 

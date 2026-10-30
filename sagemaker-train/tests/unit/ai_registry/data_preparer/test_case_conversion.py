@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for _case_conversion helpers and DatasetJobConfig integration."""
+
 from __future__ import absolute_import
 
 import json
@@ -50,8 +51,8 @@ class TestSnakeToPascal:
     def test_spec_s3_uri(self):
         assert _snake_to_pascal("spec_s3_uri") == "SpecS3Uri"
 
-    def test_kms_key_id(self):
-        assert _snake_to_pascal("kms_key_id") == "KmsKeyId"
+    def test_hub_name(self):
+        assert _snake_to_pascal("hub_name") == "HubName"
 
     def test_idempotent_pascal_no_underscore(self):
         assert _snake_to_pascal("FooBar") == "FooBar"
@@ -100,8 +101,8 @@ class TestNormalizeKeysToPascal:
         assert _normalize_keys_to_pascal({"foo_bar": 1, "baz": 2}) == {"FooBar": 1, "Baz": 2}
 
     def test_nested_dict(self):
-        inp = {"output_data_config": {"s3_uri": "s3://bucket", "kms_key_id": "key123"}}
-        expected = {"OutputDataConfig": {"S3Uri": "s3://bucket", "KmsKeyId": "key123"}}
+        inp = {"output_data_config": {"s3_uri": "s3://bucket", "hub_name": "MyHub"}}
+        expected = {"OutputDataConfig": {"S3Uri": "s3://bucket", "HubName": "MyHub"}}
         assert _normalize_keys_to_pascal(inp) == expected
 
     def test_list_of_dicts(self):
@@ -150,22 +151,39 @@ class TestNormalizeKeysToPascal:
         assert _normalize_keys_to_pascal(None) is None
 
     def test_operation_config_is_kept_as_written(self):
-        settings = {"View": [{"Role": "Text", "Column": "answer"}], "languages": ["en"],
-                    "min_score": 0.5, "topic_keywords": {"math": ["sum"]}}
-        inp = {"evaluation_config": {"operations": [
-            {"operator": "language_detection", "config": settings},
-            {"operator": "default_metrics"},
-        ]}}
-        assert _normalize_keys_to_pascal(inp) == {"EvaluationConfig": {"Operations": [
-            {"Operator": "language_detection", "Config": settings},
-            {"Operator": "default_metrics"},
-        ]}}
+        settings = {
+            "View": [{"Role": "Text", "Column": "answer"}],
+            "languages": ["en"],
+            "min_score": 0.5,
+            "topic_keywords": {"math": ["sum"]},
+        }
+        inp = {
+            "evaluation_config": {
+                "operations": [
+                    {"operator": "language_detection", "config": settings},
+                    {"operator": "default_metrics"},
+                ]
+            }
+        }
+        assert _normalize_keys_to_pascal(inp) == {
+            "EvaluationConfig": {
+                "Operations": [
+                    {"Operator": "language_detection", "Config": settings},
+                    {"Operator": "default_metrics"},
+                ]
+            }
+        }
 
     def test_transformation_config_keys_are_kept_as_written(self):
-        inp = {"Operations": [
-            {"Operator": "Split", "Config": {"Ratios": {"train": 0.8, "test": 0.2}}},
-            {"Operator": "PiiRedaction", "Config": {"ActionMap": {"CREDIT_DEBIT_NUMBER": "MASK"}}},
-        ]}
+        inp = {
+            "Operations": [
+                {"Operator": "Split", "Config": {"Ratios": {"train": 0.8, "test": 0.2}}},
+                {
+                    "Operator": "PiiRedaction",
+                    "Config": {"ActionMap": {"CREDIT_DEBIT_NUMBER": "MASK"}},
+                },
+            ]
+        }
         assert _normalize_keys_to_pascal(inp) == inp
 
 
@@ -177,7 +195,7 @@ SIMPLE_SCHEMA = {
             "type": "object",
             "properties": {
                 "S3Uri": {"type": "string"},
-                "KmsKeyId": {"type": "string"},
+                "HubName": {"type": "string"},
             },
         },
     },
@@ -209,7 +227,7 @@ def _build_test_model():
         "OutputDataConfig",
         __base__=_DynamicBase,
         s3_uri=(str | None, Field(default=None, alias="S3Uri")),
-        kms_key_id=(str | None, Field(default=None, alias="KmsKeyId")),
+        hub_name=(str | None, Field(default=None, alias="HubName")),
     )
     return create_model(
         "TestModel",
@@ -307,7 +325,7 @@ class TestDatasetJobConfigSnakeCaseIntegration:
         mock_defaults.get_sagemaker_session.return_value = mock_session
         mock_defaults.resolve_into_payload.return_value = {
             "NumSamples": 50,
-            "OutputDataConfig": {"S3Uri": "s3://out", "KmsKeyId": "key-123"},
+            "OutputDataConfig": {"S3Uri": "s3://out", "HubName": "MyHub"},
         }
         mock_resolver.get_schema.return_value = ("1.0.0", SIMPLE_SCHEMA)
         mock_resolver.build_dynamic_model.return_value = _build_test_model()
@@ -320,7 +338,7 @@ class TestDatasetJobConfigSnakeCaseIntegration:
         cfg = DatasetJobConfig(
             job_category=JobCategory.SYNTHETIC_DATA_GENERATION,
             num_samples=50,
-            output_data_config={"s3_uri": "s3://out", "kms_key_id": "key-123"},
+            output_data_config={"s3_uri": "s3://out", "hub_name": "MyHub"},
         )
         cfg._resolve_and_validate(sagemaker_session=mock_session, config_mgr=mock_config_mgr)
 
@@ -328,7 +346,7 @@ class TestDatasetJobConfigSnakeCaseIntegration:
         assert doc["NumSamples"] == 50
         odc = doc["OutputDataConfig"]
         assert odc["S3Uri"] == "s3://out"
-        assert odc["KmsKeyId"] == "key-123"
+        assert odc["HubName"] == "MyHub"
         # No snake_case keys in nested
         for key in odc:
             assert "_" not in key, f"snake_case key leaked in nested: {key}"

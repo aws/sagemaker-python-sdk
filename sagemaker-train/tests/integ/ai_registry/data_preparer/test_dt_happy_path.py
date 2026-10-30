@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests: DT happy path on BYOD datasets (direct import and DataSet.create)."""
+
 from __future__ import absolute_import
 
 from urllib.parse import urlparse
@@ -20,6 +21,10 @@ import boto3
 import pytest
 
 from sagemaker.ai_registry import DataPreparer, DataSet, DatasetJobConfig, JobCategory
+
+# Submits real jobs and waits for them: scheduled CI only, not PR checks
+# (see the gpu_intensive marker in sagemaker-train/pyproject.toml).
+pytestmark = pytest.mark.gpu_intensive
 
 
 @pytest.mark.integ
@@ -44,15 +49,17 @@ class TestDTOnByodDataset:
                 "S3OutputPath": f"s3://{integ_bucket}/data-preparer-integ-dt-output/",
             },
             transformation_config={
-                "Operations": [{
-                    "Operator": "TextQualityFilter",
-                    "Config": {
-                        "FilterType": "CharacterLength",
-                        "TextField": "prompt",
-                        "Action": "drop",
-                        "MinLength": 170,
-                    },
-                }],
+                "Operations": [
+                    {
+                        "Operator": "TextQualityFilter",
+                        "Config": {
+                            "FilterType": "CharacterLength",
+                            "TextField": "prompt",
+                            "Action": "drop",
+                            "MinLength": 170,
+                        },
+                    }
+                ],
             },
         )
         preparer = DataPreparer(
@@ -117,15 +124,17 @@ class TestDTOnDataSetCreate:
                 "S3OutputPath": f"s3://{integ_bucket}/data-preparer-integ-dt-output/",
             },
             transformation_config={
-                "Operations": [{
-                    "Operator": "TextQualityFilter",
-                    "Config": {
-                        "FilterType": "CharacterLength",
-                        "TextField": "prompt",
-                        "Action": "drop",
-                        "MinLength": 170,
-                    },
-                }],
+                "Operations": [
+                    {
+                        "Operator": "TextQualityFilter",
+                        "Config": {
+                            "FilterType": "CharacterLength",
+                            "TextField": "prompt",
+                            "Action": "drop",
+                            "MinLength": 170,
+                        },
+                    }
+                ],
             },
         )
         result = DataPreparer(sagemaker_session=sagemaker_session, role=dt_role).transform(dataset)

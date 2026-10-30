@@ -160,7 +160,10 @@ class DataSet(AIRHubEntity):
         self.name = response[RESPONSE_KEY_HUB_CONTENT_NAME]
         self.arn = response[RESPONSE_KEY_HUB_CONTENT_ARN]
         self.version = response[RESPONSE_KEY_HUB_CONTENT_VERSION]
-        self.source = doc.get(DOC_KEY_DATASET_S3_URI) or f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}"
+        self.source = (
+            doc.get(DOC_KEY_DATASET_S3_URI)
+            or f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}"
+        )
         self.status = response[RESPONSE_KEY_HUB_CONTENT_STATUS]
         self.description = response.get(RESPONSE_KEY_HUB_CONTENT_DESCRIPTION, "")
         self.customization_technique = (
@@ -232,7 +235,9 @@ class DataSet(AIRHubEntity):
                 )
 
     @classmethod
-    def _validate_dataset_format(cls, file_path: str, dataset_file_format: Optional[str] = None) -> None:
+    def _validate_dataset_format(
+        cls, file_path: str, dataset_file_format: Optional[str] = None
+    ) -> None:
         """Validate dataset format using DatasetFormatDetector.
 
         Args:
@@ -299,7 +304,8 @@ class DataSet(AIRHubEntity):
             name=response[RESPONSE_KEY_HUB_CONTENT_NAME],
             arn=response[RESPONSE_KEY_HUB_CONTENT_ARN],
             version=response[RESPONSE_KEY_HUB_CONTENT_VERSION],
-            source=doc.get(DOC_KEY_DATASET_S3_URI) or f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}",
+            source=doc.get(DOC_KEY_DATASET_S3_URI)
+            or f"s3://{doc.get(DOC_KEY_DATASET_S3_BUCKET, '')}/{doc.get(DOC_KEY_DATASET_S3_PREFIX, '')}",
             status=response[RESPONSE_KEY_HUB_CONTENT_STATUS],
             description=response.get(RESPONSE_KEY_HUB_CONTENT_DESCRIPTION, ""),
             customization_technique=(
@@ -384,7 +390,7 @@ class DataSet(AIRHubEntity):
                 any other schema version raises ValueError, because v2/v3 schemas
                 have no field to carry it and silently dropping it would let a
                 caller's data-validation opt-in vanish without notice.
-            
+
         Returns:
             DataSet: The created dataset instance
 
@@ -515,7 +521,7 @@ class DataSet(AIRHubEntity):
                 DOC_KEY_DATASET_S3_PREFIX: s3_prefix,
                 DOC_KEY_DATASET_S3_URI: f"s3://{bucket_name}/{s3_prefix}",
             }
-            
+
             # ContentMetadata (Feature Store lineage) is part of the v5.0.0 schema:
             # an object with SourceFeatureGroups (required), ExtractionMethod and
             # AthenaQueryExecutionId. Emit it only when the caller supplies it.
@@ -531,7 +537,7 @@ class DataSet(AIRHubEntity):
             hub_content_document = DataSetHubContentDocument(
                 dataset_s3_bucket=bucket_name,
                 dataset_s3_prefix=s3_prefix,
-                dataset_context_s3_uri="\"\"",
+                dataset_context_s3_uri='""',
                 dataset_type=DATASET_DEFAULT_TYPE,
                 dataset_role_arn=role,
                 conversation_id=DATASET_DEFAULT_CONVERSATION_ID,  # Required for now, needs cleanup

@@ -10,14 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""DataPreparer subpackage — data preparation via SyntheticDataGeneration,
-DataQualityEvaluation, and DataTransformation.
+"""DataPreparer subpackage: data preparation jobs.
+
+Covers SyntheticDataGeneration, DataQualityEvaluation, and DataTransformation.
 
 Public surface:
     DataPreparer, DatasetJobConfig, JobCategory, JobStatus, and the full exception taxonomy.
     The auto_labeling subpackage's typed options and LabelingSummary.
     _schema_resolver is NOT re-exported (private to the subpackage).
 """
+
 from __future__ import absolute_import
 
 from sagemaker.ai_registry.data_preparer.preparer import DataPreparer  # noqa: F401

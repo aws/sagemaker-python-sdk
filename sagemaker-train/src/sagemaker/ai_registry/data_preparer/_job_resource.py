@@ -15,13 +15,14 @@
 Wraps CreateJob/DescribeJob/StopJob and implements wait() with a live
 status panel for monitoring job progress in notebooks.
 """
+
 from __future__ import absolute_import
 
 import json
 import logging
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 from botocore.exceptions import ClientError
@@ -30,27 +31,53 @@ from rich.panel import Panel
 from sagemaker.core.helper.session_helper import Session
 
 if TYPE_CHECKING:  # import cycle at runtime: the summary module reaches back here
+    from rich.table import Table
+
     from sagemaker.ai_registry.data_preparer.auto_labeling.summary import LabelingSummary
 
 logger = logging.getLogger(__name__)
 
 _TERMINAL_STATES = {"Completed", "Failed", "Stopped"}
 _LOG_GROUP_PREFIX = "/aws/sagemaker/Job"
+_DQ_OUTPUT_SEGMENT = "data-quality-evaluation"
+_DQ_RECORD_LEVEL_SUFFIX = "/record_level/evaluated_data.jsonl"
+
+
+def _output_folder_timestamp(created_at) -> Optional[str]:
+    """``created_at`` in UTC as ``YYYY-MM-DDTHHMMSS``, the start of a DQ output folder's timestamp."""
+    if isinstance(created_at, str):
+        text = re.sub(
+            r"\.(\d+)",
+            lambda m: "." + (m.group(1) + "000000")[:6],
+            created_at.strip().replace("Z", "+00:00"),
+        )
+        try:
+            created_at = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    if not isinstance(created_at, datetime):
+        return None
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H%M%S")
+
 
 # Transient error codes returned by ``DescribeJob`` that ``wait()`` should
 # silently skip on the polling cadence. Anything outside this set is treated
 # as a hard failure and propagated immediately.
-_TRANSIENT_CLIENT_ERROR_CODES = frozenset({
-    "ThrottlingException",
-    "Throttling",
-    "ThrottledException",
-    "TooManyRequestsException",
-    "RequestLimitExceeded",
-    "ServiceUnavailable",
-    "ServiceUnavailableException",
-    "InternalServerError",
-    "InternalFailure",
-})
+_TRANSIENT_CLIENT_ERROR_CODES = frozenset(
+    {
+        "ThrottlingException",
+        "Throttling",
+        "ThrottledException",
+        "TooManyRequestsException",
+        "RequestLimitExceeded",
+        "ServiceUnavailable",
+        "ServiceUnavailableException",
+        "InternalServerError",
+        "InternalFailure",
+    }
+)
 
 # Quiet_Period default. Five minutes from the last panel print (or from
 # ``wait()`` entry if no panel has been printed since) before the backoff
@@ -59,9 +86,10 @@ _QUIET_PERIOD_SECONDS = 5 * 60
 
 
 def _is_transient_client_error(error: BaseException) -> bool:
-    """Return True iff ``error`` is a ``botocore.exceptions.ClientError`` whose
-    error code or HTTP status indicates a transient server-side condition
-    (throttling, 5xx). Used by ``wait()`` to decide whether to retry the
+    """Return True iff ``error`` is a transient ``botocore.exceptions.ClientError``.
+
+    Transient means the error code or HTTP status indicates a server-side
+    condition (throttling, 5xx). Used by ``wait()`` to decide whether to retry the
     next describe tick or propagate immediately.
     """
     if not isinstance(error, ClientError):
@@ -76,11 +104,10 @@ def _is_transient_client_error(error: BaseException) -> bool:
     except (TypeError, ValueError):
         return False
 
+
 # Pattern for the Python ``logging`` default timestamp prefix:
 #   "YYYY-MM-DD HH:MM:SS,mmm" or "YYYY-MM-DD HH:MM:SS.mmm"
-_LOG_TIMESTAMP_RE = re.compile(
-    r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[,.]\d{3})"
-)
+_LOG_TIMESTAMP_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}[,.]\d{3})")
 # Pattern for extracting the phase description after a [MILESTONE] sentinel.
 _MILESTONE_RE = re.compile(r"\[MILESTONE\]\s+(.*)")
 # Python logging level token as formatted by the job container
@@ -233,8 +260,7 @@ class Job:
             request["CustomerDetails"] = customer_details
         if tags is not None:
             request["Tags"] = [
-                {"Key": t.key, "Value": t.value} if hasattr(t, "key") else t
-                for t in tags
+                {"Key": t.key, "Value": t.value} if hasattr(t, "key") else t for t in tags
             ]
 
         # Intersect the request with fields actually accepted by the loaded
@@ -275,15 +301,11 @@ class Job:
         ``refresh()``/``wait()`` or read the job state off it.
         """
         session = session or Session()
-        return cls(
-            job_name=job_name, job_category=job_category, session=session
-        ).refresh()
+        return cls(job_name=job_name, job_category=job_category, session=session).refresh()
 
     def refresh(self) -> "Job":
         """Refresh job state via DescribeJob."""
-        resp = self._client.describe_job(
-            JobName=self.job_name, JobCategory=self.job_category
-        )
+        resp = self._client.describe_job(JobName=self.job_name, JobCategory=self.job_category)
         self.job_arn = resp.get("JobArn")
         self.job_status = resp.get("JobStatus")
         self.secondary_status = resp.get("SecondaryStatus")
@@ -384,8 +406,10 @@ class Job:
             try:
                 # _progress_output_s3_uri is the source of truth for bucket
                 # — the locked key is bucket-relative.
-                if self._progress_output_s3_uri and self._progress_output_s3_uri.startswith("s3://"):
-                    rest = self._progress_output_s3_uri[len("s3://"):].rstrip("/")
+                if self._progress_output_s3_uri and self._progress_output_s3_uri.startswith(
+                    "s3://"
+                ):
+                    rest = self._progress_output_s3_uri[len("s3://") :].rstrip("/")
                     bucket = rest.split("/", 1)[0]
                 # Trim two trailing segments (subdir + filename) to land on
                 # ``{customer_prefix}/<JobName>-<ts>/``.
@@ -400,7 +424,7 @@ class Job:
             uri = self._progress_output_s3_uri
             if not uri or not uri.startswith("s3://"):
                 return None
-            rest = uri[len("s3://"):].rstrip("/")
+            rest = uri[len("s3://") :].rstrip("/")
             split = rest.split("/", 1)
             bucket = split[0]
             prefix = (split[1] + "/") if len(split) > 1 else ""
@@ -464,8 +488,9 @@ class Job:
         return LabelingSummary.from_dataset(dataset_arn, sagemaker_session=self._session)
 
     def _job_category_label(self) -> str:
-        """Return the raw ``job_category`` to use as a humanized prefix on
-        header rows (``"SyntheticDataGenerationJob Name"``,
+        """Return the raw ``job_category`` to use as a humanized header-row prefix.
+
+        Used on header rows (``"SyntheticDataGenerationJob Name"``,
         ``"DataQualityEvaluationJob ARN"``, …). The category value is
         already PascalCase, no spacing transform needed. Falls back to
         ``"Job"`` when the category is unset/empty so the rendered label
@@ -534,17 +559,13 @@ class Job:
             f"[bold green]{self.job_name}[/bold green]",
         )
         if self.job_arn:
-            header_table.add_row(
-                f"{category_label}Job ARN", f"[dim]{self.job_arn}[/dim]"
-            )
+            header_table.add_row(f"{category_label}Job ARN", f"[dim]{self.job_arn}[/dim]")
         # DatasetArn is surfaced inside JobConfigDocument once the service
         # has registered the dataset with Hub. Conditional row — only
         # appears when present, mirroring the JobArn row's gating.
         dataset_arn = self._extract_dataset_arn()
         if dataset_arn:
-            header_table.add_row(
-                "Dataset ARN", f"[dim]{dataset_arn}[/dim]"
-            )
+            header_table.add_row("Dataset ARN", f"[dim]{dataset_arn}[/dim]")
         header_table.add_row("JobCategory", f"{self.job_category}")
 
         cw_url = self._cloudwatch_logs_url()
@@ -588,9 +609,7 @@ class Job:
             elapsed = max(0.0, time.time() - self._wait_start_time)
         else:
             elapsed = 0.0
-        status_table.add_row(
-            "Elapsed Time", f"[bold bright_red]{elapsed:.1f}s[/bold bright_red]"
-        )
+        status_table.add_row("Elapsed Time", f"[bold bright_red]{elapsed:.1f}s[/bold bright_red]")
 
         if self._expected_samples is not None:
             done = self._current_samples if self._current_samples is not None else 0
@@ -738,11 +757,7 @@ class Job:
             # A row is completed if it has an EndTime, or a subsequent row
             # exists (implying this step finished before the next began), or
             # the overall job reached a terminal state.
-            is_completed = (
-                bool(api_row.get("EndTime"))
-                or idx < len(api_rows) - 1
-                or is_terminal
-            )
+            is_completed = bool(api_row.get("EndTime")) or idx < len(api_rows) - 1 or is_terminal
             glyph = "✓" if is_completed else "⋯"
             phase_label = api_row.get("Status") or "Unknown"
             # If this is the Executing row and we have sentinel sub-rows to
@@ -751,9 +766,7 @@ class Job:
             if is_executing and sentinel_phases:
                 detail = ""
             else:
-                detail = api_row.get("StatusMessage") or (
-                    "Running..." if not is_completed else ""
-                )
+                detail = api_row.get("StatusMessage") or ("Running..." if not is_completed else "")
             next_row = api_rows[idx + 1] if idx < len(api_rows) - 1 else None
             duration = self._format_transition_duration(
                 api_row, next_row=next_row, is_terminal=is_terminal
@@ -779,9 +792,10 @@ class Job:
 
     @staticmethod
     def _pair_sentinels(sentinel_rows: List[Dict]) -> List[Dict]:
-        """Collapse ``Starting <phase>`` / ``Completed <phase>`` pairs into
-        a single phase entry with start / end timestamps and a derived
-        label. Unpaired ``Starting`` lines stay as in-progress phases.
+        """Collapse ``Starting <phase>`` / ``Completed <phase>`` pairs into phase entries.
+
+        Each entry has start / end timestamps and a derived label. Unpaired
+        ``Starting`` lines stay as in-progress phases.
         """
         phases: Dict[str, Dict] = {}
         order: List[str] = []
@@ -789,14 +803,14 @@ class Job:
             phase = (entry.get("phase") or "").strip()
             ts = entry.get("timestamp")
             if phase.startswith("Starting "):
-                key = phase[len("Starting "):].strip()
+                key = phase[len("Starting ") :].strip()
                 if key not in phases:
                     phases[key] = {"label": key, "start": ts, "end": None}
                     order.append(key)
                 else:
                     phases[key]["start"] = ts
             elif phase.startswith("Completed "):
-                key = phase[len("Completed "):].strip()
+                key = phase[len("Completed ") :].strip()
                 if key not in phases:
                     phases[key] = {"label": key, "start": None, "end": ts}
                     order.append(key)
@@ -809,8 +823,9 @@ class Job:
         return [phases[k] for k in order]
 
     def _format_sentinel_row(self, phase: Dict) -> tuple:
-        """Convert a paired sentinel phase entry into a table row tuple
-        ``(glyph, label, detail, duration)``.
+        """Convert a paired sentinel phase entry into a table row tuple.
+
+        The tuple is ``(glyph, label, detail, duration)``.
 
         For the Sample Generation phase, the detail column is replaced
         with the live sample-count progress bar when ``_expected_samples``
@@ -822,11 +837,7 @@ class Job:
         # Detail column: progress bar for active Sample Generation, plain
         # status text otherwise.
         is_sample_generation = "sample generation" in phase["label"].lower()
-        if (
-            not completed
-            and is_sample_generation
-            and self._expected_samples is not None
-        ):
+        if not completed and is_sample_generation and self._expected_samples is not None:
             done = self._current_samples if self._current_samples is not None else 0
             total = self._expected_samples
             detail = f"{done} / {total} {self._render_progress_bar(done, total)}"
@@ -848,17 +859,17 @@ class Job:
                 duration = "—"
         elif start is not None and not completed:
             try:
-                duration = (
-                    f"{(datetime.now(start.tzinfo if hasattr(start, 'tzinfo') else None) - start).total_seconds():.1f}s"
-                )
+                now = datetime.now(start.tzinfo if hasattr(start, "tzinfo") else None)
+                duration = f"{(now - start).total_seconds():.1f}s"
             except Exception:
                 duration = "—"
         return glyph, label, detail, duration
 
     @staticmethod
     def _humanize_phase_label(label: str) -> str:
-        """Map a raw sentinel phase string (e.g. ``code generation``) to a
-        Title Case label (``Code Generation``) for display.
+        """Map a raw sentinel phase string to a Title Case display label.
+
+        For example ``code generation`` becomes ``Code Generation``.
         """
         return " ".join(word.capitalize() for word in label.split())
 
@@ -1033,9 +1044,9 @@ class Job:
         timeout: Optional[int],
         timeout_exc_cls: type,
     ) -> None:
-        """Implementation of ``wait(logs=False)`` — the live status panel
-        path. See ``wait()`` docstring for the cadence and rendering
-        rules.
+        """Implement ``wait(logs=False)``, the live status panel path.
+
+        See the ``wait()`` docstring for the cadence and rendering rules.
         """
         from rich.console import Console
 
@@ -1052,9 +1063,7 @@ class Job:
         if is_jupyter:
             live_console = Console(force_jupyter=True)
         else:
-            live_console = Console(
-                force_jupyter=False, force_terminal=True, width=120
-            )
+            live_console = Console(force_jupyter=False, force_terminal=True, width=120)
 
         start_time = self._wait_start_time or time.time()
         last_describe = 0.0
@@ -1123,10 +1132,7 @@ class Job:
                     last_describe = now
                     if self._progress_output_s3_uri:
                         new_count = self._count_samples()
-                        if (
-                            new_count is not None
-                            and new_count != self._current_samples
-                        ):
+                        if new_count is not None and new_count != self._current_samples:
                             self._current_samples = new_count
                             progress_changed = True
                     # Job status flipped (e.g. Pending → InProgress) is a
@@ -1143,9 +1149,7 @@ class Job:
                         progress_changed = True
                         last_status_message = self._status_message
                     # New SecondaryStatusTransitions rows were appended.
-                    new_transitions_count = len(
-                        self._secondary_status_transitions
-                    )
+                    new_transitions_count = len(self._secondary_status_transitions)
                     if new_transitions_count != last_transitions_count:
                         progress_changed = True
                         last_transitions_count = new_transitions_count
@@ -1178,9 +1182,7 @@ class Job:
                     # throttling, network blip) must not kill the panel
                     # loop. Log at DEBUG and continue — the next tick
                     # will retry.
-                    logger.debug(
-                        "Sentinel scan failed (will retry): %s", exc
-                    )
+                    logger.debug("Sentinel scan failed (will retry): %s", exc)
 
             # --- Terminal check --------------------------------------------------
             if self.job_status in _TERMINAL_STATES:
@@ -1224,10 +1226,7 @@ class Job:
                 progress_changed = False
 
             # --- Quiet_Period -----------------------------------------------------
-            if (
-                not self._quiet_period_notified
-                and (now - last_panel_time) >= _QUIET_PERIOD_SECONDS
-            ):
+            if not self._quiet_period_notified and (now - last_panel_time) >= _QUIET_PERIOD_SECONDS:
                 self._quiet_period_notified = True
                 self._emit_backoff_message(
                     console=live_console,
@@ -1241,18 +1240,14 @@ class Job:
             if timeout is not None and now - start_time >= timeout:
                 # Print a panel reflecting the current state BEFORE raising
                 # so the customer has a visible record.
-                self._render_terminal_panel(
-                    live_console, is_timeout=True
-                )
+                self._render_terminal_panel(live_console, is_timeout=True)
                 raise timeout_exc_cls(
                     job_arn=self.job_arn or "unknown",
                     elapsed_seconds=now - start_time,
                     job_name=self.job_name,
                 )
 
-    def _render_terminal_panel(
-        self, console, is_timeout: bool = False
-    ) -> None:
+    def _render_terminal_panel(self, console, is_timeout: bool = False) -> None:
         """Render the final / timeout panel.
 
         In Jupyter, clears the previous live frame so the cell ends with a
@@ -1266,9 +1261,10 @@ class Job:
 
     @staticmethod
     def _clear_jupyter_output(wait: bool = True) -> None:
-        """Best-effort ``IPython.display.clear_output`` — silently no-ops
-        when IPython is not importable (e.g. during unit tests or in a
-        plain Python REPL).
+        """Best-effort ``IPython.display.clear_output``.
+
+        Silently no-ops when IPython is not importable (e.g. during unit tests
+        or in a plain Python REPL).
         """
         try:
             from IPython.display import clear_output  # type: ignore
@@ -1277,9 +1273,7 @@ class Job:
         except Exception:
             pass
 
-    def _emit_backoff_message(
-        self, console, elapsed_quiet_seconds: int
-    ) -> None:
+    def _emit_backoff_message(self, console, elapsed_quiet_seconds: int) -> None:
         """Print the Quiet_Period backoff message exactly once.
 
         Includes the elapsed quiet duration and a CloudWatch link. The
@@ -1290,9 +1284,7 @@ class Job:
         seconds = elapsed_quiet_seconds % 60
         log_group = f"{_LOG_GROUP_PREFIX}/{self.job_category}/"
         stream = self._extract_log_stream_name()
-        cw_path = (
-            f"{log_group}{stream}" if stream else f"{log_group}<stream pending>"
-        )
+        cw_path = f"{log_group}{stream}" if stream else f"{log_group}<stream pending>"
         msg = (
             f"No new activity for {minutes}m {seconds:02d}s. "
             f"Job is still running.\n"
@@ -1371,9 +1363,7 @@ class Job:
         if _is_jupyter_environment():
             force_terminal_console = Console(force_jupyter=True)
         else:
-            force_terminal_console = Console(
-                force_jupyter=False, force_terminal=True, width=120
-            )
+            force_terminal_console = Console(force_jupyter=False, force_terminal=True, width=120)
 
         start_time = self._wait_start_time or time.time()
         last_describe = 0.0
@@ -1390,10 +1380,7 @@ class Job:
                     last_describe = now
                     if self._progress_output_s3_uri:
                         new_count = self._count_samples()
-                        if (
-                            new_count is not None
-                            and new_count != self._current_samples
-                        ):
+                        if new_count is not None and new_count != self._current_samples:
                             self._current_samples = new_count
                 except ClientError as e:
                     if _is_transient_client_error(e):
@@ -1407,14 +1394,10 @@ class Job:
 
             # --- Tail and print log lines (every tick, even after quiet) --------
             try:
-                self._log_next_token, raw_lines = self._tail_logs(
-                    self._log_next_token
-                )
+                self._log_next_token, raw_lines = self._tail_logs(self._log_next_token)
                 for line in raw_lines:
                     if self._is_printable_log_line(line):
-                        force_terminal_console.print(
-                            line, highlight=False, markup=False
-                        )
+                        force_terminal_console.print(line, highlight=False, markup=False)
                     if line and "[MILESTONE]" in line:
                         self._process_milestone(line)
             except Exception as exc:  # pylint: disable=broad-except
@@ -1427,14 +1410,10 @@ class Job:
                 # events through the same printability filter.
                 time.sleep(2)
                 try:
-                    self._log_next_token, final_lines = self._tail_logs(
-                        self._log_next_token
-                    )
+                    self._log_next_token, final_lines = self._tail_logs(self._log_next_token)
                     for line in final_lines:
                         if self._is_printable_log_line(line):
-                            force_terminal_console.print(
-                                line, highlight=False, markup=False
-                            )
+                            force_terminal_console.print(line, highlight=False, markup=False)
                         if line and "[MILESTONE]" in line:
                             self._process_milestone(line)
                 except Exception as exc:  # pylint: disable=broad-except
@@ -1452,10 +1431,7 @@ class Job:
                 return
 
             # --- Quiet_Period (logs=True: emit once, keep tailing) --------------
-            if (
-                not self._quiet_period_notified
-                and (now - start_time) >= _QUIET_PERIOD_SECONDS
-            ):
+            if not self._quiet_period_notified and (now - start_time) >= _QUIET_PERIOD_SECONDS:
                 self._quiet_period_notified = True
                 self._emit_backoff_message(
                     console=force_terminal_console,
@@ -1499,16 +1475,9 @@ class Job:
         """
         import boto3
 
-        # Derive log group from job category — matches Fluent Bit tail-output.conf
+        # Log group is per job category.
         # NOTE: trailing slash is required — the service creates the log group with it.
         log_group = f"{_LOG_GROUP_PREFIX}/{self.job_category}/"
-
-        # Derive stream prefix from job category — matches LOG_STREAM_SUFFIX in ASL
-        category_stream_suffix_map = {
-            "SyntheticDataGeneration": "generation",
-            "DataQualityEvaluation": "evaluation",
-        }
-        stream_suffix = category_stream_suffix_map.get(self.job_category, "log")
 
         # Try to extract the exact stream name from the StatusMessage if the
         # service has already surfaced it (e.g. "stream=<jobName>/generation-<ts>").
@@ -1591,6 +1560,11 @@ class Job:
         any S3 bucket. For very large files, swap to a range-read chunked
         counter — not needed at current SDG output volumes.
 
+        A DataQualityEvaluation job is looked up only by its own folder, from its
+        name and creation time: ``{OutputS3Uri}/data-quality-evaluation/{JobName}/{ts}/``
+        (3.x), then ``{OutputS3Uri}/{JobName}-{ts}/`` (2.x). An earlier job that reused
+        the name is never matched.
+
         Returns ``None`` if progress tracking is not configured, the output
         directory has not yet been created, or the GetObject call fails for
         any transient reason.
@@ -1601,7 +1575,7 @@ class Job:
         if not uri or not uri.startswith("s3://"):
             return None
 
-        rest = uri[len("s3://"):].rstrip("/")
+        rest = uri[len("s3://") :].rstrip("/")
         parts = rest.split("/", 1)
         bucket = parts[0]
         prefix = (parts[1] + "/") if len(parts) > 1 else ""
@@ -1662,9 +1636,38 @@ class Job:
             except Exception as e:  # pragma: no cover
                 logger.debug(
                     "S3 list_objects_v2 failed (prefix=%s): %s",
-                    search_prefix, e,
+                    search_prefix,
+                    e,
                 )
                 return None
+
+        if self.job_category == "DataQualityEvaluation":
+            folder_ts = _output_folder_timestamp(self.created_at)
+            if folder_ts is None:
+                return None
+            for job_prefix in (
+                f"{prefix}{_DQ_OUTPUT_SEGMENT}/{self.job_name}/{folder_ts}",
+                f"{prefix}{self.job_name}-{folder_ts}",
+            ):
+                target = next(
+                    (
+                        o["Key"]
+                        for o in _list_under(job_prefix) or []
+                        if o["Key"].endswith(_DQ_RECORD_LEVEL_SUFFIX)
+                    ),
+                    None,
+                )
+                if target:
+                    if self._progress_target_key != target:
+                        logger.info(
+                            "Locked onto record-progress file for job %s: s3://%s/%s",
+                            self.job_name,
+                            bucket,
+                            target,
+                        )
+                    self._progress_target_key = target
+                    return get_line_count(target)
+            return None
 
         narrow_prefix = f"{prefix}{self.job_name}-"
         objects = _list_under(narrow_prefix)
@@ -1682,9 +1685,7 @@ class Job:
         # sibling jobs whose JobName is a prefix of ours (e.g. `my-sdg` vs
         # `my-sdg-v2` produce different segments because the `-` after the
         # JobName terminates the first segment).
-        segment_re = re.compile(
-            r"(?:^|/)" + re.escape(self.job_name) + r"-\d[^/]*T[^/]*/"
-        )
+        segment_re = re.compile(r"(?:^|/)" + re.escape(self.job_name) + r"-\d[^/]*T[^/]*/")
 
         def is_ours(key: str) -> bool:
             return bool(segment_re.search(key))
@@ -1720,7 +1721,9 @@ class Job:
         if self._progress_target_key != target:
             logger.info(
                 "Locked onto sample-progress file for job %s: s3://%s/%s",
-                self.job_name, bucket, target,
+                self.job_name,
+                bucket,
+                target,
             )
         self._progress_target_key = target
 

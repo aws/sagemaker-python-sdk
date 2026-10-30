@@ -11,10 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.ai_registry.data_preparer._schema_resolver."""
+
 from __future__ import absolute_import
 
 import json
-from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -57,7 +57,7 @@ NESTED_SCHEMA = {
             "title": "OutputDataConfig",
             "properties": {
                 "OutputS3Uri": {"type": "string"},
-                "KmsKeyId": {"type": "string"},
+                "HubName": {"type": "string"},
             },
             "required": ["OutputS3Uri"],
         },
@@ -144,9 +144,7 @@ class TestListVersions:
         mock_client.return_value = fake
         versions = _SchemaResolver.list_versions(JobCategory.SYNTHETIC_DATA_GENERATION)
         assert versions == ["1.0.0", "1.1.0"]
-        fake.list_job_schema_versions.assert_called_once_with(
-            JobCategory="SyntheticDataGeneration"
-        )
+        fake.list_job_schema_versions.assert_called_once_with(JobCategory="SyntheticDataGeneration")
 
 
 class TestGetSchema:
@@ -162,9 +160,7 @@ class TestGetSchema:
         }
         mock_client.return_value = fake
 
-        version, schema = _SchemaResolver.get_schema(
-            JobCategory.SYNTHETIC_DATA_GENERATION, None
-        )
+        version, schema = _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, None)
         assert version == "1.10.0"
         assert schema == SIMPLE_SCHEMA
 
@@ -178,9 +174,7 @@ class TestGetSchema:
         }
         mock_client.return_value = fake
 
-        version, schema = _SchemaResolver.get_schema(
-            JobCategory.SYNTHETIC_DATA_GENERATION, "2.0.0"
-        )
+        version, schema = _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, "2.0.0")
         assert version == "2.0.0"
         assert schema == SIMPLE_SCHEMA
         fake.describe_job_schema_version.assert_called_once_with(
@@ -230,9 +224,7 @@ class TestGetSchema:
         mock_client.return_value = fake
 
         with pytest.raises(DataPreparerSchemaNotFoundError) as exc_info:
-            _SchemaResolver.get_schema(
-                JobCategory.SYNTHETIC_DATA_GENERATION, "99.0.0"
-            )
+            _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, "99.0.0")
 
         assert exc_info.value.schema_version == "99.0.0"
         assert exc_info.value.available_versions == ["1.0.0"]
@@ -253,9 +245,7 @@ class TestGetSchema:
         }
         mock_client.return_value = fake
 
-        version, schema = _SchemaResolver.get_schema(
-            JobCategory.SYNTHETIC_DATA_GENERATION, None
-        )
+        version, schema = _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, None)
         assert version == "1.0.0"
         assert schema == SIMPLE_SCHEMA
         fake.describe_job_schema_version.assert_called_once_with(
@@ -313,9 +303,7 @@ class TestBuildDynamicModel:
         model = _SchemaResolver.build_dynamic_model(
             JobCategory.SYNTHETIC_DATA_GENERATION, "3.0.0", ARRAY_SCHEMA
         )
-        instance = model(
-            model_configs=[{"ModelId": "claude-v3", "TokensPerMinute": 1000}]
-        )
+        instance = model(model_configs=[{"ModelId": "claude-v3", "TokensPerMinute": 1000}])
         assert instance.model_configs[0].model_id == "claude-v3"
 
     def test_ref_produces_same_class(self):
@@ -498,9 +486,7 @@ class TestMajorVersionCeiling:
         }
         mock_client.return_value = fake
 
-        version, _ = _SchemaResolver.get_schema(
-            JobCategory.SYNTHETIC_DATA_GENERATION, None
-        )
+        version, _ = _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, None)
         assert version == "2.5.0"
 
     @patch.object(_SchemaResolver, "_client")
@@ -517,9 +503,7 @@ class TestMajorVersionCeiling:
         }
         mock_client.return_value = fake
 
-        version, _ = _SchemaResolver.get_schema(
-            JobCategory.SYNTHETIC_DATA_GENERATION, None
-        )
+        version, _ = _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, None)
         assert version == "2.9.0"
 
     @patch.object(_SchemaResolver, "_client")
@@ -534,9 +518,7 @@ class TestMajorVersionCeiling:
         }
         mock_client.return_value = fake
 
-        version, _ = _SchemaResolver.get_schema(
-            JobCategory.SYNTHETIC_DATA_GENERATION, None
-        )
+        version, _ = _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, None)
         assert version == "2.0.0"
 
     @patch.object(_SchemaResolver, "_client")
@@ -554,9 +536,7 @@ class TestMajorVersionCeiling:
         mock_client.return_value = fake
 
         with caplog.at_level(logging.WARNING):
-            version, _ = _SchemaResolver.get_schema(
-                JobCategory.SYNTHETIC_DATA_GENERATION, None
-            )
+            version, _ = _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, None)
 
         assert version == "3.1.0"
         assert "Falling back to latest available" in caplog.text
@@ -570,9 +550,7 @@ class TestMajorVersionCeiling:
         }
         mock_client.return_value = fake
 
-        version, schema = _SchemaResolver.get_schema(
-            JobCategory.SYNTHETIC_DATA_GENERATION, "2.0.0"
-        )
+        version, schema = _SchemaResolver.get_schema(JobCategory.SYNTHETIC_DATA_GENERATION, "2.0.0")
         assert version == "2.0.0"
         assert schema == SIMPLE_SCHEMA
         fake.describe_job_schema_version.assert_called_once_with(
@@ -611,15 +589,12 @@ class TestDqWireContract:
         fake = MagicMock()
         fake.list_job_schema_versions.return_value = {
             "JobConfigSchemas": [
-                {"JobConfigSchemaVersion": v, "JobConfigSchema": "{}"}
-                for v in _WIRE_DQ_VERSIONS
+                {"JobConfigSchemaVersion": v, "JobConfigSchema": "{}"} for v in _WIRE_DQ_VERSIONS
             ],
         }
         mock_client.return_value = fake
 
-        version, _schema = _SchemaResolver.get_schema(
-            JobCategory.DATA_QUALITY_EVALUATION, None
-        )
+        version, _schema = _SchemaResolver.get_schema(JobCategory.DATA_QUALITY_EVALUATION, None)
 
         assert version == "2.0.0", (
             f"Expected the SDK to pick '2.0.0' as latest given advertised versions "
@@ -640,9 +615,7 @@ class TestDqWireContract:
         }
         mock_client.return_value = fake
 
-        version, _schema = _SchemaResolver.get_schema(
-            JobCategory.DATA_QUALITY_EVALUATION, "1.0.0"
-        )
+        version, _schema = _SchemaResolver.get_schema(JobCategory.DATA_QUALITY_EVALUATION, "1.0.0")
 
         assert version == "1.0.0"
         fake.describe_job_schema_version.assert_called_once_with(

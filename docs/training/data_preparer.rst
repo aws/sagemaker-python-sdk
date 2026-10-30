@@ -40,11 +40,11 @@ Usage
        logs=True,
    )
 
-   # Minimal DQ call
+   # Minimal DQ call: the default metrics for the dataset's format
    result = DataPreparer.evaluate(
        dataset=DatasetJobConfig(
            input_data_config=[{"DatasetArn": "arn:aws:sagemaker:..."}],
-           evaluation_name="my-eval",
+           evaluation_config={"Operations": [{"Operator": "default_metrics"}]},
            output_data_config={"S3OutputPath": "s3://bucket/dq-output/"},
        ),
        logs=True,

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.ai_registry.data_preparer.defaults."""
+
 from __future__ import absolute_import
 
 from unittest.mock import MagicMock, patch
@@ -64,7 +65,7 @@ SIMPLE_SCHEMA = {
             "type": "object",
             "properties": {
                 "OutputS3Uri": {"type": "string"},
-                "KmsKeyId": {"type": "string"},
+                "HubName": {"type": "string"},
             },
         },
     },
@@ -182,8 +183,7 @@ class TestBuildJobArn:
             JobCategory.SYNTHETIC_DATA_GENERATION, "my-job-2026", mock_session
         )
         assert result == (
-            "arn:aws:sagemaker:us-west-2:123456789012:job/"
-            "SyntheticDataGeneration/my-job-2026"
+            "arn:aws:sagemaker:us-west-2:123456789012:job/" "SyntheticDataGeneration/my-job-2026"
         )
 
 
@@ -286,9 +286,7 @@ class TestResolveIntoPayload:
         )
         assert result == {"EvaluationName": "x"}
 
-    def test_caller_supplied_empty_object_is_preserved(
-        self, mock_session, mock_config_mgr
-    ):
+    def test_caller_supplied_empty_object_is_preserved(self, mock_session, mock_config_mgr):
         """An explicit `{}` is a request, not an absent value.
 
         `EvaluationConfig.Deterministic: {}` asks a DataQualityEvaluation job for the
@@ -329,15 +327,16 @@ class TestResolveIntoPayload:
             sagemaker_session=mock_session,
             config_mgr=mock_config_mgr,
         )
-        assert (
-            result["EvaluationConfig"]["Specification"]["SpecS3Uri"]
-            == "s3://config/spec.md"
-        )
+        assert result["EvaluationConfig"]["Specification"]["SpecS3Uri"] == "s3://config/spec.md"
 
-    @patch("sagemaker.ai_registry.data_preparer.defaults._WELL_KNOWN_FALLBACKS", {"RoleArn": MagicMock(return_value="arn:aws:iam::123:role/DefaultRole"), "OutputDataConfig.OutputS3Uri": MagicMock(return_value=None)})
-    def test_well_known_fallback_fires_for_role(
-        self, mock_session, mock_config_mgr
-    ):
+    @patch(
+        "sagemaker.ai_registry.data_preparer.defaults._WELL_KNOWN_FALLBACKS",
+        {
+            "RoleArn": MagicMock(return_value="arn:aws:iam::123:role/DefaultRole"),
+            "OutputDataConfig.OutputS3Uri": MagicMock(return_value=None),
+        },
+    )
+    def test_well_known_fallback_fires_for_role(self, mock_session, mock_config_mgr):
         user_payload = {"NumSamples": 100}
         result = DataPreparerDefaults.resolve_into_payload(
             user_payload,
@@ -348,10 +347,14 @@ class TestResolveIntoPayload:
         )
         assert result["RoleArn"] == "arn:aws:iam::123:role/DefaultRole"
 
-    @patch("sagemaker.ai_registry.data_preparer.defaults._WELL_KNOWN_FALLBACKS", {"RoleArn": MagicMock(return_value="should-not-appear"), "OutputDataConfig.OutputS3Uri": MagicMock(return_value=None)})
-    def test_well_known_fallback_does_not_fire_for_other_paths(
-        self, mock_session, mock_config_mgr
-    ):
+    @patch(
+        "sagemaker.ai_registry.data_preparer.defaults._WELL_KNOWN_FALLBACKS",
+        {
+            "RoleArn": MagicMock(return_value="should-not-appear"),
+            "OutputDataConfig.OutputS3Uri": MagicMock(return_value=None),
+        },
+    )
+    def test_well_known_fallback_does_not_fire_for_other_paths(self, mock_session, mock_config_mgr):
         user_payload = {"NumSamples": 100, "RoleArn": "user-role"}
         result = DataPreparerDefaults.resolve_into_payload(
             user_payload,
@@ -374,7 +377,6 @@ DT_SCHEMA = {
             "type": "object",
             "properties": {
                 "S3OutputPath": {"type": "string"},
-                "KmsKeyId": {"type": "string"},
             },
         },
         "TransformationConfig": {"type": "object", "properties": {}},
@@ -431,9 +433,7 @@ class TestS3OutputPathFallback:
         assert result["OutputDataConfig"]["S3OutputPath"] == "s3://mine/out/"
 
     @patch("sagemaker.train.utils._default_s3_uri")
-    def test_config_value_outranks_fallback(
-        self, mock_default_uri, mock_session, mock_config_mgr
-    ):
+    def test_config_value_outranks_fallback(self, mock_default_uri, mock_session, mock_config_mgr):
         """Tier 1/2 config must still take precedence over the new tier-3 entry."""
         mock_default_uri.return_value = "s3://bucket/fallback/"
 
@@ -492,15 +492,15 @@ class TestFallbackRoleArnA1:
             msg = str(exc_info.value)
             assert sentinel not in msg, "Internal error must not leak into customer message"
             assert "role=" in msg, "Corrective guidance for role= kwarg must be present"
-            assert "SageMaker.TrainingJob.RoleArn" in msg, (
-                "Corrective guidance for config path must be present"
-            )
-            assert "get_execution_role" in msg, (
-                "Corrective guidance for get_execution_role must be present"
-            )
-            assert exc_info.value.__cause__ is not None, (
-                "__cause__ must be set so tracebacks still show the root failure"
-            )
+            assert (
+                "SageMaker.TrainingJob.RoleArn" in msg
+            ), "Corrective guidance for config path must be present"
+            assert (
+                "get_execution_role" in msg
+            ), "Corrective guidance for get_execution_role must be present"
+            assert (
+                exc_info.value.__cause__ is not None
+            ), "__cause__ must be set so tracebacks still show the root failure"
 
     def test_cause_is_original_exception(self, mock_session, mock_config_mgr):
         """__cause__ is the exact original exception instance."""

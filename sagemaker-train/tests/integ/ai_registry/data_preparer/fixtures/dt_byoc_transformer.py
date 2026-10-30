@@ -28,6 +28,7 @@ RestrictedPython sandbox, so it must stay within that sandbox's contract:
 
 Behavior: keep only rows whose ``completion`` is exactly ``"positive"``.
 """
+
 import json
 
 

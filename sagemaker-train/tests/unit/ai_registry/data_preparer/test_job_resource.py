@@ -25,6 +25,7 @@ Mocking conventions follow the sibling ``test_job_resource_progress.py`` file:
 ``MagicMock`` for the SageMaker session, ``boto3.client`` patched at module
 scope, ``time.sleep`` patched to keep tests fast.
 """
+
 from __future__ import absolute_import
 
 from datetime import datetime
@@ -150,9 +151,7 @@ class TestJobConfigSchemaVersion:
         )
         assert job.job_config_schema_version == "2.0.0"
 
-    def test_refresh_populates_schema_version_from_describe_job(
-        self, session_with_region
-    ):
+    def test_refresh_populates_schema_version_from_describe_job(self, session_with_region):
         job = Job(
             job_name="dq-1",
             job_category="DataQualityEvaluation",
@@ -167,9 +166,7 @@ class TestJobConfigSchemaVersion:
         job.refresh()
         assert job.job_config_schema_version == "2.0.0"
 
-    def test_create_carries_schema_version_onto_instance(
-        self, session_with_region
-    ):
+    def test_create_carries_schema_version_onto_instance(self, session_with_region):
         session_with_region.sagemaker_client.create_job.return_value = {
             "JobArn": "arn:aws:sagemaker:us-west-2:123456789012:job/DataQualityEvaluation/dq-1",
         }
@@ -238,9 +235,7 @@ class TestIsPrintableLogLine:
         assert Job._is_printable_log_line(line) is True
 
     def test_is_printable_log_line_rejects_debug(self):
-        debug_line = (
-            "2026-05-28 22:10:47,670 - DEBUG - clients - Bedrock invoke begin"
-        )
+        debug_line = "2026-05-28 22:10:47,670 - DEBUG - clients - Bedrock invoke begin"
         emf_blob = (
             '{"_aws":{"Timestamp":1716934247670,"CloudWatchMetrics":[{"Namespace":'
             '"DataPreparer","Dimensions":[["JobName"]],"Metrics":[{"Name":"foo"}]}]}}'
@@ -346,15 +341,17 @@ class TestTokenPersistedAcrossWaitCalls:
             sdg_job.secondary_status = "Completed"
             return sdg_job
 
-        with patch.object(sdg_job, "refresh", side_effect=fake_refresh), \
-             patch.object(
-                 sdg_job,
-                 "_tail_logs",
-                 side_effect=[
-                     ("tok-after-first-wait", []),
-                     ("tok-after-second-wait", []),
-                 ],
-             ) as mock_tail:
+        with (
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
+            patch.object(
+                sdg_job,
+                "_tail_logs",
+                side_effect=[
+                    ("tok-after-first-wait", []),
+                    ("tok-after-second-wait", []),
+                ],
+            ) as mock_tail,
+        ):
             sdg_job.wait(poll=0, describe_interval=0, logs=False)
             assert sdg_job._log_next_token == "tok-after-first-wait"
             sdg_job.wait(poll=0, describe_interval=0, logs=False)
@@ -378,6 +375,7 @@ class TestRenderPanel:
     def _capture_panel_text(self, panel):
         """Render a ``rich.Panel`` to plain text and return it."""
         from rich.console import Console
+
         buffer_console = Console(record=True, width=120, force_terminal=True)
         buffer_console.print(panel)
         return buffer_console.export_text()
@@ -386,9 +384,7 @@ class TestRenderPanel:
         panel = sdg_job._render_panel()
         assert sdg_job.job_name in self._capture_panel_text(panel)
 
-    def test_render_panel_shows_sample_progress_when_expected_set(
-        self, sdg_job_with_progress
-    ):
+    def test_render_panel_shows_sample_progress_when_expected_set(self, sdg_job_with_progress):
         sdg_job_with_progress._current_samples = 4
         panel = sdg_job_with_progress._render_panel()
         text = self._capture_panel_text(panel)
@@ -404,6 +400,7 @@ class TestRenderPanel:
         # appear in the body. We use a relaxed check: no "/" within a
         # numeric context.
         import re
+
         assert re.search(r"\d+\s*/\s*\d+", text) is None
 
     def test_render_panel_shows_failure_reason(self, sdg_job):
@@ -435,13 +432,18 @@ class TestTransitionDuration:
         """Extract the Duration cell from each transition row in a panel."""
         from rich.console import Console
         import re
+
         buf = Console(record=True, width=120, force_terminal=True)
         buf.print(panel)
         text = buf.export_text()
         out = {}
         for step in (
-            "Validating", "Preparing", "Executing",
-            "Publishing", "Finalizing", "Completed",
+            "Validating",
+            "Preparing",
+            "Executing",
+            "Publishing",
+            "Finalizing",
+            "Completed",
         ):
             for line in text.splitlines():
                 # Match the row whose Step cell is this phase (require a glyph
@@ -498,8 +500,7 @@ class TestTransitionDuration:
 
         for step in ("Validating", "Preparing", "Executing", "Publishing", "Finalizing"):
             assert first[step] == second[step], (
-                f"{step} duration changed between renders: "
-                f"{first[step]} -> {second[step]}"
+                f"{step} duration changed between renders: " f"{first[step]} -> {second[step]}"
             )
 
     def test_in_progress_step_ticks(self, sdg_job):
@@ -542,10 +543,10 @@ class TestWaitPanelMode:
             sdg_job.job_status = "Completed"
             return sdg_job
 
-        with patch("rich.console.Console") as mock_console_cls, patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
-        ) as mock_refresh, patch.object(
-            sdg_job, "_tail_logs", return_value=(None, [])
+        with (
+            patch("rich.console.Console") as mock_console_cls,
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh) as mock_refresh,
+            patch.object(sdg_job, "_tail_logs", return_value=(None, [])),
         ):
             sdg_job.wait(poll=0, describe_interval=0, logs=False)
 
@@ -554,8 +555,7 @@ class TestWaitPanelMode:
         # A Console with force_terminal=True must have been used to emit
         # the final panel (so it serializes to .ipynb output).
         ft_calls = [
-            c for c in mock_console_cls.call_args_list
-            if c.kwargs.get("force_terminal") is True
+            c for c in mock_console_cls.call_args_list if c.kwargs.get("force_terminal") is True
         ]
         assert ft_calls, "force_terminal_console was not constructed"
 
@@ -576,13 +576,13 @@ class TestWaitPanelMode:
             sdg_job.job_status = "Completed"
             return sdg_job
 
-        with patch(
-            "rich.console.Console",
-            return_value=printed_console,
-        ), patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
-        ), patch.object(
-            sdg_job, "_tail_logs", return_value=(None, [])
+        with (
+            patch(
+                "rich.console.Console",
+                return_value=printed_console,
+            ),
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
+            patch.object(sdg_job, "_tail_logs", return_value=(None, [])),
         ):
             sdg_job.wait(poll=0, describe_interval=0, logs=False)
 
@@ -599,8 +599,9 @@ class TestWaitPanelMode:
             sdg_job.job_status = "Completed"
             return sdg_job
 
-        with patch("boto3.client") as mock_boto, patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
+        with (
+            patch("boto3.client") as mock_boto,
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
         ):
             cw = MagicMock()
             mock_boto.return_value = cw
@@ -646,16 +647,17 @@ class TestWaitPanelMode:
             except StopIteration:
                 return 1_000_000
 
-        with patch(
-            "rich.console.Console",
-            return_value=printed_console,
-        ), patch(
-            "sagemaker.ai_registry.data_preparer._job_resource.time.time",
-            side_effect=get_time,
-        ), patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh_then_terminate
-        ), patch.object(
-            sdg_job, "_tail_logs", return_value=(None, [])
+        with (
+            patch(
+                "rich.console.Console",
+                return_value=printed_console,
+            ),
+            patch(
+                "sagemaker.ai_registry.data_preparer._job_resource.time.time",
+                side_effect=get_time,
+            ),
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh_then_terminate),
+            patch.object(sdg_job, "_tail_logs", return_value=(None, [])),
         ):
             # describe_interval is set well past the quiet period (300s) so
             # the new tick-driven panel redraw — which resets
@@ -674,9 +676,9 @@ class TestWaitPanelMode:
                 if isinstance(a, str) and backoff_substring in a.lower():
                     backoff_prints += 1
                     break
-        assert backoff_prints == 1, (
-            f"backoff message should be emitted exactly once; got {backoff_prints}"
-        )
+        assert (
+            backoff_prints == 1
+        ), f"backoff message should be emitted exactly once; got {backoff_prints}"
 
     def test_describe_transient_failure_retried(self, sdg_job):
         """Transient ``ClientError`` from ``refresh()`` is retried; the loop
@@ -694,10 +696,9 @@ class TestWaitPanelMode:
             sdg_job.job_status = "Completed"
             return sdg_job
 
-        with patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
-        ), patch.object(
-            sdg_job, "_tail_logs", return_value=(None, [])
+        with (
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
+            patch.object(sdg_job, "_tail_logs", return_value=(None, [])),
         ):
             # No exception should escape — wait() retries past 2 transient
             # failures and observes Completed on the third tick.
@@ -723,22 +724,22 @@ class TestWaitPanelMode:
             sdg_job.job_status = "Completed"
             return sdg_job
 
-        with patch(
-            "rich.console.Console",
-            side_effect=console_factory,
-        ), patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
-        ), patch.object(
-            sdg_job, "_tail_logs", return_value=(None, [])
+        with (
+            patch(
+                "rich.console.Console",
+                side_effect=console_factory,
+            ),
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
+            patch.object(sdg_job, "_tail_logs", return_value=(None, [])),
         ):
             sdg_job.wait(poll=0, describe_interval=0, logs=False)
 
         # The LAST print call across both consoles must be on the
         # force_terminal one — that's the terminal-state panel.
         last_force_terminal_print = force_terminal_console.print.call_count
-        assert last_force_terminal_print >= 1, (
-            "final panel was not printed via force_terminal_console"
-        )
+        assert (
+            last_force_terminal_print >= 1
+        ), "final panel was not printed via force_terminal_console"
 
     def test_timeout_prints_panel_before_raising(self, sdg_job):
         """``DataPreparerJobTimeoutError`` is only raised after
@@ -756,23 +757,21 @@ class TestWaitPanelMode:
             sdg_job.job_status = "InProgress"
             return sdg_job
 
-        with patch(
-            "rich.console.Console",
-            return_value=printed_console,
-        ), patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
-        ), patch.object(
-            sdg_job, "_tail_logs", return_value=(None, [])
+        with (
+            patch(
+                "rich.console.Console",
+                return_value=printed_console,
+            ),
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
+            patch.object(sdg_job, "_tail_logs", return_value=(None, [])),
         ):
             with pytest.raises(DataPreparerJobTimeoutError):
-                sdg_job.wait(
-                    poll=0, describe_interval=0, timeout=0, logs=False
-                )
+                sdg_job.wait(poll=0, describe_interval=0, timeout=0, logs=False)
 
         # At least one print() must have happened before the raise.
-        assert "print" in events, (
-            "no panel was printed before DataPreparerJobTimeoutError was raised"
-        )
+        assert (
+            "print" in events
+        ), "no panel was printed before DataPreparerJobTimeoutError was raised"
 
 
 # ---------------------------------------------------------------------------
@@ -788,61 +787,57 @@ class TestWaitLogTailMode:
     def test_wait_logs_true_prints_info_lines(self, sdg_job):
         assert sdg_job._log_next_token is None
 
-        info_line = (
-            "2026-05-28 22:10:47,670 - INFO - orchestrator - Job attempt 1 of 3."
-        )
+        info_line = "2026-05-28 22:10:47,670 - INFO - orchestrator - Job attempt 1 of 3."
         printed_console = MagicMock()
 
         def fake_refresh():
             sdg_job.job_status = "Completed"
             return sdg_job
 
-        with patch(
-            "rich.console.Console",
-            return_value=printed_console,
-        ), patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
-        ), patch.object(
-            sdg_job, "_tail_logs", return_value=("tok-1", [info_line])
+        with (
+            patch(
+                "rich.console.Console",
+                return_value=printed_console,
+            ),
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
+            patch.object(sdg_job, "_tail_logs", return_value=("tok-1", [info_line])),
         ):
             sdg_job.wait(poll=0, describe_interval=0, logs=True)
 
         # The INFO line must have been printed verbatim to the console.
         printed = [
-            c.args[0] for c in printed_console.print.call_args_list
+            c.args[0]
+            for c in printed_console.print.call_args_list
             if c.args and isinstance(c.args[0], str)
         ]
-        assert any(info_line == p for p in printed), (
-            f"INFO line was not printed; printed={printed}"
-        )
+        assert any(info_line == p for p in printed), f"INFO line was not printed; printed={printed}"
 
     def test_wait_logs_true_suppresses_debug_lines(self, sdg_job):
-        debug_line = (
-            "2026-05-28 22:10:47,670 - DEBUG - clients - Bedrock invoke begin"
-        )
+        debug_line = "2026-05-28 22:10:47,670 - DEBUG - clients - Bedrock invoke begin"
         printed_console = MagicMock()
 
         def fake_refresh():
             sdg_job.job_status = "Completed"
             return sdg_job
 
-        with patch(
-            "rich.console.Console",
-            return_value=printed_console,
-        ), patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
-        ), patch.object(
-            sdg_job, "_tail_logs", return_value=("tok-1", [debug_line])
+        with (
+            patch(
+                "rich.console.Console",
+                return_value=printed_console,
+            ),
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
+            patch.object(sdg_job, "_tail_logs", return_value=("tok-1", [debug_line])),
         ):
             sdg_job.wait(poll=0, describe_interval=0, logs=True)
 
         printed_strings = [
-            c.args[0] for c in printed_console.print.call_args_list
+            c.args[0]
+            for c in printed_console.print.call_args_list
             if c.args and isinstance(c.args[0], str)
         ]
-        assert debug_line not in printed_strings, (
-            f"DEBUG line should be suppressed; printed={printed_strings}"
-        )
+        assert (
+            debug_line not in printed_strings
+        ), f"DEBUG line should be suppressed; printed={printed_strings}"
 
     def test_wait_logs_true_quiet_period_continues_tailing(self, sdg_job):
         """In log-tailing mode, after the quiet-period backoff is emitted the
@@ -872,16 +867,17 @@ class TestWaitLogTailMode:
             except StopIteration:
                 return 1_000_000
 
-        with patch(
-            "rich.console.Console",
-            return_value=printed_console,
-        ), patch(
-            "sagemaker.ai_registry.data_preparer._job_resource.time.time",
-            side_effect=get_time,
-        ), patch.object(
-            sdg_job, "refresh", side_effect=fake_refresh
-        ), patch.object(
-            sdg_job, "_tail_logs", side_effect=fake_tail
+        with (
+            patch(
+                "rich.console.Console",
+                return_value=printed_console,
+            ),
+            patch(
+                "sagemaker.ai_registry.data_preparer._job_resource.time.time",
+                side_effect=get_time,
+            ),
+            patch.object(sdg_job, "refresh", side_effect=fake_refresh),
+            patch.object(sdg_job, "_tail_logs", side_effect=fake_tail),
         ):
             sdg_job.wait(poll=0, describe_interval=0, logs=True)
 

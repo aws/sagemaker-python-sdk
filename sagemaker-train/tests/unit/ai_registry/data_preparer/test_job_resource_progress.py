@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import io
 import json
 from unittest.mock import MagicMock, patch
 
@@ -42,9 +41,7 @@ def job_with_progress(session_with_region):
 
 def _get_object_response(count: int):
     """Build a fake GetObject response with a JSONL body containing `count` lines."""
-    body_bytes = b"".join(
-        json.dumps({"i": i}).encode("utf-8") + b"\n" for i in range(count)
-    )
+    body_bytes = b"".join(json.dumps({"i": i}).encode("utf-8") + b"\n" for i in range(count))
 
     class _Body:
         def __init__(self, data):
@@ -124,7 +121,9 @@ class TestCountSamplesDisambiguation:
         assert job_with_progress._progress_target_key is None
 
     @patch("boto3.client")
-    def test_prefers_our_job_when_sibling_data_also_present(self, mock_boto_client, job_with_progress):
+    def test_prefers_our_job_when_sibling_data_also_present(
+        self, mock_boto_client, job_with_progress
+    ):
         """Both ours and a sibling's data landed under overlapping prefixes —
         only ours must be counted.
         """
@@ -192,17 +191,21 @@ class TestCountSamplesDisambiguation:
         # First listing: only the streaming file.
         # Second listing (after the streaming file 404s): only the final file.
         s3.list_objects_v2.side_effect = [
-            {"Contents": [
-                {"Key": f"sdg-out/{subdir}/job_metadata/verified_samples.jsonl"},
-            ]},
-            {"Contents": [
-                {"Key": f"sdg-out/{subdir}/output/output_samples.jsonl"},
-            ]},
+            {
+                "Contents": [
+                    {"Key": f"sdg-out/{subdir}/job_metadata/verified_samples.jsonl"},
+                ]
+            },
+            {
+                "Contents": [
+                    {"Key": f"sdg-out/{subdir}/output/output_samples.jsonl"},
+                ]
+            },
         ]
         s3.get_object.side_effect = [
-            _get_object_response(3),            # first tick: streaming file → 3 lines
-            s3.exceptions.NoSuchKey("gone"),    # second tick: cached key 404s
-            _get_object_response(10),           # rescan → output file → 10 lines
+            _get_object_response(3),  # first tick: streaming file → 3 lines
+            s3.exceptions.NoSuchKey("gone"),  # second tick: cached key 404s
+            _get_object_response(10),  # rescan → output file → 10 lines
         ]
         mock_boto_client.return_value = s3
         _wire_paginator(s3)
@@ -240,6 +243,7 @@ class TestDQProgressTracking:
             job_name="my-dq-eval-2026-05-13-02-31-18-253-3",
             job_category="DataQualityEvaluation",
             session=session_with_region,
+            created_at="2026-05-13T02:31:20.528276209Z",
             expected_samples=200,
             progress_output_s3_uri="s3://my-bucket/dq-out/",
         )
@@ -262,12 +266,15 @@ class TestDQProgressTracking:
         assert job._progress_target_key.endswith("evaluated_data.jsonl")
 
     @patch("boto3.client")
-    def test_dq_prefers_evaluated_data_over_output_samples(self, mock_boto_client, session_with_region):
+    def test_dq_prefers_evaluated_data_over_output_samples(
+        self, mock_boto_client, session_with_region
+    ):
         """When both evaluated_data.jsonl and output_samples.jsonl exist, prefer evaluated_data."""
         job = Job(
             job_name="my-dq-eval-2026-05-13-02-31-18-253-3",
             job_category="DataQualityEvaluation",
             session=session_with_region,
+            created_at="2026-05-13T02:31:20.528276209Z",
             expected_samples=100,
             progress_output_s3_uri="s3://my-bucket/dq-out/",
         )
@@ -312,7 +319,6 @@ class TestProgressLabels:
             progress_output_s3_uri="s3://bucket/out/",
         )
         assert job.job_category == "SyntheticDataGeneration"
-
 
 
 class TestCsvProgressTracking:

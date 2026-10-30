@@ -20,6 +20,7 @@ expected sections and keywords so the published API reference is complete.
 generate and evaluate FAIL on the baseline (one-line impl docstrings); transform
 passes already (full docstring on _transform_impl).
 """
+
 from __future__ import absolute_import
 
 import pytest
@@ -40,27 +41,25 @@ class TestPublicDocstringsComplete:
 
     def test_contains_args_section(self, method):
         doc = _resolved_doc(method)
-        assert "Args:" in doc or "Args\n" in doc, (
-            f"DataPreparer.{method}.__doc__ missing 'Args:' section"
-        )
+        assert (
+            "Args:" in doc or "Args\n" in doc
+        ), f"DataPreparer.{method}.__doc__ missing 'Args:' section"
 
     def test_contains_returns_section(self, method):
         doc = _resolved_doc(method)
-        assert "Returns:" in doc or "Returns\n" in doc, (
-            f"DataPreparer.{method}.__doc__ missing 'Returns:' section"
-        )
+        assert (
+            "Returns:" in doc or "Returns\n" in doc
+        ), f"DataPreparer.{method}.__doc__ missing 'Returns:' section"
 
     def test_contains_raises_section(self, method):
         doc = _resolved_doc(method)
-        assert "Raises:" in doc or "Raises\n" in doc, (
-            f"DataPreparer.{method}.__doc__ missing 'Raises:' section"
-        )
+        assert (
+            "Raises:" in doc or "Raises\n" in doc
+        ), f"DataPreparer.{method}.__doc__ missing 'Raises:' section"
 
     def test_mentions_wait_parameter(self, method):
         doc = _resolved_doc(method)
-        assert "wait" in doc, (
-            f"DataPreparer.{method}.__doc__ does not mention the 'wait' parameter"
-        )
+        assert "wait" in doc, f"DataPreparer.{method}.__doc__ does not mention the 'wait' parameter"
 
     def test_docstring_length(self, method):
         doc = _resolved_doc(method)

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.ai_registry.data_preparer.exceptions."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -65,9 +66,7 @@ class TestSubclassRelationships:
         assert isinstance(err, DataPreparerError)
 
     def test_job_stopped_is_job_error(self):
-        err = DataPreparerJobStoppedError(
-            job_arn="arn:aws:sagemaker:us-west-2:123:job/x"
-        )
+        err = DataPreparerJobStoppedError(job_arn="arn:aws:sagemaker:us-west-2:123:job/x")
         assert isinstance(err, DataPreparerJobError)
 
     def test_job_timeout_is_job_error(self):
@@ -205,12 +204,8 @@ class TestSchemaNotFoundA2:
             transient=True,
         )
         msg = str(err)
-        assert "retry" in msg.lower() or "Retry" in msg, (
-            "Transient message must mention retry"
-        )
-        assert "schema_version" in msg, (
-            "Transient message must mention pinning schema_version"
-        )
+        assert "retry" in msg.lower() or "Retry" in msg, "Transient message must mention retry"
+        assert "schema_version" in msg, "Transient message must mention pinning schema_version"
         # Must NOT look like a permanent "no versions published" message
         assert "no versions are published" not in msg.lower()
 
@@ -223,13 +218,11 @@ class TestSchemaNotFoundA2:
             transient=False,
         )
         msg = str(err)
-        assert "no versions are published" in msg.lower() or "no versions" in msg.lower(), (
-            "Empty non-transient message must say no versions are published"
-        )
+        assert (
+            "no versions are published" in msg.lower() or "no versions" in msg.lower()
+        ), "Empty non-transient message must say no versions are published"
         # Must NOT render a dangling bracket literal
-        assert "Available: []" not in msg, (
-            "Must never render dangling 'Available: []'"
-        )
+        assert "Available: []" not in msg, "Must never render dangling 'Available: []'"
         assert "[]" not in msg, "Must never render empty-list literal '[]'"
 
     def test_no_bracket_literal_when_empty(self):
@@ -241,9 +234,7 @@ class TestSchemaNotFoundA2:
                 [],
                 transient=transient,
             )
-            assert "[]" not in str(err), (
-                f"transient={transient}: '[]' must not appear in message"
-            )
+            assert "[]" not in str(err), f"transient={transient}: '[]' must not appear in message"
 
     def test_nonempty_versions_message_lists_them_with_pin_guidance(self):
         """Non-empty available_versions → list them and give pin guidance."""
@@ -257,9 +248,9 @@ class TestSchemaNotFoundA2:
         assert "2.0.0" in msg
         assert "3.0.0" in msg
         # Must include actionable "pin" guidance
-        assert "pin" in msg.lower() or "schema_version" in msg.lower(), (
-            "Message with available versions must include pin guidance"
-        )
+        assert (
+            "pin" in msg.lower() or "schema_version" in msg.lower()
+        ), "Message with available versions must include pin guidance"
 
     def test_transient_vs_none_published_messages_differ(self):
         """Transient and non-transient empty-list messages must be distinct."""
@@ -269,9 +260,9 @@ class TestSchemaNotFoundA2:
         nonpublished_err = DataPreparerSchemaNotFoundError(
             JobCategory.SYNTHETIC_DATA_GENERATION, "latest", [], transient=False
         )
-        assert str(transient_err) != str(nonpublished_err), (
-            "Transient and non-transient empty-list messages must be distinguishable"
-        )
+        assert str(transient_err) != str(
+            nonpublished_err
+        ), "Transient and non-transient empty-list messages must be distinguishable"
 
     def test_transient_attribute_stored(self):
         """transient attribute is accessible on the exception object."""

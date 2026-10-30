@@ -217,7 +217,8 @@ class AIRHubEntity(ABC):
                     # fall through to the shared timeout/sleep below; other errors
                     # propagate.
                     if e.response.get("Error", {}).get("Code", "") not in (
-                        "ResourceNotFound", "ResourceNotFoundException"
+                        "ResourceNotFound",
+                        "ResourceNotFoundException",
                     ):
                         raise
                     current_status = None

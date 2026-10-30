@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Schema-driven intelligent defaults for DataPreparer."""
+
 from __future__ import absolute_import
 
 import copy
@@ -39,9 +40,7 @@ _JOB_NAME_PATTERN = re.compile(r"^[A-Za-z0-9](-*[A-Za-z0-9]){0,62}$")
 #   "OutputS3Uri" → "Output_S3_Uri" → "output_s3_uri"
 # Matches the convention in _schema_resolver._pascal_to_snake; duplicated
 # here to avoid a cross-module import cycle.
-_PASCAL_TO_SNAKE_RE = re.compile(
-    r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])"
-)
+_PASCAL_TO_SNAKE_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 # Counter for sub-millisecond collision avoidance
 _job_name_counter = 0
@@ -123,8 +122,9 @@ _WELL_KNOWN_FALLBACKS: Dict[str, Callable] = {
 
 
 def _resolve_existing(target: Dict[str, Any], prop_name: str) -> Any:
-    """Return the user-supplied value for ``prop_name``, checking both the
-    PascalCase schema name and its snake_case alias. If found under the
+    """Return the user-supplied value for ``prop_name``.
+
+    Checks both the PascalCase schema name and its snake_case alias. If found under the
     snake_case alias, rename the key in ``target`` to the PascalCase
     schema name so downstream serialization, recursion, and fallback
     application all observe a single canonical key.
@@ -161,9 +161,7 @@ class DataPreparerDefaults:
         return session
 
     @staticmethod
-    def get_role(
-        sagemaker_session: Session, config_mgr=None
-    ) -> Optional[str]:
+    def get_role(sagemaker_session: Session, config_mgr=None) -> Optional[str]:
         """Resolve the envelope-level RoleArn through the full fallback chain.
 
         Mirrors the intelligent-defaults ladder in §1.5 for the `RoleArn`
@@ -248,9 +246,7 @@ class DataPreparerDefaults:
         return resolved
 
     @staticmethod
-    def build_job_arn(
-        category: JobCategory, job_name: str, session: Session
-    ) -> str:
+    def build_job_arn(category: JobCategory, job_name: str, session: Session) -> str:
         """Build the JobArn from category, job_name, region, and account."""
         region = session.boto_region_name
         account = session.account_id()
@@ -277,8 +273,14 @@ class DataPreparerDefaults:
         properties = schema.get("properties", {})
 
         DataPreparerDefaults._walk_and_fill(
-            merged, properties, data_preparer_job_path(category), DATA_PREPARER_GLOBAL_PATH,
-            category, sagemaker_session, config_mgr, merged,
+            merged,
+            properties,
+            data_preparer_job_path(category),
+            DATA_PREPARER_GLOBAL_PATH,
+            category,
+            sagemaker_session,
+            config_mgr,
+            merged,
         )
         return merged
 

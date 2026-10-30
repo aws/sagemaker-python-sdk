@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Integration tests: SDG happy path then chain into DQ."""
+
 from __future__ import absolute_import
 
 import json
@@ -22,6 +23,10 @@ import boto3
 import pytest
 
 from sagemaker.ai_registry import DataPreparer, DatasetJobConfig, JobCategory
+
+# Submits real jobs and waits for them: scheduled CI only, not PR checks
+# (see the gpu_intensive marker in sagemaker-train/pyproject.toml).
+pytestmark = pytest.mark.gpu_intensive
 
 
 @pytest.mark.integ
@@ -61,13 +66,15 @@ class TestSDGThenDQ:
         output_jsonl = result.source.rstrip("/") + "/output_samples.jsonl"
         parsed = urlparse(output_jsonl)
         s3 = boto3.client("s3", region_name=sagemaker_session.boto_region_name)
-        body = s3.get_object(
-            Bucket=parsed.netloc, Key=parsed.path.lstrip("/")
-        )["Body"].read().decode("utf-8")
-        non_blank = [ln for ln in body.splitlines() if ln.strip()]
-        assert len(non_blank) >= 1, (
-            f"B1: SDG output JSONL has no non-blank lines at {output_jsonl!r}"
+        body = (
+            s3.get_object(Bucket=parsed.netloc, Key=parsed.path.lstrip("/"))["Body"]
+            .read()
+            .decode("utf-8")
         )
+        non_blank = [ln for ln in body.splitlines() if ln.strip()]
+        assert (
+            len(non_blank) >= 1
+        ), f"B1: SDG output JSONL has no non-blank lines at {output_jsonl!r}"
         for ln in non_blank:
             json.loads(ln)  # raises ValueError if the line is not valid JSON
 
@@ -75,8 +82,8 @@ class TestSDGThenDQ:
         """Evaluate the SDG-generated dataset with DQ.
 
         Also covers A8: the SDK previews the DQ job's scored records after
-        completion. For v2+ DQ jobs the scored records live under the job's
-        ``OutputDataConfig.S3OutputPath/<job-name>-<timestamp>/record_level/``;
+        completion. For v2+ DQ jobs the scored records live in the job's own
+        folder under ``OutputDataConfig.S3OutputPath``, in ``record_level/``;
         before the A8 fix the preview looked next to the input dataset instead
         and was always silently empty.
         """
@@ -86,11 +93,10 @@ class TestSDGThenDQ:
         dataset = DatasetJobConfig(
             job_category=JobCategory.DATA_QUALITY_EVALUATION,
             input_data_config=[{"DatasetArn": TestSDGThenDQ._sdg_result.arn}],
-            evaluation_name="integ-dq-after-sdg",
+            evaluation_config={"Operations": [{"Operator": "default_metrics"}]},
             output_data_config={
                 "S3OutputPath": (
-                    f"s3://{sagemaker_session.default_bucket()}"
-                    "/data-preparer-integ-dq-output/"
+                    f"s3://{sagemaker_session.default_bucket()}" "/data-preparer-integ-dq-output/"
                 ),
             },
         )
@@ -112,14 +118,15 @@ class TestSDGThenDQ:
             f"full stdout: {captured.out!r}"
         )
         m = re.search(r"Preview \((\d+) records", captured.out)
-        assert m is not None and int(m.group(1)) > 0, (
-            f"A8: DQ preview record count is 0 or missing; stdout: {captured.out!r}"
-        )
+        assert (
+            m is not None and int(m.group(1)) > 0
+        ), f"A8: DQ preview record count is 0 or missing; stdout: {captured.out!r}"
         assert "record_level/evaluated_data.jsonl" in captured.out, (
             "A8: DQ preview path does not contain 'record_level/evaluated_data.jsonl'; "
             f"stdout: {captured.out!r}"
         )
 
+    @pytest.mark.skip(reason="DataPreparer.analyze() is disabled until GapAnalysis is available")
     def test_03_analyze_gaps(self, sagemaker_session, test_role, s3_fixtures):
         """Submit a GapAnalysis job over a completed model-evaluation job.
 
@@ -141,9 +148,7 @@ class TestSDGThenDQ:
             model_evaluation_job_arns=[eval_job_arn],
             key_metrics=[key_metric],
             output_data_config={
-                "S3OutputPath": (
-                    f"s3://{sagemaker_session.default_bucket()}/integ-ga-output/"
-                ),
+                "S3OutputPath": (f"s3://{sagemaker_session.default_bucket()}/integ-ga-output/"),
             },
         )
         preparer = DataPreparer(

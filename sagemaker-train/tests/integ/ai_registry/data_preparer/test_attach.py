@@ -15,6 +15,7 @@
 Tests the F16/F51 fix: customers can reconnect to a long-running job after a
 kernel restart using only the job ARN.
 """
+
 from __future__ import absolute_import
 
 from urllib.parse import urlparse
@@ -23,6 +24,10 @@ import boto3
 import pytest
 
 from sagemaker.ai_registry import DataPreparer, DatasetJobConfig, JobCategory
+
+# Submits real jobs and waits for them: scheduled CI only, not PR checks
+# (see the gpu_intensive marker in sagemaker-train/pyproject.toml).
+pytestmark = pytest.mark.gpu_intensive
 
 
 def _count_jsonl_lines(s3_uri: str, region: str) -> int:
@@ -174,7 +179,7 @@ class TestAttachDQ:
         dataset = DatasetJobConfig(
             job_category=JobCategory.DATA_QUALITY_EVALUATION,
             input_data_config=[{"DatasetArn": TestAttachDQ._sdg_result.arn}],
-            evaluation_name="integ-attach-dq-eval",
+            evaluation_config={"Operations": [{"Operator": "default_metrics"}]},
             output_data_config={
                 "S3OutputPath": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-dq/",
             },

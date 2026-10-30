@@ -124,7 +124,7 @@ class TestAIRHub:
             HubContentDocument='{"test": "document"}',
         )
 
-    @patch('sagemaker.ai_registry.air_hub.boto3')
+    @patch("sagemaker.ai_registry.air_hub.boto3")
     def test_import_hub_content_custom_hub_name(self, mock_boto3):
         # A caller-supplied hub_name is used verbatim in the request and is
         # verified to exist (describe_hub) but never auto-created (no create_hub).
@@ -151,12 +151,12 @@ class TestAIRHub:
             HubName="CustomHub",
             HubContentType="DataSet",
             HubContentName="test-dataset",
-            HubContentVersion='1.0.0',
+            HubContentVersion="1.0.0",
             DocumentSchemaVersion="1.0.0",
-            HubContentDocument='{"test": "document"}'
+            HubContentDocument='{"test": "document"}',
         )
 
-    @patch('sagemaker.ai_registry.air_hub.boto3')
+    @patch("sagemaker.ai_registry.air_hub.boto3")
     def test_import_hub_content_custom_hub_missing_creates(self, mock_boto3, caplog):
         # A caller-supplied hub that does not exist is created on demand (using
         # the supplied name for both HubName and HubDisplayName), then imported into.
@@ -165,6 +165,7 @@ class TestAIRHub:
 
         class _ResourceNotFound(Exception):
             pass
+
         mock_client.exceptions.ResourceNotFound = _ResourceNotFound
         mock_client.describe_hub.side_effect = _ResourceNotFound("missing")
         mock_client.import_hub_content.return_value = {"HubContentArn": "custom-arn"}
@@ -192,15 +193,15 @@ class TestAIRHub:
             HubName="NewHub",
             HubContentType="DataSet",
             HubContentName="test-dataset",
-            HubContentVersion='1.0.0',
+            HubContentVersion="1.0.0",
             DocumentSchemaVersion="1.0.0",
-            HubContentDocument='{"test": "document"}'
+            HubContentDocument='{"test": "document"}',
         )
         # Auto-creation of a caller-supplied hub is logged so it is observable.
         assert "NewHub" in caplog.text
         assert "creating it on demand" in caplog.text
 
-    @patch('sagemaker.ai_registry.air_hub.boto3')
+    @patch("sagemaker.ai_registry.air_hub.boto3")
     def test_import_hub_content_with_tags(self, mock_boto3):
         mock_client = MagicMock()
         mock_boto3.client.return_value = mock_client
@@ -224,7 +225,7 @@ class TestAIRHub:
             HubName="test-hub",
             HubContentType="DataSet",
             HubContentName="test-dataset",
-            HubContentVersion='1.0.0',
+            HubContentVersion="1.0.0",
             DocumentSchemaVersion="1.0.0",
             HubContentDocument='{"test": "document"}',
             HubContentSearchKeywords=["method:generated", "team:ml"],

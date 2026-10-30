@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.ai_registry.data_preparer.preparer."""
+
 from __future__ import absolute_import
 
 import json
@@ -305,14 +306,18 @@ class TestTags:
         assert "tags" not in call_kwargs
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    def test_generate_threads_tags_to_create_job(self, mock_get_job, mock_session, resolved_dataset):
+    def test_generate_threads_tags_to_create_job(
+        self, mock_get_job, mock_session, resolved_dataset
+    ):
         from sagemaker.core.shapes import Tag
 
         mock_job_cls = MagicMock()
         mock_get_job.return_value = mock_job_cls
         mock_job = MagicMock()
         mock_job.job_status = "Completed"
-        mock_job.job_config_document = json.dumps({"DatasetArn": "arn:aws:sagemaker:us-west-2:123:dataset/test"})
+        mock_job.job_config_document = json.dumps(
+            {"DatasetArn": "arn:aws:sagemaker:us-west-2:123:dataset/test"}
+        )
         mock_job_cls.create.return_value = mock_job
         dc = DataPreparer(sagemaker_session=mock_session, role="arn:role")
 
@@ -371,6 +376,7 @@ class TestTags:
         call_kwargs = mock_job_cls.create.call_args[1]
         assert call_kwargs["tags"] == tags
 
+    @pytest.mark.skip(reason="DataPreparer.analyze() is disabled until GapAnalysis is available")
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
     def test_analyze_threads_tags_to_create_job(self, mock_get_job, mock_session):
         from sagemaker.core.shapes import Tag
@@ -405,12 +411,20 @@ class TestTags:
         from sagemaker.core.shapes import Tag
 
         mock_client = MagicMock()
-        mock_client.create_job.return_value = {"JobArn": "arn:aws:sagemaker:us-west-2:123:job/SDG/test-1"}
-        # Make the C2J introspection succeed with Tags as accepted
+        mock_client.create_job.return_value = {
+            "JobArn": "arn:aws:sagemaker:us-west-2:123:job/SDG/test-1"
+        }
+        # Make the service-model introspection succeed with Tags as accepted
         mock_op_model = MagicMock()
         mock_op_model.input_shape.members.keys.return_value = [
-            "JobName", "RoleArn", "JobCategory", "JobConfigSchemaVersion",
-            "JobConfigDocument", "JobArn", "CustomerDetails", "Tags",
+            "JobName",
+            "RoleArn",
+            "JobCategory",
+            "JobConfigSchemaVersion",
+            "JobConfigDocument",
+            "JobArn",
+            "CustomerDetails",
+            "Tags",
         ]
         mock_client.meta.service_model.operation_model.return_value = mock_op_model
         mock_session.sagemaker_client = mock_client
@@ -428,7 +442,9 @@ class TestTags:
         )
 
         call_kwargs = mock_client.create_job.call_args[1]
-        assert "Tags" in call_kwargs, f"Tags missing from boto request. Keys: {list(call_kwargs.keys())}"
+        assert (
+            "Tags" in call_kwargs
+        ), f"Tags missing from boto request. Keys: {list(call_kwargs.keys())}"
         assert call_kwargs["Tags"] == [
             {"Key": "team", "Value": "data-science"},
             {"Key": "env", "Value": "beta"},
@@ -439,11 +455,19 @@ class TestTags:
         from sagemaker.ai_registry.data_preparer._job_resource import Job
 
         mock_client = MagicMock()
-        mock_client.create_job.return_value = {"JobArn": "arn:aws:sagemaker:us-west-2:123:job/SDG/test-1"}
+        mock_client.create_job.return_value = {
+            "JobArn": "arn:aws:sagemaker:us-west-2:123:job/SDG/test-1"
+        }
         mock_op_model = MagicMock()
         mock_op_model.input_shape.members.keys.return_value = [
-            "JobName", "RoleArn", "JobCategory", "JobConfigSchemaVersion",
-            "JobConfigDocument", "JobArn", "CustomerDetails", "Tags",
+            "JobName",
+            "RoleArn",
+            "JobCategory",
+            "JobConfigSchemaVersion",
+            "JobConfigDocument",
+            "JobArn",
+            "CustomerDetails",
+            "Tags",
         ]
         mock_client.meta.service_model.operation_model.return_value = mock_op_model
         mock_session.sagemaker_client = mock_client
@@ -459,7 +483,9 @@ class TestTags:
         )
 
         call_kwargs = mock_client.create_job.call_args[1]
-        assert "Tags" not in call_kwargs, f"Tags should not be in request when None. Keys: {list(call_kwargs.keys())}"
+        assert (
+            "Tags" not in call_kwargs
+        ), f"Tags should not be in request when None. Keys: {list(call_kwargs.keys())}"
 
 
 class TestJobLifecycle:
@@ -614,7 +640,11 @@ class TestTelemetry:
         mock_job = MagicMock()
         mock_job.job_status = "Completed"
         mock_job.job_config_document = json.dumps(
-            {"OutputDatasetArns": ["arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/out-ds/1.0.0"]}
+            {
+                "OutputDatasetArns": [
+                    "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/out-ds/1.0.0"
+                ]
+            }
         )
 
         with patch.object(dc, "_create_job", return_value=mock_job):
@@ -736,9 +766,7 @@ def resolved_v0_2_dq_dataset():
         "InputDataConfig": [{"DatasetArn": _V2_DQ_DATASET_ARN}],
         "EvaluationName": "my-eval",
         "OutputDataConfig": {"S3OutputPath": _V2_DQ_OUTPUT_S3},
-        "EvaluationConfig": {
-            "Deterministic": {"Metrics": [{"Metric": "compression_ratio"}]}
-        },
+        "EvaluationConfig": {"Deterministic": {"Metrics": [{"Metric": "compression_ratio"}]}},
     }
     cfg._validated_payload = v2_payload
     cfg._serialized_document = json.dumps(v2_payload)
@@ -810,11 +838,13 @@ class TestRehydrateDatasetDqV3:
         mock_job.job_arn = "arn:aws:sagemaker:us-west-2:123:job/DataQualityEvaluation/dq-v3"
         mock_job.job_name = "dq-v3"
         mock_job.job_config_schema_version = "3.0.0"
-        mock_job.job_config_document = json.dumps({
-            "InputDataConfig": [{"DatasetArn": _V2_DQ_DATASET_ARN}],
-            "OutputDataConfig": {"S3OutputPath": _V2_DQ_OUTPUT_S3},
-            "EvaluationConfig": {"Operations": [{"Operator": "default_metrics"}]},
-        })
+        mock_job.job_config_document = json.dumps(
+            {
+                "InputDataConfig": [{"DatasetArn": _V2_DQ_DATASET_ARN}],
+                "OutputDataConfig": {"S3OutputPath": _V2_DQ_OUTPUT_S3},
+                "EvaluationConfig": {"Operations": [{"Operator": "default_metrics"}]},
+            }
+        )
 
         with patch(
             "sagemaker.ai_registry.dataset.DataSet.get",
@@ -837,11 +867,13 @@ class TestRehydrateDatasetDqV0_2:
         mock_job.job_arn = "arn:aws:sagemaker:us-west-2:123:job/DataQualityEvaluation/dq-v2"
         mock_job.job_name = "dq-v2"
         mock_job.job_config_schema_version = "0.2.0"
-        mock_job.job_config_document = json.dumps({
-            "InputDataConfig": [{"DatasetArn": _V2_DQ_DATASET_ARN}],
-            "EvaluationName": "my-eval",
-            "OutputDataConfig": {"S3OutputPath": _V2_DQ_OUTPUT_S3},
-        })
+        mock_job.job_config_document = json.dumps(
+            {
+                "InputDataConfig": [{"DatasetArn": _V2_DQ_DATASET_ARN}],
+                "EvaluationName": "my-eval",
+                "OutputDataConfig": {"S3OutputPath": _V2_DQ_OUTPUT_S3},
+            }
+        )
 
         with patch(
             "sagemaker.ai_registry.dataset.DataSet.get",
@@ -874,11 +906,13 @@ class TestRehydrateDatasetDqV0_2:
             "JobArn": "arn:aws:sagemaker:us-west-2:123:job/DataQualityEvaluation/dq-v2",
             "JobStatus": "Completed",
             "JobConfigSchemaVersion": "0.2.0",
-            "JobConfigDocument": json.dumps({
-                "InputDataConfig": [{"DatasetArn": _V2_DQ_DATASET_ARN}],
-                "EvaluationName": "my-eval",
-                "OutputDataConfig": {"S3OutputPath": _V2_DQ_OUTPUT_S3},
-            }),
+            "JobConfigDocument": json.dumps(
+                {
+                    "InputDataConfig": [{"DatasetArn": _V2_DQ_DATASET_ARN}],
+                    "EvaluationName": "my-eval",
+                    "OutputDataConfig": {"S3OutputPath": _V2_DQ_OUTPUT_S3},
+                }
+            ),
         }
         job = Job(
             job_name="dq-v2",
@@ -904,11 +938,13 @@ class TestRehydrateDatasetDqV0_2:
         mock_job.job_arn = "arn:aws:sagemaker:us-west-2:123:job/DataQualityEvaluation/dq-v1"
         mock_job.job_name = "dq-v1"
         mock_job.job_config_schema_version = "1.0.0"
-        mock_job.job_config_document = json.dumps({
-            "DatasetArn": _V2_DQ_DATASET_ARN,
-            "EvaluationName": "my-eval",
-            "OutputDataConfig": {"OutputS3Uri": _V2_DQ_OUTPUT_S3},
-        })
+        mock_job.job_config_document = json.dumps(
+            {
+                "DatasetArn": _V2_DQ_DATASET_ARN,
+                "EvaluationName": "my-eval",
+                "OutputDataConfig": {"OutputS3Uri": _V2_DQ_OUTPUT_S3},
+            }
+        )
 
         with patch(
             "sagemaker.ai_registry.dataset.DataSet.get",
@@ -969,7 +1005,9 @@ class TestAttach:
     """Tests for DataPreparer.attach()."""
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_attach_completed_job_returns_dataset(self, mock_get_session, mock_get_job_cls):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
@@ -978,7 +1016,9 @@ class TestAttach:
         mock_job.job_name = "my-sdg-job"
         mock_job.job_status = "Completed"
         mock_job.job_arn = "arn:aws:sagemaker:us-west-2:123:job/SyntheticDataGeneration/my-sdg-job"
-        mock_job.job_config_document = json.dumps({"DatasetArn": "arn:aws:sagemaker:us-west-2:123:hub-content/Dataset/my-ds/1"})
+        mock_job.job_config_document = json.dumps(
+            {"DatasetArn": "arn:aws:sagemaker:us-west-2:123:hub-content/Dataset/my-ds/1"}
+        )
         mock_job.job_config_schema_version = "1.0.0"
 
         MockJob = MagicMock()
@@ -993,7 +1033,10 @@ class TestAttach:
                 )
 
         assert result == mock_ds
-        assert result.job_arn == "arn:aws:sagemaker:us-west-2:123:job/SyntheticDataGeneration/my-sdg-job"
+        assert (
+            result.job_arn
+            == "arn:aws:sagemaker:us-west-2:123:job/SyntheticDataGeneration/my-sdg-job"
+        )
         MockJob.get.assert_called_once_with(
             job_name="my-sdg-job",
             job_category="SyntheticDataGeneration",
@@ -1001,7 +1044,9 @@ class TestAttach:
         )
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_attach_inprogress_job_waits(self, mock_get_session, mock_get_job_cls):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
@@ -1039,7 +1084,9 @@ class TestAttach:
         assert result == mock_ds
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_attach_wait_false_returns_job(self, mock_get_session, mock_get_job_cls):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
@@ -1060,7 +1107,9 @@ class TestAttach:
         assert result == mock_job
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_attach_failed_job_raises(self, mock_get_session, mock_get_job_cls):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
@@ -1131,7 +1180,9 @@ class TestStop:
     # ------------------------------------------------------------------
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_stop_by_arn_hydrates_via_job_get(self, mock_get_session, mock_get_job_cls):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
@@ -1154,10 +1205,10 @@ class TestStop:
     # ------------------------------------------------------------------
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
-    def test_stop_by_handle_uses_handle_directly(
-        self, mock_get_session, mock_get_job_cls
-    ):
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
+    def test_stop_by_handle_uses_handle_directly(self, mock_get_session, mock_get_job_cls):
         mock_get_job_cls.return_value = _JobStub
         _JobStub.get.reset_mock()
         job = self._job_stub()
@@ -1177,7 +1228,9 @@ class TestStop:
     # ------------------------------------------------------------------
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_stop_noop_when_already_terminal(self, mock_get_session, mock_get_job_cls):
         mock_get_session.return_value = MagicMock()
         job = self._job_stub(status="Stopped")
@@ -1190,10 +1243,10 @@ class TestStop:
         assert result is job
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
-    def test_stop_wait_true_calls_job_wait_and_refreshes(
-        self, mock_get_session, mock_get_job_cls
-    ):
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
+    def test_stop_wait_true_calls_job_wait_and_refreshes(self, mock_get_session, mock_get_job_cls):
         mock_get_session.return_value = MagicMock()
         job = self._job_stub()
         self._wire_arn_path(mock_get_job_cls, job)
@@ -1217,7 +1270,9 @@ class TestStop:
             DataPreparer.stop("garbage")
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_stop_noop_when_completed(self, mock_get_session, mock_get_job_cls):
         """DataPreparer.stop is a no-op for Completed jobs (not just Stopped)."""
         mock_get_session.return_value = MagicMock()
@@ -1231,7 +1286,9 @@ class TestStop:
         assert result is job
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_stop_noop_when_failed(self, mock_get_session, mock_get_job_cls):
         """DataPreparer.stop is a no-op for Failed jobs (not just Stopped)."""
         mock_get_session.return_value = MagicMock()
@@ -1250,7 +1307,9 @@ class TestStop:
             DataPreparer.stop(42)
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_stop_service_error_propagates(self, mock_get_session, mock_get_job_cls):
         """A non-timeout exception from job.wait() is re-raised without wrapping."""
         from botocore.exceptions import ClientError
@@ -1271,7 +1330,9 @@ class TestStop:
         job.stop.assert_called_once_with()
 
     @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
-    @patch("sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session")
+    @patch(
+        "sagemaker.ai_registry.data_preparer.preparer.DataPreparerDefaults.get_sagemaker_session"
+    )
     def test_stop_wait_timeout_raises_DataPreparerJobTimeoutError(
         self, mock_get_session, mock_get_job_cls
     ):

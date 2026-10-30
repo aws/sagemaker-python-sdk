@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for DataPreparer.analyze() — GapAnalysis."""
+
 from __future__ import absolute_import
 
 import json
@@ -21,6 +22,7 @@ import pytest
 from sagemaker.ai_registry.data_preparer.preparer import DataPreparer, _DualCallable
 from sagemaker.ai_registry.data_preparer.configs import DatasetJobConfig
 from sagemaker.ai_registry.data_preparer.constants import JobCategory
+from sagemaker.ai_registry.data_preparer.exceptions import DataPreparerConfigurationError
 from sagemaker.core.helper.session_helper import Session
 
 
@@ -51,6 +53,7 @@ def ga_dataset():
     return cfg
 
 
+@pytest.mark.skip(reason="DataPreparer.analyze() is disabled until GapAnalysis is available")
 class TestAnalyzeReturnsJob:
     def test_analyze_returns_job_on_completion(self, mock_session, ga_dataset):
         """GapAnalysis completed job returns the Job object, not a DataSet."""
@@ -86,6 +89,7 @@ class TestAnalyzeReturnsJob:
 
 
 class TestAnalyzeCategory:
+    @pytest.mark.skip(reason="DataPreparer.analyze() is disabled until GapAnalysis is available")
     def test_analyze_uses_correct_category(self, mock_session, ga_dataset):
         """analyze() passes GAP_ANALYSIS to _run."""
         dc = DataPreparer(sagemaker_session=mock_session, role="arn:role")
@@ -105,6 +109,7 @@ class TestAnalyzeCategory:
         assert JobCategory.GAP_ANALYSIS.value == "GapAnalysis"
 
 
+@pytest.mark.skip(reason="DataPreparer.analyze() is disabled until GapAnalysis is available")
 class TestAnalyzeDualCallable:
     def test_analyze_is_dual_callable(self):
         """DataPreparer.analyze is a _DualCallable descriptor."""
@@ -132,6 +137,7 @@ class TestAnalyzeDualCallable:
         assert captured["category"] == JobCategory.GAP_ANALYSIS
 
 
+@pytest.mark.skip(reason="DataPreparer.analyze() is disabled until GapAnalysis is available")
 class TestAnalyzeSchemaResolution:
     def test_analyze_schema_resolves(self, mock_session, ga_dataset):
         """_resolve_and_validate is called for the GapAnalysis category."""
@@ -145,3 +151,26 @@ class TestAnalyzeSchemaResolution:
                 dc.analyze(ga_dataset, wait=True, logs=False)
 
         mock_resolve.assert_called_once_with(sagemaker_session=mock_session)
+
+
+class TestAnalyzeDisabled:
+    """GapAnalysis is not released: ``analyze`` must stay off the public surface.
+
+    Re-enabling is deliberate: restore ``analyze = _DualCallable(_analyze_impl)``
+    in preparer.py, un-skip the tests above, and delete this class.
+    """
+
+    def test_analyze_is_not_exposed(self):
+        assert not hasattr(DataPreparer, "analyze")
+        assert not hasattr(DataPreparer(sagemaker_session=MagicMock()), "analyze")
+
+    def test_public_primitives_unchanged(self):
+        for name in ("generate", "evaluate", "transform", "attach", "stop"):
+            assert hasattr(DataPreparer, name), name
+
+    def test_category_mismatch_message_does_not_suggest_analyze(self, mock_session, ga_dataset):
+        with pytest.raises(DataPreparerConfigurationError) as exc_info:
+            DataPreparer(sagemaker_session=mock_session, role="arn:role").generate(ga_dataset)
+        message = str(exc_info.value)
+        assert "DataPreparer.generate() for SDG" in message
+        assert "analyze" not in message

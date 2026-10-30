@@ -804,7 +804,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 TELEMETRY_OPT_OUT: {
                                     TYPE: "boolean",
                                 },
-                                "DataPreparer": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
                             },
                         },
                     },

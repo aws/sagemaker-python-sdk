@@ -34,12 +34,15 @@ def _isolate_role_and_hub_name():
     call), and DataSet.__init__ resolves the hub name via AIRHub.get_hub_name (STS
     call). Patch both so the tests don't depend on credentials or test ordering.
     """
-    with patch(
-        "sagemaker.train.defaults.resolve_and_validate_role",
-        return_value="arn:aws:iam::123456789012:role/SageMakerRole",
-    ), patch(
-        "sagemaker.ai_registry.air_hub_entity.AIRHub.get_hub_name",
-        return_value="test-hub",
+    with (
+        patch(
+            "sagemaker.train.defaults.resolve_and_validate_role",
+            return_value="arn:aws:iam::123456789012:role/SageMakerRole",
+        ),
+        patch(
+            "sagemaker.ai_registry.air_hub_entity.AIRHub.get_hub_name",
+            return_value="test-hub",
+        ),
     ):
         yield
 
@@ -59,12 +62,12 @@ class TestDataSetSchemaVersionConstants:
 class TestDataSetSchemaVersionDefault:
     """Tests for default schema version behavior when not explicitly provided."""
 
-    @patch('boto3.client')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("boto3.client")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_create_without_schema_version_uses_5_0_0(
         self,
         mock_air_hub,
@@ -83,7 +86,7 @@ class TestDataSetSchemaVersionDefault:
         mock_session.return_value = mock_session_instance
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'Account': '123456789012'}
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_boto_client.return_value = mock_sts_client
 
         mock_air_hub.get_hub_name.return_value = "test-hub"
@@ -98,11 +101,13 @@ class TestDataSetSchemaVersionDefault:
         mock_validate_format.return_value = None
         mock_validate_file.return_value = None
 
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
 
             DataSet.create(
                 name="test-dataset",
@@ -120,12 +125,12 @@ class TestDataSetSchemaVersionOverride:
     """Tests for explicitly providing a valid document_schema_version."""
 
     @pytest.mark.parametrize("version", ["2.0.0", "3.0.0", "4.0.0", "5.0.0"])
-    @patch('boto3.client')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("boto3.client")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_create_with_valid_schema_version_passes_it_through(
         self,
         mock_air_hub,
@@ -145,7 +150,7 @@ class TestDataSetSchemaVersionOverride:
         mock_session.return_value = mock_session_instance
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'Account': '123456789012'}
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_boto_client.return_value = mock_sts_client
 
         mock_air_hub.get_hub_name.return_value = "test-hub"
@@ -160,11 +165,13 @@ class TestDataSetSchemaVersionOverride:
         mock_validate_format.return_value = None
         mock_validate_file.return_value = None
 
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
 
             DataSet.create(
                 name="test-dataset",
@@ -206,7 +213,9 @@ class TestDataSetSchemaVersionValidation:
             "arn:aws:iam::123456789012:role/SageMakerRole"
         )
 
-        with pytest.raises(ValueError, match=r"Supported versions:.*\['2.0.0', '3.0.0', '4.0.0', '5.0.0'\]"):
+        with pytest.raises(
+            ValueError, match=r"Supported versions:.*\['2.0.0', '3.0.0', '4.0.0', '5.0.0'\]"
+        ):
             DataSet.create(
                 name="test-dataset",
                 source="s3://test-bucket/data.jsonl",
@@ -219,12 +228,12 @@ class TestDataSetSchemaVersionValidation:
 class TestDataSetFileFormat:
     """Tests for the dataset_file_format parameter behavior in DataSet.create()."""
 
-    @patch('boto3.client')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("boto3.client")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_create_without_file_format_defaults_to_custom(
         self,
         mock_air_hub,
@@ -243,7 +252,7 @@ class TestDataSetFileFormat:
         mock_session.return_value = mock_session_instance
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'Account': '123456789012'}
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_boto_client.return_value = mock_sts_client
 
         mock_air_hub.get_hub_name.return_value = "test-hub"
@@ -258,11 +267,13 @@ class TestDataSetFileFormat:
         mock_validate_format.return_value = None
         mock_validate_file.return_value = None
 
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
 
             DataSet.create(
                 name="test-dataset",
@@ -276,13 +287,15 @@ class TestDataSetFileFormat:
         doc = json.loads(call_kwargs["hub_content_document"])
         assert doc["DatasetFileFormat"] == "Custom"
 
-    @pytest.mark.parametrize("file_format", ["Bedrock_Converse", "HF_Prompt_Completion", "HF_Preference", "Verl"])
-    @patch('boto3.client')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @pytest.mark.parametrize(
+        "file_format", ["Bedrock_Converse", "HF_Prompt_Completion", "HF_Preference", "Verl"]
+    )
+    @patch("boto3.client")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_create_with_valid_file_format_passes_it_through(
         self,
         mock_air_hub,
@@ -302,7 +315,7 @@ class TestDataSetFileFormat:
         mock_session.return_value = mock_session_instance
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'Account': '123456789012'}
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_boto_client.return_value = mock_sts_client
 
         mock_air_hub.get_hub_name.return_value = "test-hub"
@@ -317,11 +330,13 @@ class TestDataSetFileFormat:
         mock_validate_format.return_value = None
         mock_validate_file.return_value = None
 
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
 
             DataSet.create(
                 name="test-dataset",
@@ -374,12 +389,12 @@ class TestDataSetFileFormat:
 class TestDataSetV5DocumentStructure:
     """Tests for the v5 hub content document body structure."""
 
-    @patch('boto3.client')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("boto3.client")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_v5_document_contains_required_fields(
         self,
         mock_air_hub,
@@ -398,7 +413,7 @@ class TestDataSetV5DocumentStructure:
         mock_session.return_value = mock_session_instance
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'Account': '123456789012'}
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_boto_client.return_value = mock_sts_client
 
         mock_air_hub.get_hub_name.return_value = "test-hub"
@@ -413,11 +428,13 @@ class TestDataSetV5DocumentStructure:
         mock_validate_format.return_value = None
         mock_validate_file.return_value = None
 
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
 
             DataSet.create(
                 name="test-dataset",
@@ -434,12 +451,12 @@ class TestDataSetV5DocumentStructure:
         assert "DatasetS3Bucket" in doc
         assert "DatasetS3Prefix" in doc
 
-    @patch('boto3.client')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("boto3.client")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_v5_document_does_not_contain_legacy_fields(
         self,
         mock_air_hub,
@@ -458,7 +475,7 @@ class TestDataSetV5DocumentStructure:
         mock_session.return_value = mock_session_instance
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'Account': '123456789012'}
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_boto_client.return_value = mock_sts_client
 
         mock_air_hub.get_hub_name.return_value = "test-hub"
@@ -473,11 +490,13 @@ class TestDataSetV5DocumentStructure:
         mock_validate_format.return_value = None
         mock_validate_file.return_value = None
 
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
 
             DataSet.create(
                 name="test-dataset",
@@ -495,12 +514,12 @@ class TestDataSetV5DocumentStructure:
         assert "DatasetRoleArn" not in doc
         assert "Dependencies" not in doc
 
-    @patch('boto3.client')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("boto3.client")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_v2_document_contains_legacy_fields(
         self,
         mock_air_hub,
@@ -519,7 +538,7 @@ class TestDataSetV5DocumentStructure:
         mock_session.return_value = mock_session_instance
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'Account': '123456789012'}
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_boto_client.return_value = mock_sts_client
 
         mock_air_hub.get_hub_name.return_value = "test-hub"
@@ -534,11 +553,13 @@ class TestDataSetV5DocumentStructure:
         mock_validate_format.return_value = None
         mock_validate_file.return_value = None
 
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
 
             DataSet.create(
                 name="test-dataset",
@@ -555,12 +576,12 @@ class TestDataSetV5DocumentStructure:
         assert "Dependencies" in doc
         assert "DatasetRoleArn" in doc
 
-    @patch('boto3.client')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("boto3.client")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_v5_document_dataset_type_is_byod(
         self,
         mock_air_hub,
@@ -579,7 +600,7 @@ class TestDataSetV5DocumentStructure:
         mock_session.return_value = mock_session_instance
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'Account': '123456789012'}
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_boto_client.return_value = mock_sts_client
 
         mock_air_hub.get_hub_name.return_value = "test-hub"
@@ -594,11 +615,13 @@ class TestDataSetV5DocumentStructure:
         mock_validate_format.return_value = None
         mock_validate_file.return_value = None
 
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
 
             DataSet.create(
                 name="test-dataset",
@@ -629,7 +652,9 @@ class TestDataSetV5ContentMetadata:
         "AthenaQueryExecutionId": "query-xyz",
     }
 
-    def _create_and_get_document(self, mock_air_hub, content_metadata, document_schema_version=None):
+    def _create_and_get_document(
+        self, mock_air_hub, content_metadata, document_schema_version=None
+    ):
         mock_session_instance = Mock()
         mock_session_instance.get_caller_identity_arn.return_value = (
             "arn:aws:iam::123456789012:role/SageMakerRole"
@@ -642,11 +667,13 @@ class TestDataSetV5ContentMetadata:
             "CreationTime": "2024-01-01",
             "LastModifiedTime": "2024-01-01",
         }
-        with patch('tempfile.NamedTemporaryFile') as mock_temp, \
-             patch('os.path.exists', return_value=False), \
-             patch('os.remove'), \
-             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
-            mock_temp.return_value.__enter__.return_value.name = '/tmp/test.jsonl'
+        with (
+            patch("tempfile.NamedTemporaryFile") as mock_temp,
+            patch("os.path.exists", return_value=False),
+            patch("os.remove"),
+            patch("sagemaker.ai_registry.dataset.DataSet.wait"),
+        ):
+            mock_temp.return_value.__enter__.return_value.name = "/tmp/test.jsonl"
             kwargs = {}
             if document_schema_version is not None:
                 kwargs["document_schema_version"] = document_schema_version
@@ -660,12 +687,14 @@ class TestDataSetV5ContentMetadata:
             )
         mock_air_hub.import_hub_content.assert_called_once()
         call_kwargs = mock_air_hub.import_hub_content.call_args[1]
-        return call_kwargs["document_schema_version"], json.loads(call_kwargs["hub_content_document"])
+        return call_kwargs["document_schema_version"], json.loads(
+            call_kwargs["hub_content_document"]
+        )
 
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id', return_value=None)
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id", return_value=None)
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_v5_document_includes_content_metadata_when_provided(
         self, mock_air_hub, mock_validate_format, mock_validate_file, mock_domain
     ):
@@ -678,10 +707,10 @@ class TestDataSetV5ContentMetadata:
         for legacy in ("Dependencies", "ConversationId", "DatasetRoleArn"):
             assert legacy not in doc
 
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id', return_value=None)
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id", return_value=None)
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_v5_document_omits_content_metadata_when_not_provided(
         self, mock_air_hub, mock_validate_format, mock_validate_file, mock_domain
     ):
@@ -690,10 +719,10 @@ class TestDataSetV5ContentMetadata:
         assert version == "5.0.0"
         assert "ContentMetadata" not in doc
 
-    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id', return_value=None)
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id", return_value=None)
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_v2_document_keeps_content_metadata(
         self, mock_air_hub, mock_validate_format, mock_validate_file, mock_domain
     ):

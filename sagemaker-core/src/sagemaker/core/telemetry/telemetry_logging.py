@@ -408,7 +408,7 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                     elapsed = stop_timer - start_timer
                     extra += f"&x-latency={round(elapsed, 2)}"
                     extra += f"&x-errorCategory={_classify_error(e)}"
-                    resource_arn = getattr(e, 'job_arn', None)
+                    resource_arn = getattr(e, "job_arn", None)
                     if resource_arn:
                         extra += f"&x-resourceArn={resource_arn}"
                     if not telemetry_opt_out_flag:

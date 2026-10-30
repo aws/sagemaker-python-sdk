@@ -123,3 +123,4 @@ config file to get started.
    dt_tutorial
    configuration
    api_reference
+   /training/data_preparer

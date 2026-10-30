@@ -14,6 +14,7 @@
 
 Requires hypothesis. Skipped if not installed.
 """
+
 from __future__ import absolute_import
 
 import json
@@ -33,8 +34,10 @@ from sagemaker.ai_registry.data_preparer._schema_resolver import (  # noqa: E402
     _major,
     _semver_key,
 )
-from sagemaker.ai_registry.data_preparer.constants import JobCategory, SCHEMA_VERSION_CEILING  # noqa: E402
-
+from sagemaker.ai_registry.data_preparer.constants import (  # noqa: E402
+    JobCategory,
+    SCHEMA_VERSION_CEILING,
+)  # noqa: E402
 
 # -----------------------------------------------------------------------------
 # Hypothesis strategies
@@ -74,9 +77,7 @@ def _primitive_value_for(schema):
 def _flat_object_schema(draw, min_props=1, max_props=4):
     """Generate a flat (non-nested) object schema with primitive properties."""
     n = draw(st.integers(min_value=min_props, max_value=max_props))
-    names = draw(
-        st.lists(_PASCAL_IDENT, min_size=n, max_size=n, unique=True)
-    )
+    names = draw(st.lists(_PASCAL_IDENT, min_size=n, max_size=n, unique=True))
     props = {name: draw(_primitive_schema()) for name in names}
     required_count = draw(st.integers(min_value=0, max_value=len(names)))
     required = names[:required_count]
@@ -148,9 +149,7 @@ def _payload_for(draw, schema):
 
 # Strategy: arbitrary semver strings including non-lexicographic pairs
 _SEMVER_PART = st.integers(min_value=0, max_value=50)
-_SEMVER_STR = st.builds(
-    lambda a, b, c: f"{a}.{b}.{c}", _SEMVER_PART, _SEMVER_PART, _SEMVER_PART
-)
+_SEMVER_STR = st.builds(lambda a, b, c: f"{a}.{b}.{c}", _SEMVER_PART, _SEMVER_PART, _SEMVER_PART)
 
 
 class TestPropertyDefaultSchemaVersion:
@@ -160,7 +159,9 @@ class TestPropertyDefaultSchemaVersion:
     """
 
     @given(versions=st.lists(_SEMVER_STR, min_size=1, max_size=15, unique=True))
-    @settings(max_examples=100, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=100, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_max_semver_chosen(self, versions):
         _SCHEMA_CACHE.clear()
         _MODEL_CACHE.clear()
@@ -208,7 +209,9 @@ class TestPropertySchemaRoundTrip:
     """
 
     @given(schema=_flat_object_schema(min_props=1, max_props=4))
-    @settings(max_examples=50, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=50, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_flat_round_trip(self, schema):
         _MODEL_CACHE.clear()
         # Build a payload deterministically: all required keys with a fixed value per type
@@ -234,9 +237,12 @@ class TestPropertySchemaRoundTrip:
         assert reparsed_dump == dumped
 
     @given(schema=_nested_object_schema())
-    @settings(max_examples=30, deadline=8000, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=30, deadline=8000, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_nested_round_trip(self, schema):
         _MODEL_CACHE.clear()
+
         # Build a deterministic payload: required-only, primitive defaults by type
         def _make(schm):
             out = {}
@@ -285,7 +291,9 @@ class TestPropertyNestedModelStructure:
     """
 
     @given(schema=_nested_object_schema())
-    @settings(max_examples=30, deadline=8000, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=30, deadline=8000, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     def test_nested_objects_become_basemodel_subclasses(self, schema):
         _MODEL_CACHE.clear()
         from pydantic import BaseModel
@@ -307,9 +315,9 @@ class TestPropertyNestedModelStructure:
                 ann = next(a for a in args if a is not type(None))  # noqa: E721
 
             if subschema.get("type") == "object":
-                assert isinstance(ann, type) and issubclass(ann, BaseModel), (
-                    f"Field {snake} should be a BaseModel subclass, got {ann}"
-                )
+                assert isinstance(ann, type) and issubclass(
+                    ann, BaseModel
+                ), f"Field {snake} should be a BaseModel subclass, got {ann}"
             elif subschema.get("type") == "array":
                 origin2 = getattr(ann, "__origin__", None)
                 assert origin2 is list, f"Field {snake} should be List[...], got {ann}"

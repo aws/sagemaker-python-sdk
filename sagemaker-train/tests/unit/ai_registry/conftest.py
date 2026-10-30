@@ -26,6 +26,7 @@ config/credentials file lookups to ``/dev/null`` so that:
 Any test that genuinely needs to interact with AWS (integration tests) lives
 under ``tests/integ/``, not here, and carries its own credential fixtures.
 """
+
 from __future__ import absolute_import
 
 import pytest

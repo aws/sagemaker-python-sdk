@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for DataPreparer.transform() — DataTransformation."""
+
 from __future__ import absolute_import
 
 import json
@@ -122,7 +123,11 @@ class TestTransformSchemaResolution:
         mock_job = MagicMock()
         mock_job.job_status = "Completed"
         mock_job.job_config_document = json.dumps(
-            {"OutputDatasetArns": ["arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/out-ds/1.0.0"]}
+            {
+                "OutputDatasetArns": [
+                    "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/out-ds/1.0.0"
+                ]
+            }
         )
 
         with patch.object(dt_dataset, "_resolve_and_validate") as mock_resolve:
@@ -145,7 +150,11 @@ class TestTransformReturnsList:
         mock_job.job_status = "Completed"
         mock_job.job_arn = "arn:aws:sagemaker:us-west-2:123:job/dt/my-job"
         mock_job.job_config_document = json.dumps(
-            {"OutputDatasetArns": ["arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/out-ds/1.0.0"]}
+            {
+                "OutputDatasetArns": [
+                    "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/out-ds/1.0.0"
+                ]
+            }
         )
 
         mock_ds = MagicMock()
@@ -163,12 +172,14 @@ class TestTransformReturnsList:
         mock_job = MagicMock()
         mock_job.job_status = "Completed"
         mock_job.job_arn = "arn:aws:sagemaker:us-west-2:123:job/dt/split-job"
-        mock_job.job_config_document = json.dumps({
-            "OutputDatasetArns": [
-                "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/train/1.0.0",
-                "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/val/1.0.0",
-            ]
-        })
+        mock_job.job_config_document = json.dumps(
+            {
+                "OutputDatasetArns": [
+                    "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/train/1.0.0",
+                    "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/val/1.0.0",
+                ]
+            }
+        )
 
         mock_train, mock_val = MagicMock(), MagicMock()
         with patch.object(dc, "_create_job", return_value=mock_job):
@@ -184,9 +195,9 @@ class TestTransformReturnsList:
         mock_job = MagicMock()
         mock_job.job_status = "Completed"
         mock_job.job_arn = "arn:aws:sagemaker:us-west-2:123:job/dt/split-job"
-        mock_job.job_config_document = json.dumps({
-            "OutputDatasetArns": ["arn:.../DataSet/a/1.0.0", "arn:.../DataSet/b/1.0.0"]
-        })
+        mock_job.job_config_document = json.dumps(
+            {"OutputDatasetArns": ["arn:.../DataSet/a/1.0.0", "arn:.../DataSet/b/1.0.0"]}
+        )
 
         mock_a, mock_b = MagicMock(), MagicMock()
         with patch.object(dc, "_create_job", return_value=mock_job):
@@ -204,12 +215,14 @@ class TestRehydrateDatasetsForDT:
         dc = DataPreparer(sagemaker_session=mock_session, role="arn:role")
 
         mock_job = MagicMock()
-        mock_job.job_config_document = json.dumps({
-            "OutputDatasetArns": [
-                "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/train/1.0.0",
-                "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/val/1.0.0",
-            ]
-        })
+        mock_job.job_config_document = json.dumps(
+            {
+                "OutputDatasetArns": [
+                    "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/train/1.0.0",
+                    "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/val/1.0.0",
+                ]
+            }
+        )
 
         with patch("sagemaker.ai_registry.dataset.DataSet.get") as mock_get:
             mock_get.side_effect = lambda name, sagemaker_session, hub_name, version: (
@@ -231,11 +244,13 @@ class TestRehydrateDatasetsForDT:
         dc = DataPreparer(sagemaker_session=mock_session, role="arn:role")
 
         mock_job = MagicMock()
-        mock_job.job_config_document = json.dumps({
-            "OutputDatasetArns": [
-                "arn:aws:sagemaker:us-west-2:123:hub-content/DTBugBashHub/DataSet/out/0.0.2",
-            ]
-        })
+        mock_job.job_config_document = json.dumps(
+            {
+                "OutputDatasetArns": [
+                    "arn:aws:sagemaker:us-west-2:123:hub-content/DTBugBashHub/DataSet/out/0.0.2",
+                ]
+            }
+        )
 
         with patch("sagemaker.ai_registry.dataset.DataSet.get") as mock_get:
             dc._rehydrate_datasets(mock_job, JobCategory.DATA_TRANSFORMATION)
@@ -250,7 +265,7 @@ class TestRehydrateDatasetsForDT:
     @pytest.mark.parametrize(
         "arn",
         [
-            "some-name/1.0.0",                                   # too few segments
+            "some-name/1.0.0",  # too few segments
             "arn:aws:sagemaker:us-west-2:123:hub/H/DataSet/n/1",  # not a hub-content ARN
             "arn:aws:sagemaker:us-west-2:123:hub-content/H/DataSet/n/1/extra",  # too many
         ],
@@ -271,7 +286,6 @@ class TestRehydrateDatasetsForDT:
 
         assert mock_get.call_args.kwargs["hub_name"] is None
         assert mock_get.call_args.kwargs["version"] is None
-
 
     def test_rehydrate_raises_when_output_dataset_arns_missing(self, mock_session):
         dc = DataPreparer(sagemaker_session=mock_session, role="arn:role")

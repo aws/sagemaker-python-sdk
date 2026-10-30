@@ -1,4 +1,5 @@
 """Unit tests for Job helper methods: _extract_log_stream_name, _output_s3_url, _extract_dataset_arn."""
+
 from unittest.mock import MagicMock
 
 from sagemaker.ai_registry.data_preparer._job_resource import Job
@@ -61,7 +62,9 @@ class TestOutputS3Url:
 
     def test_post_discovery_uses_job_subdir(self):
         job = _make_job(progress_output_s3_uri="s3://bucket/output/prefix/")
-        job._progress_target_key = "output/prefix/my-job-2026-01-01T000000Z/job_metadata/verified_samples.jsonl"
+        job._progress_target_key = (
+            "output/prefix/my-job-2026-01-01T000000Z/job_metadata/verified_samples.jsonl"
+        )
         url = job._output_s3_url()
         assert "my-job-2026-01-01T000000Z%2F" in url
 
@@ -85,8 +88,13 @@ class TestExtractDatasetArn:
 
     def test_returns_arn_when_present(self):
         job = _make_job()
-        job.job_config_document = '{"DatasetArn": "arn:aws:sagemaker:us-west-2:111:hub-content/X/DataSet/foo/0.0.1"}'
-        assert job._extract_dataset_arn() == "arn:aws:sagemaker:us-west-2:111:hub-content/X/DataSet/foo/0.0.1"
+        job.job_config_document = (
+            '{"DatasetArn": "arn:aws:sagemaker:us-west-2:111:hub-content/X/DataSet/foo/0.0.1"}'
+        )
+        assert (
+            job._extract_dataset_arn()
+            == "arn:aws:sagemaker:us-west-2:111:hub-content/X/DataSet/foo/0.0.1"
+        )
 
     def test_handles_already_parsed_dict(self):
         job = _make_job()
@@ -106,9 +114,9 @@ class TestApplyCompletionFallback:
         job.job_status = "Completed"
         job._current_samples = 0
         job._apply_completion_fallback()
-        assert job._current_samples == 0, (
-            "Found-but-empty file (count=0) must not be snapped to expected"
-        )
+        assert (
+            job._current_samples == 0
+        ), "Found-but-empty file (count=0) must not be snapped to expected"
 
     def test_snaps_on_completed_with_none_count(self):
         job = _make_job(expected_samples=50)

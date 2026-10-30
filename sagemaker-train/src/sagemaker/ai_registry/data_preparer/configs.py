@@ -187,8 +187,9 @@ class DatasetJobConfig(BaseModel):
     """Config for a DataPreparer job, dynamically validated against the Hub schema.
 
     Usage patterns:
-    - Dict input: DatasetJobConfig(dataset_name="my-dataset", generation_config={
-      "DatasetSpecification": {"SpecS3Uri": "s3://..."}, "NumSamples": 500})
+
+    - Dict input (nested v2 shape):
+      ``DatasetJobConfig(dataset_name="ds", generation_config={"NumSamples": 500, ...})``
     - Typed input: DatasetJobConfig(output_data_config=OutputDataConfig(...))
     - Template: DatasetJobConfig.from_template(JobCategory.SYNTHETIC_DATA_GENERATION)
     - Auto-labeling: pass a typed options class as ``dataset_options`` and it
@@ -307,18 +308,14 @@ class DatasetJobConfig(BaseModel):
             _promote_singular_sample_generation_model(merged_payload)
 
         # Build dynamic model first so we can use it for key normalization
-        dynamic_model = _SchemaResolver.build_dynamic_model(
-            self.job_category, version, schema
-        )
+        dynamic_model = _SchemaResolver.build_dynamic_model(self.job_category, version, schema)
 
         # Pass merged payload to dynamic model — it accepts both
         # snake_case and PascalCase via populate_by_name=True
         try:
             validated = dynamic_model(**merged_payload)
         except ValidationError as e:
-            raise _rewrite_validation_error(
-                e, self.job_category, version, dynamic_model
-            ) from e
+            raise _rewrite_validation_error(e, self.job_category, version, dynamic_model) from e
 
         # Check for template sentinels that were not replaced
         dumped = validated.model_dump(by_alias=True, exclude_none=True)
@@ -493,9 +490,7 @@ def _rewrite_validation_error(
     valid_fields = list(dynamic_model.model_fields.keys())
     # Also include aliases
     alias_map = {
-        info.alias: name
-        for name, info in dynamic_model.model_fields.items()
-        if info.alias
+        info.alias: name for name, info in dynamic_model.model_fields.items() if info.alias
     }
     all_valid = valid_fields + list(alias_map.keys())
 
@@ -505,18 +500,16 @@ def _rewrite_validation_error(
             loc = err.get("loc", ())
             field_name = loc[-1] if loc else "unknown"
             suggestions = difflib.get_close_matches(str(field_name), all_valid, n=1)
-            msg = f"  {'.'.join(str(l) for l in loc)}: unexpected field '{field_name}'"
+            msg = f"  {'.'.join(str(part) for part in loc)}: unexpected field '{field_name}'"
             msg += f"\n    Valid fields at this level: {', '.join(valid_fields)}"
             if suggestions:
                 msg += f"\n    Did you mean '{suggestions[0]}'?"
             messages.append(msg)
         else:
             loc = err.get("loc", ())
-            messages.append(f"  {'.'.join(str(l) for l in loc)}: {err.get('msg', '')}")
+            messages.append(f"  {'.'.join(str(part) for part in loc)}: {err.get('msg', '')}")
 
-    messages.append(
-        f"\n  See: DatasetJobConfig.print_schema(JobCategory.{category.name})"
-    )
+    messages.append(f"\n  See: DatasetJobConfig.print_schema(JobCategory.{category.name})")
 
     exc = DataPreparerSchemaValidationError(category, version, pydantic_errors)
     # Enhance the message

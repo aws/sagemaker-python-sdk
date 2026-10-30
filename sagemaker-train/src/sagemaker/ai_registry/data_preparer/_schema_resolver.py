@@ -16,12 +16,13 @@ PRIVATE — not exported from sagemaker.ai_registry.__init__. Only
 DatasetJobConfig._resolve_and_validate and DatasetJobConfig.schema / print_schema
 call into this module.
 """
+
 from __future__ import absolute_import
 
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -44,7 +45,13 @@ _MODEL_CACHE: Dict[Tuple[JobCategory, str], Type[BaseModel]] = {}
 _PASCAL_TO_SNAKE_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
-_PYDANTIC_RESERVED = {"model_config", "model_fields", "model_computed_fields", "model_extra", "model_fields_set"}
+_PYDANTIC_RESERVED = {
+    "model_config",
+    "model_fields",
+    "model_computed_fields",
+    "model_extra",
+    "model_fields_set",
+}
 
 
 def _pascal_to_snake(name: str) -> str:
@@ -230,7 +237,9 @@ class _SchemaResolver:
                     logger.warning(
                         "No schema versions found within major version %d for %s. "
                         "Falling back to latest available: %s",
-                        ceiling, category.value, max(available, key=_semver_key),
+                        ceiling,
+                        category.value,
+                        max(available, key=_semver_key),
                     )
 
             resolved_version = max(available, key=_semver_key)
@@ -254,7 +263,9 @@ class _SchemaResolver:
             schema = _SCHEMA_CACHE[(category, resolved_version)]
             logger.info(
                 "Using JobConfigSchema v%s for %s (latest of %d)",
-                resolved_version, category.value, len(available),
+                resolved_version,
+                category.value,
+                len(available),
             )
             return resolved_version, schema
 
@@ -288,9 +299,7 @@ class _SchemaResolver:
         document = response.get("JobConfigSchema", "{}")
         schema = json.loads(document) if isinstance(document, str) else document
         _SCHEMA_CACHE[cache_key] = schema
-        logger.info(
-            "Using JobConfigSchema v%s for %s (pinned)", version, category.value
-        )
+        logger.info("Using JobConfigSchema v%s for %s (pinned)", version, category.value)
         return version, schema
 
     @staticmethod
@@ -337,9 +346,7 @@ class _SchemaResolver:
 
         for prop_name, prop_schema in props.items():
             snake_name = _pascal_to_snake(prop_name)
-            python_type = _SchemaResolver._resolve_type(
-                prop_schema, definitions, ref_cache
-            )
+            python_type = _SchemaResolver._resolve_type(prop_schema, definitions, ref_cache)
 
             default = prop_schema.get("default")
             # For optional fields, ignore schema-declared defaults. The service

@@ -31,6 +31,7 @@ from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
+
 class AIRHub:
     """AI Registry Hub class for managing hub content operations."""
 
@@ -90,7 +91,9 @@ class AIRHub:
         return cls.hubName
 
     @classmethod
-    def _create_airegistry_hub_if_not_exists(cls, client=None, hub_name: Optional[str] = None) -> None:
+    def _create_airegistry_hub_if_not_exists(
+        cls, client=None, hub_name: Optional[str] = None
+    ) -> None:
         """Ensure the target hub exists, creating it on demand if missing.
 
         For the derived AI Registry hub (``hub_name`` omitted), the hub is created
@@ -109,13 +112,9 @@ class AIRHub:
                 client.describe_hub(HubName=hub_name)
             except client.exceptions.ResourceNotFound:
                 try:
-                    logger.info(
-                        "Hub '%s' does not exist; creating it on demand.", hub_name
-                    )
+                    logger.info("Hub '%s' does not exist; creating it on demand.", hub_name)
                     client.create_hub(
-                        HubName=hub_name,
-                        HubDisplayName=hub_name,
-                        HubDescription="AI Registry Hub"
+                        HubName=hub_name, HubDisplayName=hub_name, HubDescription="AI Registry Hub"
                     )
                 except Exception as e:
                     raise RuntimeError(

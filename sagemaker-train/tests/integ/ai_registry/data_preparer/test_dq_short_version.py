@@ -42,6 +42,7 @@ After the fix, ``DqShape.for_version`` extracts the major-version component
 and maps major == 2 to V2DqShape, which accepts ``"2"``, ``"2.0"``, and
 ``"2.0.0"`` interchangeably.
 """
+
 from __future__ import absolute_import
 
 import os

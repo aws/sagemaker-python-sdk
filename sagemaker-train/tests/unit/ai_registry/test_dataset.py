@@ -394,7 +394,10 @@ class TestDataSet:
 
     @pytest.mark.parametrize("document_schema_version", ["3.0.0", "4.0.0", "5.0.0"])
     @patch("sagemaker.ai_registry.air_hub_entity.AIRHub.get_hub_name", return_value="test-hub")
-    @patch("sagemaker.ai_registry.dataset._get_default_s3_prefix", return_value="datasets/ds/20260101_000000.jsonl")
+    @patch(
+        "sagemaker.ai_registry.dataset._get_default_s3_prefix",
+        return_value="datasets/ds/20260101_000000.jsonl",
+    )
     @patch("sagemaker.ai_registry.dataset._get_default_bucket", return_value="test-bucket")
     @patch(
         "sagemaker.train.defaults.TrainDefaults.get_role",
@@ -422,7 +425,9 @@ class TestDataSet:
     ):
         """v3/v4/v5 documents carry DatasetS3Uri pointing at the uploaded object, the
         same location key DataTransformation writes on its output documents."""
-        mock_air_hub.upload_to_s3.return_value = "s3://test-bucket/datasets/ds/20260101_000000.jsonl"
+        mock_air_hub.upload_to_s3.return_value = (
+            "s3://test-bucket/datasets/ds/20260101_000000.jsonl"
+        )
         mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
         mock_air_hub.describe_hub_content.return_value = {
             RESPONSE_KEY_HUB_CONTENT_ARN: "test-arn",
@@ -445,14 +450,14 @@ class TestDataSet:
             f"s3://{document['DatasetS3Bucket']}/{document['DatasetS3Prefix']}"
         )
 
-    @patch('sagemaker.ai_registry.air_hub.AIRHub._create_airegistry_hub_if_not_exists')
-    @patch('sagemaker.ai_registry.dataset._determine_new_version')
-    @patch('sagemaker.ai_registry.dataset._get_default_s3_prefix')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.ai_registry.air_hub.AIRHub.upload_to_s3')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
+    @patch("sagemaker.ai_registry.air_hub.AIRHub._create_airegistry_hub_if_not_exists")
+    @patch("sagemaker.ai_registry.dataset._determine_new_version")
+    @patch("sagemaker.ai_registry.dataset._get_default_s3_prefix")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.ai_registry.air_hub.AIRHub.upload_to_s3")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
     def test_create_with_project_tags_reaches_import_hub_content(
         self,
         mock_validate_format,
@@ -490,12 +495,21 @@ class TestDataSet:
         # The real AIRHub.import_hub_content reads AIRHub.hubName when building
         # the request; set it for this test.
         from sagemaker.ai_registry.air_hub import AIRHub
+
         AIRHub.hubName = "test-hub"
 
         project_tags = [("project", "alpha"), ("team", "ml")]
 
-        with patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session', return_value=mock_session), \
-             patch('sagemaker.train.defaults.TrainDefaults.get_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole"):
+        with (
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+                return_value=mock_session,
+            ),
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_role",
+                return_value="arn:aws:iam::123456789012:role/SageMakerRole",
+            ),
+        ):
             dataset = DataSet.create(
                 name="test-dataset",
                 source="/local/path/file.jsonl",

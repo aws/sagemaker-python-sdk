@@ -205,24 +205,6 @@ Override defaults for a specific job category:
                OutputDataConfig:
                  OutputS3Uri: s3://my-bucket/dq-output/
 
-KmsKeyId
-~~~~~~~~~
-
-Encrypt job output with a customer-managed KMS key:
-
-.. code-block:: yaml
-
-   SageMaker:
-     PythonSDK:
-       Modules:
-         DataPreparer:
-           GlobalDefaults:
-             RoleArn: arn:aws:iam::123456789012:role/SageMakerExecutionRole
-           Job:
-             SyntheticDataGeneration:
-               OutputDataConfig:
-                 KmsKeyId: arn:aws:kms:us-west-2:123456789012:key/abcd-1234
-
 Resolution Chain
 ----------------
 

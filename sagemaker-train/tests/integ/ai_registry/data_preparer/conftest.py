@@ -24,6 +24,7 @@ Prerequisites:
         DATA_PREPARER_INTEG_HUB_NAME   — hub to use for dataset imports/exports
                                           (defaults to the AI Registry hub)
 """
+
 from __future__ import absolute_import
 
 import json
@@ -166,12 +167,14 @@ def import_dataset(sagemaker_session, integ_hub_name):
             HubContentName=f"dt-integ-{uuid.uuid4().hex[:8]}",
             HubContentType="DataSet",
             DocumentSchemaVersion=document_schema_version,
-            HubContentDocument=json.dumps({
-                "DatasetFileFormat": file_format,
-                "DatasetS3Bucket": parsed.netloc,
-                "DatasetS3Prefix": parsed.path.lstrip("/"),
-                "DatasetS3Uri": s3_uri,
-            }),
+            HubContentDocument=json.dumps(
+                {
+                    "DatasetFileFormat": file_format,
+                    "DatasetS3Bucket": parsed.netloc,
+                    "DatasetS3Prefix": parsed.path.lstrip("/"),
+                    "DatasetS3Uri": s3_uri,
+                }
+            ),
             HubContentDescription=f"v{document_schema_version} BYOD dataset for DT integ test",
         )
         return response["HubContentArn"]

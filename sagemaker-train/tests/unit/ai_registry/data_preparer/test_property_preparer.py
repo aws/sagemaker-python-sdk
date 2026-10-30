@@ -17,6 +17,7 @@ Validates:
 - P11: No forbidden fields on the wire (Requirements 6.8, 6.9, 6.10, 6.11, 6.12, 6.13).
 - P14: Discoverability completeness (Requirements 12.1, 12.2, 12.10).
 """
+
 from __future__ import absolute_import
 
 import io
@@ -53,9 +54,7 @@ def _mock_session():
     return s
 
 
-def _make_resolved_dataset(
-    category=JobCategory.SYNTHETIC_DATA_GENERATION, user_payload=None
-):
+def _make_resolved_dataset(category=JobCategory.SYNTHETIC_DATA_GENERATION, user_payload=None):
     cfg = DatasetJobConfig(job_category=category)
     cfg._resolved_schema_version = "1.0.0"
     cfg._resolved_schema = {"properties": {"NumSamples": {"type": "integer"}}}
@@ -170,9 +169,7 @@ class TestPropertyNoForbiddenFieldsOnWire:
     )
     def test_request_has_no_forbidden_fields(self, num_samples, job_name, category):
         dc = DataPreparer(sagemaker_session=_mock_session(), role="arn:role")
-        cfg = _make_resolved_dataset(
-            category=category, user_payload={"NumSamples": num_samples}
-        )
+        cfg = _make_resolved_dataset(category=category, user_payload={"NumSamples": num_samples})
 
         with patch(
             "sagemaker.ai_registry.data_preparer.preparer._get_job_resource"

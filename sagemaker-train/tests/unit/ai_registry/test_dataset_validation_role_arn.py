@@ -22,6 +22,7 @@ Locks in the Phase 4 contract for the ``validation-role-arn-optional`` spec:
   raises ``ValueError`` up-front rather than silently dropping the field --
   otherwise a caller's data-validation opt-in would vanish without notice.
 """
+
 import json
 import tempfile
 import os
@@ -29,21 +30,30 @@ import pytest
 from unittest.mock import Mock, patch
 from sagemaker.ai_registry.dataset import DataSet
 
-
 # Sample RLVR format dataset (GSM8K style) -- mirrors test_dataset_domain_id.py
 SAMPLE_DATASET = {
     "data_source": "openai/gsm8k",
-    "prompt": [{"content": "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May? Let's think step by step and output the final answer after \"####\".", "role": "user"}],
+    "prompt": [
+        {
+            "content": 'Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May? Let\'s think step by step and output the final answer after "####".',  # noqa: E501
+            "role": "user",
+        }
+    ],
     "ability": "math",
     "reward_model": {"ground_truth": "72", "style": "rule"},
-    "extra_info": {"answer": "Natalia sold 48/2 = <<48/2=24>>24 clips in May.\nNatalia sold 48+24 = <<48+24=72>>72 clips altogether in April and May.\n#### 72", "index": 0, "question": "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?", "split": "train"}
+    "extra_info": {
+        "answer": "Natalia sold 48/2 = <<48/2=24>>24 clips in May.\nNatalia sold 48+24 = <<48+24=72>>72 clips altogether in April and May.\n#### 72",  # noqa: E501
+        "index": 0,
+        "question": "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?",  # noqa: E501
+        "split": "train",
+    },
 }
 
 
 @pytest.fixture
 def sample_dataset_file():
     """Create a temporary JSONL file with sample dataset."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
         json.dump(SAMPLE_DATASET, f)
         temp_path = f.name
 
@@ -57,29 +67,36 @@ def sample_dataset_file():
 def _describe_hub_content_response():
     """Standard describe_hub_content mock response used by every test."""
     return {
-        'HubContentName': 'test-dataset',
-        'HubContentArn': 'arn:aws:sagemaker:us-west-2:123:hub-content/test',
-        'HubContentVersion': '1.0.0',
-        'HubContentStatus': 'Available',
-        'CreationTime': '2024-01-01',
-        'LastModifiedTime': '2024-01-01',
-        'HubContentDocument': '{"DatasetS3Bucket": "bucket", "DatasetS3Prefix": "prefix"}'
+        "HubContentName": "test-dataset",
+        "HubContentArn": "arn:aws:sagemaker:us-west-2:123:hub-content/test",
+        "HubContentVersion": "1.0.0",
+        "HubContentStatus": "Available",
+        "CreationTime": "2024-01-01",
+        "LastModifiedTime": "2024-01-01",
+        "HubContentDocument": '{"DatasetS3Bucket": "bucket", "DatasetS3Prefix": "prefix"}',
     }
 
 
 class TestDataSetValidationRoleArn:
     """Test the validation_role_arn kwarg is emitted correctly on the outgoing document."""
 
-    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_validation_role_arn_written_to_document_when_kwarg_supplied(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_domain_id,
-        mock_session, mock_get_bucket, mock_entity_air_hub, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_domain_id,
+        mock_session,
+        mock_get_bucket,
+        mock_entity_air_hub,
+        sample_dataset_file,
     ):
         """When the caller supplies validation_role_arn on v5, the field is written to the document."""
         # Root cause: a local source file causes dataset.py to call _get_default_bucket()
@@ -98,7 +115,7 @@ class TestDataSetValidationRoleArn:
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value=_describe_hub_content_response())
 
-        with patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+        with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
             DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
@@ -108,21 +125,28 @@ class TestDataSetValidationRoleArn:
 
         assert mock_air_hub.import_hub_content.called
         call_args = mock_air_hub.import_hub_content.call_args
-        document_str = call_args[1]['hub_content_document']
+        document_str = call_args[1]["hub_content_document"]
         parsed = json.loads(document_str)
 
         assert parsed["ValidationRoleArn"] == "arn:aws:iam::123456789012:role/dv-role"
 
-    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_validation_role_arn_absent_from_document_when_kwarg_omitted_even_if_role_supplied(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_domain_id,
-        mock_session, mock_get_bucket, mock_entity_air_hub, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_domain_id,
+        mock_session,
+        mock_get_bucket,
+        mock_entity_air_hub,
+        sample_dataset_file,
     ):
         """The SDK does not silently reuse the ``role`` kwarg for ``validation_role_arn``.
 
@@ -144,7 +168,7 @@ class TestDataSetValidationRoleArn:
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value=_describe_hub_content_response())
 
-        with patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+        with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
             DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
@@ -155,24 +179,30 @@ class TestDataSetValidationRoleArn:
 
         assert mock_air_hub.import_hub_content.called
         call_args = mock_air_hub.import_hub_content.call_args
-        document_str = call_args[1]['hub_content_document']
+        document_str = call_args[1]["hub_content_document"]
         parsed = json.loads(document_str)
 
         assert "ValidationRoleArn" not in parsed, (
-            "SDK must not silently fall back from role to validation_role_arn; got: "
-            + document_str
+            "SDK must not silently fall back from role to validation_role_arn; got: " + document_str
         )
 
-    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_validation_role_arn_empty_string_is_forwarded_to_document(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_domain_id,
-        mock_session, mock_get_bucket, mock_entity_air_hub, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_domain_id,
+        mock_session,
+        mock_get_bucket,
+        mock_entity_air_hub,
+        sample_dataset_file,
     ):
         """An empty-string ``validation_role_arn`` is forwarded to the document verbatim.
 
@@ -195,7 +225,7 @@ class TestDataSetValidationRoleArn:
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value=_describe_hub_content_response())
 
-        with patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+        with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
             DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
@@ -205,25 +235,32 @@ class TestDataSetValidationRoleArn:
 
         assert mock_air_hub.import_hub_content.called
         call_args = mock_air_hub.import_hub_content.call_args
-        document_str = call_args[1]['hub_content_document']
+        document_str = call_args[1]["hub_content_document"]
         parsed = json.loads(document_str)
 
         assert "ValidationRoleArn" in parsed, (
             "empty string must be forwarded, not omitted -- Hub rejects it via its own"
             " syntax validator; got: " + document_str
         )
-        assert parsed["ValidationRoleArn"] == "", (
-            "empty string must be forwarded verbatim; got value: "
-            + repr(parsed.get("ValidationRoleArn"))
+        assert (
+            parsed["ValidationRoleArn"] == ""
+        ), "empty string must be forwarded verbatim; got value: " + repr(
+            parsed.get("ValidationRoleArn")
         )
 
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_validation_role_arn_on_v3_schema_raises_ValueError(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_domain_id, mock_session, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_domain_id,
+        mock_session,
+        sample_dataset_file,
     ):
         """v3 schema has no ValidationRoleArn slot; the SDK must fail loudly rather than silently drop.
 
@@ -249,13 +286,19 @@ class TestDataSetValidationRoleArn:
         mock_air_hub.upload_to_s3.assert_not_called()
         mock_air_hub.import_hub_content.assert_not_called()
 
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_validation_role_arn_on_v2_schema_raises_ValueError(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_domain_id, mock_session, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_domain_id,
+        mock_session,
+        sample_dataset_file,
     ):
         """v2 legacy schema has no ValidationRoleArn slot; same fail-loud contract as v3."""
         mock_get_domain_id.return_value = None
@@ -277,16 +320,23 @@ class TestDataSetValidationRoleArn:
         mock_air_hub.upload_to_s3.assert_not_called()
         mock_air_hub.import_hub_content.assert_not_called()
 
-    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_validation_role_arn_written_on_v4_schema(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_domain_id,
-        mock_session, mock_get_bucket, mock_entity_air_hub, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_domain_id,
+        mock_session,
+        mock_get_bucket,
+        mock_entity_air_hub,
+        sample_dataset_file,
     ):
         """On the v4 schema, validation_role_arn is emitted just like on v5."""
         mock_get_bucket.return_value = "test-bucket"
@@ -301,7 +351,7 @@ class TestDataSetValidationRoleArn:
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value=_describe_hub_content_response())
 
-        with patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+        with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
             DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
@@ -311,21 +361,28 @@ class TestDataSetValidationRoleArn:
 
         assert mock_air_hub.import_hub_content.called
         call_args = mock_air_hub.import_hub_content.call_args
-        document_str = call_args[1]['hub_content_document']
+        document_str = call_args[1]["hub_content_document"]
         parsed = json.loads(document_str)
 
         assert parsed["ValidationRoleArn"] == "arn:aws:iam::123456789012:role/dv-role"
 
-    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_validation_role_arn_written_on_default_schema_version(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_domain_id,
-        mock_session, mock_get_bucket, mock_entity_air_hub, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_domain_id,
+        mock_session,
+        mock_get_bucket,
+        mock_entity_air_hub,
+        sample_dataset_file,
     ):
         """The default ``document_schema_version`` accepts ``validation_role_arn``.
 
@@ -347,7 +404,7 @@ class TestDataSetValidationRoleArn:
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value=_describe_hub_content_response())
 
-        with patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+        with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
             DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
@@ -357,7 +414,7 @@ class TestDataSetValidationRoleArn:
 
         assert mock_air_hub.import_hub_content.called
         call_args = mock_air_hub.import_hub_content.call_args
-        document_str = call_args[1]['hub_content_document']
+        document_str = call_args[1]["hub_content_document"]
         parsed = json.loads(document_str)
 
         assert parsed["ValidationRoleArn"] == "arn:aws:iam::123456789012:role/dv-role", (
@@ -381,14 +438,21 @@ class TestDataSetValidationRoleArnRequiredForKnownFormat:
         "file_format",
         ["Bedrock_Converse", "HF_Prompt_Completion", "HF_Preference", "Verl", "Nova_PPO"],
     )
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_known_format_without_validation_role_arn_raises_ValueError(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_domain_id,
-        mock_session, sample_dataset_file, file_format, schema_version
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_domain_id,
+        mock_session,
+        sample_dataset_file,
+        file_format,
+        schema_version,
     ):
         """A known format with no validation_role_arn on v4/v5 raises up-front."""
         mock_get_domain_id.return_value = None
@@ -410,19 +474,27 @@ class TestDataSetValidationRoleArnRequiredForKnownFormat:
         mock_air_hub.upload_to_s3.assert_not_called()
         mock_air_hub.import_hub_content.assert_not_called()
 
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset._get_default_s3_prefix')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset._get_default_s3_prefix")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_custom_format_without_validation_role_arn_is_allowed(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_bucket,
-        mock_get_prefix, mock_get_domain_id, mock_entity_air_hub, mock_session, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_bucket,
+        mock_get_prefix,
+        mock_get_domain_id,
+        mock_entity_air_hub,
+        mock_session,
+        sample_dataset_file,
     ):
-        """"Custom" opts out of format validation, so no validation_role_arn is required."""
+        """ "Custom" opts out of format validation, so no validation_role_arn is required."""
         mock_get_domain_id.return_value = None
         mock_get_bucket.return_value = "test-bucket"
         mock_get_prefix.return_value = "datasets/test-dataset"
@@ -436,7 +508,7 @@ class TestDataSetValidationRoleArnRequiredForKnownFormat:
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value=_describe_hub_content_response())
 
-        with patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+        with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
             DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
@@ -447,17 +519,25 @@ class TestDataSetValidationRoleArnRequiredForKnownFormat:
 
         assert mock_air_hub.import_hub_content.called
 
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset._get_default_s3_prefix')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset._get_default_s3_prefix")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_default_format_without_validation_role_arn_is_allowed(
-        self, mock_get_role, mock_get_session, mock_air_hub, mock_get_bucket,
-        mock_get_prefix, mock_get_domain_id, mock_entity_air_hub, mock_session, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_air_hub,
+        mock_get_bucket,
+        mock_get_prefix,
+        mock_get_domain_id,
+        mock_entity_air_hub,
+        mock_session,
+        sample_dataset_file,
     ):
         """dataset_file_format defaults to "Custom", so omitting it needs no role."""
         mock_get_domain_id.return_value = None
@@ -473,7 +553,7 @@ class TestDataSetValidationRoleArnRequiredForKnownFormat:
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value=_describe_hub_content_response())
 
-        with patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+        with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
             DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
@@ -483,19 +563,27 @@ class TestDataSetValidationRoleArnRequiredForKnownFormat:
 
         assert mock_air_hub.import_hub_content.called
 
-    @patch('sagemaker.core.helper.session_helper.Session')
-    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub')
-    @patch('sagemaker.ai_registry.dataset._get_current_domain_id')
-    @patch('sagemaker.ai_registry.dataset._get_default_s3_prefix')
-    @patch('sagemaker.ai_registry.dataset._get_default_bucket')
-    @patch('sagemaker.ai_registry.dataset.AIRHub')
-    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
-    @patch('sagemaker.train.defaults.TrainDefaults.get_role')
+    @patch("sagemaker.core.helper.session_helper.Session")
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset._get_default_s3_prefix")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.ai_registry.dataset.AIRHub")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_role")
     def test_known_format_with_validation_role_arn_is_allowed(
-        self, mock_get_role, mock_get_session, mock_validate_format, mock_air_hub,
-        mock_get_bucket, mock_get_prefix, mock_get_domain_id, mock_entity_air_hub,
-        mock_session, sample_dataset_file
+        self,
+        mock_get_role,
+        mock_get_session,
+        mock_validate_format,
+        mock_air_hub,
+        mock_get_bucket,
+        mock_get_prefix,
+        mock_get_domain_id,
+        mock_entity_air_hub,
+        mock_session,
+        sample_dataset_file,
     ):
         """A known format with validation_role_arn supplied proceeds and emits the field."""
         mock_get_domain_id.return_value = None
@@ -512,7 +600,7 @@ class TestDataSetValidationRoleArnRequiredForKnownFormat:
         mock_air_hub.import_hub_content = Mock()
         mock_air_hub.describe_hub_content = Mock(return_value=_describe_hub_content_response())
 
-        with patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+        with patch("sagemaker.ai_registry.dataset.DataSet.wait"):
             DataSet.create(
                 name="test-dataset",
                 source=sample_dataset_file,
@@ -523,6 +611,6 @@ class TestDataSetValidationRoleArnRequiredForKnownFormat:
 
         assert mock_air_hub.import_hub_content.called
         call_args = mock_air_hub.import_hub_content.call_args
-        parsed = json.loads(call_args[1]['hub_content_document'])
+        parsed = json.loads(call_args[1]["hub_content_document"])
         assert parsed["ValidationRoleArn"] == "arn:aws:iam::123456789012:role/dv-role"
         assert parsed["DatasetFileFormat"] == "Verl"

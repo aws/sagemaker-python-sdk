@@ -14,6 +14,7 @@
 
 PRIVATE — not exported from sagemaker.ai_registry.__init__.
 """
+
 from __future__ import absolute_import
 
 from typing import Any

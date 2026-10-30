@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for DatasetJobConfig.schema / print_schema and the schema renderer."""
+
 from __future__ import absolute_import
 
 import json
@@ -160,6 +161,7 @@ class TestSchemaMethodMove:
         # Pydantic BaseModel has a .schema() classmethod (deprecated v2 compat),
         # so we check that DataPreparer's schema is NOT our custom one (no category param).
         import inspect
+
         if hasattr(DataPreparer, "schema"):
             sig = inspect.signature(DataPreparer.schema)
             assert "category" not in sig.parameters
@@ -445,9 +447,7 @@ class TestDeepNesting:
                 },
                 "C": {
                     "type": "object",
-                    "properties": {
-                        "Leaf": {"type": "integer", "description": "4 levels deep."}
-                    },
+                    "properties": {"Leaf": {"type": "integer", "description": "4 levels deep."}},
                     "required": ["Leaf"],
                 },
             },
@@ -594,10 +594,10 @@ class TestRequiredFields:
         schema = {
             "properties": {
                 "DatasetName": {"type": "string"},
-                "KmsKeyId": {"type": "string"},
+                "HubName": {"type": "string"},
                 "S3Uri": {"type": "string"},
             },
-            "required": ["DatasetName", "KmsKeyId", "S3Uri"],
+            "required": ["DatasetName", "HubName", "S3Uri"],
         }
         mock_client = _setup_mock(schema)
         with patch.object(_SchemaResolver, "_client", return_value=mock_client):
@@ -605,7 +605,7 @@ class TestRequiredFields:
                 JobCategory.SYNTHETIC_DATA_GENERATION,
                 sagemaker_session=_mock_session(),
             )
-        assert result == ["dataset_name", "kms_key_id", "s3_uri"]
+        assert result == ["dataset_name", "hub_name", "s3_uri"]
 
     def test_ordering_preserved_non_alphabetical(self):
         """Ordering must match schema declaration, not alphabetical sort."""

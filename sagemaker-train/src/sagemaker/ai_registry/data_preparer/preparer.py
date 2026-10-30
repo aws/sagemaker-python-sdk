@@ -10,8 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""DataPreparer — data preparation via SyntheticDataGeneration, DataQualityEvaluation,
-DataTransformation, and GapAnalysis.
+"""DataPreparer: submit and track SageMaker data preparation jobs.
+
+Covers SyntheticDataGeneration, DataQualityEvaluation, and DataTransformation.
 
 The bound-vs-unbound dispatch uses a descriptor class so both
 `DataPreparer.generate(dataset, ...)` (classmethod-style) and
@@ -19,6 +20,7 @@ The bound-vs-unbound dispatch uses a descriptor class so both
 
 Feature.DATA_PREPARATION = 22 is defined in sagemaker-core's Feature enum.
 """
+
 from __future__ import absolute_import
 
 import functools
@@ -42,7 +44,6 @@ from sagemaker.ai_registry.data_preparer.exceptions import (
     DataPreparerJobStoppedError,
     DataPreparerJobTimeoutError,
 )
-from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.jumpstart.hub.utils import get_info_from_hub_resource_arn
 from sagemaker.core.shapes import Tag
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
@@ -55,10 +56,6 @@ logger = logging.getLogger(__name__)
 # Largest output object the empty-output check will read. Anything bigger is
 # treated as non-empty so completed jobs never trigger a large download.
 _EMPTY_CHECK_MAX_BYTES = 64 * 1024
-
-# Upper bound on S3 listing pages when locating a DQ job's records under its
-# output folder (1,000 keys per page); keeps the best-effort lookup bounded.
-_OUTPUT_LIST_MAX_PAGES = 10
 
 
 def _parse_dataset_arn(arn: str) -> Tuple[str, Optional[str], Optional[str]]:
@@ -95,6 +92,7 @@ def _get_job_resource():
     sagemaker.core.resources.Job covers the API fields but not this behavior.
     """
     from sagemaker.ai_registry.data_preparer._job_resource import Job
+
     return Job
 
 
@@ -258,6 +256,8 @@ class DataPreparer(BaseModel):
                 a default session is created.
 
         Returns:
+            The result, depending on ``wait`` and the job state:
+
             - If ``wait=False``: the ``Job`` handle (call ``.wait()`` or
               ``.refresh()`` to poll).
             - If ``wait=True`` and the job completed: a ``DataSet`` (for SDG,
@@ -297,7 +297,9 @@ class DataPreparer(BaseModel):
 
         logger.info(
             "Re-attached to %s job '%s' (status: %s).",
-            job_category, job_name, job.job_status,
+            job_category,
+            job_name,
+            job.job_status,
         )
 
         if not wait:
@@ -708,6 +710,10 @@ class DataPreparer(BaseModel):
     ):
         """Submit a GapAnalysis job.
 
+        Not exposed publicly yet: ``DataPreparer.analyze`` is disabled until
+        GapAnalysis is available. The call shapes below apply once it is
+        re-enabled.
+
         Analyzes the results of a completed model-evaluation job to identify
         where the model underperforms. Two equivalent call shapes, as for
         :attr:`generate`::
@@ -734,8 +740,7 @@ class DataPreparer(BaseModel):
                   ARN of one completed ``GenAIEvaluation`` job.
                 * ``key_metrics`` (required): a list holding the name of one
                   metric to optimize (the primary metric).
-                * ``output_data_config`` (required): ``{"S3OutputPath": ...}``,
-                  optionally with ``KmsKeyId``.
+                * ``output_data_config`` (required): ``{"S3OutputPath": ...}``.
                 * ``data_quality_evaluation_job_arn`` (optional): the ARN of a
                   completed ``DataQualityEvaluation`` job, used as quality
                   signals.
@@ -799,9 +804,9 @@ class DataPreparer(BaseModel):
     # this as a method and reads __doc__ (the impl's) rather than this
     # attribute docstring.
 
-    analyze = _DualCallable(_analyze_impl)
-    """Submit a GapAnalysis job. See :attr:`generate` for both
-    call shapes and the intelligent-defaults story."""
+    # GapAnalysis is not yet available, so ``analyze`` is not exposed.
+    # _analyze_impl is kept so it can be re-enabled by restoring:
+    #     analyze = _DualCallable(_analyze_impl)
 
     @runnable_by_pipeline
     def _run(
@@ -822,14 +827,12 @@ class DataPreparer(BaseModel):
             raise DataPreparerConfigurationError(
                 f"dataset.job_category={dataset.job_category.value} does not match "
                 f"the method-implied category={category.value}. "
-                f"Use DataPreparer.generate() for SDG, DataPreparer.evaluate() for DQ, "
-                f"DataPreparer.transform() for DT and DataPreparer.analyze() for GapAnalysis."
+                f"Use DataPreparer.generate() for SDG, DataPreparer.evaluate() for DQ "
+                f"and DataPreparer.transform() for DT."
             )
 
         # Resolve session
-        self.sagemaker_session = DataPreparerDefaults.get_sagemaker_session(
-            self.sagemaker_session
-        )
+        self.sagemaker_session = DataPreparerDefaults.get_sagemaker_session(self.sagemaker_session)
 
         # Resolve envelope-level RoleArn through SageMakerConfig + well-known
         # fallback (Req 4.4/4.5). The per-property schema walk inside
@@ -857,9 +860,7 @@ class DataPreparer(BaseModel):
                 job_category=category.value,
                 schema_version=dataset.resolved_schema_version,
                 job_config=dataset.job_config_dict(),
-                customer_details=DataPreparerDefaults.get_customer_details(
-                    self.sagemaker_session
-                ),
+                customer_details=DataPreparerDefaults.get_customer_details(self.sagemaker_session),
                 tags=[Tag(**t) if isinstance(t, dict) else t for t in tags] if tags else None,
             )
 
@@ -944,9 +945,7 @@ class DataPreparer(BaseModel):
                 )
         else:
             if logs:
-                logger.warning(
-                    "Not displaying the job logs as 'wait' is set to False."
-                )
+                logger.warning("Not displaying the job logs as 'wait' is set to False.")
             # Asynchronous (wait=False): return the Job handle so the caller can poll or
             # wait on it later, or persist its name and re-attach by name.
             return job
@@ -972,10 +971,15 @@ class DataPreparer(BaseModel):
         user_payload = dict(dataset.model_extra or {})
         effective_base = base_job_name or self.base_job_name
         resolved_name = DataPreparerDefaults.resolve_job_name(
-            job_name, effective_base, category, user_payload,
+            job_name,
+            effective_base,
+            category,
+            user_payload,
         )
         resolved_arn = DataPreparerDefaults.build_job_arn(
-            category, resolved_name, self.sagemaker_session,
+            category,
+            resolved_name,
+            self.sagemaker_session,
         )
         customer_details = DataPreparerDefaults.get_customer_details(self.sagemaker_session)
 
@@ -1038,9 +1042,7 @@ class DataPreparer(BaseModel):
         self._latest_job = job
         job_arn = getattr(job, "job_arn", resolved_name)
         logger.info("Job created: %s", job_arn)
-        logger.info(
-            "To re-attach after a restart: DataPreparer.attach(\"%s\")", job_arn
-        )
+        logger.info('To re-attach after a restart: DataPreparer.attach("%s")', job_arn)
         return job
 
     def _rehydrate_datasets(self, job, category: JobCategory):
@@ -1101,22 +1103,21 @@ class DataPreparer(BaseModel):
             )
         return datasets
 
-    def _resolve_output_records_uri(self, dataset, category: JobCategory, job=None) -> Optional[str]:
+    def _resolve_output_records_uri(
+        self, dataset, category: JobCategory, job=None
+    ) -> Optional[str]:
         """Return the S3 URI of the JSONL file holding a completed job's output records.
 
         Best-effort: returns ``None`` when the location cannot be determined.
 
         * SyntheticDataGeneration: ``<dataset.source>/output_samples.jsonl``.
         * DataQualityEvaluation: the scored records file
-          (``record_level/evaluated_data.jsonl``). When a job is supplied it is
-          resolved under ``OutputDataConfig.S3OutputPath`` from the job config
-          document; otherwise (or if nothing matches) the legacy source-based path.
+          (``record_level/evaluated_data.jsonl``). When a job is supplied it is the
+          one in the job's own output folder, the folder of ``MetadataS3Uri`` in the
+          job config document; otherwise the legacy source-based path.
         * DataTransformation: the output dataset's ``source`` object itself, when it
           is a text records file (``.jsonl``, ``.json`` or ``.csv``).
         """
-        from urllib.parse import urlparse
-        import boto3
-
         source = getattr(dataset, "source", None)
         if not source or not isinstance(source, str) or not source.startswith("s3://"):
             return None
@@ -1125,49 +1126,13 @@ class DataPreparer(BaseModel):
             return source if source.lower().endswith((".jsonl", ".json", ".csv")) else None
 
         if category == JobCategory.DATA_QUALITY_EVALUATION and job is not None:
-            schema_version = getattr(job, "job_config_schema_version", None)
-            shape = DqShape.for_version(schema_version)
-            document_str = getattr(job, "job_config_document", None) or "{}"
             try:
-                document = json.loads(document_str)
+                document = json.loads(getattr(job, "job_config_document", None) or "{}")
             except Exception:  # pylint: disable=broad-except
                 document = {}
-            output_s3_uri = shape.extract_output_s3_uri(document)
-            if output_s3_uri:
-                job_name = getattr(job, "job_name", None)
-                parsed_out = urlparse(output_s3_uri)
-                bucket_out = parsed_out.netloc
-                prefix_out = parsed_out.path.lstrip("/")
-                # The service writes each job under "<S3OutputPath>/<job_name>-<timestamp>/".
-                # List under the job's own folder rather than the shared output path, so
-                # a path reused across many jobs can't push this job past the first page.
-                if job_name:
-                    if prefix_out and not prefix_out.endswith("/"):
-                        prefix_out += "/"
-                    list_prefix = prefix_out + job_name
-                else:
-                    list_prefix = prefix_out
-                s3_list = boto3.client("s3", region_name=self.sagemaker_session.boto_region_name)
-                try:
-                    candidates = []
-                    list_kwargs = {"Bucket": bucket_out, "Prefix": list_prefix}
-                    for _ in range(_OUTPUT_LIST_MAX_PAGES):
-                        listing = s3_list.list_objects_v2(**list_kwargs)
-                        candidates.extend(
-                            o["Key"]
-                            for o in listing.get("Contents", []) or []
-                            if o["Key"].endswith("record_level/evaluated_data.jsonl")
-                            and (job_name is None or job_name in o["Key"])
-                        )
-                        token = listing.get("NextContinuationToken")
-                        if not listing.get("IsTruncated") or not token:
-                            break
-                        list_kwargs["ContinuationToken"] = token
-                    if candidates:
-                        # Most recent entry (last alphabetically under the prefix)
-                        return f"s3://{bucket_out}/{sorted(candidates)[-1]}"
-                except Exception:  # pylint: disable=broad-except
-                    pass
+            metadata_s3_uri = document.get("MetadataS3Uri") if isinstance(document, dict) else None
+            if isinstance(metadata_s3_uri, str) and metadata_s3_uri.startswith("s3://"):
+                return metadata_s3_uri.rsplit("/", 1)[0] + "/record_level/evaluated_data.jsonl"
 
         # Legacy / fallback path
         if category == JobCategory.SYNTHETIC_DATA_GENERATION:
@@ -1246,10 +1211,10 @@ class DataPreparer(BaseModel):
 
         Best-effort: silently returns on any failure (missing file, permissions, etc.).
 
-        For DataQualityEvaluation, the output file is resolved from
-        ``OutputDataConfig.S3OutputPath`` in the job config document when a job
-        is supplied; falls back to the legacy source-based path when the job is
-        unavailable or the listing finds no matching file.
+        For DataQualityEvaluation, the output file is the one in the job's own
+        output folder, the folder of ``MetadataS3Uri``, when a job is supplied;
+        falls back to the legacy source-based path when the job is unavailable or
+        its config document has no ``MetadataS3Uri``.
         """
         n = min(n, 20)
         try:
@@ -1281,6 +1246,7 @@ class DataPreparer(BaseModel):
             print(f"\nPreview ({len(df)} records from {jsonl_uri}):\n")
             try:
                 from IPython.display import display
+
                 display(df)
             except ImportError:
                 print(df.to_string())
@@ -1315,19 +1281,18 @@ class DataPreparer(BaseModel):
                 return None
 
             import boto3
-            rest = source[len("s3://"):].rstrip("/")
+
+            rest = source[len("s3://") :].rstrip("/")
             slash = rest.index("/")
             bucket = rest[:slash]
-            prefix = rest[slash + 1:]
+            prefix = rest[slash + 1 :]
 
             s3 = boto3.client("s3", region_name=self.sagemaker_session.boto_region_name)
 
             # List objects under the prefix to find the JSONL file
             listing = s3.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=50)
             objects = listing.get("Contents", []) or []
-            target = next(
-                (o["Key"] for o in objects if o["Key"].endswith(".jsonl")), None
-            )
+            target = next((o["Key"] for o in objects if o["Key"].endswith(".jsonl")), None)
             if not target:
                 # Prefix itself might be the file
                 target = prefix if prefix.endswith(".jsonl") else None
@@ -1345,4 +1310,3 @@ class DataPreparer(BaseModel):
         except Exception as e:
             logger.debug("Failed to count input dataset records: %s", e)
             return None
-

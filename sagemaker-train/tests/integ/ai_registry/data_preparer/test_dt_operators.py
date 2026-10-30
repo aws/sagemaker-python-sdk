@@ -28,6 +28,7 @@ than invented, and the payload envelope respects its documented limits:
 ``InputDataConfig`` holds at most 2 entries and ``Operations`` holds exactly 1
 (the service accepts one operation per job).
 """
+
 from __future__ import absolute_import
 
 import json
@@ -46,6 +47,10 @@ from sagemaker.ai_registry import (
     JobCategory,
 )
 from sagemaker.ai_registry.data_preparer.exceptions import DataPreparerError
+
+# Submits real jobs and waits for them: scheduled CI only, not PR checks
+# (see the gpu_intensive marker in sagemaker-train/pyproject.toml).
+pytestmark = pytest.mark.gpu_intensive
 
 
 def _read_rows(s3_uri, region):
@@ -101,15 +106,17 @@ class TestDedupOperators:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "ExactDedup",
-                    # Normalize stays False: for small inputs the service raises
-                    # NotImplementedError for Normalize=True, and the service-side
-                    # schema for ExactDedup is additionalProperties=false with only
-                    # TextField and Normalize — EmitEvidence would be rejected at
-                    # CreateJob even though the execution layer accepts it.
-                    "Config": {"TextField": "prompt", "Normalize": False},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "ExactDedup",
+                        # Normalize stays False: for small inputs the service raises
+                        # NotImplementedError for Normalize=True, and the service-side
+                        # schema for ExactDedup is additionalProperties=false with only
+                        # TextField and Normalize — EmitEvidence would be rejected at
+                        # CreateJob even though the execution layer accepts it.
+                        "Config": {"TextField": "prompt", "Normalize": False},
+                    }
+                ],
             },
         )
         result = preparer.transform(dataset)
@@ -134,15 +141,17 @@ class TestDedupOperators:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "FuzzyDedup",
-                    "Config": {
-                        "TextField": "prompt",
-                        "JaccardThreshold": 0.8,
-                        "NumPerm": 128,
-                        "NgramSize": 5,
-                    },
-                }],
+                "Operations": [
+                    {
+                        "Operator": "FuzzyDedup",
+                        "Config": {
+                            "TextField": "prompt",
+                            "JaccardThreshold": 0.8,
+                            "NumPerm": 128,
+                            "NgramSize": 5,
+                        },
+                    }
+                ],
             },
         )
         result = preparer.transform(dataset)
@@ -172,13 +181,15 @@ class TestSplitOperator:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "Split",
-                    # Ratios is the only required key; it must have >= 2 entries and
-                    # sum to 1.0. The service guarantees every split gets at least
-                    # one record and gives the last split the remainder.
-                    "Config": {"Ratios": {"train": 0.8, "test": 0.2}, "Seed": 42},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "Split",
+                        # Ratios is the only required key; it must have >= 2 entries and
+                        # sum to 1.0. The service guarantees every split gets at least
+                        # one record and gives the last split the remainder.
+                        "Config": {"Ratios": {"train": 0.8, "test": 0.2}, "Seed": 42},
+                    }
+                ],
             },
         )
         result = preparer.transform(dataset)
@@ -192,9 +203,9 @@ class TestSplitOperator:
 
         # A6: every split output has >= 1 record and the total equals the
         # input count (5 rows in byod_training_sft.jsonl).
-        assert all(c >= 1 for c in counts), (
-            f"A6: all split outputs must have >= 1 record; got counts={counts}"
-        )
+        assert all(
+            c >= 1 for c in counts
+        ), f"A6: all split outputs must have >= 1 record; got counts={counts}"
         assert sum(counts) == 5, (
             f"A6: split output record counts must sum to input count 5; "
             f"got {sum(counts)} from counts={counts}"
@@ -277,10 +288,12 @@ class TestDTSplitThenMerge:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "Split",
-                    "Config": {"Ratios": {"train": 0.8, "test": 0.2}, "Seed": 42},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "Split",
+                        "Config": {"Ratios": {"train": 0.8, "test": 0.2}, "Seed": 42},
+                    }
+                ],
             },
         )
         result = preparer.transform(dataset)
@@ -296,9 +309,7 @@ class TestDTSplitThenMerge:
         # is a sufficient handle — which is the point of the chain.
         TestDTSplitThenMerge._split_arns = [ds.arn for ds in result]
 
-    def test_02_merge_recombines_split_outputs(
-        self, preparer, output_path, sagemaker_session
-    ):
+    def test_02_merge_recombines_split_outputs(self, preparer, output_path, sagemaker_session):
         """Merging the two halves recovers the original 5 rows.
 
         Note there is no ``import_dataset`` here — the inputs are the previous
@@ -349,10 +360,12 @@ class TestSchemaOperators:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "SchemaConversion",
-                    "Config": {"TargetFormat": "OpenAI_Messages"},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "SchemaConversion",
+                        "Config": {"TargetFormat": "OpenAI_Messages"},
+                    }
+                ],
             },
         )
         result = preparer.transform(dataset)
@@ -382,10 +395,12 @@ class TestSchemaOperators:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "SchemaFilter",
-                    "Config": {"ExpectedFormat": "HF_Prompt_Completion"},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "SchemaFilter",
+                        "Config": {"ExpectedFormat": "HF_Prompt_Completion"},
+                    }
+                ],
             },
         )
         result = preparer.transform(dataset)
@@ -416,12 +431,14 @@ class TestCustomCodeOperators:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "BYOC",
-                    "Config": {
-                        "TransformationCodeS3Uri": s3_fixtures["dt_byoc_transformer.py"],
-                    },
-                }],
+                "Operations": [
+                    {
+                        "Operator": "BYOC",
+                        "Config": {
+                            "TransformationCodeS3Uri": s3_fixtures["dt_byoc_transformer.py"],
+                        },
+                    }
+                ],
             },
         )
         result = preparer.transform(dataset)
@@ -449,13 +466,15 @@ class TestCustomCodeOperators:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "CodeGen",
-                    "Config": {
-                        "SpecificationS3Uri": s3_fixtures["dt_codegen_spec.md"],
-                        "AutoExecute": True,
-                    },
-                }],
+                "Operations": [
+                    {
+                        "Operator": "CodeGen",
+                        "Config": {
+                            "SpecificationS3Uri": s3_fixtures["dt_codegen_spec.md"],
+                            "AutoExecute": True,
+                        },
+                    }
+                ],
             },
         )
         result = preparer.transform(dataset)
@@ -516,9 +535,9 @@ class TestFailurePaths:
 
         message = str(exc_info.value)
         assert "NotARealOperator" in message
-        assert "TextQualityFilter" in message, (
-            f"Error should list supported operators, got: {message}"
-        )
+        assert (
+            "TextQualityFilter" in message
+        ), f"Error should list supported operators, got: {message}"
 
     def test_misspelled_config_key_is_rejected_by_name(
         self, preparer, s3_fixtures, import_dataset, output_path
@@ -548,10 +567,12 @@ class TestFailurePaths:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "FuzzyDedup",
-                    "Config": {"TextField": "prompt", "Threshold": 0.8},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "FuzzyDedup",
+                        "Config": {"TextField": "prompt", "Threshold": 0.8},
+                    }
+                ],
             },
         )
 
@@ -569,12 +590,10 @@ class TestFailurePaths:
         #    defined in the schema and the schema does not allow additional
         #    properties"
         message = str(exc_info.value)
-        assert "Threshold" in message, (
-            f"Error should name the rejected Config key, got: {message}"
-        )
-        assert "FuzzyDedup" in message, (
-            f"Error should name the operator whose schema rejected it, got: {message}"
-        )
+        assert "Threshold" in message, f"Error should name the rejected Config key, got: {message}"
+        assert (
+            "FuzzyDedup" in message
+        ), f"Error should name the operator whose schema rejected it, got: {message}"
 
 
 @pytest.mark.integ
@@ -628,12 +647,12 @@ class TestDocumentedConstraints:
             preparer.transform(dataset)
 
         message = str(exc_info.value)
-        assert "Merge" in message, (
-            f"Error should name the operator whose schema rejected it, got: {message}"
-        )
-        assert "Config" in message, (
-            f"Error should say the operator's Config was rejected, got: {message}"
-        )
+        assert (
+            "Merge" in message
+        ), f"Error should name the operator whose schema rejected it, got: {message}"
+        assert (
+            "Config" in message
+        ), f"Error should say the operator's Config was rejected, got: {message}"
         # The error used to name the rejected key ("OutputName"), which is what lets
         # a customer fix a typo without guesswork. The service's current message
         # ("Merge operator does not accept Config parameters. Contact support ...")
@@ -687,9 +706,9 @@ class TestDocumentedConstraints:
 
         error = exc_info.value.response["Error"]
         assert error["Code"] == "ValidationException", f"got: {error}"
-        assert "one operation" in error["Message"], (
-            f"Error should state the one-operation limit, got: {error['Message']}"
-        )
+        assert (
+            "one operation" in error["Message"]
+        ), f"Error should state the one-operation limit, got: {error['Message']}"
 
     def test_schema_conversion_to_the_source_format_fails(
         self, preparer, s3_fixtures, import_dataset, output_path
@@ -715,10 +734,12 @@ class TestDocumentedConstraints:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "SchemaConversion",
-                    "Config": {"TargetFormat": "HF_Prompt_Completion"},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "SchemaConversion",
+                        "Config": {"TargetFormat": "HF_Prompt_Completion"},
+                    }
+                ],
             },
         )
 
@@ -762,10 +783,12 @@ class TestDocumentedConstraints:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "ExactDedup",
-                    "Config": {"TextField": "prompt", "Normalize": True},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "ExactDedup",
+                        "Config": {"TextField": "prompt", "Normalize": True},
+                    }
+                ],
             },
         )
 
@@ -818,10 +841,12 @@ class TestWaitLogsFiltering:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "ExactDedup",
-                    "Config": {"TextField": "prompt", "Normalize": False},
-                }],
+                "Operations": [
+                    {
+                        "Operator": "ExactDedup",
+                        "Config": {"TextField": "prompt", "Normalize": False},
+                    }
+                ],
             },
         )
 
@@ -877,15 +902,17 @@ class TestEmptyOutput:
             input_data_config=[{"DatasetArn": input_arn}],
             output_data_config={"S3OutputPath": output_path},
             transformation_config={
-                "Operations": [{
-                    "Operator": "TextQualityFilter",
-                    "Config": {
-                        "FilterType": "CharacterLength",
-                        "TextField": "prompt",
-                        "Action": "drop",
-                        "MinLength": 200,  # above all 5 rows (max 178 chars)
-                    },
-                }],
+                "Operations": [
+                    {
+                        "Operator": "TextQualityFilter",
+                        "Config": {
+                            "FilterType": "CharacterLength",
+                            "TextField": "prompt",
+                            "Action": "drop",
+                            "MinLength": 200,  # above all 5 rows (max 178 chars)
+                        },
+                    }
+                ],
             },
         )
 
@@ -903,9 +930,9 @@ class TestEmptyOutput:
         record_property("zero_row_outcome", "completed")
 
         # Job completed — every returned DataSet must have 0 records.
-        assert isinstance(result, list), (
-            f"B3: transform must return a list; got {type(result).__name__}"
-        )
+        assert isinstance(
+            result, list
+        ), f"B3: transform must return a list; got {type(result).__name__}"
         for ds in result:
             rows = _read_rows(ds.source, sagemaker_session.boto_region_name)
             assert len(rows) == 0, (
@@ -914,9 +941,7 @@ class TestEmptyOutput:
             )
         # A4: a completed job with no output records must not look like real
         # output — the SDK warns, naming the empty output object.
-        warnings = [
-            r.getMessage() for r in caplog.records if r.levelno == logging.WARNING
-        ]
+        warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
         for ds in result:
             assert any("no records" in w and ds.source in w for w in warnings), (
                 f"A4: expected an empty-output warning for {ds.source!r}; "
