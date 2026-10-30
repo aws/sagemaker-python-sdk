@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.28.0 (2026-10-29)
+
+### Bug Fixes
+
+- fix: close the remaining gaps in optional torch support (#6531)
+- fix(serve): pin pandas below 3.1.0 to unblock serve unit tests (#6524)
+- fix(serve): decouple the SMD orchestrator entrypoint from the container's sagemaker (#6200) (#6534)
+
+
 ## v1.27.0 (2026-10-21)
 
 ### Bug Fixes

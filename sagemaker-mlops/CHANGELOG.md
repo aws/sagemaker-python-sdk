@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.28.0 (2026-10-29)
+
+### New Features
+
+- feat(mlops): Add AthenaStep pipeline step (#6508)
+
+### Bug Fixes
+
+- fix: set VolumeKmsKeyId on ModelStep runtime repack job (#6537)
+- fix: use pipeline code_hash for FrameworkProcessor sourcedir upload (#6494)
+
+
 ## v1.27.0 (2026-10-21)
 
 ### New Features
