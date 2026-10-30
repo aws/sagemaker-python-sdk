@@ -63,7 +63,7 @@ def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=
     trainer.training_image = "test-image:latest"
     trainer.training_input_mode = "File"
     trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
-    from sagemaker.core.shapes import OutputDataConfig
+    from sagemaker.core.shapes import CheckpointConfig, OutputDataConfig
 
     trainer.output_data_config = OutputDataConfig(s3_output_path="s3://bucket/output")
     trainer.compute = MagicMock()
@@ -74,6 +74,7 @@ def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=
     trainer.stopping_condition = MagicMock()
     trainer.stopping_condition.max_runtime_in_seconds = 3600
     trainer.input_data_config = None
+    trainer.checkpoint_config = None
 
     if with_internal_channels:
         trainer.input_data_config = [
@@ -83,6 +84,7 @@ def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=
     if with_spot_training:
         trainer.compute.enable_managed_spot_training = True
         trainer.stopping_condition.max_wait_time_in_seconds = 3600
+        trainer.checkpoint_config = CheckpointConfig(s3_uri="s3://bucket/checkpoint")
     return trainer
 
 
@@ -703,6 +705,21 @@ class TestHyperparameterTunerStaticMethods:
         assert isinstance(
             definition.stopping_condition.max_wait_time_in_seconds, int
         ), "Max wait time should be set"
+
+    def test_build_training_job_definition_includes_checkpoint_config(self):
+        """Test that _build_training_job_definition includes the checkpoint config."""
+        tuner = HyperparameterTuner(
+            model_trainer=_create_mock_model_trainer(with_spot_training=True),
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        # Build training job definition
+        definition = tuner._build_training_job_definition(None)
+
+        assert (
+            definition.checkpoint_config.s3_uri == "s3://bucket/checkpoint"
+        ), "checkpoint_config should be preserved"
 
     def test_pipeline_session_request_keeps_tuning_job_name(self):
         """Regression for #6299 / #5776.
