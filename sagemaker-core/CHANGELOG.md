@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.28.0 (2026-10-29)
+
+### New Features
+
+- add: metadata for huggingface vllm v0.30 and v0.31 (#6526)
+- change: add eusc-de-east-1 to PyTorch inference 2.6.0 image URI config (#6538)
+- change: add sa-west-1 to PyTorch training image URI config (#6516)
+
+### Bug Fixes
+
+- fix(codegen): restore codestyle-doc-tests compliance after botocore sync (#6523)
+
+
 ## v2.27.0 (2026-10-21)
 
 ### Bug Fixes
