@@ -167,7 +167,10 @@ class Evaluator(AIRHubEntity):
             return self
 
         response = AIRHub.describe_hub_content(
-            EVALUATOR_HUB_CONTENT_TYPE, self.name, session=self.sagemaker_session
+            EVALUATOR_HUB_CONTENT_TYPE,
+            self.name,
+            hub_content_version=self.version,
+            session=self.sagemaker_session,
         )
         doc = json.loads(response[RESPONSE_KEY_HUB_CONTENT_DOCUMENT])
         try:
