@@ -141,6 +141,9 @@ def test_mpi_driver_master(
     mock_start_sshd_daemon.assert_called_once()
     mock_bootstrap_master_node.assert_called_once()
     mock_get_mpirun_command.assert_called_once()
+    # mpirun -np is the total number of ranks across all hosts, not the per-host count.
+    assert mock_get_mpirun_command.call_args.kwargs["host_list"] == ["algo-1:2", "algo-2:2"]
+    assert mock_get_mpirun_command.call_args.kwargs["num_processes"] == 4
     mock_execute_commands.assert_called_once_with(DUMMY_MPI_COMMAND)
     mock_write_status_file_to_workers.assert_called_once()
 
