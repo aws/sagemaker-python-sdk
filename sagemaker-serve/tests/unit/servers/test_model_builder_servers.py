@@ -992,6 +992,52 @@ class TestBuildForDJL(unittest.TestCase):
         self.assertEqual(self.builder.env_vars["TENSOR_PARALLEL_DEGREE"], "4")
         mock_create.assert_called_once()
 
+    @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_default_djl_configurations")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.djl_serving.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_djl_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_local_build_does_not_leave_hf_hub_offline_for_endpoint_build(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_djl_config,
+        mock_hf_config,
+        mock_tp,
+        mock_gpu,
+    ):
+        """HF_HUB_OFFLINE=1 set for a local build must be reset, as TGI/TEI do."""
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "gpt2"}
+        mock_djl_config.return_value = ({}, 512)
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+        mock_tp.return_value = 1
+        mock_gpu.return_value = 1
+        envs_at_create = []
+        mock_create.side_effect = lambda: envs_at_create.append(dict(self.builder.env_vars))
+        self.builder.model = "gpt2"
+        self.builder.instance_type = "ml.g5.2xlarge"
+
+        self.builder.mode = Mode.LOCAL_CONTAINER
+        self.builder._build_for_djl()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder._build_for_djl()
+
+        self.assertEqual(envs_at_create[0]["HF_HUB_OFFLINE"], "1")
+        self.assertNotEqual(envs_at_create[1].get("HF_HUB_OFFLINE"), "1")
+
     # ------------------------------------------------------------------
     # Preservation property test (tgi-s3-model-loading bugfix spec)
     #
