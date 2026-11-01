@@ -105,6 +105,23 @@ class TestHyperparameterTunerTune:
         assert tuner.latest_tuning_job == mock_tuning_job
         tuner._start_tuning_job.assert_called_once_with(inputs)
 
+    def test_tune_accepts_extra_kwargs(self, mock_model_trainer, hyperparameter_ranges):
+        """Test tune forwards **kwargs without raising TypeError."""
+        tuner = HyperparameterTuner(
+            model_trainer=mock_model_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=hyperparameter_ranges,
+        )
+
+        mock_tuning_job = MagicMock()
+        mock_tuning_job.hyper_parameter_tuning_job_name = "test-tuning-job"
+        tuner._start_tuning_job = MagicMock(return_value=mock_tuning_job)
+
+        tuner.tune(inputs="s3://bucket/train", wait=False, logs=False)
+
+        assert tuner.latest_tuning_job == mock_tuning_job
+        tuner._start_tuning_job.assert_called_once_with("s3://bucket/train")
+
 
 class TestHyperparameterTunerCreate:
     """Test HyperparameterTuner.create class method."""
