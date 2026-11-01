@@ -34,6 +34,7 @@ class Lambda:
         zipped_code_dir: str = None,
         s3_bucket: str = None,
         script: str = None,
+        image: str = None,
         handler: str = None,
         session: Session = None,
         timeout: int = 120,
@@ -50,8 +51,10 @@ class Lambda:
 
         This class can be used either for creating a new Lambda function or using an existing one.
         When using an existing Lambda function, only the function_arn argument is required.
-        When creating a new one the function_name, execution_role_arn and handler arguments
-        are required, as well as either script or zipped_code_dir.
+        When creating a new one the function_name and execution_role_arn arguments are
+        required, as well as exactly one code source: script, zipped_code_dir or image.
+        A handler is additionally required for zip-based functions (script or
+        zipped_code_dir); it is not used for image-based functions.
 
         Args:
             function_arn (str): The arn of the Lambda function.
@@ -62,6 +65,10 @@ class Lambda:
             s3_bucket (str): The bucket where zipped code is uploaded.
                 If not provided, default session bucket is used to upload zipped_code_dir.
             script (str): The path of Lambda function script for direct zipped upload
+            image (str): The URI of an ECR container image to deploy the Lambda function
+                from. When provided, the function is created with PackageType "Image" and
+                no handler/runtime are required. Cannot be combined with script or
+                zipped_code_dir.
             handler (str): The Lambda handler. The format for handler should be
                 file_name.function_name. For ex: if the name of the Lambda script is
                 hello_world.py and Lambda function definition in that script is
@@ -81,6 +88,7 @@ class Lambda:
         self.zipped_code_dir = zipped_code_dir
         self.s3_bucket = s3_bucket
         self.script = script
+        self.image = image
         self.handler = handler
         self.execution_role_arn = execution_role_arn
         self.session = session if session is not None else Session()
@@ -97,16 +105,20 @@ class Lambda:
         if function_name is not None:
             if execution_role_arn is None:
                 raise ValueError("execution_role_arn must be provided.")
-            if zipped_code_dir is None and script is None:
-                raise ValueError("Either zipped_code_dir or script must be provided.")
+            if zipped_code_dir is None and script is None and image is None:
+                raise ValueError("Either zipped_code_dir, script or image must be provided.")
             if zipped_code_dir and script:
                 raise ValueError("Provide either script or zipped_code_dir, not both.")
-            if handler is None:
+            if image and (zipped_code_dir or script):
+                raise ValueError("Provide either image or zipped_code_dir/script, not both.")
+            if image is None and handler is None:
                 raise ValueError("Lambda handler must be provided.")
 
         if function_arn is not None:
             if zipped_code_dir and script:
                 raise ValueError("Provide either script or zipped_code_dir, not both.")
+            if image and (zipped_code_dir or script):
+                raise ValueError("Provide either image or zipped_code_dir/script, not both.")
 
     def create(self):
         """Method to create a lambda function.
@@ -117,6 +129,23 @@ class Lambda:
 
         if self.function_name is None:
             raise ValueError("FunctionName must be provided to create a Lambda function.")
+
+        if self.image is not None:
+            try:
+                return lambda_client.create_function(
+                    FunctionName=self.function_name,
+                    Role=self.execution_role_arn,
+                    Code={"ImageUri": self.image},
+                    PackageType="Image",
+                    Timeout=self.timeout,
+                    MemorySize=self.memory_size,
+                    VpcConfig=self.vpc_config,
+                    Environment=self.environment,
+                    Layers=self.layers,
+                )
+            except ClientError as e:
+                error = e.response["Error"]
+                raise ValueError(error)
 
         if self.script is not None:
             code = {"ZipFile": _zip_lambda_code(self.script)}
@@ -165,7 +194,12 @@ class Lambda:
         retry_attempts = 7
         for i in range(retry_attempts):
             try:
-                if self.script is not None:
+                if self.image is not None:
+                    response = lambda_client.update_function_code(
+                        FunctionName=self.function_name or self.function_arn,
+                        ImageUri=self.image,
+                    )
+                elif self.script is not None:
                     response = lambda_client.update_function_code(
                         FunctionName=self.function_name or self.function_arn,
                         ZipFile=_zip_lambda_code(self.script),
