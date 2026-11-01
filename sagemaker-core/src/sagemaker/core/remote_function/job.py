@@ -2100,6 +2100,7 @@ def _flush_log_streams(
                     logStreamNamePrefix=job_name + "/",
                     orderBy="LogStreamName",
                     limit=50,
+                    nextToken=streams["nextToken"],
                 )
 
                 stream_names.extend([s["logStreamName"] for s in streams["logStreams"]])
