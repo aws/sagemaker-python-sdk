@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+import logging
 from unittest.mock import patch, MagicMock
 
 from sagemaker.ai_registry.air_constants import AIR_DEFAULT_PAGE_SIZE
@@ -44,6 +45,117 @@ class TestAIRHub:
             HubContentVersion="1.0.0",
             DocumentSchemaVersion="1.0.0",
             HubContentDocument='{"test": "document"}',
+        )
+
+    @patch("sagemaker.ai_registry.air_hub.boto3")
+    def test_import_hub_content_custom_hub_name(self, mock_boto3):
+        # A caller-supplied hub_name is used verbatim in the request and is
+        # verified to exist (describe_hub) but never auto-created (no create_hub).
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+        mock_client.import_hub_content.return_value = {"HubContentArn": "custom-arn"}
+        mock_client.describe_hub.return_value = {"HubName": "CustomHub"}
+
+        AIRHub._sagemaker_client = mock_client
+        AIRHub.hubName = "test-hub"
+
+        result = AIRHub.import_hub_content(
+            hub_content_type="DataSet",
+            hub_content_name="test-dataset",
+            document_schema_version="1.0.0",
+            hub_content_document='{"test": "document"}',
+            hub_name="CustomHub",
+        )
+
+        assert result["HubContentArn"] == "custom-arn"
+        mock_client.describe_hub.assert_called_once_with(HubName="CustomHub")
+        mock_client.create_hub.assert_not_called()
+        mock_client.import_hub_content.assert_called_once_with(
+            HubName="CustomHub",
+            HubContentType="DataSet",
+            HubContentName="test-dataset",
+            HubContentVersion="1.0.0",
+            DocumentSchemaVersion="1.0.0",
+            HubContentDocument='{"test": "document"}',
+        )
+
+    @patch("sagemaker.ai_registry.air_hub.boto3")
+    def test_import_hub_content_custom_hub_missing_creates(self, mock_boto3, caplog):
+        # A caller-supplied hub that does not exist is created on demand (using
+        # the supplied name for both HubName and HubDisplayName), then imported into.
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+
+        class _ResourceNotFound(Exception):
+            pass
+
+        mock_client.exceptions.ResourceNotFound = _ResourceNotFound
+        mock_client.describe_hub.side_effect = _ResourceNotFound("missing")
+        mock_client.import_hub_content.return_value = {"HubContentArn": "custom-arn"}
+
+        AIRHub._sagemaker_client = mock_client
+        AIRHub.hubName = "test-hub"
+
+        with caplog.at_level(logging.INFO, logger="sagemaker.ai_registry.air_hub"):
+            result = AIRHub.import_hub_content(
+                hub_content_type="DataSet",
+                hub_content_name="test-dataset",
+                document_schema_version="1.0.0",
+                hub_content_document='{"test": "document"}',
+                hub_name="NewHub",
+            )
+
+        assert result["HubContentArn"] == "custom-arn"
+        mock_client.describe_hub.assert_called_once_with(HubName="NewHub")
+        mock_client.create_hub.assert_called_once_with(
+            HubName="NewHub",
+            HubDisplayName="NewHub",
+            HubDescription="AI Registry Hub",
+        )
+        mock_client.import_hub_content.assert_called_once_with(
+            HubName="NewHub",
+            HubContentType="DataSet",
+            HubContentName="test-dataset",
+            HubContentVersion="1.0.0",
+            DocumentSchemaVersion="1.0.0",
+            HubContentDocument='{"test": "document"}',
+        )
+        # Auto-creation of a caller-supplied hub is logged so it is observable.
+        assert "NewHub" in caplog.text
+        assert "creating it on demand" in caplog.text
+
+    @patch("sagemaker.ai_registry.air_hub.boto3")
+    def test_import_hub_content_with_tags(self, mock_boto3):
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+        mock_client.import_hub_content.return_value = {"HubContentArn": "test-arn"}
+        mock_client.describe_hub.return_value = {"HubName": "test-hub"}
+
+        AIRHub._sagemaker_client = mock_client
+        AIRHub.hubName = "test-hub"
+
+        result = AIRHub.import_hub_content(
+            hub_content_type="DataSet",
+            hub_content_name="test-dataset",
+            document_schema_version="1.0.0",
+            hub_content_document='{"test": "document"}',
+            tags=[("method", "generated"), ("team", "ml")],
+        )
+
+        assert result["HubContentArn"] == "test-arn"
+        # Tags flow to both HubContentSearchKeywords and the API Tags field
+        mock_client.import_hub_content.assert_called_once_with(
+            HubName="test-hub",
+            HubContentType="DataSet",
+            HubContentName="test-dataset",
+            HubContentVersion="1.0.0",
+            DocumentSchemaVersion="1.0.0",
+            HubContentDocument='{"test": "document"}',
+            HubContentSearchKeywords=["method:generated", "team:ml"],
+            Tags=[
+                {"Key": "method", "Value": "generated"},
+                {"Key": "team", "Value": "ml"},
+            ],
         )
 
     @patch("sagemaker.ai_registry.air_hub.boto3")

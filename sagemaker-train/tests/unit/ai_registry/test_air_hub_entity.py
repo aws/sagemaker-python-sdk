@@ -16,6 +16,8 @@
 import pytest
 from unittest.mock import patch
 
+from botocore.exceptions import ClientError
+
 from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededError
 
 from sagemaker.ai_registry.air_hub_entity import AIRHubEntity
@@ -167,7 +169,38 @@ class TestAIRHubEntity:
         entity.refresh()
 
         assert entity.status == "Available"
-        mock_air_hub.describe_hub_content.assert_called_once_with("TestType", "test", "1.0.0")
+        mock_air_hub.describe_hub_content.assert_called_once_with(
+            "TestType", "test", "1.0.0", hub_name=None
+        )
+
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    def test_refresh_uses_custom_hub(self, mock_air_hub):
+        """refresh() must look in the custom hub the content was imported into."""
+        mock_air_hub.get_hub_name.return_value = "derived-hub"
+        mock_air_hub.describe_hub_content.return_value = {
+            RESPONSE_KEY_HUB_CONTENT_STATUS: "Available"
+        }
+
+        entity = ConcreteEntity("test", "1.0.0", "arn", "Importing", hub_name="custom-hub")
+        entity.refresh()
+
+        assert entity.hub_name == "custom-hub"
+        mock_air_hub.describe_hub_content.assert_called_once_with(
+            "TestType", "test", "1.0.0", hub_name="custom-hub"
+        )
+
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    def test_get_versions_uses_custom_hub(self, mock_air_hub):
+        """get_versions() must list versions from the custom hub."""
+        mock_air_hub.get_hub_name.return_value = "derived-hub"
+        mock_air_hub.list_hub_content_versions.return_value = []
+
+        entity = ConcreteEntity("test", "1.0.0", "arn", "Available", hub_name="custom-hub")
+        entity.get_versions()
+
+        mock_air_hub.list_hub_content_versions.assert_called_once_with(
+            "TestType", "test", hub_name="custom-hub"
+        )
 
     @patch("sagemaker.ai_registry.air_hub_entity.time")
     @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
@@ -226,3 +259,48 @@ class TestAIRHubEntity:
         with pytest.raises(TimeoutExceededError):
             with patch("builtins.print"):
                 entity.wait(poll=1, timeout=5)
+
+    @patch("sagemaker.ai_registry.air_hub_entity.time")
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    def test_wait_tolerates_transient_resource_not_found(self, mock_air_hub, mock_time):
+        """A ResourceNotFound during the poll (create->describe consistency window)
+        is treated as 'not ready yet' and the wait keeps polling until Available."""
+        mock_air_hub.get_hub_name.return_value = "test-hub"
+        not_found = ClientError(
+            {"Error": {"Code": "ResourceNotFound", "Message": "not there yet"}},
+            "DescribeHubContent",
+        )
+        # First poll hits the consistency window, second poll resolves.
+        mock_air_hub.describe_hub_content.side_effect = [
+            not_found,
+            {RESPONSE_KEY_HUB_CONTENT_STATUS: "Available"},
+        ]
+        mock_time.time.return_value = 0
+        mock_time.sleep.return_value = None
+
+        entity = ConcreteEntity("test", "1.0.0", "arn", "Importing")
+
+        with patch("builtins.print"):
+            entity.wait(poll=1, timeout=10)
+
+        assert entity.status == "Available"
+        assert mock_air_hub.describe_hub_content.call_count == 2
+
+    @patch("sagemaker.ai_registry.air_hub_entity.time")
+    @patch("sagemaker.ai_registry.air_hub_entity.AIRHub")
+    def test_wait_propagates_non_not_found_client_error(self, mock_air_hub, mock_time):
+        """A ClientError that is NOT a not-found (e.g. AccessDenied) still propagates."""
+        mock_air_hub.get_hub_name.return_value = "test-hub"
+        access_denied = ClientError(
+            {"Error": {"Code": "AccessDeniedException", "Message": "denied"}},
+            "DescribeHubContent",
+        )
+        mock_air_hub.describe_hub_content.side_effect = access_denied
+        mock_time.time.return_value = 0
+        mock_time.sleep.return_value = None
+
+        entity = ConcreteEntity("test", "1.0.0", "arn", "Importing")
+
+        with pytest.raises(ClientError):
+            with patch("builtins.print"):
+                entity.wait(poll=1, timeout=10)

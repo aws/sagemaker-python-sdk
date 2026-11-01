@@ -18,6 +18,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from botocore.exceptions import ClientError
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
@@ -52,6 +53,7 @@ class AIRHubEntity(ABC):
         updated_time: Optional[str] = None,
         description: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
+        hub_name: Optional[str] = None,
     ) -> None:
         """Initialize AIR Hub Entity.
 
@@ -65,11 +67,17 @@ class AIRHubEntity(ABC):
             description: Description of the hub content
             role: Optional IAM role ARN
             sagemaker_session: Optional SageMaker session
+            hub_name: Optional custom hub the content lives in. Defaults to the
+                derived AI Registry hub. Used by refresh/wait/get_versions so they
+                look in the same hub the content was imported into.
         """
         self.name = name
         self.version = version
         self.arn = arn
-        self.hub_name = AIRHub.get_hub_name()
+        # ``_custom_hub_name`` is None for the derived AI Registry hub; AIRHub calls
+        # then fall back to the derived hub on their own.
+        self._custom_hub_name = hub_name
+        self.hub_name = hub_name or AIRHub.get_hub_name()
         self.status = status
         self.created = created_time
         self.updated = updated_time
@@ -107,7 +115,9 @@ class AIRHubEntity(ABC):
         Returns:
             List of version information dictionaries
         """
-        versions = AIRHub.list_hub_content_versions(self.hub_content_type, self.name)
+        versions = AIRHub.list_hub_content_versions(
+            self.hub_content_type, self.name, hub_name=self._custom_hub_name
+        )
         return [
             {
                 "version": v.get(RESPONSE_KEY_HUB_CONTENT_VERSION),
@@ -206,8 +216,21 @@ class AIRHubEntity(ABC):
             transient=True,
         ):
             while True:
-                self.refresh()
-                current_status = self.status
+                try:
+                    self.refresh()
+                    current_status = self.status
+                except ClientError as e:
+                    # Right after ImportHubContent, DescribeHubContent can briefly
+                    # return ResourceNotFound before the create->describe consistency
+                    # window closes. Treat that as "not ready yet" (non-terminal) and
+                    # fall through to the shared timeout/sleep below; other errors
+                    # propagate.
+                    if e.response.get("Error", {}).get("Code", "") not in (
+                        "ResourceNotFound",
+                        "ResourceNotFoundException",
+                    ):
+                        raise
+                    current_status = None
                 status.update(f"Current status: [bold]{current_status}")
 
                 if current_status in terminal_states:
@@ -228,5 +251,7 @@ class AIRHubEntity(ABC):
 
     def refresh(self) -> None:
         """Refresh entity status from hub content."""
-        response = AIRHub.describe_hub_content(self.hub_content_type, self.name, self.version)
+        response = AIRHub.describe_hub_content(
+            self.hub_content_type, self.name, self.version, hub_name=self._custom_hub_name
+        )
         self.status = response.get(RESPONSE_KEY_HUB_CONTENT_STATUS)

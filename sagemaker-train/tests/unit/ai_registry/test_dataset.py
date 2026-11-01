@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock, patch
 import json
 import os
 import tempfile
@@ -41,7 +41,7 @@ class TestDataSetHubContentDocument:
             dependencies=["dep1", "dep2"],
         )
 
-        result = doc.to_json()
+        result = doc.to_json(schema_version="2.0.0")
         parsed = json.loads(result)
 
         assert parsed["DatasetType"] == "CUSTOMER_PROVIDED"
@@ -78,6 +78,12 @@ class TestDataSetValidation:
         # Should not raise any exception
         DataSet._validate_dataset_format("/path/to/file.jsonl")
         mock_detector.validate_dataset.assert_called_once_with("/path/to/file.jsonl")
+
+    @patch("sagemaker.ai_registry.dataset.DatasetFormatDetector")
+    def test_validate_dataset_format_custom_skips_detection(self, mock_detector_class):
+        """Custom format skips validation entirely -- the detector is never used."""
+        DataSet._validate_dataset_format("/path/to/file.jsonl", "Custom")
+        mock_detector_class.assert_not_called()
 
     @patch("sagemaker.ai_registry.dataset.DatasetFormatDetector")
     def test_validate_dataset_format_failure(self, mock_detector_class):
@@ -381,8 +387,93 @@ class TestDataSet:
         assert dataset.name == "test-dataset"
         assert dataset.method == DataSetMethod.UPLOADED
         mock_air_hub.upload_to_s3.assert_called_once()
-        mock_validate_format.assert_called_once_with("/local/path/file.jsonl")
+        # No dataset_file_format was passed, so validation runs against the detector
+        # (format=None), not the stored "Custom" default. Only an explicit "Custom"
+        # opts out of format validation.
+        mock_validate_format.assert_called_once_with("/local/path/file.jsonl", None)
         mock_validate_file.assert_called_once_with("/local/path/file.jsonl")
+
+    @patch("sagemaker.ai_registry.air_hub.AIRHub._create_airegistry_hub_if_not_exists")
+    @patch("sagemaker.ai_registry.dataset._determine_new_version")
+    @patch("sagemaker.ai_registry.dataset._get_default_s3_prefix")
+    @patch("sagemaker.ai_registry.dataset._get_default_bucket")
+    @patch("sagemaker.ai_registry.air_hub.AIRHub.upload_to_s3")
+    @patch("sagemaker.ai_registry.dataset._get_current_domain_id")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_file")
+    @patch("sagemaker.ai_registry.dataset.DataSet._validate_dataset_format")
+    def test_create_with_project_tags_reaches_import_hub_content(
+        self,
+        mock_validate_format,
+        mock_validate_file,
+        mock_get_domain_id,
+        mock_upload,
+        mock_default_bucket,
+        mock_default_prefix,
+        mock_determine_version,
+        mock_ensure_hub,
+    ):
+        """End-to-end: project tags passed to Dataset.create reach the boto
+        import_hub_content call in BOTH the Tags field and
+        HubContentSearchKeywords. Only the boto client is mocked here so the
+        real AIRHub.import_hub_content mapping is exercised."""
+        mock_validate_format.return_value = None
+        mock_validate_file.return_value = None
+        mock_get_domain_id.return_value = None
+        mock_default_bucket.return_value = "test-bucket"
+        mock_default_prefix.return_value = "datasets/test-dataset"
+        mock_determine_version.return_value = "1.0.0"
+
+        # Mock only the boto sagemaker client on the session
+        mock_client = MagicMock()
+        mock_client.import_hub_content.return_value = {"HubContentArn": "test-arn"}
+        mock_client.describe_hub_content.return_value = {
+            RESPONSE_KEY_HUB_CONTENT_ARN: "test-arn",
+            RESPONSE_KEY_HUB_CONTENT_VERSION: "1.0.0",
+            "CreationTime": "2024-01-01",
+            "LastModifiedTime": "2024-01-01",
+        }
+        mock_session = Mock()
+        mock_session.sagemaker_client = mock_client
+
+        # The real AIRHub.import_hub_content reads AIRHub.hubName when building
+        # the request; set it for this test.
+        from sagemaker.ai_registry.air_hub import AIRHub
+
+        AIRHub.hubName = "test-hub"
+
+        project_tags = [("project", "alpha"), ("team", "ml")]
+
+        with (
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_sagemaker_session",
+                return_value=mock_session,
+            ),
+            patch(
+                "sagemaker.train.defaults.TrainDefaults.get_role",
+                return_value="arn:aws:iam::123456789012:role/SageMakerRole",
+            ),
+        ):
+            dataset = DataSet.create(
+                name="test-dataset",
+                source="/local/path/file.jsonl",
+                tags=project_tags,
+                sagemaker_session=mock_session,
+                wait=False,
+            )
+
+        assert dataset.name == "test-dataset"
+
+        # The real AIRHub.import_hub_content should have called the boto client
+        mock_client.import_hub_content.assert_called_once()
+        call_kwargs = mock_client.import_hub_content.call_args[1]
+
+        # Project tags flow to the API Tags field
+        assert call_kwargs["Tags"] == [
+            {"Key": "project", "Value": "alpha"},
+            {"Key": "team", "Value": "ml"},
+        ]
+        # ...and to HubContentSearchKeywords
+        assert call_kwargs["HubContentSearchKeywords"] == ["project:alpha", "team:ml"]
 
     @patch("sagemaker.ai_registry.dataset.AIRHub")
     def test_get(self, mock_air_hub):
