@@ -274,3 +274,36 @@ def test_start_pipeline_execution_not_found(local_session):
     error = exc_info.value
     assert error.response["Error"]["Code"] == "ResourceNotFound"
     assert "nonexistent-pipeline" in error.response["Error"]["Message"]
+
+
+@patch(
+    "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role",
+    return_value="arn:aws:iam::123456789012:role/role",
+)
+def test_pipeline_api_in_local_mode(_mock_role):
+    """Pipeline's create/upsert/describe/start/delete work with a real LocalPipelineSession."""
+    import boto3
+    from sagemaker.mlops.workflow.fail_step import FailStep
+    from sagemaker.mlops.workflow.pipeline import Pipeline
+
+    boto_session = boto3.Session(
+        region_name="us-west-2", aws_access_key_id="testing", aws_secret_access_key="testing"
+    )
+    session = LocalPipelineSession(boto_session=boto_session, default_bucket="bucket")
+    pipeline = Pipeline(
+        name="local-pipeline",
+        steps=[FailStep("fail", error_message="boom")],
+        sagemaker_session=session,
+    )
+
+    assert pipeline.create(description="d") == {"PipelineArn": "local-pipeline"}
+    assert pipeline.upsert(description="d2") == {"PipelineArn": "local-pipeline"}
+    assert pipeline.update(description="d3") == {"PipelineArn": "local-pipeline"}
+    assert pipeline.describe()["PipelineArn"] == "local-pipeline"
+
+    execution = pipeline.start()
+    assert execution.describe()["PipelineExecutionStatus"] == "Failed"
+
+    pipeline.delete()
+    with pytest.raises(ClientError):
+        pipeline.describe()

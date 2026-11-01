@@ -272,7 +272,7 @@ class TestPipelineCreate:
     def test_create_local_mode(self, mock_session):
         """Test create pipeline in local mode."""
         mock_session.local_mode = True
-        mock_session.sagemaker_client.create_pipeline = Mock(
+        mock_session.create_pipeline = Mock(
             return_value={"PipelineArn": "test-pipeline"}
         )
 
@@ -288,7 +288,7 @@ class TestPipelineCreate:
                 result = pipeline.create(role_arn="arn:aws:iam::123:role/SageMakerRole")
 
                 assert result["PipelineArn"] == "test-pipeline"
-                mock_session.sagemaker_client.create_pipeline.assert_called_once()
+                mock_session.create_pipeline.assert_called_once()
 
 
 class TestPipelineUpdate:
@@ -334,7 +334,7 @@ class TestPipelineUpdate:
     def test_update_local_mode(self, mock_session):
         """Test update pipeline in local mode."""
         mock_session.local_mode = True
-        mock_session.sagemaker_client.update_pipeline = Mock(
+        mock_session.update_pipeline = Mock(
             return_value={"PipelineArn": "test-pipeline"}
         )
 
@@ -665,14 +665,14 @@ class TestPipelineStart:
     def test_start_local_mode(self, mock_session):
         """Test start pipeline in local mode."""
         mock_session.local_mode = True
-        mock_session.sagemaker_client.start_pipeline_execution = Mock(return_value=Mock())
+        mock_session.start_pipeline_execution = Mock(return_value=Mock())
 
         pipeline = Pipeline(name="test-pipeline", sagemaker_session=mock_session)
 
         result = pipeline.start(parameters={"param1": "value1"})
 
         assert result is not None
-        mock_session.sagemaker_client.start_pipeline_execution.assert_called_once()
+        mock_session.start_pipeline_execution.assert_called_once()
 
 
 class TestPipelineDefinition:
