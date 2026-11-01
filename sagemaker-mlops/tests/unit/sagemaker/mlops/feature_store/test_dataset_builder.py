@@ -601,3 +601,59 @@ class TestDatasetBuilderRegisterAsDataset:
             builder._to_csv_from_feature_group()
 
         mock_register.assert_not_called()
+
+
+class TestDatasetBuilderStringEventTimeQuery:
+    """Query generation for feature groups whose event time feature is a String."""
+
+    @staticmethod
+    def _feature_group(name):
+        from sagemaker.core.shapes import (
+            DataCatalogConfig,
+            FeatureDefinition as FeatureDefinitionShape,
+            OfflineStoreConfig,
+            S3StorageConfig,
+        )
+
+        return FeatureGroup.model_construct(
+            feature_group_name=name,
+            record_identifier_feature_name="id",
+            event_time_feature_name="et",
+            feature_definitions=[
+                FeatureDefinitionShape(feature_name="id", feature_type="String"),
+                FeatureDefinitionShape(feature_name="et", feature_type="String"),
+                FeatureDefinitionShape(feature_name="v", feature_type="Fractional"),
+            ],
+            offline_store_config=OfflineStoreConfig(
+                s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/prefix"),
+                data_catalog_config=DataCatalogConfig(
+                    table_name=f"{name}_table", catalog="AwsDataCatalog", database="db"
+                ),
+            ),
+        )
+
+    def test_event_time_range_and_point_in_time_join_query(self):
+        base, other = self._feature_group("base"), self._feature_group("other")
+
+        with patch(
+            "sagemaker.mlops.feature_store.dataset_builder.FeatureGroup.get",
+            side_effect=lambda feature_group_name: self._feature_group(feature_group_name),
+        ):
+            builder = DatasetBuilder.create(
+                base=base, output_path="s3://bucket/out", session=Mock()
+            )
+            builder.with_feature_group(other).point_in_time_accurate_join().with_event_time_range(
+                datetime.datetime(2024, 1, 1), datetime.datetime(2024, 2, 1)
+            )
+            with patch.object(
+                DatasetBuilder, "_run_query", return_value={"QueryExecution": {"Query": "q"}}
+            ) as mock_run_query:
+                builder._to_csv_from_feature_group()
+
+        query = mock_run_query.call_args[0][0]
+        # String (ISO-8601) event times must be parsed, not treated as unix timestamps.
+        assert 'from_iso8601_timestamp(origin_base."et")' in query
+        assert 'from_iso8601_timestamp(fg_0."et")' in query
+        assert 'from_unixtime(origin_base."et")' not in query
+        # The deleted-records CTE needs a separator before the event time conditions.
+        assert "is_deletedAND" not in query

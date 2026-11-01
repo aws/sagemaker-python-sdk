@@ -43,6 +43,17 @@ _DTYPE_TO_ATHENA_TYPE = {
 }
 
 
+def _is_string_feature_type(feature_type) -> bool:
+    """Whether a feature type (a FeatureTypeEnum or its plain str value) is String.
+
+    FeatureDefinition is a pydantic shape, so feature_type is stored as a plain str even when
+    a FeatureTypeEnum is passed in, and never compares equal to FeatureTypeEnum.STRING.
+    """
+    if isinstance(feature_type, FeatureTypeEnum):
+        feature_type = feature_type.value
+    return feature_type == FeatureTypeEnum.STRING.value
+
+
 class TableType(Enum):
     """Kind of table a dataset builder can read from."""
 
@@ -750,7 +761,7 @@ class DatasetBuilder:
             conds = self._construct_event_time_conditions(
                 f"origin_{suffix}", fg.event_time_identifier_feature
             )
-            event_conds = "".join(f"AND {c}\n" for c in conds)
+            event_conds = "".join(f" AND {c}\n" for c in conds)
 
         return (
             f"deleted_{suffix} AS (\n"
@@ -803,7 +814,7 @@ class DatasetBuilder:
     ) -> List[str]:
         cast_fn = (
             "from_iso8601_timestamp"
-            if event_time_feature.feature_type == FeatureTypeEnum.STRING
+            if _is_string_feature_type(event_time_feature.feature_type)
             else "from_unixtime"
         )
         conditions = []
@@ -833,12 +844,12 @@ class DatasetBuilder:
         if self._point_in_time_accurate_join:
             base_cast = (
                 "from_iso8601_timestamp"
-                if self._event_time_identifier_feature_type == FeatureTypeEnum.STRING
+                if _is_string_feature_type(self._event_time_identifier_feature_type)
                 else "from_unixtime"
             )
             fg_cast = (
                 "from_iso8601_timestamp"
-                if fg.event_time_identifier_feature.feature_type == FeatureTypeEnum.STRING
+                if _is_string_feature_type(fg.event_time_identifier_feature.feature_type)
                 else "from_unixtime"
             )
             join += (
