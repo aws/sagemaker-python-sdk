@@ -57,3 +57,81 @@ def test_list_models_sends_next_token_to_the_following_page():
         "model-c",
     ]
     assert pages == {}
+
+
+def _hub_with_session_client():
+    """A Hub backed by a real Session whose SageMaker client is mocked."""
+    from sagemaker.core.helper.session_helper import Session
+
+    session = Session.__new__(Session)
+    session._region_name = "us-west-2"
+    session.sagemaker_client = Mock()
+    return Hub(hub_name=HUB_NAME, sagemaker_session=session), session.sagemaker_client
+
+
+def test_create_calls_create_hub():
+    hub, client = _hub_with_session_client()
+
+    hub.create(description="my hub", search_keywords=["a"], tags=[{"Key": "k", "Value": "v"}])
+
+    client.create_hub.assert_called_once_with(
+        HubName=HUB_NAME,
+        HubDescription="my hub",
+        HubDisplayName=HUB_NAME,
+        HubSearchKeywords=["a"],
+        Tags=[{"Key": "k", "Value": "v"}],
+    )
+
+
+def test_describe_calls_describe_hub():
+    hub, client = _hub_with_session_client()
+
+    hub.describe()
+
+    client.describe_hub.assert_called_once_with(HubName=HUB_NAME)
+
+
+def test_delete_calls_delete_hub():
+    hub, client = _hub_with_session_client()
+
+    hub.delete()
+
+    client.delete_hub.assert_called_once_with(HubName=HUB_NAME)
+
+
+def test_create_model_reference_calls_create_hub_content_reference():
+    hub, client = _hub_with_session_client()
+    model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/m/1.0.0"
+
+    hub.create_model_reference(model_arn=model_arn, model_name="m", min_version="1.0.0")
+
+    client.create_hub_content_reference.assert_called_once_with(
+        HubName=HUB_NAME,
+        SageMakerPublicHubContentArn=model_arn,
+        HubContentName="m",
+        MinVersion="1.0.0",
+    )
+
+
+def test_delete_model_reference_calls_delete_hub_content_reference():
+    hub, client = _hub_with_session_client()
+
+    hub.delete_model_reference(model_name="m")
+
+    client.delete_hub_content_reference.assert_called_once_with(
+        HubName=HUB_NAME, HubContentType="ModelReference", HubContentName="m"
+    )
+
+
+def test_init_without_session_uses_default_jumpstart_session():
+    from unittest.mock import patch
+
+    default_session = Mock(boto_region_name="us-east-2")
+    with patch(
+        "sagemaker.core.jumpstart.hub.hub.utils.get_default_jumpstart_session_with_user_agent_suffix",
+        return_value=default_session,
+    ):
+        hub = Hub(hub_name=HUB_NAME, sagemaker_session=None)
+
+    assert hub._sagemaker_session is default_session
+    assert hub.region == "us-east-2"
