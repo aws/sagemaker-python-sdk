@@ -1,10 +1,10 @@
 """Tests for DJL builder HF cache environment variables and HF_MODEL_ID handling.
 
 Verifies that _build_for_djl() correctly:
-- Sets HF_HOME and HUGGINGFACE_HUB_CACHE to /tmp for writable cache
+- Sets HF_HOME, HUGGINGFACE_HUB_CACHE and TRANSFORMERS_CACHE to /tmp for writable cache
 - Preserves user-provided HF_MODEL_ID values (uses setdefault)
 - Sets HF_MODEL_ID from model param when not provided by user
-- Preserves user-provided HF_HOME and HUGGINGFACE_HUB_CACHE values
+- Preserves user-provided HF cache directory values
 """
 
 import pytest
@@ -103,12 +103,13 @@ class TestDjlHfCacheAndModelId:
             p.stop()
 
     def test_sets_hf_cache_env_vars_to_tmp(self, tmp_path):
-        """HF_HOME and HUGGINGFACE_HUB_CACHE should be /tmp in endpoint mode."""
+        """The HF cache env vars should all be /tmp in endpoint mode."""
         builder = _create_djl_builder(tmp_path)
         builder._build_for_djl()
 
         assert builder.env_vars["HF_HOME"] == "/tmp"
         assert builder.env_vars["HUGGINGFACE_HUB_CACHE"] == "/tmp"
+        assert builder.env_vars["TRANSFORMERS_CACHE"] == "/tmp"
 
     def test_preserves_user_provided_hf_model_id(self, tmp_path):
         """User-provided HF_MODEL_ID must NOT be overridden by model param."""
@@ -125,18 +126,20 @@ class TestDjlHfCacheAndModelId:
         assert builder.env_vars["HF_MODEL_ID"] == "test-org/test-model"
 
     def test_preserves_user_provided_hf_cache_dirs(self, tmp_path):
-        """User-provided HF_HOME and HUGGINGFACE_HUB_CACHE should be preserved."""
+        """User-provided HF cache dirs should be preserved."""
         builder = _create_djl_builder(
             tmp_path,
             env_vars={
                 "HF_HOME": "/my/custom/cache",
                 "HUGGINGFACE_HUB_CACHE": "/my/custom/hub",
+                "TRANSFORMERS_CACHE": "/my/custom/transformers",
             },
         )
         builder._build_for_djl()
 
         assert builder.env_vars["HF_HOME"] == "/my/custom/cache"
         assert builder.env_vars["HUGGINGFACE_HUB_CACHE"] == "/my/custom/hub"
+        assert builder.env_vars["TRANSFORMERS_CACHE"] == "/my/custom/transformers"
 
     def test_local_mode_sets_hf_hub_offline(self, tmp_path):
         """HF_HUB_OFFLINE=1 should be set in LOCAL_CONTAINER mode."""
@@ -146,3 +149,60 @@ class TestDjlHfCacheAndModelId:
         builder._build_for_djl()
 
         assert builder.env_vars["HF_HUB_OFFLINE"] == "1"
+
+
+def test_endpoint_build_hf_cache_is_tmp_with_real_prepare_for_mode(tmp_path):
+    """The DJL server defaults merged by _prepare_for_mode must not win over /tmp.
+
+    The tests above mock _prepare_for_mode; here it runs for real (only the S3 upload is
+    mocked), since it merges the DJL server's /opt/ml/model/ defaults into env_vars.
+    """
+    builder = ModelBuilder(
+        model="test-org/test-model",
+        role_arn=MOCK_ROLE_ARN,
+        sagemaker_session=_mock_sagemaker_session(),
+        model_path=str(tmp_path),
+        mode=Mode.SAGEMAKER_ENDPOINT,
+        image_uri=MOCK_IMAGE_URI,
+        model_server=ModelServer.DJL_SERVING,
+        instance_type="ml.g5.2xlarge",
+    )
+    builder.schema_builder = Mock(
+        sample_input={"inputs": "Hello", "parameters": {}},
+        sample_output=[{"generated_text": "Hi"}],
+    )
+    builder._optimizing = False
+    # Normally initialized by build()
+    builder.modes = {}
+    builder.serve_settings = Mock(s3_model_data_url=None)
+    envs_at_create = []
+
+    with (
+        patch("sagemaker.serve.model_builder_servers._get_nb_instance", return_value=None),
+        patch(
+            "sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf",
+            return_value={"num_attention_heads": 32},
+        ),
+        patch("sagemaker.serve.model_builder_servers._get_gpu_info", return_value=1),
+        patch.object(ModelBuilder, "_is_jumpstart_model_id", return_value=False),
+        patch.object(ModelBuilder, "_validate_djl_serving_sample_data"),
+        patch.object(ModelBuilder, "_auto_detect_image_uri"),
+        patch.object(
+            ModelBuilder,
+            "_create_model",
+            side_effect=lambda: envs_at_create.append(dict(builder.env_vars)),
+        ),
+        patch(
+            "sagemaker.serve.model_server.djl_serving.server.determine_bucket_and_prefix",
+            return_value=("mock-bucket", "prefix"),
+        ),
+        patch(
+            "sagemaker.serve.model_server.djl_serving.server.S3Uploader.upload",
+            return_value="s3://mock-bucket/prefix/code",
+        ),
+    ):
+        builder._build_for_djl()
+
+    assert envs_at_create[-1]["HF_HOME"] == "/tmp"
+    assert envs_at_create[-1]["HUGGINGFACE_HUB_CACHE"] == "/tmp"
+    assert envs_at_create[-1]["TRANSFORMERS_CACHE"] == "/tmp"
