@@ -334,6 +334,12 @@ predictor = model_builder.deploy(
 )
 ```
 
+For customized model packages, V3 reads the deployment recipe from the package's base-model
+metadata. If the recipe is omitted, ``ModelBuilder`` prefers top-level Hub ``HostingConfigs`` and
+otherwise infers the recipe only when exactly one recipe is deployable. Pass
+``recipe_name="<recipe>"`` to ``ModelBuilder`` when multiple recipes publish hosting
+configurations.
+
 ### 3. Processing Jobs
 
 **V2 Processor:**

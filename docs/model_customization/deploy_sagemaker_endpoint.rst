@@ -77,6 +77,31 @@ production deployments.
    endpoint = model_builder.deploy(endpoint_name="my-endpoint")
 
 
+Select a Deployment Recipe
+----------------------------
+
+``ModelBuilder`` normally reads the recipe name from the model package's
+base-model metadata. If that metadata omits the recipe, it first uses top-level
+``HostingConfigs`` from the Hub document. When no top-level configuration
+exists, it automatically uses the only recipe that publishes
+``HostingConfigs``. If multiple recipes are deployable, pass ``recipe_name``
+explicitly:
+
+.. code-block:: python
+
+   from sagemaker.serve import ModelBuilder
+
+   model_builder = ModelBuilder(
+       model=model_package,
+       recipe_name="my-deployment-recipe",
+   )
+   endpoint = model_builder.build().deploy(endpoint_name="my-endpoint")
+
+The override is only needed to disambiguate recipe-level hosting
+configurations; existing model packages that publish a recipe name or top-level
+hosting configuration require no change.
+
+
 Reuse Deployed Resources
 --------------------------
 
