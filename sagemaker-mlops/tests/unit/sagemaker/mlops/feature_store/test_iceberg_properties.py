@@ -793,6 +793,35 @@ class TestUpdateWithIcebergProperties:
         assert result == fg
 
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    def test_parent_update_failure_is_raised(self, mock_get_client, mock_update_iceberg):
+        """A failed UpdateFeatureGroup must surface, and Iceberg properties must not be updated."""
+        from botocore.exceptions import ClientError
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        mock_client = MagicMock()
+        mock_client.update_feature_group.side_effect = ClientError(
+            {"Error": {"Code": "ValidationException", "Message": "bad throughput"}},
+            "UpdateFeatureGroup",
+        )
+        mock_get_client.return_value = mock_client
+
+        fg = FeatureGroupManager(feature_group_name="test-fg")
+        fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path"),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="db", table_name="tbl"
+            ),
+            table_format="Iceberg",
+        )
+        iceberg_props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
+
+        with pytest.raises(ClientError, match="bad throughput"):
+            fg.update(feature_additions=[], iceberg_properties=iceberg_props)
+
+        mock_update_iceberg.assert_not_called()
+
+    @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
     def test_parent_update_receives_only_standard_params(
