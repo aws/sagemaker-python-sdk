@@ -2,6 +2,8 @@
 # Licensed under the Apache License, Version 2.0
 """Unit tests for ingestion_manager_pandas.py"""
 
+import signal
+
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
@@ -484,12 +486,12 @@ class TestIngestionManagerRegion:
         for call in mock_ingest.call_args_list:
             assert call[1]["region"] == "eu-west-1"
 
-    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.Pool")
+    @patch("multiprocessing.get_context")
     def test_multi_process_args_include_region(
-        self, mock_pool_class, feature_definitions, sample_dataframe
+        self, mock_get_context, feature_definitions, sample_dataframe
     ):
         mock_pool = MagicMock()
-        mock_pool_class.return_value = mock_pool
+        mock_get_context.return_value.Pool.return_value = mock_pool
 
         manager = IngestionManagerPandas(
             feature_group_name="test-fg",
@@ -504,3 +506,59 @@ class TestIngestionManagerRegion:
         for process_args in starmap_args:
             # region is the last positional argument passed to _run_multi_threaded
             assert process_args[-1] == "eu-west-1"
+
+
+class TestIngestionManagerProcessPool:
+    """Regression tests for spawn-safe pandas ingestion pools."""
+
+    @patch("multiprocessing.get_context")
+    def test_multi_process_uses_spawn_context_and_module_initializer(self, mock_get_context):
+        spawn_context = Mock()
+        processing_pool = Mock()
+        async_result = Mock()
+        spawn_context.Pool.return_value = processing_pool
+        processing_pool.starmap_async.return_value = async_result
+        mock_get_context.return_value = spawn_context
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions={"id": {"FeatureType": "String"}},
+            max_workers=1,
+            max_processes=2,
+        )
+        data_frame = pd.DataFrame({"id": ["1", "2"]})
+
+        manager._run_multi_process(data_frame=data_frame, wait=False)
+
+        mock_get_context.assert_called_once_with("spawn")
+        spawn_context.Pool.assert_called_once()
+        pool_kwargs = spawn_context.Pool.call_args.kwargs
+        assert pool_kwargs["processes"] == 2
+        assert pool_kwargs["initializer"].__module__ == (
+            "sagemaker.mlops.feature_store.ingestion_manager_pandas"
+        )
+        assert pool_kwargs["initializer"].__qualname__ == "_initialize_worker"
+        with patch(
+            "sagemaker.mlops.feature_store.ingestion_manager_pandas.signal.signal"
+        ) as mock_signal:
+            pool_kwargs["initializer"]()
+        mock_signal.assert_called_once_with(signal.SIGINT, signal.SIG_IGN)
+        processing_pool.starmap_async.assert_called_once()
+        assert manager._async_result is async_result
+
+    def test_wait_closes_and_joins_spawn_pool(self):
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions={"id": {"FeatureType": "String"}},
+            max_workers=1,
+            max_processes=2,
+        )
+        manager._async_result = Mock()
+        manager._async_result.get.return_value = [[], []]
+        manager._processing_pool = Mock()
+
+        manager.wait(timeout=5)
+
+        manager._async_result.get.assert_called_once_with(timeout=5)
+        manager._processing_pool.close.assert_called_once_with()
+        manager._processing_pool.join.assert_called_once_with()
+        assert manager.failed_rows == []
