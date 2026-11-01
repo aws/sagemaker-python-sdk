@@ -260,3 +260,33 @@ class TestImageRetriever:
         # This method currently has no implementation
         result = ImageRetriever.retrieve_jumpstart_uri()
         assert result is None
+
+
+def test_retrieve_hugging_face_uri_resolves_version_alias_like_image_uris():
+    """The transformers version in the tag is resolved through the alias map (see #5722)."""
+    from sagemaker.core import image_uris
+
+    kwargs = dict(
+        region="us-west-2",
+        version="4.26",
+        base_framework_version="pytorch1.13",
+        instance_type="ml.g5.xlarge",
+        image_scope="inference",
+    )
+
+    uri = ImageRetriever.retrieve_hugging_face_uri(**kwargs)
+
+    assert uri == image_uris.retrieve("huggingface", **kwargs)
+    assert "-transformers4.26.0-" in uri
+
+
+def test_retrieve_hugging_face_uri_without_version_uses_selected_version():
+    uri = ImageRetriever.retrieve_hugging_face_uri(
+        region="us-west-2",
+        base_framework_version="pytorch2.6",
+        instance_type="ml.g5.xlarge",
+        image_scope="inference",
+        py_version="py312",
+    )
+
+    assert "transformersNone" not in uri
