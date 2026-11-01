@@ -1130,6 +1130,12 @@ sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
                                 "state": "failure",
                                 "argument": "PipelineExecutionStatus",
                             },
+                            {
+                                "expected": "Stopped",
+                                "matcher": "path",
+                                "state": "failure",
+                                "argument": "PipelineExecutionStatus",
+                            },
                         ],
                     }
                 },
