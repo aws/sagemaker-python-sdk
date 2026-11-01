@@ -1252,6 +1252,39 @@ class TestSageMakerContainerExtended:
         assert container.container_entrypoint == ["/bin/bash"]
         assert container.container_arguments == ["script.sh"]
 
+    @pytest.mark.parametrize(
+        "entrypoint, arguments, expected",
+        [
+            (None, ["--input", "data"], {"command": ["--input", "data"]}),
+            (["python3", "run.py"], None, {"entrypoint": ["python3", "run.py"]}),
+            (
+                ["python3", "run.py"],
+                ["--input", "data"],
+                {"entrypoint": ["python3", "run.py", "--input", "data"]},
+            ),
+        ],
+    )
+    @patch("sagemaker.core.local.utils.check_for_studio", return_value=False)
+    @patch("sagemaker.core.local.image._SageMakerContainer._get_compose_cmd_prefix")
+    def test_create_docker_host_processing_entrypoint_and_arguments(
+        self, mock_get_compose, mock_studio, entrypoint, arguments, expected
+    ):
+        """Processing arguments are passed with or without a custom entrypoint"""
+        mock_get_compose.return_value = ["docker", "compose"]
+        container = _SageMakerContainer(
+            "local",
+            1,
+            "test-image:latest",
+            Mock(config={}),
+            container_entrypoint=entrypoint,
+            container_arguments=arguments,
+        )
+
+        host_config = container._create_docker_host("algo-1", [], set(), "process", [])
+
+        for key in ("command", "entrypoint"):
+            assert host_config.get(key) == expected.get(key)
+
     @patch("subprocess.check_output")
     def test_get_compose_cmd_prefix_v2(self, mock_check_output):
         """Test getting docker compose v2 command"""
