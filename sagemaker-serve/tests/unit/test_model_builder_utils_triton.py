@@ -130,6 +130,27 @@ class TestPrepareForTriton(unittest.TestCase):
             mock_pack.assert_called_once()
             mock_hmac.assert_called_once()
 
+    @patch("shutil.copy2")
+    @patch.object(_ModelBuilderUtils, "_generate_config_pbtxt")
+    @patch.object(_ModelBuilderUtils, "_pack_conda_env")
+    @patch.object(_ModelBuilderUtils, "_compute_integrity_hash")
+    def test_prepare_for_triton_inference_spec_copies_triton_model_py(
+        self, mock_hmac, mock_pack, mock_config, mock_copy
+    ):
+        """The Triton python backend model.py must be copied from model_server/triton."""
+        utils = _ModelBuilderUtils()
+        utils.inference_spec = Mock()
+        utils.model = None
+        utils.schema_builder = Mock()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            utils.model_path = tmpdir
+            utils._prepare_for_triton()
+
+        source = Path(mock_copy.call_args[0][0])
+        self.assertTrue(source.is_file(), f"{source} does not exist")
+        self.assertEqual(source.parent.name, "triton")
+
 
 class TestExportPytorchToOnnx(unittest.TestCase):
     """Test _export_pytorch_to_onnx method."""
@@ -241,6 +262,19 @@ class TestPackCondaEnv(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             with self.assertRaises(ImportError):
                 utils._pack_conda_env(Path(tmpdir))
+
+    @patch("sagemaker.serve.model_builder_utils.subprocess.run")
+    def test_pack_conda_env_runs_triton_pack_script(self, mock_run):
+        """The pack_conda_env.sh script must be resolved from model_server/triton."""
+        utils = _ModelBuilderUtils()
+
+        with patch.dict("sys.modules", {"conda_pack": Mock(__version__="0.8.0")}):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                utils._pack_conda_env(Path(tmpdir))
+
+        script = Path(mock_run.call_args[0][0][1])
+        self.assertTrue(script.is_file(), f"{script} does not exist")
+        self.assertEqual(script.name, "pack_conda_env.sh")
 
 
 class TestSaveInferenceSpec(unittest.TestCase):
