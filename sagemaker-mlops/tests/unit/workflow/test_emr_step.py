@@ -34,6 +34,28 @@ def test_emr_step_config_to_request():
     assert request["HadoopJarStep"]["Args"] == ["arg1"]
 
 
+def test_emr_step_config_output_args_without_args():
+    """Test output_args are added as command line args when args is not provided."""
+    config = EMRStepConfig(jar="s3://bucket/my.jar", output_args={"output-path": "s3://b/o/"})
+
+    assert config.args == ["--output-path", "s3://b/o/"]
+    assert config.output_args_index == {"output-path": 1}
+    assert config.to_request()["HadoopJarStep"]["Args"] == ["--output-path", "s3://b/o/"]
+
+
+def test_emr_step_config_output_args_does_not_mutate_caller_args():
+    """Test output_args do not leak into the caller's args list across configs."""
+    shared_args = ["arg1"]
+
+    first = EMRStepConfig(jar="s3://bucket/my.jar", args=shared_args, output_args={"o": "s3://b"})
+    second = EMRStepConfig(jar="s3://bucket/my.jar", args=shared_args, output_args={"o": "s3://b"})
+
+    assert shared_args == ["arg1"]
+    assert first.args == ["arg1", "--o", "s3://b"]
+    assert second.args == ["arg1", "--o", "s3://b"]
+    assert second.output_args_index == {"o": 2}
+
+
 def test_emr_step_with_cluster_id():
     config = EMRStepConfig(jar="s3://bucket/my.jar")
     step = EMRStep(
