@@ -254,3 +254,19 @@ def test_line_iterator_no_trailing_newline_at_end():
 
     with pytest.raises(StopIteration):
         next(iterator)
+
+
+def test_byte_iterator_skips_unknown_event_type():
+    """Test that ByteIterator skips events it does not recognize."""
+    event_stream = [{"SomeNewEvent": {}}, {"PayloadPart": {"Bytes": b"hello"}}]
+    iterator = ByteIterator(event_stream)
+
+    assert next(iterator) == b"hello"
+
+
+def test_line_iterator_skips_unknown_event_type():
+    """Test that LineIterator skips events it does not recognize."""
+    event_stream = [{"SomeNewEvent": {}}, {"PayloadPart": {"Bytes": b"hello\n"}}]
+    iterator = LineIterator(event_stream)
+
+    assert next(iterator) == b"hello"
