@@ -12,10 +12,11 @@
 # language governing permissions and limitations under the License.
 
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from collections import deque
 
 from sagemaker.core.remote_function.client import (
+    remote,
     RemoteExecutor,
     _submit_worker,
     _polling_worker,
@@ -25,6 +26,28 @@ from sagemaker.core.remote_function.client import (
     _CANCELLED,
     _FINISHED,
 )
+
+TRAINING_PLAN_ARN = "arn:aws:sagemaker:us-west-2:123456789012:training-plan/test-plan"
+
+
+class TestTrainingPlanArnForwarding:
+    """Ensure training_plan_arn is forwarded into _JobSettings by both entry points."""
+
+    @patch("sagemaker.core.remote_function.client._JobSettings")
+    def test_remote_decorator_forwards_training_plan_arn(self, mock_job_settings):
+        @remote(instance_type="ml.m5.xlarge", training_plan_arn=TRAINING_PLAN_ARN)
+        def my_func():
+            pass
+
+        _, kwargs = mock_job_settings.call_args
+        assert kwargs["training_plan_arn"] == TRAINING_PLAN_ARN
+
+    @patch("sagemaker.core.remote_function.client._JobSettings")
+    def test_remote_executor_forwards_training_plan_arn(self, mock_job_settings):
+        RemoteExecutor(instance_type="ml.m5.xlarge", training_plan_arn=TRAINING_PLAN_ARN)
+
+        _, kwargs = mock_job_settings.call_args
+        assert kwargs["training_plan_arn"] == TRAINING_PLAN_ARN
 
 
 class TestConstants:
