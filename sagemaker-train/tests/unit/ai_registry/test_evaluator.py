@@ -218,7 +218,12 @@ class TestEvaluator:
             "HubContentVersion": "1.0.0",
             "HubContentStatus": "Available",
             "HubContentDocument": json.dumps(
-                {"SubType": "AWS/Evaluator", "JsonContent": json.dumps({"Reference": "ref"})}
+                {
+                    "SubType": "AWS/Evaluator",
+                    "JsonContent": json.dumps(
+                        {"Reference": "ref", "EvaluatorType": REWARD_FUNCTION}
+                    ),
+                }
             ),
             "HubContentSearchKeywords": ["method:lambda"],
             "CreationTime": "2024-01-01",
@@ -231,6 +236,8 @@ class TestEvaluator:
         versions = evaluator.get_versions()
 
         assert len(versions) == 2
+        assert all(v.type == REWARD_FUNCTION for v in versions)
+        assert all(v.reference == "ref" for v in versions)
 
     @patch("sagemaker.ai_registry.evaluator.Evaluator.create")
     def test_create_version_success(self, mock_create):
