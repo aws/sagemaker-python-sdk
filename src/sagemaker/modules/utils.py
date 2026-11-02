@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import Literal, Any
 
 from sagemaker_core.shapes import Unassigned
+from sagemaker.git_utils import _redact_credentials_from_url
 from sagemaker.modules import logger
 
 
@@ -169,9 +170,16 @@ def _run_clone_command_silent(repo_url, dest_dir):
                 stderr=subprocess.DEVNULL,
             )
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to clone repository: {repo_url}")
-            logger.error(f"Error output:\n{e}")
-            raise
+            safe_url = _redact_credentials_from_url(repo_url)
+            error = subprocess.CalledProcessError(
+                e.returncode,
+                ["git", "clone", safe_url, dest_dir],
+                output=e.output,
+                stderr=e.stderr,
+            )
+            logger.error(f"Failed to clone repository: {safe_url}")
+            logger.error(f"Error output:\n{error}")
+            raise error from None
     elif repo_url.startswith("git@") or repo_url.startswith("ssh://"):
         try:
             with tempfile.TemporaryDirectory() as tmp_dir:

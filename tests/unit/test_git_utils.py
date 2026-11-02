@@ -737,6 +737,30 @@ class TestCredentialRedaction:
         result = git_utils._redact_credentials_from_url(url)
         assert result == url
 
+    def test_redact_password_containing_at_sign(self):
+        """Test that userinfo is redacted up to the last '@' in the authority."""
+        url = "https://user:p@ss@github.com/user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert result == "https://<credentials-redacted>@github.com/user/repo.git"
+
+    def test_redact_url_without_path(self):
+        """Test redaction when the URL has no path component."""
+        url = "https://user:token@github.com"
+        result = git_utils._redact_credentials_from_url(url)
+        assert result == "https://<credentials-redacted>@github.com"
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://github.com/user/repo@v1.git",
+            "https://github.com/user/repo.git?ref=a@b",
+            "https://github.com/user/repo.git#a@b",
+        ],
+    )
+    def test_no_redaction_for_at_sign_outside_authority(self, url):
+        """Test that an '@' after the host is not treated as userinfo."""
+        assert git_utils._redact_credentials_from_url(url) == url
+
     def test_no_redaction_for_ssh_url(self):
         """Test that SSH URLs are not affected by redaction."""
         url = "git@github.com:user/repo.git"
