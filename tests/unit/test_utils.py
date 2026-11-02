@@ -829,10 +829,10 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
 
     assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
         "/model",
-        "/code/lib/a",
-        "/code/lib/aa",
-        "/code/lib/bb",
-        "/code/lib/dir/b",
+        "/code/a",
+        "/code/aa",
+        "/code/bb",
+        "/code/dir/b",
         "/code/inference.py",
     }
 
@@ -936,7 +936,81 @@ def test_repack_model_from_file_to_file(tmp):
         sagemaker_session,
     )
 
-    assert list_tar_files(destination_path, tmp) == {"/code/lib/a", "/code/inference.py", "/model"}
+    assert list_tar_files(destination_path, tmp) == {"/code/a", "/code/inference.py", "/model"}
+
+
+def test_create_or_update_code_dir_copies_dependencies_to_code_root(tmp_path):
+    """Directory and single-file dependencies are importable from the code root."""
+    model_dir = tmp_path / "model"
+    model_dir.mkdir()
+    inference_script = tmp_path / "inference.py"
+    inference_script.write_text("inference")
+    directory_dependency = tmp_path / "my_lib"
+    directory_dependency.mkdir()
+    (directory_dependency / "helper.py").write_text("directory dependency")
+    file_dependency = tmp_path / "standalone.py"
+    file_dependency.write_text("file dependency")
+
+    sagemaker.utils._create_or_update_code_dir(
+        str(model_dir),
+        str(inference_script),
+        None,
+        [str(directory_dependency), str(file_dependency)],
+        None,
+        str(tmp_path),
+    )
+
+    assert (model_dir / "code" / "my_lib" / "helper.py").exists()
+    assert (model_dir / "code" / "standalone.py").exists()
+    assert not (model_dir / "code" / "lib").exists()
+
+
+def test_create_or_update_code_dir_rejects_directory_dependency_collision(tmp_path):
+    """A directory dependency must not silently merge with source code."""
+    model_dir = tmp_path / "model"
+    model_dir.mkdir()
+    source_dir = tmp_path / "source"
+    (source_dir / "my_lib").mkdir(parents=True)
+    (source_dir / "my_lib" / "source.py").write_text("source")
+    dependency = tmp_path / "dependency" / "my_lib"
+    dependency.mkdir(parents=True)
+    (dependency / "helper.py").write_text("dependency")
+
+    with pytest.raises(FileExistsError):
+        sagemaker.utils._create_or_update_code_dir(
+            str(model_dir),
+            "inference.py",
+            str(source_dir),
+            [str(dependency)],
+            None,
+            str(tmp_path),
+        )
+
+    assert (model_dir / "code" / "my_lib" / "source.py").exists()
+    assert not (model_dir / "code" / "my_lib" / "helper.py").exists()
+
+
+def test_create_or_update_code_dir_file_dependency_overwrites_collision(tmp_path):
+    """A file dependency must preserve copy2 overwrite semantics."""
+    model_dir = tmp_path / "model"
+    model_dir.mkdir()
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    (source_dir / "helper.py").write_text("source")
+    dependency = tmp_path / "dependency" / "helper.py"
+    dependency.parent.mkdir()
+    dependency.write_text("dependency")
+
+    sagemaker.utils._create_or_update_code_dir(
+        str(model_dir),
+        "inference.py",
+        str(source_dir),
+        [str(dependency)],
+        None,
+        str(tmp_path),
+    )
+
+    assert (model_dir / "code" / "helper.py").read_text() == "dependency"
 
 
 def test_repack_model_with_inference_code_should_replace_the_code(tmp, fake_s3):
