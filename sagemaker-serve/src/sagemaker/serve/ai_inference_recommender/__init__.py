@@ -39,6 +39,11 @@ from sagemaker.serve.ai_inference_recommender.result import (
     compare_benchmarks,
 )
 from sagemaker.serve.ai_inference_recommender.secrets import Secret
+from sagemaker.serve.ai_inference_recommender.traffic import (
+    EndpointTraffic,
+    TrafficStats,
+    describe_endpoint_traffic,
+)
 from sagemaker.serve.ai_inference_recommender.workload import Workload
 from sagemaker.serve.ai_inference_recommender._model_builder_methods import (
     start_benchmark,
@@ -51,14 +56,17 @@ __all__ = [
     "BenchmarkMetrics",
     "BenchmarkResult",
     "BenchmarkSearchResult",
+    "EndpointTraffic",
     "FeatureGatedError",
     "InferenceFramework",
     "PerformanceTarget",
     "RecommendationJob",
     "Secret",
+    "TrafficStats",
     "Workload",
     "WorkloadValidationError",
     "compare_benchmarks",
+    "describe_endpoint_traffic",
     "list_benchmarks",
     "list_recommendations",
     "start_benchmark",

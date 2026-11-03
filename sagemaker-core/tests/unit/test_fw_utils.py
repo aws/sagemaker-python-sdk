@@ -15,6 +15,9 @@
 from __future__ import absolute_import
 
 import json
+import os
+import tarfile
+
 import pytest
 from unittest.mock import Mock, patch
 
@@ -263,6 +266,95 @@ class TestTarAndUploadDir:
 
         assert result.s3_prefix == "s3://test-bucket/prefix/sourcedir.tar.gz"
         assert result.script_name == "train.py"
+
+    @staticmethod
+    def _decoy(tmp_path):
+        """Create a decoy credentials file under a fake home directory."""
+        aws_dir = tmp_path / "home" / ".aws"
+        aws_dir.mkdir(parents=True)
+        decoy = aws_dir / "credentials"
+        decoy.write_text("decoy-not-a-real-credential")
+        return decoy
+
+    @staticmethod
+    def _source_dir(tmp_path):
+        source = tmp_path / "source"
+        (source / "pkg").mkdir(parents=True)
+        (source / "train.py").write_text("print('hello')")
+        return source
+
+    @staticmethod
+    def _upload(tmp_path, source, dependencies=None, on_upload=None):
+        mock_session = Mock()
+        mock_session.region_name = "us-west-2"
+        upload_file = mock_session.resource.return_value.Object.return_value.upload_file
+        upload_file.side_effect = on_upload
+        return tar_and_upload_dir(
+            session=mock_session,
+            bucket="test-bucket",
+            s3_key_prefix="prefix",
+            script="train.py",
+            directory=str(source),
+            dependencies=dependencies,
+            settings=Mock(local_download_dir=str(tmp_path), encrypt_repacked_artifacts=False),
+        )
+
+    @patch("sagemaker.core.common_utils.create_tar_file")
+    def test_tar_and_upload_dir_rejects_directory_with_outside_symlink(
+        self, mock_create_tar, tmp_path
+    ):
+        source = self._source_dir(tmp_path)
+        os.symlink(self._decoy(tmp_path), source / "pkg" / "config.ini")
+
+        with pytest.raises(ValueError, match="source_dir contains a symlink"):
+            self._upload(tmp_path, source)
+        mock_create_tar.assert_not_called()
+
+    @patch("sagemaker.core.common_utils.create_tar_file")
+    def test_tar_and_upload_dir_rejects_dependency_with_outside_symlink(
+        self, mock_create_tar, tmp_path
+    ):
+        source = self._source_dir(tmp_path)
+        dep = tmp_path / "my_lib"
+        dep.mkdir()
+        os.symlink(self._decoy(tmp_path).parent, dep / "settings")
+
+        with pytest.raises(ValueError, match="dependency contains a symlink"):
+            self._upload(tmp_path, source, dependencies=[str(dep)])
+        mock_create_tar.assert_not_called()
+
+    @patch("sagemaker.core.common_utils.create_tar_file")
+    def test_tar_and_upload_dir_rejects_entry_point_directory_with_outside_symlink(
+        self, mock_create_tar, tmp_path
+    ):
+        """Without source_dir, a directory passed as the script is still checked."""
+        script_dir = tmp_path / "code"
+        script_dir.mkdir()
+        os.symlink(self._decoy(tmp_path), script_dir / "config.ini")
+
+        with pytest.raises(ValueError, match="entry_point contains a symlink"):
+            tar_and_upload_dir(
+                session=Mock(),
+                bucket="test-bucket",
+                s3_key_prefix="prefix",
+                script=str(script_dir),
+            )
+        mock_create_tar.assert_not_called()
+
+    def test_tar_and_upload_dir_packages_symlinks_inside_root(self, tmp_path):
+        source = self._source_dir(tmp_path)
+        (source / "pkg" / "helper.py").write_text("# helper")
+        os.symlink("pkg/helper.py", source / "helper_link.py")
+        captured = {}
+
+        def _capture(tar_file, ExtraArgs=None):
+            with tarfile.open(tar_file, "r:gz") as tar:
+                captured["names"] = set(tar.getnames())
+
+        result = self._upload(tmp_path, source, on_upload=_capture)
+
+        assert result.s3_prefix == "s3://test-bucket/prefix/sourcedir.tar.gz"
+        assert {"train.py", "helper_link.py", "pkg/helper.py"} <= captured["names"]
 
 
 class TestFrameworkNameFromImage:
