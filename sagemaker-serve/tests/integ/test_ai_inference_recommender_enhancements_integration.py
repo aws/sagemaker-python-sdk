@@ -20,8 +20,10 @@ from __future__ import absolute_import
 import logging
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
+from botocore.exceptions import ClientError
 
 from sagemaker.core.helper.session_helper import Session, get_execution_role
 from sagemaker.core.jumpstart.configs import JumpStartConfig
@@ -36,10 +38,12 @@ from sagemaker.core.resources import (
 from sagemaker.serve.ai_inference_recommender import (
     Workload,
     compare_benchmarks,
+    describe_endpoint_traffic,
     list_benchmarks,
     list_recommendations,
     start_benchmark,
 )
+from sagemaker.serve.ai_inference_recommender import traffic as traffic_module
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.train.configs import Compute
 
@@ -95,6 +99,39 @@ def test_list_benchmarks_and_recommendations_plumbing():
     logger.info("Non-matching filters correctly returned empty lists.")
 
 
+def test_describe_endpoint_traffic_plumbing():
+    """The token metrics query is signed and parsed by CloudWatch's query API, and a missing
+    endpoint raises SageMaker's error.
+
+    No GPU and no resources: the query names an endpoint that doesn't exist, so the API answers
+    with no series, which still exercises the selector quoting, the label_replace/or expression,
+    SigV4 signing for the ``monitoring`` service and the response parsing.
+    """
+    boto_session = Session().boto_session
+    missing = f"no-such-endpoint-{uuid.uuid4().hex}"
+    end = datetime.now(timezone.utc).replace(microsecond=0)
+    client = traffic_module._PromQLClient(boto_session, boto_session.client("cloudwatch"))
+    target = traffic_module._Target(missing, None, "AllTraffic", 1)
+
+    snapshots = traffic_module._snapshots(client, target, end - timedelta(days=1), end)
+
+    assert snapshots == [{}, {}]
+
+    with pytest.raises(ClientError) as raised:
+        describe_endpoint_traffic(missing, sagemaker_session=boto_session)
+    assert raised.value.response["Error"]["Code"] == "ValidationException"
+
+
+def _wait_for_traffic(endpoint_name, timeout_seconds=600):
+    """describe_endpoint_traffic over the last 3 hours, once its concurrency has arrived."""
+    deadline = time.time() + timeout_seconds
+    while True:
+        traffic = describe_endpoint_traffic(endpoint_name, lookback=timedelta(hours=3))
+        if traffic.concurrency is not None or time.time() > deadline:
+            return traffic
+        time.sleep(30)
+
+
 @pytest.mark.gpu_intensive
 @pytest.mark.xfail_on_insufficient_capacity
 def test_recommendation_deploy_best_and_compare_e2e():
@@ -119,6 +156,8 @@ def test_recommendation_deploy_best_and_compare_e2e():
     bench_b_name = f"air-enh-bench-b-{unique_id}"
     bench_a_wl = f"air-enh-bench-a-wl-{unique_id}"
     bench_b_wl = f"air-enh-bench-b-wl-{unique_id}"
+    bench_c_name = f"air-enh-bench-c-{unique_id}"
+    bench_c_wl = f"air-enh-bench-c-wl-{unique_id}"
 
     source_model = None
     endpoint = None
@@ -222,6 +261,36 @@ def test_recommendation_deploy_best_and_compare_e2e():
                 f"Benchmark {job.get_name()} did not complete: " f"{job.ai_benchmark_job_status}"
             )
 
+        # (4b) describe_endpoint_traffic sees the two benchmarks: their concurrency always, and
+        # their requests when the container publishes vLLM's token histograms. A workload built
+        # from that traffic is accepted by a benchmark.
+        traffic = _wait_for_traffic(endpoint_name)
+        logger.info("describe_endpoint_traffic: %s", traffic)
+        assert traffic.concurrency is not None and traffic.concurrency.max >= 1
+        assert traffic.token_metrics_error is None
+        if traffic.framework == "vllm":
+            assert traffic.requests > 0
+            assert traffic.input_tokens.p50 > 0 and traffic.output_tokens.p50 > 0
+            sized = Workload.from_endpoint(
+                endpoint_name,
+                lookback=timedelta(hours=3),
+                tokenizer=WORKLOAD_TOKENIZER,
+                request_count=10,
+            )
+            assert sized.parameters["concurrency"] >= 1
+            bench_c = start_benchmark(
+                endpoint=endpoint_name,
+                workload=sized,
+                role=role,
+                name=bench_c_name,
+                workload_config_name=bench_c_wl,
+                wait=True,
+            )
+            assert bench_c.ai_benchmark_job_status == "Completed", (
+                f"Benchmark {bench_c.get_name()} did not complete: "
+                f"{bench_c.ai_benchmark_job_status}"
+            )
+
         # (5) list_benchmarks(endpoint=...) filters by this run's (unique)
         # endpoint. Hard-assert the filter contract: every returned job targets
         # this endpoint. Finding both specific jobs is best-effort (List is
@@ -269,7 +338,7 @@ def test_recommendation_deploy_best_and_compare_e2e():
         )
         if source_model is not None:
             _delete_quietly(lambda: source_model, f"Model {src_model_name}")
-        for job_name in (bench_a_name, bench_b_name):
+        for job_name in (bench_a_name, bench_b_name, bench_c_name):
             _delete_quietly(
                 lambda n=job_name: AIBenchmarkJob.get(ai_benchmark_job_name=n),
                 f"AIBenchmarkJob {job_name}",
@@ -278,7 +347,7 @@ def test_recommendation_deploy_best_and_compare_e2e():
             lambda: AIRecommendationJob.get(ai_recommendation_job_name=rec_job_name),
             f"AIRecommendationJob {rec_job_name}",
         )
-        for wl in (rec_wl_name, bench_a_wl, bench_b_wl):
+        for wl in (rec_wl_name, bench_a_wl, bench_b_wl, bench_c_wl):
             _delete_quietly(
                 lambda n=wl: AIWorkloadConfig.get(ai_workload_config_name=n),
                 f"AIWorkloadConfig {wl}",

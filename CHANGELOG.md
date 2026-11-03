@@ -1,5 +1,31 @@
 # Changelog
 
+## v3.28.0 (2026-10-29)
+
+### New Features
+
+- feat(mlops): Add AthenaStep pipeline step (#6508)
+- add: metadata for huggingface vllm v0.30 and v0.31 (#6526)
+- change: add eusc-de-east-1 to PyTorch inference 2.6.0 image URI config (#6538)
+- change: add sa-west-1 to PyTorch training image URI config (#6516)
+
+### Bug Fixes
+
+- fix(codegen): restore codestyle-doc-tests compliance after botocore sync (#6523)
+- fix: set VolumeKmsKeyId on ModelStep runtime repack job (#6537)
+- fix: use pipeline code_hash for FrameworkProcessor sourcedir upload (#6494)
+- fix: keep job name in pipeline request for ModelTrainer and HyperparameterTuner (#6323)
+- Fix s3 sse kms validate path (#5931)
+- fix: preserve volume KMS key in HyperparameterTuner training job definition (#6522)
+- fix: close the remaining gaps in optional torch support (#6531)
+- fix(serve): pin pandas below 3.1.0 to unblock serve unit tests (#6524)
+- fix(serve): decouple the SMD orchestrator entrypoint from the container's sagemaker (#6200) (#6534)
+
+### Tests
+
+- test(train): make SFT recipe-override integ tests recipe-proof (#6548)
+
+
 ## v3.27.0 (2026-10-21)
 
 ### New Features

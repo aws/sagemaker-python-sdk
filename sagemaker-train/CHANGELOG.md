@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.28.0 (2026-10-29)
+
+### Bug Fixes
+
+- fix: keep job name in pipeline request for ModelTrainer and HyperparameterTuner (#6323)
+- Fix s3 sse kms validate path (#5931)
+- fix: preserve volume KMS key in HyperparameterTuner training job definition (#6522)
+
+### Tests
+
+- test(train): make SFT recipe-override integ tests recipe-proof (#6548)
+
+
 ## v1.27.0 (2026-10-21)
 
 ### Bug Fixes

@@ -17,6 +17,10 @@ from __future__ import absolute_import
 import os
 import io
 import logging
+import shutil
+import subprocess
+
+import pytest
 
 from unittest.mock import patch
 
@@ -87,37 +91,37 @@ OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "sm_training.env")
 
 # flake8: noqa
 EXPECTED_ENV = """
-export SM_MODEL_DIR='/opt/ml/model'
-export SM_INPUT_DIR='/opt/ml/input'
-export SM_INPUT_DATA_DIR='/opt/ml/input/data'
-export SM_INPUT_CONFIG_DIR='/opt/ml/input/config'
-export SM_OUTPUT_DIR='/opt/ml/output'
-export SM_OUTPUT_FAILURE='/opt/ml/output/failure'
-export SM_OUTPUT_DATA_DIR='/opt/ml/output/data'
-export SM_LOG_LEVEL='20'
-export SM_MASTER_ADDR='algo-1'
-export SM_MASTER_PORT='7777'
-export SM_SOURCE_DIR='/opt/ml/input/data/code'
-export SM_ENTRY_SCRIPT='train.py'
-export SM_DISTRIBUTED_DRIVER_DIR='/opt/ml/input/data/sm_drivers/distributed_drivers'
+export SM_MODEL_DIR=/opt/ml/model
+export SM_INPUT_DIR=/opt/ml/input
+export SM_INPUT_DATA_DIR=/opt/ml/input/data
+export SM_INPUT_CONFIG_DIR=/opt/ml/input/config
+export SM_OUTPUT_DIR=/opt/ml/output
+export SM_OUTPUT_FAILURE=/opt/ml/output/failure
+export SM_OUTPUT_DATA_DIR=/opt/ml/output/data
+export SM_LOG_LEVEL=20
+export SM_MASTER_ADDR=algo-1
+export SM_MASTER_PORT=7777
+export SM_SOURCE_DIR=/opt/ml/input/data/code
+export SM_ENTRY_SCRIPT=train.py
+export SM_DISTRIBUTED_DRIVER_DIR=/opt/ml/input/data/sm_drivers/distributed_drivers
 export SM_DISTRIBUTED_CONFIG='{"process_count_per_node": 2}'
-export SM_CHANNEL_TRAIN='/opt/ml/input/data/train'
-export SM_CHANNEL_VALIDATION='/opt/ml/input/data/validation'
+export SM_CHANNEL_TRAIN=/opt/ml/input/data/train
+export SM_CHANNEL_VALIDATION=/opt/ml/input/data/validation
 export SM_CHANNELS='["train", "validation"]'
-export SM_HP_BATCH_SIZE='32'
-export SM_HP_LEARNING_RATE='0.001'
+export SM_HP_BATCH_SIZE=32
+export SM_HP_LEARNING_RATE=0.001
 export SM_HP_HOSTS='["algo-1", "algo-2"]'
 export SM_HP_MP_PARAMETERS='{"microbatches": 2, "partitions": 2, "pipeline": "interleaved", "optimize": "memory", "horovod": true}'
 export SM_HPS='{"batch_size": 32, "learning_rate": 0.001, "hosts": ["algo-1", "algo-2"], "mp_parameters": {"microbatches": 2, "partitions": 2, "pipeline": "interleaved", "optimize": "memory", "horovod": true}}'
-export SM_CURRENT_HOST='algo-1'
-export SM_CURRENT_INSTANCE_TYPE='ml.p3.16xlarge'
+export SM_CURRENT_HOST=algo-1
+export SM_CURRENT_INSTANCE_TYPE=ml.p3.16xlarge
 export SM_HOSTS='["algo-1", "algo-2", "algo-3"]'
-export SM_NETWORK_INTERFACE_NAME='eth0'
-export SM_HOST_COUNT='3'
-export SM_CURRENT_HOST_RANK='0'
-export SM_NUM_CPUS='8'
-export SM_NUM_GPUS='0'
-export SM_NUM_NEURONS='0'
+export SM_NETWORK_INTERFACE_NAME=eth0
+export SM_HOST_COUNT=3
+export SM_CURRENT_HOST_RANK=0
+export SM_NUM_CPUS=8
+export SM_NUM_GPUS=0
+export SM_NUM_NEURONS=0
 export SM_RESOURCE_CONFIG='{"current_host": "algo-1", "hosts": ["algo-1", "algo-2", "algo-3"], "current_group_name": "train1", "current_instance_type": "ml.p3.16xlarge", "instance_groups": [{"instance_group_name": "train1", "instance_type": "ml.p3.16xlarge", "hosts": ["algo-1", "algo-2"]}, {"instance_group_name": "train2", "instance_type": "ml.p3.8xlarge", "hosts": ["algo-3"]}], "network_interface_name": "eth0"}'
 export SM_INPUT_DATA_CONFIG='{"train": {"ContentType": "trainingContentType", "TrainingInputMode": "File", "S3DistributionType": "FullyReplicated", "RecordWrapperType": "None"}, "validation": {"TrainingInputMode": "File", "S3DistributionType": "FullyReplicated", "RecordWrapperType": "None"}}'
 export SM_TRAINING_ENV='{"channel_input_dirs": {"train": "/opt/ml/input/data/train", "validation": "/opt/ml/input/data/validation"}, "current_host": "algo-1", "current_instance_type": "ml.p3.16xlarge", "hosts": ["algo-1", "algo-2", "algo-3"], "master_addr": "algo-1", "master_port": 7777, "hyperparameters": {"batch_size": 32, "learning_rate": 0.001, "hosts": ["algo-1", "algo-2"], "mp_parameters": {"microbatches": 2, "partitions": 2, "pipeline": "interleaved", "optimize": "memory", "horovod": true}}, "input_data_config": {"train": {"ContentType": "trainingContentType", "TrainingInputMode": "File", "S3DistributionType": "FullyReplicated", "RecordWrapperType": "None"}, "validation": {"TrainingInputMode": "File", "S3DistributionType": "FullyReplicated", "RecordWrapperType": "None"}}, "input_config_dir": "/opt/ml/input/config", "input_data_dir": "/opt/ml/input/data", "input_dir": "/opt/ml/input", "job_name": "test-job", "log_level": 20, "model_dir": "/opt/ml/model", "network_interface_name": "eth0", "num_cpus": 8, "num_gpus": 0, "num_neurons": 0, "output_data_dir": "/opt/ml/output/data", "resource_config": {"current_host": "algo-1", "hosts": ["algo-1", "algo-2", "algo-3"], "current_group_name": "train1", "current_instance_type": "ml.p3.16xlarge", "instance_groups": [{"instance_group_name": "train1", "instance_type": "ml.p3.16xlarge", "hosts": ["algo-1", "algo-2"]}, {"instance_group_name": "train2", "instance_type": "ml.p3.8xlarge", "hosts": ["algo-3"]}], "network_interface_name": "eth0"}}'
@@ -212,3 +216,59 @@ def test_log_env_variables():
 def _remove_extra_lines(string):
     """Removes extra blank lines from a string."""
     return "\n".join([line for line in string.splitlines() if line.strip()])
+
+
+_ENV_PATCHES = [
+    patch(
+        "sagemaker.train.container_drivers.scripts.environment.read_source_code_json",
+        return_value={},
+    ),
+    patch(
+        "sagemaker.train.container_drivers.scripts.environment.read_distributed_json",
+        return_value={},
+    ),
+    patch("sagemaker.train.container_drivers.scripts.environment.num_cpus", return_value=1),
+    patch("sagemaker.train.container_drivers.scripts.environment.num_gpus", return_value=0),
+    patch("sagemaker.train.container_drivers.scripts.environment.num_neurons", return_value=0),
+]
+
+
+def _write_env(hyperparameters, output_file):
+    """Run set_env with the given hyperparameters and no source code or distributed config."""
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        for p in _ENV_PATCHES:
+            p.start()
+        try:
+            set_env(
+                resource_config=RESOURCE_CONFIG,
+                input_data_config=INPUT_DATA_CONFIG,
+                hyperparameters_config=hyperparameters,
+                output_file=output_file,
+            )
+        finally:
+            for p in _ENV_PATCHES:
+                p.stop()
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash to source the env file")
+@pytest.mark.parametrize(
+    "payload",
+    ["it's 0.001'; touch {marker}; echo '", "'$(touch {marker})'", "x';touch {marker};#"],
+)
+def test_set_env_hyperparameter_value_survives_source_verbatim(tmp_path, payload):
+    """A hyperparameter value must round-trip through `source` and never be executed."""
+    marker = tmp_path / "marker"
+    payload = payload.format(marker=marker)
+    output_file = str(tmp_path / "sm_training.env")
+
+    _write_env({"learning_rate": payload}, output_file)
+
+    result = subprocess.run(
+        ["bash", "-c", f'source "{output_file}"; printf "%s" "$SM_HP_LEARNING_RATE"'],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert result.stdout == payload
+    assert not marker.exists()

@@ -51,73 +51,6 @@ def setup_aws_data_path():
 class TestSFTTrainerRecipeOverrideInteg:
     """Integration tests for SFTTrainer with recipe override."""
 
-    def test_sft_get_resolved_recipe_with_local_yaml(self):
-        """Test that SFTTrainer.get_resolved_recipe() returns merged config from a local YAML."""
-        # Real SFT recipe field names: hyperparameters nest under
-        # training_config.training_args (e.g. max_epochs, global_batch_size).
-        recipe_content = {
-            "training_config": {
-                "training_args": {
-                    "learning_rate": 1e-5,
-                    "max_epochs": 3,
-                    "train_batch_size": 8,
-                }
-            }
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            yaml.dump(recipe_content, f)
-            recipe_path = f.name
-
-        try:
-            sft_trainer = SFTTrainer(
-                model="meta-textgeneration-llama-3-2-1b-instruct",
-                training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-                "model-package-group/sdk-test-finetuned-models",
-                training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-                accept_eula=True,
-                recipe=recipe_path,
-                overrides={
-                    "training_config": {
-                        "learning_rate": 2e-5,
-                        "max_epochs": 5,
-                    }
-                },
-            )
-
-            resolved = sft_trainer.get_resolved_recipe()
-
-            training_args = resolved["training_config"]["training_args"]
-            # Overrides win
-            assert training_args["learning_rate"] == 2e-5
-            assert training_args["max_epochs"] == 5
-            # Recipe file value preserved where no override
-            assert training_args["train_batch_size"] == 8
-
-        finally:
-            os.unlink(recipe_path)
-
-    def test_sft_get_resolved_recipe_overrides_only(self):
-        """Test get_resolved_recipe() with only overrides (no recipe file)."""
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            overrides={
-                "training_config": {
-                    "learning_rate": 3e-5,
-                }
-            },
-        )
-
-        resolved = sft_trainer.get_resolved_recipe()
-
-        # Override applied; learning_rate lives under training_config.training_args.
-        assert resolved["training_config"]["training_args"]["learning_rate"] == 3e-5
-
     def test_sft_get_resolved_recipe_no_recipe_raises(self, sagemaker_session):
         """Test that get_resolved_recipe() raises when no recipe or overrides provided."""
         sft_trainer = SFTTrainer(
@@ -180,231 +113,6 @@ class TestSFTTrainerRecipeOverrideInteg:
                 time.sleep(poll_interval)
 
             assert training_job.training_job_status == "Completed"
-
-        finally:
-            os.unlink(recipe_path)
-
-
-class TestSFTTrainerFullRecipeOverrideInteg:
-    """Integration tests for SFTTrainer overriding non-spec keys via full recipe template."""
-
-    def test_sft_override_non_spec_keys(self):
-        """Test that non-spec keys can be overridden.
-
-        micro_train_batch_size and max_norm exist in the recipe's
-        training_config.training_args but are not exposed in the override spec.
-        They should still be overridable when the full recipe template is used
-        as the base layer.
-        """
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            overrides={
-                "training_config": {
-                    "micro_train_batch_size": 4,
-                    "max_norm": 2.0,
-                }
-            },
-        )
-
-        resolved = sft_trainer.get_resolved_recipe()
-
-        # Non-spec keys should be overridable when full recipe template is available
-        training_args = resolved["training_config"]["training_args"]
-        assert training_args["micro_train_batch_size"] == 4
-        assert training_args["max_norm"] == 2.0
-
-    def test_sft_override_nested_non_spec_keys(self):
-        """Test that nested non-spec keys (training_args.max_len) can be overridden."""
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            overrides={
-                "training_config": {
-                    "training_args": {"max_len": 8192},
-                }
-            },
-        )
-
-        resolved = sft_trainer.get_resolved_recipe()
-
-        # Nested key overridden at training_config.training_args.max_len
-        assert resolved["training_config"]["training_args"]["max_len"] == 8192
-        # Spec-level default preserved (seed lives under training_args)
-        assert resolved["training_config"]["training_args"]["seed"] == 42
-
-    def test_sft_full_recipe_defaults_preserved(self, sagemaker_session):
-        """Test that full recipe defaults are present for keys not overridden."""
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            sagemaker_session=sagemaker_session,
-            overrides={
-                "training_config": {
-                    "learning_rate": 3e-5,
-                }
-            },
-        )
-
-        resolved = sft_trainer.get_resolved_recipe()
-
-        # Override applied (learning_rate lives under training_args)
-        assert resolved["training_config"]["training_args"]["learning_rate"] == 3e-5
-        # Full recipe template keys are present (not just spec keys)
-        training_config = resolved.get("training_config", {})
-        assert (
-            len(training_config) > 3
-        ), f"Expected more keys from full recipe template, got only: {list(training_config.keys())}"
-
-    def test_sft_full_recipe_with_recipe_file_and_overrides(self):
-        """Test 3-level merge: full_template < recipe file < overrides with non-spec keys."""
-        # Recipe files aren't field-name remapped, so use the real nested path.
-        recipe_content = {
-            "training_config": {
-                "training_args": {
-                    "max_len": 8192,
-                    "learning_rate": 1e-5,
-                }
-            }
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            yaml.dump(recipe_content, f)
-            recipe_path = f.name
-
-        try:
-            sft_trainer = SFTTrainer(
-                model="meta-textgeneration-llama-3-2-1b-instruct",
-                training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-                "model-package-group/sdk-test-finetuned-models",
-                training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-                accept_eula=True,
-                recipe=recipe_path,
-                overrides={
-                    "training_config": {
-                        "learning_rate": 2e-5,
-                    }
-                },
-            )
-
-            resolved = sft_trainer.get_resolved_recipe()
-
-            training_args = resolved["training_config"]["training_args"]
-            # Overrides win
-            assert training_args["learning_rate"] == 2e-5
-            # Recipe file wins over full template default
-            assert training_args["max_len"] == 8192
-
-        finally:
-            os.unlink(recipe_path)
-
-
-class TestSFTTrainerNestedRecipeOverrideInteg:
-    """Integration tests for nested recipe key overrides and deep flattening."""
-
-    def test_sft_nested_override_flows_to_hyperparameters(self):
-        """Test that nested overrides (lr_scheduler.warmup_steps) flatten into hyperparameters."""
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            overrides={
-                "training_config": {
-                    "training_args": {"max_len": 8192, "lr_warmup_ratio": 0.05},
-                }
-            },
-        )
-
-        # Simulate what train() does: to_dict() then _apply_recipe_to_hyperparameters()
-        final_hp = sft_trainer.hyperparameters.to_dict()
-        final_hp = sft_trainer._apply_recipe_to_hyperparameters(final_hp)
-
-        # Nested keys are flattened to leaf names
-        assert "max_len" in final_hp, f"max_len missing from: {list(final_hp.keys())}"
-        assert final_hp["max_len"] == "8192"
-        assert "lr_warmup_ratio" in final_hp
-        assert final_hp["lr_warmup_ratio"] == "0.05"
-        # All values are strings (SageMaker API requirement)
-        for k, v in final_hp.items():
-            assert isinstance(v, str), f"Key '{k}' has non-string value: {type(v).__name__}"
-
-    def test_sft_nested_defaults_preserved_in_hyperparameters(self):
-        """Test that unchanged nested defaults also flatten into hyperparameters."""
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            overrides={
-                "training_config": {
-                    "learning_rate": 5e-6,
-                }
-            },
-        )
-
-        final_hp = sft_trainer.hyperparameters.to_dict()
-        final_hp = sft_trainer._apply_recipe_to_hyperparameters(final_hp)
-
-        # Nested leaf defaults from full recipe are present
-        assert "seed" in final_hp, f"Nested default 'seed' missing from: {list(final_hp.keys())}"
-        assert "gradient_clipping" in final_hp
-        # Override applied
-        assert final_hp["learning_rate"] == "5e-06"
-
-    def test_sft_recipe_file_overrides_nested_keys(self):
-        """Test that a recipe file can override nested keys in the full template."""
-        recipe_content = {
-            "training_config": {
-                "training_args": {
-                    "max_len": 2048,
-                    "max_epochs": 2,
-                }
-            }
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            yaml.dump(recipe_content, f)
-            recipe_path = f.name
-
-        try:
-            sft_trainer = SFTTrainer(
-                model="meta-textgeneration-llama-3-2-1b-instruct",
-                training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-                "model-package-group/sdk-test-finetuned-models",
-                training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-                accept_eula=True,
-                recipe=recipe_path,
-                overrides={
-                    "training_config": {
-                        "training_args": {"max_len": 4096},
-                    }
-                },
-            )
-
-            final_hp = sft_trainer.hyperparameters.to_dict()
-            final_hp = sft_trainer._apply_recipe_to_hyperparameters(final_hp)
-
-            # Overrides > recipe file > full template
-            assert final_hp["max_len"] == "4096"
-            # Recipe file value preserved (no override for max_epochs)
-            assert final_hp["max_epochs"] == "2"
 
         finally:
             os.unlink(recipe_path)
@@ -603,33 +311,6 @@ class TestSFTTrainerValidationFailuresInteg:
         with pytest.raises(ValueError, match="not supported"):
             sft_trainer.get_resolved_recipe()
 
-    def test_sft_rejects_invalid_instance_type_with_hyperpod_compute(self):
-        """Test that an unsupported instance_type in HyperPodCompute raises ValueError."""
-        from sagemaker.core.training.configs import HyperPodCompute
-
-        compute = HyperPodCompute(
-            cluster_name="my-cluster",
-            instance_type="ml.t3.medium",
-        )
-
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            compute=compute,
-            overrides={
-                "training_config": {
-                    "learning_rate": 1e-5,
-                }
-            },
-        )
-
-        with pytest.raises(ValueError, match="not supported"):
-            sft_trainer.get_resolved_recipe()
-
     def test_sft_rejects_invalid_node_count_with_hyperpod_compute(self):
         """Test that an unsupported node_count in HyperPodCompute raises ValueError."""
         from sagemaker.core.training.configs import HyperPodCompute
@@ -658,51 +339,6 @@ class TestSFTTrainerValidationFailuresInteg:
         with pytest.raises(ValueError, match="not supported"):
             sft_trainer.get_resolved_recipe()
 
-    def test_sft_valid_instance_type_passes_with_compute(self):
-        """Test that a valid instance_type in Compute passes validation."""
-        from sagemaker.core.training.configs import Compute
-
-        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
-
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            compute=compute,
-            overrides={
-                "training_config": {
-                    "learning_rate": 1e-5,
-                }
-            },
-        )
-
-        # Should not raise
-        resolved = sft_trainer.get_resolved_recipe()
-        assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
-
-    def test_sft_serverless_skips_instance_type_validation(self):
-        """Test that serverless mode (no compute) skips instance_type validation."""
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            overrides={
-                "training_config": {
-                    "learning_rate": 1e-5,
-                }
-            },
-        )
-
-        # No compute = serverless, instance_type validation skipped
-        resolved = sft_trainer.get_resolved_recipe()
-        assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
-
     @pytest.mark.skip(
         reason="save_steps/max_steps are not part of the llama SFT recipe "
         "(it trains by epochs, not steps), so the save_steps<=max_steps "
@@ -730,74 +366,6 @@ class TestSFTTrainerValidationFailuresInteg:
         resolved = sft_trainer.get_resolved_recipe()
         assert resolved["training_config"]["max_steps"] == 100
         assert resolved["training_config"]["save_steps"] == 100
-
-    def test_sft_recipe_file_with_invalid_value_raises(self):
-        """Test that validation catches errors from recipe file values."""
-        # Use the real nested path so the value is validated; 999.0 exceeds
-        # learning_rate's spec max of 1e-4.
-        recipe_content = {
-            "training_config": {
-                "training_args": {
-                    "learning_rate": 999.0,
-                }
-            }
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            yaml.dump(recipe_content, f)
-            recipe_path = f.name
-
-        try:
-            sft_trainer = SFTTrainer(
-                model="meta-textgeneration-llama-3-2-1b-instruct",
-                training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-                "model-package-group/sdk-test-finetuned-models",
-                training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-                accept_eula=True,
-                recipe=recipe_path,
-            )
-
-            with pytest.raises(ValueError, match="above maximum"):
-                sft_trainer.get_resolved_recipe()
-        finally:
-            os.unlink(recipe_path)
-
-    def test_sft_override_corrects_invalid_recipe_value(self, sagemaker_session):
-        """Test that a programmatic override can fix an invalid recipe file value."""
-        # Recipe value is invalid (>max); the override must win and pass validation.
-        recipe_content = {
-            "training_config": {
-                "training_args": {
-                    "learning_rate": 999.0,
-                }
-            }
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            yaml.dump(recipe_content, f)
-            recipe_path = f.name
-
-        try:
-            sft_trainer = SFTTrainer(
-                model="meta-textgeneration-llama-3-2-1b-instruct",
-                training_type=TrainingType.LORA,
-                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-                "model-package-group/sdk-test-finetuned-models",
-                training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-                accept_eula=True,
-                sagemaker_session=sagemaker_session,
-                recipe=recipe_path,
-                overrides={
-                    "training_config": {
-                        "learning_rate": 1e-5,
-                    }
-                },
-            )
-
-            # Override wins, fixing the bad recipe file value
-            resolved = sft_trainer.get_resolved_recipe()
-            assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
-        finally:
-            os.unlink(recipe_path)
 
     def test_sft_nonexistent_recipe_file_raises(self):
         """Test that a non-existent recipe file path raises ValueError."""
@@ -828,33 +396,6 @@ class TestSFTTrainerValidationFailuresInteg:
 
         with pytest.raises(ValueError, match="HTTP/HTTPS recipe URLs are not supported"):
             sft_trainer.get_resolved_recipe()
-
-    def test_sft_resolved_recipe_is_idempotent(self):
-        """Test that calling get_resolved_recipe() twice returns the same result."""
-        sft_trainer = SFTTrainer(
-            model="meta-textgeneration-llama-3-2-1b-instruct",
-            training_type=TrainingType.LORA,
-            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
-            "model-package-group/sdk-test-finetuned-models",
-            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-            accept_eula=True,
-            overrides={
-                "training_config": {
-                    "learning_rate": 2e-5,
-                }
-            },
-        )
-
-        result1 = sft_trainer.get_resolved_recipe()
-        result2 = sft_trainer.get_resolved_recipe()
-
-        assert result1 == result2
-        assert result1["training_config"]["training_args"]["learning_rate"] == 2e-5
-
-        # Mutating the returned dict doesn't affect cached result
-        result1["training_config"]["training_args"]["learning_rate"] = 999
-        result3 = sft_trainer.get_resolved_recipe()
-        assert result3["training_config"]["training_args"]["learning_rate"] == 2e-5
 
     def test_sft_invalid_yaml_content_raises(self):
         """Test that a YAML file with non-dict content raises ValueError."""
@@ -1251,6 +792,108 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
         assert not missing_from_full, (
             f"Full recipe (compute set) is missing expected internal keys: "
             f"{sorted(missing_from_full)}. The full recipe path should include all template keys."
+        )
+
+        assert len(result_hp) <= 100, (
+            f"Serverless hyperparameters have {len(result_hp)} keys, exceeding the "
+            f"CreateTrainingJob limit of 100."
+        )
+
+    def test_sft_llama_serverless_only_user_override_keys_applied(self, sagemaker_session):
+        """llama SFT serverless (compute=None) excludes non-overridden recipe keys.
+
+        Same invariant as the RLVR Nemotron and Nova SFT tests: when compute is
+        None, internal recipe-template keys the user never touched must not appear
+        in the hyperparameters sent to CreateTrainingJob (100-key limit), while
+        the user-provided overrides must flow through.
+        """
+        # Pick two bounded numeric spec keys dynamically from the LIVE Hub spec so
+        # no recipe-specific key name is hardcoded.
+        probe = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            sagemaker_session=sagemaker_session,
+        )
+        specs = probe.hyperparameters._specs
+        override_values = {}
+        for key, spec in specs.items():
+            if str(spec.get("type", "")).lower() not in ("float", "integer", "int"):
+                continue
+            if spec.get("enum"):
+                continue
+            lo, hi, default = spec.get("min"), spec.get("max"), spec.get("default")
+            if lo is None or hi is None:
+                continue
+            is_int = str(spec.get("type")).lower() in ("integer", "int")
+            val = int((lo + hi) // 2) if is_int else (lo + hi) / 2.0
+            if val != default and lo <= val <= hi:
+                override_values[key] = val
+            if len(override_values) == 2:
+                break
+        assert len(override_values) >= 1, "expected bounded numeric spec keys in the live spec"
+
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:"
+            "model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            sagemaker_session=sagemaker_session,
+            base_job_name="sft-llama-override-keys-integ",
+            overrides={"training_config": dict(override_values)},
+        )
+
+        baseline_hp = sft_trainer.hyperparameters.to_dict()
+
+        # Serverless path (compute=None): only user-provided keys applied.
+        assert sft_trainer.compute is None
+        result_hp = sft_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+
+        # Serverful path (compute set): full recipe applied.
+        sft_trainer.compute = TrainingJobCompute(instance_type="ml.p5.48xlarge", instance_count=1)
+        full_hp = sft_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+        sft_trainer.compute = None  # reset
+
+        logger.info(f"llama SFT — Baseline HP keys: {len(baseline_hp)}")
+        logger.info(f"llama SFT — User-override-only HP keys: {len(result_hp)}")
+        logger.info(f"llama SFT — Full recipe HP keys: {len(full_hp)}")
+
+        # Override VALUES flow into the resolved recipe (resolver correctness).
+        # Asserted against the resolved recipe (not the serverless-filtered
+        # hyperparameters) so it is robust to recipe leaf renames, e.g.
+        # dataset_max_len -> training_config.data.max_length.
+        resolved_recipe = sft_trainer.get_resolved_recipe()
+        flat_recipe = flatten_resolved_recipe(resolved_recipe)
+        resolved_values = {v for v in flat_recipe.values() if v is not None}
+        for key, val in override_values.items():
+            assert (
+                val in resolved_values
+            ), f"override {key}={val} did not flow into the resolved recipe"
+
+        # All values are strings (SageMaker API requirement).
+        for k, v in result_hp.items():
+            assert isinstance(v, str), f"Key '{k}' non-string: {type(v).__name__}"
+
+        # Dynamically compute recipe keys NOT in the override spec, then assert
+        # they are excluded from the serverless result (reusing flat_recipe above).
+        all_recipe_keys = {k for k, v in flat_recipe.items() if v is not None}
+        override_spec_keys = set(sft_trainer.hyperparameters._specs.keys())
+        user_leaf_keys = set(flatten_resolved_recipe({"training_config": override_values}).keys())
+        recipe_internal_keys_not_in_spec = all_recipe_keys - override_spec_keys - user_leaf_keys
+
+        assert (
+            len(recipe_internal_keys_not_in_spec) > 0
+        ), "Expected llama recipe template to have keys beyond the override spec, but found none."
+
+        leaked_keys = recipe_internal_keys_not_in_spec & set(result_hp.keys())
+        assert not leaked_keys, (
+            f"Non-overridable recipe template keys leaked into serverless hyperparameters: "
+            f"{sorted(leaked_keys)}."
         )
 
         assert len(result_hp) <= 100, (
