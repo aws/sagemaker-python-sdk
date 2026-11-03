@@ -11,10 +11,78 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+import os
+import subprocess
+import sys
+import textwrap
 from unittest.mock import patch, MagicMock
 
 from sagemaker.ai_registry.air_constants import AIR_DEFAULT_PAGE_SIZE
 from sagemaker.ai_registry.air_hub import AIRHub
+
+
+class TestAIRHubLazyClients:
+    """Importing the module must have no AWS side effects (issue #6542)."""
+
+    def test_import_without_region_has_no_aws_side_effects(self):
+        """Importing sagemaker.mlops must not require a configured AWS region.
+
+        Reproduces issue #6542: AIRHub used to create boto3 clients as class
+        attributes, which ran at import time and raised NoRegionError when no
+        region was configured. Clients are now created lazily, so the import
+        must succeed in a subprocess with every region source scrubbed.
+        """
+        script = textwrap.dedent("""
+            import sagemaker.mlops  # noqa: F401
+            import sagemaker.serve  # noqa: F401
+            from sagemaker.ai_registry.air_hub import AIRHub
+
+            assert AIRHub._sagemaker_client is None, "sagemaker client created at import"
+            assert AIRHub._s3_client is None, "s3 client created at import"
+            print("OK")
+            """)
+        env = {k: v for k, v in os.environ.items() if not k.startswith("AWS_")}
+        # Point AWS config/credentials at a non-existent path so no region leaks in.
+        env["AWS_CONFIG_FILE"] = os.devnull
+        env["AWS_SHARED_CREDENTIALS_FILE"] = os.devnull
+
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+        assert (
+            result.returncode == 0
+        ), f"import failed without a region (issue #6542):\n{result.stderr}"
+        assert "OK" in result.stdout
+
+    @patch("sagemaker.ai_registry.air_hub.boto3")
+    def test_get_sagemaker_client_created_lazily_and_cached(self, mock_boto3):
+        AIRHub._sagemaker_client = None
+        sentinel = MagicMock()
+        mock_boto3.client.return_value = sentinel
+
+        first = AIRHub._get_sagemaker_client()
+        second = AIRHub._get_sagemaker_client()
+
+        assert first is sentinel
+        assert second is sentinel
+        mock_boto3.client.assert_called_once_with("sagemaker")
+
+    @patch("sagemaker.ai_registry.air_hub.boto3")
+    def test_get_s3_client_created_lazily_and_cached(self, mock_boto3):
+        AIRHub._s3_client = None
+        sentinel = MagicMock()
+        mock_boto3.client.return_value = sentinel
+
+        first = AIRHub._get_s3_client()
+        second = AIRHub._get_s3_client()
+
+        assert first is sentinel
+        assert second is sentinel
+        mock_boto3.client.assert_called_once_with("s3")
 
 
 class TestAIRHub:

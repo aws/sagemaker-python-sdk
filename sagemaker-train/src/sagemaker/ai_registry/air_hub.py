@@ -32,9 +32,26 @@ from sagemaker.core.telemetry.constants import Feature
 class AIRHub:
     """AI Registry Hub class for managing hub content operations."""
 
-    # Use production SageMaker endpoint (default)
-    _sagemaker_client = boto3.client("sagemaker")
-    _s3_client = boto3.client("s3")
+    # Boto3 clients are created lazily on first use so that importing this module
+    # (and, transitively, sagemaker.mlops / sagemaker.serve) has no AWS side effects
+    # and does not require a configured region. See issue #6542.
+    _sagemaker_client = None
+    _s3_client = None
+
+    @classmethod
+    def _get_sagemaker_client(cls):
+        """Return the shared SageMaker client, creating it on first use."""
+        if cls._sagemaker_client is None:
+            # Use production SageMaker endpoint (default)
+            cls._sagemaker_client = boto3.client("sagemaker")
+        return cls._sagemaker_client
+
+    @classmethod
+    def _get_s3_client(cls):
+        """Return the shared S3 client, creating it on first use."""
+        if cls._s3_client is None:
+            cls._s3_client = boto3.client("s3")
+        return cls._s3_client
 
     @classmethod
     def _generate_hub_names(cls, region: str, account_id: str) -> None:
@@ -76,7 +93,7 @@ class AIRHub:
         cls._ensure_hub_name_initialized()
 
         if client is None:
-            client = cls._sagemaker_client
+            client = cls._get_sagemaker_client()
 
         try:
             client.describe_hub(HubName=cls.hubName)
@@ -118,7 +135,7 @@ class AIRHub:
         Returns:
             Response from import_hub_content API call
         """
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
         cls._create_airegistry_hub_if_not_exists(client)
 
@@ -156,7 +173,7 @@ class AIRHub:
         """
         cls._ensure_hub_name_initialized()
 
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
         request = {
             "HubName": cls.hubName,
@@ -204,7 +221,7 @@ class AIRHub:
         """
         cls._ensure_hub_name_initialized()
 
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
         request = {
             "HubName": cls.hubName,
@@ -234,7 +251,7 @@ class AIRHub:
         """
         cls._ensure_hub_name_initialized()
 
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
         request = {
             "HubName": cls.hubName,
@@ -265,7 +282,7 @@ class AIRHub:
         """
         cls._ensure_hub_name_initialized()
 
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
         request = {
             "HubName": cls.hubName,
@@ -311,7 +328,9 @@ class AIRHub:
             S3 URI of uploaded file
         """
         extra_args = AIRHub._default_bucket_expected_owner_args(bucket)
-        AIRHub._s3_client.upload_file(local_file_path, bucket, prefix, ExtraArgs=extra_args or None)
+        AIRHub._get_s3_client().upload_file(
+            local_file_path, bucket, prefix, ExtraArgs=extra_args or None
+        )
         return f"s3://{bucket}/{prefix}"
 
     @staticmethod
@@ -327,4 +346,4 @@ class AIRHub:
         bucket = parsed.netloc
         key = parsed.path.lstrip("/")
         extra_args = AIRHub._default_bucket_expected_owner_args(bucket)
-        AIRHub._s3_client.download_file(bucket, key, local_path, ExtraArgs=extra_args or None)
+        AIRHub._get_s3_client().download_file(bucket, key, local_path, ExtraArgs=extra_args or None)
