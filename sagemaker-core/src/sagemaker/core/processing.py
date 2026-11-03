@@ -1336,12 +1336,24 @@ class FrameworkProcessor(ScriptProcessor):
                         raise ValueError(f"Dependency path does not exist: {dep_path}")
                     tar.add(dep_path, arcname=os.path.basename(dep_path))
 
-            s3_uri = s3.s3_path_join(
-                self._s3_code_prefix(),
-                job_name,
-                "source",
-                "sourcedir.tar.gz",
-            )
+            # Use pipeline code_hash for content-addressed caching when available
+            from sagemaker.core.workflow.utilities import _pipeline_config
+
+            if _pipeline_config and _pipeline_config.code_hash:
+                s3_uri = s3.s3_path_join(
+                    self._s3_code_prefix(),
+                    _pipeline_config.pipeline_name,
+                    "source",
+                    _pipeline_config.code_hash,
+                    "sourcedir.tar.gz",
+                )
+            else:
+                s3_uri = s3.s3_path_join(
+                    self._s3_code_prefix(),
+                    job_name,
+                    "source",
+                    "sourcedir.tar.gz",
+                )
 
             with open(tmp.name, "rb") as tar_file:
                 tar_bytes = tar_file.read()

@@ -23,6 +23,7 @@ from sagemaker.core.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.core.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.core.training.configs import SourceCode
+from sagemaker.core.workflow.parameters import ParameterString
 
 
 class TestModelBuilderSimpleMethods:
@@ -534,6 +535,70 @@ class TestBuildForPassthroughSourceCodeRepack:
         builder._build_for_passthrough()
 
         assert builder.is_repack() is True
+
+    @patch.object(ModelBuilder, "_create_model")
+    def test_repacks_and_preserves_script_mode_vars_with_pipeline_variable(self, mock_create):
+        """source_code + PipelineVariable artifact -> repack path, script-mode vars kept.
+
+        Regression for issue #6450: the artifact is produced by an upstream
+        pipeline step, so s3_model_data_url is a PipelineVariable rather than a
+        concrete ``s3://`` string. The passthrough path used to drop source_code
+        entirely for that case.
+        """
+        mock_create.return_value = Mock()
+
+        model_data = ParameterString(name="ModelDataUrl", default_value="s3://bucket/model.tar.gz")
+        builder = self._make_builder(s3_model_data_url=model_data)
+
+        builder._build_for_passthrough()
+
+        # script-mode vars must NOT be cleared (that would skip repack)
+        assert builder.entry_point == "inference.py"
+        assert builder.source_dir == "./code"
+        assert builder.dependencies is not None
+        assert builder.s3_upload_path is None
+        # the pipeline variable is left intact, not stringified or replaced
+        assert builder.s3_model_data_url is model_data
+        mock_create.assert_called_once()
+
+    @patch.object(ModelBuilder, "_create_model")
+    def test_pipeline_variable_repack_branch_makes_is_repack_true(self, mock_create):
+        """A PipelineVariable artifact must reach _upload_code(repack=True) too.
+
+        Regression for issue #6450.
+        """
+        mock_create.return_value = Mock()
+
+        builder = self._make_builder(
+            s3_model_data_url=ParameterString(
+                name="ModelDataUrl", default_value="s3://bucket/model.tar.gz"
+            )
+        )
+
+        builder._build_for_passthrough()
+
+        assert builder.is_repack() is True
+
+    @patch.object(ModelBuilder, "_create_model")
+    def test_pipeline_variable_without_source_code_still_clears_vars(self, mock_create):
+        """No source_code + PipelineVariable artifact -> pure image passthrough (unchanged)."""
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.SAGEMAKER_ENDPOINT,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            s3_model_data_url=ParameterString(
+                name="ModelDataUrl", default_value="s3://bucket/model.tar.gz"
+            ),
+            sagemaker_session=self._make_mock_session(),
+        )
+
+        builder._build_for_passthrough()
+
+        assert builder.entry_point is None
+        assert builder.source_dir is None
+        mock_create.assert_called_once()
 
     @patch.object(ModelBuilder, "_create_model")
     def test_pure_image_passthrough_without_source_code_still_clears_vars(self, mock_create):

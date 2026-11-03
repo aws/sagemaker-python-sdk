@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.28.0 (2026-10-29)
+
+### Bug Fixes
+
+- fix: close the remaining gaps in optional torch support (#6531)
+- fix(serve): pin pandas below 3.1.0 to unblock serve unit tests (#6524)
+- fix(serve): decouple the SMD orchestrator entrypoint from the container's sagemaker (#6200) (#6534)
+
+
+## v1.27.0 (2026-10-21)
+
+### Bug Fixes
+
+- fix: don't treat SageMaker model-package ARN as a HuggingFace model ID (#6513)
+- fix: let ModelBuilder.build() tag the SageMaker Model it creates (#6510)
+- fix: make sagemaker-serve test tooling and serving backends optional (#6512)
+
+
+## v1.26.0 (2026-10-19)
+
+### Bug Fixes
+
+- fix: pass the configured session to ModelBuilder's Model reloads (#6487)
+- fix: preserve all core container fields in ModelBuilder CreateModel requests (#6488)
+- fix: accept core shapes and omitted content types in ModelBuilder.register (#6489)
+- fix(serve): restore JumpStart default instance type from model spec (#6045)
+
+### Tests
+
+- test(serve): stop unit tests resolving IAM roles over the network (#6496)
+
+
+## v1.25.0 (2026-10-13)
+
+### Tests
+
+- test(serve): fix Bedrock resource leaks in Nova integ tests (#6398)
+
+
 ## v1.24.0 (2026-10-07)
 
 ### Bug Fixes

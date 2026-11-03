@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.28.0 (2026-10-29)
+
+### New Features
+
+- feat(mlops): Add AthenaStep pipeline step (#6508)
+
+### Bug Fixes
+
+- fix: set VolumeKmsKeyId on ModelStep runtime repack job (#6537)
+- fix: use pipeline code_hash for FrameworkProcessor sourcedir upload (#6494)
+
+
+## v1.27.0 (2026-10-21)
+
+### New Features
+
+- feat(mlops): Add ForEach pipeline step (#6473)
+- feat(mlops): Add CleanupStep pipeline step (#6468)
+
+
+## v1.26.0 (2026-10-19)
+
+### New Features
+
+- feat(mlops): Add run conditions to step dependencies (#6475)
+
+### Bug Fixes
+
+- fix: put the check steps' output KMS key on ProcessingOutputConfig and send CheckJobConfig tags (#6497)
+- fix: generate repack step for ModelBuilder.register/build in ModelStep (#5828, #5829) (#6338)
+- fix: keep source_code for a pipeline-variable model URI and stop repack mutating caller source (#6490)
+
+
+## v1.25.0 (2026-10-13)
+
+### Bug Fixes
+
+- No functional changes; version bump for dependency-pin alignment with core 2.25.0 / train 1.25.0 / serve 1.25.0.
+
+
 ## v1.24.0 (2026-10-07)
 
 ### New Features

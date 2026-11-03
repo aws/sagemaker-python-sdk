@@ -1309,6 +1309,41 @@ class TestBuildForSMD(unittest.TestCase):
         self.assertEqual(self.builder.secret_key, "")
         mock_create.assert_called_once()
 
+    @patch("sagemaker.serve.model_builder_servers.prepare_for_smd")
+    @patch.object(MockModelBuilderServers, "_save_model_inference_spec")
+    @patch.object(MockModelBuilderServers, "_get_processing_unit")
+    @patch.object(MockModelBuilderServers, "_get_smd_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_does_not_adopt_prepare_return_as_secret_key(
+        self,
+        mock_create,
+        mock_prepare_mode,
+        mock_get_img,
+        mock_get_unit,
+        mock_save,
+        mock_smd_prepare,
+    ):
+        """secret_key stays empty regardless of what prepare_for_smd returns.
+
+        Regression test for issue #6200: the secret key was removed for CVE-2026-8596,
+        so prepare_for_smd returns nothing and its result must not be published as
+        SAGEMAKER_SERVE_SECRET_KEY.
+        """
+        mock_get_unit.return_value = "cpu"
+        mock_get_img.return_value = "smd-image-uri"
+        mock_smd_prepare.return_value = "a-secret-key"
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.LOCAL_CONTAINER
+        self.builder.image_uri = None
+        self.builder.model = Mock()
+
+        self.builder._build_for_smd()
+
+        mock_smd_prepare.assert_called_once()
+        self.assertEqual(self.builder.secret_key, "")
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", self.builder.env_vars)
+
 
 class TestBuildForTransformers(unittest.TestCase):
     """Test _build_for_transformers method."""

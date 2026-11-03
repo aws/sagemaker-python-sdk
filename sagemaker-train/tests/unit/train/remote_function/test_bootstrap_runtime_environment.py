@@ -15,6 +15,8 @@
 from __future__ import absolute_import
 
 import json
+import os
+import shutil
 import pytest
 import subprocess
 from unittest.mock import patch, MagicMock, mock_open
@@ -810,3 +812,42 @@ class TestMain:
             main(args)
 
         mock_manager.change_dir_permission.assert_called_once()
+
+
+_BOOTSTRAP = "sagemaker.train.remote_function.runtime_environment.bootstrap_runtime_environment"
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash to source the env file")
+@pytest.mark.parametrize(
+    "payload",
+    ["eth0'; touch {marker}; echo '", "'$(touch {marker})'", "x';touch {marker};#"],
+)
+def test_set_env_value_survives_source_verbatim(tmp_path, payload):
+    """A value written to the env file must round-trip through `source` and never be executed."""
+    marker = tmp_path / "marker"
+    payload = payload.format(marker=marker)
+    output_file = str(tmp_path / "sm_training.env")
+    resource_config = {
+        "current_host": "algo-1",
+        "current_instance_type": "ml.m5.large",
+        "hosts": ["algo-1"],
+        "network_interface_name": payload,
+    }
+
+    with (
+        patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}),
+        patch(f"{_BOOTSTRAP}.num_cpus", return_value=1),
+        patch(f"{_BOOTSTRAP}.num_gpus", return_value=0),
+        patch(f"{_BOOTSTRAP}.num_neurons", return_value=0),
+    ):
+        set_env(resource_config, output_file=output_file)
+
+    result = subprocess.run(
+        ["bash", "-c", f'source "{output_file}"; printf "%s" "$SM_NETWORK_INTERFACE_NAME"'],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert result.stdout == payload
+    assert not marker.exists()

@@ -762,7 +762,9 @@ class TestWaitForServingContainer:
     @patch("sagemaker.core.local.entities._perform_request")
     @patch("sagemaker.core.local.entities.get_docker_host")
     @patch("time.sleep")
-    def test_wait_uses_default_timeout_constant(self, mock_sleep, mock_get_host, mock_perform_request):
+    def test_wait_uses_default_timeout_constant(
+        self, mock_sleep, mock_get_host, mock_perform_request
+    ):
         """Test that _wait_for_serving_container defaults to HEALTH_CHECK_TIMEOUT_LIMIT"""
         mock_get_host.return_value = "localhost"
         # Succeed on first attempt so we can verify it was called

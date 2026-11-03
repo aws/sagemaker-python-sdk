@@ -10758,24 +10758,26 @@ class Endpoint(Base):
         enable_explanations: Optional[StrPipeVar] = Unassigned(),
         inference_component_name: Optional[StrPipeVar] = Unassigned(),
         session_id: Optional[StrPipeVar] = Unassigned(),
+        prefix_aware_id: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[InvokeEndpointOutput]:
         """
-        After you deploy a model into production using Amazon SageMaker hosting services, your client applications use this API to get inferences from the model hosted at the specified endpoint.
+        After you deploy a model into production using Amazon SageMaker AI hosting services, your client applications use this API to get inferences from the model hosted at the specified endpoint.
 
         Parameters:
-            body: Provides input data, in the format specified in the ContentType request header. Amazon SageMaker passes all of the data in the body to the model.  For information about the format of the request body, see Common Data Formats-Inference.
+            body: Provides input data, in the format specified in the ContentType request header. Amazon SageMaker AI passes all of the data in the body to the model.  For information about the format of the request body, see Common Data Formats-Inference.
             content_type: The MIME type of the input data in the request body.
             accept: The desired MIME type of the inference response from the model container.
-            custom_attributes: Provides additional information about a request for an inference submitted to a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to provide an ID that you can use to track a request or to provide other metadata that a service endpoint was programmed to process. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1).  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function.  This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
+            custom_attributes: Provides additional information about a request for an inference submitted to a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to provide an ID that you can use to track a request or to provide other metadata that a service endpoint was programmed to process. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1).  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function.  This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
             target_model: The model to request for inference when invoking a multi-model endpoint.
             target_variant: Specify the production variant to send the inference request to when invoking an endpoint that is running two or more variants. Note that this parameter overrides the default behavior for the endpoint, which is to distribute the invocation traffic based on the variant weights. For information about how to use variant targeting to perform a/b testing, see Test models in production
             target_container_hostname: If the endpoint hosts multiple containers and is configured to use direct invocation, this parameter specifies the host name of the container to invoke.
             inference_id: If you provide a value, it is added to the captured data when you enable data capture on the endpoint. For information about data capture, see Capture Data.
             enable_explanations: An optional JMESPath expression used to override the EnableExplanations parameter of the ClarifyExplainerConfig API. See the EnableExplanations section in the developer guide for more information.
             inference_component_name: If the endpoint hosts one or more inference components, this parameter specifies the name of inference component to invoke.
-            session_id: Creates a stateful session or identifies an existing one. You can do one of the following:   Create a stateful session by specifying the value NEW_SESSION.   Send your request to an existing stateful session by specifying the ID of that session.   With a stateful session, you can send multiple requests to a stateful model. When you create a session with a stateful model, the model must create the session ID and set the expiration time. The model must also provide that information in the response to your request. You can get the ID and timestamp from the NewSessionId response parameter. For any subsequent request where you specify that session ID, SageMaker routes the request to the same instance that supports the session.
+            session_id: Creates a stateful session or identifies an existing one. You can do one of the following:   Create a stateful session by specifying the value NEW_SESSION.   Send your request to an existing stateful session by specifying the ID of that session.   With a stateful session, you can send multiple requests to a stateful model. When you create a session with a stateful model, the model must create the session ID and set the expiration time. The model must also provide that information in the response to your request. You can get the ID and timestamp from the NewSessionId response parameter. For any subsequent request where you specify that session ID, SageMaker AI routes the request to the same instance that supports the session.
+            prefix_aware_id: An optional, stable identifier that serves as a routing hint for prefix-aware routing. The service routes requests with the same prefix and the same identifier to the same instance. If requests from different applications might have the same prompt prefix, set a different identifier for each application to differentiate their routing decisions. Applies only to endpoints configured with a RoutingStrategy of PREFIX_AWARE.
             session: Boto3 session.
             region: Region name.
 
@@ -10824,6 +10826,7 @@ class Endpoint(Base):
             "EnableExplanations": enable_explanations,
             "InferenceComponentName": inference_component_name,
             "SessionId": session_id,
+            "PrefixAwareId": prefix_aware_id,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -10848,27 +10851,33 @@ class Endpoint(Base):
     @Base.add_validate_call
     def invoke_async(
         self,
-        input_location: StrPipeVar,
         content_type: Optional[StrPipeVar] = Unassigned(),
         accept: Optional[StrPipeVar] = Unassigned(),
         custom_attributes: Optional[StrPipeVar] = Unassigned(),
         inference_id: Optional[StrPipeVar] = Unassigned(),
+        input_location: Optional[StrPipeVar] = Unassigned(),
+        s3_output_path_extension: Optional[StrPipeVar] = Unassigned(),
+        filename: Optional[StrPipeVar] = Unassigned(),
         request_ttl_seconds: Optional[int] = Unassigned(),
         invocation_timeout_seconds: Optional[int] = Unassigned(),
+        body: Optional[Any] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[InvokeEndpointAsyncOutput]:
         """
-        After you deploy a model into production using Amazon SageMaker hosting services, your client applications use this API to get inferences from the model hosted at the specified endpoint in an asynchronous manner.
+        After you deploy a model into production using Amazon SageMaker AI hosting services, your client applications use this API to get inferences from the model hosted at the specified endpoint in an asynchronous manner.
 
         Parameters:
-            input_location: The Amazon S3 URI where the inference request payload is stored.
             content_type: The MIME type of the input data in the request body.
             accept: The desired MIME type of the inference response from the model container.
-            custom_attributes: Provides additional information about a request for an inference submitted to a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to provide an ID that you can use to track a request or to provide other metadata that a service endpoint was programmed to process. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1).  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function.  This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
-            inference_id: The identifier for the inference request. Amazon SageMaker will generate an identifier for you if none is specified.
+            custom_attributes: Provides additional information about a request for an inference submitted to a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to provide an ID that you can use to track a request or to provide other metadata that a service endpoint was programmed to process. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1).  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function.  This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
+            inference_id: The identifier for the inference request. Amazon SageMaker AI will generate an identifier for you if none is specified.
+            input_location: The Amazon S3 URI where the inference request payload is stored.
+            s3_output_path_extension: The path extension that is appended to the Amazon S3 output path where the inference response payload is stored.
+            filename: The filename for the inference response payload stored in Amazon S3. If not specified, Amazon SageMaker AI generates a filename based on the inference ID.
             request_ttl_seconds: Maximum age in seconds a request can be in the queue before it is marked as expired. The default is 6 hours, or 21,600 seconds.
             invocation_timeout_seconds: Maximum amount of time in seconds a request can be processed before it is marked as expired. The default is 15 minutes, or 900 seconds.
+            body: Provides inline input data for the inference request, in the format specified in the ContentType request header. Use this parameter to send the request payload directly in the API call instead of uploading it to Amazon S3 and referencing it with InputLocation. The inline payload can be up to 128,000 bytes.  Body and InputLocation are mutually exclusive. Provide exactly one of them. For information about the format of the request body, see Common Data Formats-Inference.
             session: Boto3 session.
             region: Region name.
 
@@ -10897,8 +10906,11 @@ class Endpoint(Base):
             "CustomAttributes": custom_attributes,
             "InferenceId": inference_id,
             "InputLocation": input_location,
+            "S3OutputPathExtension": s3_output_path_extension,
+            "Filename": filename,
             "RequestTTLSeconds": request_ttl_seconds,
             "InvocationTimeoutSeconds": invocation_timeout_seconds,
+            "Body": body,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -10925,6 +10937,7 @@ class Endpoint(Base):
         inference_id: Optional[StrPipeVar] = Unassigned(),
         inference_component_name: Optional[StrPipeVar] = Unassigned(),
         session_id: Optional[StrPipeVar] = Unassigned(),
+        prefix_aware_id: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[InvokeEndpointWithResponseStreamOutput]:
@@ -10932,15 +10945,16 @@ class Endpoint(Base):
         Invokes a model at the specified endpoint to return the inference response as a stream.
 
         Parameters:
-            body: Provides input data, in the format specified in the ContentType request header. Amazon SageMaker passes all of the data in the body to the model.  For information about the format of the request body, see Common Data Formats-Inference.
+            body: Provides input data, in the format specified in the ContentType request header. Amazon SageMaker AI passes all of the data in the body to the model.  For information about the format of the request body, see Common Data Formats-Inference.
             content_type: The MIME type of the input data in the request body.
             accept: The desired MIME type of the inference response from the model container.
-            custom_attributes: Provides additional information about a request for an inference submitted to a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to provide an ID that you can use to track a request or to provide other metadata that a service endpoint was programmed to process. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1).  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function.  This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
+            custom_attributes: Provides additional information about a request for an inference submitted to a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to provide an ID that you can use to track a request or to provide other metadata that a service endpoint was programmed to process. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1).  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function.  This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
             target_variant: Specify the production variant to send the inference request to when invoking an endpoint that is running two or more variants. Note that this parameter overrides the default behavior for the endpoint, which is to distribute the invocation traffic based on the variant weights. For information about how to use variant targeting to perform a/b testing, see Test models in production
             target_container_hostname: If the endpoint hosts multiple containers and is configured to use direct invocation, this parameter specifies the host name of the container to invoke.
             inference_id: An identifier that you assign to your request.
             inference_component_name: If the endpoint hosts one or more inference components, this parameter specifies the name of inference component to invoke for a streaming response.
             session_id: The ID of a stateful session to handle your request. You can't create a stateful session by using the InvokeEndpointWithResponseStream action. Instead, you can create one by using the  InvokeEndpoint  action. In your request, you specify NEW_SESSION for the SessionId request parameter. The response to that request provides the session ID for the NewSessionId response parameter.
+            prefix_aware_id: An optional, stable identifier that serves as a routing hint for prefix-aware routing. The service routes requests with the same prefix and the same identifier to the same instance. If requests from different applications might have the same prompt prefix, set a different identifier for each application to differentiate their routing decisions. Applies only to endpoints configured with a RoutingStrategy of PREFIX_AWARE.
             session: Boto3 session.
             region: Region name.
 
@@ -10960,7 +10974,7 @@ class Endpoint(Base):
             InternalFailure: An internal failure occurred. Try your request again. If the problem persists, contact Amazon Web Services customer support.
             InternalStreamFailure: The stream processing failed because of an unknown error, exception or failure. Try your request again.
             ModelError: Model (owned by the customer in the container) returned 4xx or 5xx error code.
-            ModelStreamError: An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+            ModelStreamError: An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
             ServiceUnavailable: The service is currently unavailable.
             ValidationError: There was an error validating your request.
         """
@@ -10976,6 +10990,7 @@ class Endpoint(Base):
             "InferenceId": inference_id,
             "InferenceComponentName": inference_component_name,
             "SessionId": session_id,
+            "PrefixAwareId": prefix_aware_id,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -12371,10 +12386,10 @@ class FeatureGroup(Base):
         Updates one or more feature values for an existing record in the specified feature group.
 
         Parameters:
-            record_identifier_value_as_string: The value for the RecordIdentifier that uniquely identifies the record to update, in string format.
-            features: The feature values to write to the record. Only the features included here are written; features that are not listed are preserved. Pass EventTime as a feature in this list. You can update up to 100 features per call.
-            target_stores: A list of stores to which the update is applied. By default, Feature Store applies the update to all of the stores that you're using for the FeatureGroup. A value that resolves to the OfflineStore only is rejected.
-            ttl_duration: Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. Specifying TtlDuration requires EventTime to be present in Features.
+            record_identifier_value_as_string: The value that uniquely identifies the record in the feature group. This must match the value defined by the feature group's record identifier feature.
+            features: The feature values to write to the record.
+            target_stores: The target stores for the record update. By default, Amazon SageMaker Feature Store updates the record in all stores associated with the FeatureGroup.
+            ttl_duration: The time-to-live (TTL) duration for the record. Amazon SageMaker Feature Store deletes the record when EventTime + TtlDuration elapses. If you omit this parameter, the record's existing TTL setting remains unchanged. For information about HardDelete, see the DeleteRecord operation in the Amazon SageMaker API Reference.
             session: Boto3 session.
             region: Region name.
 
@@ -28130,7 +28145,9 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def wait_for_status(
         self,
-        target_status: Literal["Executing", "Stopping", "Stopped", "Failed", "Succeeded"],
+        target_status: Literal[
+            "Executing", "Stopping", "Stopped", "Failed", "Succeeded", "CompletedWithFailures"
+        ],
         poll: int = 5,
         timeout: Optional[int] = None,
     ) -> None:

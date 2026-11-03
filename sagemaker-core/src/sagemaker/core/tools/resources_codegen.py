@@ -2115,6 +2115,7 @@ if not isinstance(self.resource_config, Unassigned):
         with open(output, "w") as file:
             # Generate and write the license to the file
             file.write(
+                '"""JSON schema definition for the SageMaker Python SDK configuration file."""\n\n'
                 f"SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {json.dumps(combined_config_schema, indent=4)}"
             )
 
