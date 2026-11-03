@@ -23,19 +23,20 @@ def prepare_for_smd(
     shared_libs: List[str],
     dependencies: dict,
     inference_spec: InferenceSpec = None,
-) -> str:
+) -> None:
     """Prepares artifacts for SageMaker model deployment.
 
-    Args:to
+    Writes the inference entrypoint, dependencies and a ``metadata.json`` holding the
+    SHA-256 digest of ``serve.pkl``. Nothing is returned: the digest is verified in the
+    container against ``metadata.json``, so there is no secret to hand back to the
+    caller.
+
+    Args:
         model_path (str) : Argument
         shared_libs (List[]) : Argument
         dependencies (dict) : Argument
         inference_spec (InferenceSpec, optional) : Argument
             (default is None)
-
-    Returns:
-        ( str ) :
-
     """
     model_path = Path(model_path)
     if not model_path.exists():

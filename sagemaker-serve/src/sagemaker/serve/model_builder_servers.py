@@ -180,9 +180,7 @@ class _ModelBuilderServers(object):
 
             # Prepare TorchServe artifacts for local container mode
             if self.mode == Mode.LOCAL_CONTAINER and self.model_path:
-                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
-                # pylint: disable-next=assignment-from-no-return
-                self.secret_key = prepare_for_torchserve(
+                prepare_for_torchserve(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
                     dependencies=self.dependencies,
@@ -191,9 +189,7 @@ class _ModelBuilderServers(object):
                     inference_spec=self.inference_spec,
                 )
             if self.mode == Mode.SAGEMAKER_ENDPOINT and self.model_path:
-                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
-                # pylint: disable-next=assignment-from-no-return
-                self.secret_key = prepare_for_torchserve(
+                prepare_for_torchserve(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
                     dependencies=self.dependencies,
@@ -666,9 +662,7 @@ class _ModelBuilderServers(object):
             raise ValueError("image_uri is required for TensorFlow Serving deployment")
 
         # Prepare TensorFlow Serving artifacts for local container mode
-        # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
-        # pylint: disable-next=assignment-from-no-return
-        self.secret_key = prepare_for_tf_serving(
+        prepare_for_tf_serving(
             model_path=self.model_path,
             shared_libs=self.shared_libs,
             dependencies=self.dependencies,
@@ -788,9 +782,7 @@ class _ModelBuilderServers(object):
                 cpu_or_gpu = self._get_processing_unit()
                 self.image_uri = self._get_smd_image_uri(processing_unit=cpu_or_gpu)
 
-            # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
-            # pylint: disable-next=assignment-from-no-return
-            self.secret_key = prepare_for_smd(
+            prepare_for_smd(
                 model_path=self.model_path,
                 shared_libs=self.shared_libs,
                 dependencies=self.dependencies,
@@ -834,9 +826,7 @@ class _ModelBuilderServers(object):
                 self._create_conda_env()
 
             if self.mode in [Mode.LOCAL_CONTAINER] and self.model_path:
-                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
-                # pylint: disable-next=assignment-from-no-return
-                self.secret_key = prepare_for_mms(
+                prepare_for_mms(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
                     dependencies=self.dependencies,
@@ -845,9 +835,7 @@ class _ModelBuilderServers(object):
                     inference_spec=self.inference_spec,
                 )
             if self.mode == Mode.SAGEMAKER_ENDPOINT and self.model_path:
-                # NOTE: prepare_* annotated -> str but returns None (latent bug; fix out of scope)
-                # pylint: disable-next=assignment-from-no-return
-                self.secret_key = prepare_for_mms(
+                prepare_for_mms(
                     model_path=self.model_path,
                     shared_libs=self.shared_libs,
                     dependencies=self.dependencies,

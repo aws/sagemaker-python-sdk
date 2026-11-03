@@ -15,10 +15,31 @@ from sagemaker.core.config import (
     MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
 )
 from sagemaker.core.resources import ModelPackageModelCard
+from sagemaker.core.utils.utils import serialize
 from botocore.exceptions import ClientError
 import logging
 
 logger = LOGGER = logging.getLogger("sagemaker")
+
+
+def _to_request_dict(value):
+    """Convert a model registry argument into its CreateModelPackage request shape.
+
+    Supports both the modern ``sagemaker.core.shapes`` pydantic shapes, which are
+    converted with the core serializer, and the older compatibility classes in
+    ``sagemaker.core.model_metrics`` and friends, which implement their own
+    ``_to_request_dict()``. Plain dicts are assumed to already be in request form
+    and are passed through the serializer unchanged.
+
+    Args:
+        value: A core shape, a compatibility class instance, or a request dict.
+
+    Returns:
+        dict: The serialized request shape.
+    """
+    if hasattr(value, "_to_request_dict"):
+        return value._to_request_dict()
+    return serialize(value)
 
 
 def get_model_package_args(
@@ -76,11 +97,11 @@ def get_model_package_args(
     if model_package_group_name is not None:
         model_package_args["model_package_group_name"] = model_package_group_name
     if model_metrics is not None:
-        model_package_args["model_metrics"] = model_metrics._to_request_dict()
+        model_package_args["model_metrics"] = _to_request_dict(model_metrics)
     if drift_check_baselines is not None:
-        model_package_args["drift_check_baselines"] = drift_check_baselines._to_request_dict()
+        model_package_args["drift_check_baselines"] = _to_request_dict(drift_check_baselines)
     if metadata_properties is not None:
-        model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
+        model_package_args["metadata_properties"] = _to_request_dict(metadata_properties)
     if approval_status is not None:
         model_package_args["approval_status"] = approval_status
     if description is not None:
@@ -102,7 +123,7 @@ def get_model_package_args(
     if source_uri is not None:
         model_package_args["source_uri"] = source_uri
     if model_life_cycle is not None:
-        model_package_args["model_life_cycle"] = model_life_cycle._to_request_dict()
+        model_package_args["model_life_cycle"] = _to_request_dict(model_life_cycle)
     if model_card is not None:
         original_req = {}
         if isinstance(model_card, ModelPackageModelCard):

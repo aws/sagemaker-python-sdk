@@ -50,6 +50,9 @@ EXPECTED_STEP_TYPES = {
     "INFERENCE_COMPONENT": "InferenceComponent",
     "LINEAGE": "Lineage",
     "JOB": "Job",
+    "CLEANUP": "Cleanup",
+    "FOR_EACH": "ForEach",
+    "ATHENA": "Athena",
 }
 
 

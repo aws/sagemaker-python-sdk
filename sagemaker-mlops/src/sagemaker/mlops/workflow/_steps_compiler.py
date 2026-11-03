@@ -23,6 +23,8 @@ from sagemaker.core.helper.pipeline_variable import RequestType
 from sagemaker.mlops.workflow.function_step import _FunctionStep
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum, PropertyFile
 from sagemaker.mlops.workflow.condition_step import ConditionStep
+from sagemaker.mlops.workflow.step_dependency import StepDependency
+from sagemaker.mlops.workflow.for_each_step import ForEachStep
 
 from sagemaker.core.workflow.step_outputs import get_step
 from sagemaker.core.workflow.pipeline_definition_config import PipelineDefinitionConfig
@@ -206,11 +208,13 @@ class StepsCompiler(object):
             if step.name in step_map:
                 raise ValueError(
                     "Pipeline steps cannot have duplicate names. In addition, steps added in "
-                    "the ConditionStep cannot be added in the Pipeline steps list."
+                    "the ConditionStep or ForEachStep cannot be added in the Pipeline steps list."
                 )
             step_map[step.name] = step
             if isinstance(step, ConditionStep):
                 StepsCompiler._generate_step_map(step.if_steps + step.else_steps, step_map)
+            if isinstance(step, ForEachStep):
+                StepsCompiler._generate_step_map(step.for_each_body, step_map)
 
     def _simplify_step_list(
         self,
@@ -223,6 +227,8 @@ class StepsCompiler(object):
 
         resolved_step_set = _StepsSet()
         for item in step_list:
+            if isinstance(item, StepDependency):
+                item = item.step
             if isinstance(item, str):
                 step_name = item
                 step = self._input_steps_map.get(item)
@@ -244,14 +250,17 @@ class StepsCompiler(object):
 
         return list(resolved_step_set)
 
-    def _flatten_condition_step(self, step: ConditionStep) -> List[Step]:
-        """Flatten a ConditionStep into a list of steps."""
+    def _flatten_compound_step(self, step: Union[ConditionStep, ForEachStep]) -> List[Step]:
+        """Flatten a compound step (ConditionStep or ForEachStep) into a list of steps."""
         flattened_steps = _StepsSet()
         flattened_steps.add(step)
-        sub_steps = self._simplify_step_list(step.if_steps + step.else_steps)
+        if isinstance(step, ConditionStep):
+            sub_steps = self._simplify_step_list(step.if_steps + step.else_steps)
+        else:
+            sub_steps = self._simplify_step_list(step.for_each_body)
         for sub_step in sub_steps:
-            if isinstance(sub_step, ConditionStep):
-                flattened_steps.add_list(self._flatten_condition_step(sub_step))
+            if isinstance(sub_step, (ConditionStep, ForEachStep)):
+                flattened_steps.add_list(self._flatten_compound_step(sub_step))
             else:
                 flattened_steps.add(sub_step)
         return list(flattened_steps)
@@ -262,8 +271,8 @@ class StepsCompiler(object):
             if step not in self._all_known_steps:
                 self._build_queue.push([step])
 
-            if isinstance(step, ConditionStep):
-                self._all_known_steps.add_list(self._flatten_condition_step(step))
+            if isinstance(step, (ConditionStep, ForEachStep)):
+                self._all_known_steps.add_list(self._flatten_compound_step(step))
             else:
                 self._all_known_steps.add(step)
 
@@ -293,6 +302,26 @@ class StepsCompiler(object):
 
         return list(depends_on), upstream_step_in_args
 
+    def _to_depends_on_request(self, step: Step, depends_on: List[Step]) -> List[Union[str, dict]]:
+        """Build the `DependsOn` entries, keeping plain names for Completed dependencies."""
+        dependencies = {}
+        for item in step.depends_on or []:
+            # a plain str/Step/StepOutput entry is an implicit Completed dependency
+            if not isinstance(item, StepDependency):
+                item = StepDependency(item)
+            name = self._simplify_step_list([item])[0].name
+            if name in dependencies and dependencies[name].trigger != item.trigger:
+                raise ValueError(
+                    f"Step {step.name} depends on step {name} with conflicting triggers: "
+                    f"{dependencies[name].trigger.value} and {item.trigger.value}."
+                )
+            dependencies[name] = item
+
+        return [
+            dependencies[s.name].to_request(s.name) if s.name in dependencies else s.name
+            for s in depends_on
+        ]
+
     def _set_serialize_output_to_json_flag(self, compiled_steps: List[CompiledStep]):
         """Set the serialize_output_to_json to true in container arguments
 
@@ -302,6 +331,8 @@ class StepsCompiler(object):
             if isinstance(step, ConditionStep):
                 self._set_serialize_output_to_json_flag(step.if_steps)
                 self._set_serialize_output_to_json_flag(step.else_steps)
+            elif isinstance(step, ForEachStep):
+                self._set_serialize_output_to_json_flag(step.for_each_body)
             elif step.name in self._steps_need_json_serialization:
                 step_container_args = step._request_dict["Arguments"]["AlgorithmSpecification"][
                     "ContainerArguments"
@@ -332,7 +363,7 @@ class StepsCompiler(object):
                 step, request_dict["Arguments"]
             )
             if depends_on:
-                request_dict["DependsOn"] = [s.name for s in depends_on]
+                request_dict["DependsOn"] = self._to_depends_on_request(step, depends_on)
 
             self._push_to_build_queue(depends_on)
             self._push_to_build_queue(upstream_steps_in_args)
@@ -353,10 +384,31 @@ class StepsCompiler(object):
             conditions=list(condition_step.conditions),
             if_steps=self._build_steps(condition_step.if_steps),
             else_steps=self._build_steps(condition_step.else_steps),
-            depends_on=[step.name for step in depends_on],
+            depends_on=self._to_depends_on_request(condition_step, depends_on),
         )
 
         return compiled_condition_step
+
+    def _build_for_each_step(self, for_each_step: ForEachStep) -> ForEachStep:
+        """Build a ForEach step."""
+        depends_on, upstream_steps_in_args = self._get_upstream_steps(
+            for_each_step, for_each_step.step_only_arguments
+        )
+        self._push_to_build_queue(depends_on)
+        self._push_to_build_queue(upstream_steps_in_args)
+
+        compiled_for_each_step = ForEachStep(
+            name=for_each_step.name,
+            display_name=for_each_step.display_name,
+            description=for_each_step.description,
+            iterable_items=for_each_step.iterable_items,
+            max_concurrency=for_each_step.max_concurrency,
+            selector=for_each_step.selector,
+            for_each_body=self._build_steps(for_each_step.for_each_body),
+            depends_on=self._to_depends_on_request(for_each_step, depends_on),
+        )
+
+        return compiled_for_each_step
 
     def _build_steps(self, steps: List[Union[Step, StepOutput]]):
         """Build a list of steps."""
@@ -366,6 +418,8 @@ class StepsCompiler(object):
         for step in simple_steps:
             if isinstance(step, ConditionStep):
                 compiled_steps.append(self._build_condition_step(step))
+            elif isinstance(step, ForEachStep):
+                compiled_steps.append(self._build_for_each_step(step))
             else:
                 compiled_steps.append(self._build_step(step))
         return compiled_steps
@@ -381,6 +435,8 @@ class StepsCompiler(object):
             step = self._build_queue.pop()
             if isinstance(step, ConditionStep):
                 compiled_steps.append(self._build_condition_step(step))
+            elif isinstance(step, ForEachStep):
+                compiled_steps.append(self._build_for_each_step(step))
             else:
                 compiled_steps.append(self._build_step(step))
 

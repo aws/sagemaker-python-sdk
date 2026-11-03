@@ -78,8 +78,7 @@ LICENCES_STRING = """
 # language governing permissions and limitations under the License.
 """
 
-LOGGER_STRING = """
-logger = get_textual_rich_logger(__name__)
+LOGGER_STRING = """logger = get_textual_rich_logger(__name__)
 
 """
 

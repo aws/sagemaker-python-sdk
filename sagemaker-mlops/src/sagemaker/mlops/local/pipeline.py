@@ -61,6 +61,14 @@ class LocalPipelineExecutor(object):
         self.sagemaker_session = sagemaker_session
         self.execution = execution
         self.pipeline_dag = PipelineGraph.from_pipeline(self.execution.pipeline)
+        for step in self.pipeline_dag.step_map.values():
+            # compiled run-condition entries are dicts; this executor stops on the first failure
+            dependencies = step.depends_on if isinstance(step.depends_on, list) else []
+            if any(isinstance(dependency, dict) for dependency in dependencies):
+                raise ValueError(
+                    f"Step {step.name} uses a run condition (StepDependency with a trigger other "
+                    "than Completed), which is not supported in local mode."
+                )
         self.local_sagemaker_client = self.sagemaker_session.sagemaker_client
         self._blocked_steps = set()
         self._step_executor_factory = _StepExecutorFactory(self)

@@ -522,6 +522,14 @@ class ResourcesCodeGen:
             if resource_name == "SubscribedWorkteam":
                 class_attributes["workteam_arn"] = "StrPipeVar"
                 class_attributes_string = "workteam_arn: StrPipeVar\n" + class_attributes_string
+            # TrainingSession differs slightly: its identifier IS in the describe
+            # response, but nested inside the single TrainingSessionDetail member,
+            # so it is not hoisted onto the class either.
+            if resource_name == "TrainingSession":
+                class_attributes["training_session_name"] = "StrPipeVar"
+                class_attributes_string = (
+                    "training_session_name: StrPipeVar\n" + class_attributes_string
+                )
 
             if resource_name == "HubContent":
                 class_attributes["hub_name"] = "Optional[str] = Unassigned()"
@@ -2107,6 +2115,7 @@ if not isinstance(self.resource_config, Unassigned):
         with open(output, "w") as file:
             # Generate and write the license to the file
             file.write(
+                '"""JSON schema definition for the SageMaker Python SDK configuration file."""\n\n'
                 f"SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {json.dumps(combined_config_schema, indent=4)}"
             )
 

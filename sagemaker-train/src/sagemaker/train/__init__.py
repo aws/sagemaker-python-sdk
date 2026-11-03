@@ -158,4 +158,16 @@ def __getattr__(name):
         from sagemaker.train.common_utils.finetune_utils import list_hyperparameters
 
         return list_hyperparameters
+    elif name == "ServiceClient":
+        from sagemaker.train.training_session import ServiceClient
+
+        return ServiceClient
+    elif name == "TrainingClient":
+        from sagemaker.train.training_session import TrainingClient
+
+        return TrainingClient
+    elif name == "SamplingClient":
+        from sagemaker.train.training_session import SamplingClient
+
+        return SamplingClient
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

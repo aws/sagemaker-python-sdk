@@ -14,6 +14,13 @@ from sagemaker.core.enums import EndpointType
 from sagemaker.core.inference_config import (
     ResourceRequirements,
 )
+from sagemaker.core.shapes import (
+    ContainerDefinition,
+    ImageConfig,
+    ModelDataSource,
+    S3ModelDataSource,
+)
+from sagemaker.core.workflow.pipeline_context import PipelineSession
 
 
 class TestModelBuilderContainerDef(unittest.TestCase):
@@ -104,16 +111,13 @@ class TestModelBuilderContainerDef(unittest.TestCase):
 
         self.assertIn("must be sagemaker.core.resources.Model instances", str(context.exception))
 
-    @patch("sagemaker.serve.model_builder.container_def")
-    def test_core_container_to_dict(self, mock_def):
+    def test_core_container_to_dict(self):
         """Test _core_container_to_dict converts container properly."""
-        from sagemaker.core.utils.utils import Unassigned
-
-        mock_container = Mock()
-        mock_container.image = "test-image"
-        mock_container.model_data_url = "s3://bucket/model.tar.gz"
-        mock_container.environment = {"KEY": "value"}
-        mock_container.image_config = Unassigned()
+        container = ContainerDefinition(
+            image="test-image",
+            model_data_url="s3://bucket/model.tar.gz",
+            environment={"KEY": "value"},
+        )
 
         builder = ModelBuilder(
             model=Mock(),
@@ -121,10 +125,228 @@ class TestModelBuilderContainerDef(unittest.TestCase):
             sagemaker_session=self.mock_session,
         )
 
-        mock_def.return_value = {"Image": "test-image"}
-        builder._core_container_to_dict(mock_container)
+        result = builder._core_container_to_dict(container)
 
-        mock_def.assert_called_once()
+        self.assertEqual(
+            result,
+            {
+                "Image": "test-image",
+                "ModelDataUrl": "s3://bucket/model.tar.gz",
+                "Environment": {"KEY": "value"},
+            },
+        )
+
+
+@patch("sagemaker.serve.model_builder.resolve_nested_dict_value_from_config")
+@patch("sagemaker.serve.model_builder.resolve_value_from_config")
+@patch.object(ModelBuilder, "_init_sagemaker_session_if_does_not_exist")
+class TestCoreContainerDefinitionFields(unittest.TestCase):
+    """Core container fields must survive the CreateModel conversion (issue #6476).
+
+    ``_core_container_to_dict`` used to copy a fixed subset of fields, which
+    dropped ``ModelPackageName`` and ``ModelDataSource`` from the generated
+    ``CreateModel`` request.
+    """
+
+    ROLE_ARN = "arn:aws:iam::123456789012:role/TestRole"
+    IMAGE = "123456789012.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.4-2"
+    PACKAGE_ARN = "arn:aws:sagemaker:us-west-2:123456789012:model-package/example/1"
+
+    def _container_defs(self, container, mock_resolve, mock_resolve_nested):
+        """Run _create_sagemaker_model and return the container_defs sent to create_model."""
+        mock_resolve.side_effect = lambda value, *args, **kwargs: value
+        mock_resolve_nested.side_effect = lambda value, *args, **kwargs: value
+
+        session = Mock()
+        session.boto_region_name = "us-west-2"
+        session.default_bucket.return_value = "test-bucket"
+        session.default_bucket_prefix = None
+        session.config = {}
+        session.sagemaker_config = {}
+
+        builder = ModelBuilder(
+            model=[
+                Model(
+                    model_name="source-model",
+                    primary_container=container,
+                    execution_role_arn=self.ROLE_ARN,
+                )
+            ],
+            role_arn=self.ROLE_ARN,
+            sagemaker_session=session,
+            instance_type="ml.m5.large",
+        )
+        builder.model_name = "test-model"
+        builder.sagemaker_session = Mock(spec=PipelineSession)
+
+        builder._create_sagemaker_model()
+
+        builder.sagemaker_session.create_model.assert_called_once()
+        return builder.sagemaker_session.create_model.call_args.kwargs["container_defs"]
+
+    def test_model_package_container_keeps_model_package_name(
+        self, mock_init, mock_resolve, mock_resolve_nested
+    ):
+        """A model-package reference must build a request instead of failing on Image."""
+        container_defs = self._container_defs(
+            ContainerDefinition(model_package_name=self.PACKAGE_ARN),
+            mock_resolve,
+            mock_resolve_nested,
+        )
+
+        self.assertEqual(container_defs, [{"ModelPackageName": self.PACKAGE_ARN}])
+
+    def test_model_data_source_container_keeps_model_data_source(
+        self, mock_init, mock_resolve, mock_resolve_nested
+    ):
+        """A ModelDataSource must not be silently dropped from the request."""
+        container_defs = self._container_defs(
+            ContainerDefinition(
+                image=self.IMAGE,
+                model_data_source=ModelDataSource(
+                    s3_data_source=S3ModelDataSource(
+                        s3_data_type="S3Prefix",
+                        compression_type="None",
+                        s3_uri="s3://example-bucket/model/",
+                    )
+                ),
+                environment={"EXAMPLE": "true"},
+            ),
+            mock_resolve,
+            mock_resolve_nested,
+        )
+
+        self.assertEqual(
+            container_defs,
+            [
+                {
+                    "Image": self.IMAGE,
+                    "ModelDataSource": {
+                        "S3DataSource": {
+                            "S3DataType": "S3Prefix",
+                            "CompressionType": "None",
+                            "S3Uri": "s3://example-bucket/model/",
+                        }
+                    },
+                    "Environment": {"EXAMPLE": "true"},
+                }
+            ],
+        )
+
+    def test_plain_image_container_is_unchanged(self, mock_init, mock_resolve, mock_resolve_nested):
+        """A plain image container must keep producing the same request fields."""
+        container_defs = self._container_defs(
+            ContainerDefinition(
+                image=self.IMAGE,
+                model_data_url="s3://example-bucket/model.tar.gz",
+                environment={"A": "1"},
+            ),
+            mock_resolve,
+            mock_resolve_nested,
+        )
+
+        self.assertEqual(
+            container_defs,
+            [
+                {
+                    "Image": self.IMAGE,
+                    "ModelDataUrl": "s3://example-bucket/model.tar.gz",
+                    "Environment": {"A": "1"},
+                }
+            ],
+        )
+
+    def test_image_config_is_serialized_to_a_plain_dict(
+        self, mock_init, mock_resolve, mock_resolve_nested
+    ):
+        """ImageConfig must reach the request as a dict, not as a shape object."""
+        container_defs = self._container_defs(
+            ContainerDefinition(
+                image=self.IMAGE,
+                image_config=ImageConfig(repository_access_mode="Vpc"),
+            ),
+            mock_resolve,
+            mock_resolve_nested,
+        )
+
+        self.assertEqual(
+            container_defs,
+            [{"Image": self.IMAGE, "ImageConfig": {"RepositoryAccessMode": "Vpc"}}],
+        )
+
+    @patch("sagemaker.serve.model_builder.Model.get")
+    def test_model_package_container_under_interactive_session(
+        self, mock_model_get, mock_init, mock_resolve, mock_resolve_nested
+    ):
+        """Outside a PipelineSession the base-name lookup must tolerate a missing Image."""
+        mock_resolve.side_effect = lambda value, *args, **kwargs: value
+        mock_resolve_nested.side_effect = lambda value, *args, **kwargs: value
+
+        session = Mock()
+        session.boto_region_name = "us-west-2"
+        session.default_bucket.return_value = "test-bucket"
+        session.default_bucket_prefix = None
+        session.config = {}
+        session.sagemaker_config = {}
+
+        builder = ModelBuilder(
+            model=[
+                Model(
+                    model_name="source-model",
+                    primary_container=ContainerDefinition(model_package_name=self.PACKAGE_ARN),
+                    execution_role_arn=self.ROLE_ARN,
+                )
+            ],
+            role_arn=self.ROLE_ARN,
+            sagemaker_session=session,
+            instance_type="ml.m5.large",
+        )
+        builder.model_name = "test-model"
+
+        builder._create_sagemaker_model()
+
+        kwargs = session.create_model.call_args.kwargs
+        self.assertEqual(kwargs["container_defs"], [{"ModelPackageName": self.PACKAGE_ARN}])
+
+    def test_model_package_container_passes_real_boto_param_validation(
+        self, mock_init, mock_resolve, mock_resolve_nested
+    ):
+        """End-to-end proof against the real SageMaker service model (offline).
+
+        boto3's client-side ParamValidator needs no network and no credentials. The
+        request the old converter produced carried ``Image: Unassigned()`` and was
+        rejected by that validator; the request produced now is accepted.
+        """
+        import boto3
+        from botocore import validate
+
+        from sagemaker.core.utils.utils import Unassigned
+
+        shape = (
+            boto3.client("sagemaker", region_name="us-west-2")
+            .meta.service_model.operation_model("CreateModel")
+            .input_shape
+        )
+        validator = validate.ParamValidator()
+        base = {
+            "ModelName": "test-model",
+            "ExecutionRoleArn": self.ROLE_ARN,
+        }
+
+        # What the old field copy produced for a model-package reference -- boto rejects it.
+        old_report = validator.validate(
+            {**base, "Containers": [{"Image": Unassigned(), "Environment": {}}]}, shape
+        )
+        self.assertTrue(old_report.has_errors())
+
+        container_defs = self._container_defs(
+            ContainerDefinition(model_package_name=self.PACKAGE_ARN),
+            mock_resolve,
+            mock_resolve_nested,
+        )
+
+        new_report = validator.validate({**base, "Containers": container_defs}, shape)
+        self.assertFalse(new_report.has_errors(), new_report.generate_report())
 
 
 class TestModelBuilderDeploy(unittest.TestCase):

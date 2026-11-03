@@ -24,6 +24,8 @@ from sagemaker.core.helper.iam_role_resolver import (
     _role_trusts_service,
     _trusted_services_in_document,
     _expected_trust_services,
+    _config_path_for_role_type,
+    _resolve_config_default_role,
 )
 
 
@@ -1391,3 +1393,27 @@ class TestBackwardCompatibleExceptions:
 
     def test_role_auto_creation_error_importable(self):
         assert issubclass(RoleAutoCreationError, Exception)
+
+
+class TestConfigDefaultRole:
+    """Config-default lookup is only consulted for role types that have a path."""
+
+    @pytest.mark.parametrize("role_type", ["training", "feature_store"])
+    def test_role_types_with_a_config_path(self, role_type):
+        assert _config_path_for_role_type(role_type) is not None
+
+    @pytest.mark.parametrize("role_type", ["serving", "bedrock", "not_a_role_type"])
+    def test_role_types_without_a_config_path(self, role_type):
+        assert _config_path_for_role_type(role_type) is None
+
+    @pytest.mark.parametrize("role_type", ["serving", "bedrock"])
+    def test_returns_none_without_reading_config(self, role_type):
+        """No config path means no config to read, so resolution short-circuits.
+
+        The caller then falls back to caller-identity resolution. Asserting that
+        resolve_value_from_config is never consulted keeps the short-circuit from
+        regressing into a config read for role types that have no default.
+        """
+        with patch("sagemaker.core.common_utils.resolve_value_from_config") as mock_resolve:
+            assert _resolve_config_default_role(role_type) is None
+        mock_resolve.assert_not_called()

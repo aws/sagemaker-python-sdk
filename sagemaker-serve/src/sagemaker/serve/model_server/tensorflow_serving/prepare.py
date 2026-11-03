@@ -20,16 +20,17 @@ def prepare_for_tf_serving(
     model_path: str,
     shared_libs: List[str],
     dependencies: Dict[str, Any],
-) -> str:
+) -> None:
     """Prepares the model for serving.
+
+    Nothing is returned: the SHA-256 digest of ``serve.pkl`` is recorded in
+    ``metadata.json`` and verified against it in the container, so there is no secret to
+    hand back to the caller.
 
     Args:
         model_path (str): Path to the model directory.
         shared_libs (List[str]): List of shared libraries.
         dependencies (Dict[str, Any]): Dictionary of dependencies.
-
-    Returns:
-        str: Secret key.
     """
 
     _model_path = Path(model_path)

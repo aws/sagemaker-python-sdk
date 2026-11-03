@@ -526,5 +526,52 @@ class TestGetDefaultInstanceType(unittest.TestCase):
         self.assertEqual(result, "ml.m5.large")
 
 
+class TestModelPackageArnNotTreatedAsHuggingFace(unittest.TestCase):
+    """Regression tests: a SageMaker model-package ARN must not be routed to HF."""
+
+    MODEL_PACKAGE_ARN = (
+        "arn:aws:sagemaker:us-west-2:047646727321:model-package/complaint-clf-qwen3-8b/1"
+    )
+
+    @patch.object(_ModelBuilderUtils, "get_huggingface_model_metadata")
+    @patch.object(_ModelBuilderUtils, "_is_jumpstart_model_id")
+    def test_arn_skips_hf_metadata_and_uses_cpu_default(self, mock_is_js, mock_get_metadata):
+        """A model-package ARN must not be sent to the HuggingFace metadata API."""
+        utils = _ModelBuilderUtils()
+        utils.model = self.MODEL_PACKAGE_ARN
+        utils.env_vars = {}
+
+        mock_is_js.return_value = False
+
+        result = utils._get_default_instance_type()
+
+        # HF metadata must never be fetched for an ARN.
+        mock_get_metadata.assert_not_called()
+        self.assertEqual(result, "ml.m5.large")
+
+    def test_arn_is_not_huggingface_model(self):
+        """_is_huggingface_model must return False for a model-package ARN."""
+        utils = _ModelBuilderUtils()
+        utils.model = self.MODEL_PACKAGE_ARN
+        utils._is_jumpstart_model_id = Mock(return_value=False)
+
+        self.assertFalse(utils._is_huggingface_model())
+
+    @patch("urllib.request.urlopen")
+    def test_hf_metadata_404_does_not_suggest_hf_token(self, mock_urlopen):
+        """A 404 from HuggingFace must not emit a gated/private HF token message."""
+        from urllib.error import HTTPError
+
+        utils = _ModelBuilderUtils()
+        mock_urlopen.side_effect = HTTPError(None, 404, "Not Found", None, None)
+
+        with self.assertRaises(ValueError) as context:
+            utils.get_huggingface_model_metadata("nonexistent-model")
+
+        message = str(context.exception)
+        self.assertIn("was not found on huggingface.co", message)
+        self.assertNotIn("HUGGING_FACE_HUB_TOKEN", message)
+
+
 if __name__ == "__main__":
     unittest.main()

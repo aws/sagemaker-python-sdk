@@ -292,6 +292,11 @@ class TestCustomScorerEvaluatorWithMTRLTrainer:
 class TestEvaluateSubmissionWithMTRLTrainer:
     """Test that evaluate() can be called successfully when model is an MTRLTrainer."""
 
+    # _get_aws_execution_context calls verify_evaluation_caller_permissions,
+    # which reaches STS GetCallerIdentity and IAM. base_evaluator imports it in
+    # the same statement as resolve_and_validate_role, so it needs its own patch
+    # in that namespace; without it this test resolves a real Session.
+    @patch("sagemaker.train.evaluate.base_evaluator.verify_evaluation_caller_permissions")
     @patch(
         "sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role",
         side_effect=lambda provided_role, **kwargs: provided_role,
@@ -307,7 +312,14 @@ class TestEvaluateSubmissionWithMTRLTrainer:
         new_callable=PropertyMock,
     )
     def test_benchmark_evaluate_submission_with_mtrl_trainer(
-        self, mock_hyperparams, mock_start, mock_artifact, mock_resolve_mp, mock_mlflow, mock_role
+        self,
+        mock_hyperparams,
+        mock_start,
+        mock_artifact,
+        mock_resolve_mp,
+        mock_mlflow,
+        mock_role,
+        mock_verify_permissions,
     ):
         """BenchMarkEvaluator.evaluate() should successfully submit when model is MTRLTrainer."""
         from sagemaker.train.evaluate import BenchMarkEvaluator, get_benchmarks
@@ -349,6 +361,9 @@ class TestEvaluateSubmissionWithMTRLTrainer:
         assert execution.arn is not None
         mock_start.assert_called_once()
 
+    # See the note on the benchmark test above: verify_evaluation_caller_permissions
+    # needs its own patch in base_evaluator's namespace or this reaches STS.
+    @patch("sagemaker.train.evaluate.base_evaluator.verify_evaluation_caller_permissions")
     @patch("sagemaker.train.evaluate.custom_scorer_evaluator.validate_data_path_exists")
     @patch(
         "sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role",
@@ -373,6 +388,7 @@ class TestEvaluateSubmissionWithMTRLTrainer:
         mock_mlflow,
         mock_role,
         mock_validate_data,
+        mock_verify_permissions,
     ):
         """CustomScorerEvaluator.evaluate() should successfully submit when model is MTRLTrainer."""
         from sagemaker.train.evaluate import CustomScorerEvaluator

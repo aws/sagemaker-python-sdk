@@ -33,13 +33,15 @@ import json
 import logging
 import time
 import random
+import subprocess
 
 import pytest
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
-from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.data_mixing_config import DataMixingConfig
 from sagemaker.core.training.configs import HyperPodCompute
+
+from .hyperpod_job_wait import delete_hyperpod_job, wait_for_hyperpod_job
 
 logging.basicConfig(
     level=logging.INFO,
@@ -179,43 +181,26 @@ def test_sft_trainer_nova_micro_data_mixing_hyperpod(
     logger.info(f"HyperPod training job submitted: {job_name}")
 
     # Verify the job exists on the cluster via hyperpod get-job
-    import subprocess
-
+    namespace = compute.namespace or "kubeflow"
     get_job_result = subprocess.run(
         ["hyperpod", "get-job", "--job-name", job_name],
         capture_output=True,
         text=True,
     )
-    assert (
-        get_job_result.returncode == 0
-    ), f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}"
+    if get_job_result.returncode != 0:
+        delete_hyperpod_job(job_name, namespace=namespace)
+        pytest.fail(f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}")
     logger.info(f"Verified job '{job_name}' exists on the cluster using hp-cli.")
 
-    # Poll for job completion by checking for the manifest in S3.
-    # The manifest is written under {output_s3_path}/{job_name}/manifest.json
-    # once training finishes, so its presence confirms end-to-end completion.
-
-    output_s3_path = training_resources["s3_output_path"]
-    max_wait_time = 21600  # 6 hour timeout (HyperPod jobs can take longer)
-    poll_interval = 60  # Check every 60 seconds
-    start_time = time.time()
-    checkpoint_path = None
-
-    while time.time() - start_time < max_wait_time:
-        checkpoint_path = BaseTrainer._resolve_checkpoint_from_manifest(
-            job_name=job_name,
-            output_s3_path=output_s3_path,
-            sagemaker_session=sagemaker_session_us_east_1,
-        )
-        if checkpoint_path:
-            logger.info(f"Checkpoint resolved: {checkpoint_path}")
-            break
-
-        elapsed = int(time.time() - start_time)
-        logger.info(f"Waiting for manifest... ({elapsed}s elapsed)")
-        time.sleep(poll_interval)
-
-    assert (
-        checkpoint_path is not None
-    ), f"Job {job_name} did not produce a manifest within {max_wait_time}s"
+    # Wait for the PyTorchJob and its S3 manifest
+    # ({output_s3_path}/{job_name}/manifest.json), failing fast on a stuck
+    # cluster, and remove the job from the cluster afterwards
+    # (see hyperpod_job_wait.py).
+    checkpoint_path = wait_for_hyperpod_job(
+        job_name=job_name,
+        output_s3_path=training_resources["s3_output_path"],
+        sagemaker_session=sagemaker_session_us_east_1,
+        namespace=namespace,
+    )
+    assert checkpoint_path is not None
     logger.info(f"Training complete. Checkpoint: {checkpoint_path}")

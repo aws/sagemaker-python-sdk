@@ -14,11 +14,14 @@
 
 from __future__ import absolute_import, annotations
 
+import logging
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
-from pydantic import Field, ConfigDict
+from pydantic import Field, ConfigDict, field_validator
 
 from sagemaker.core.jumpstart.configs import BaseConfig
+
+logger = logging.getLogger(__name__)
 
 
 class StrEnum(str, Enum):
@@ -406,6 +409,31 @@ class CapabilityEnum(StrEnum):
     FINE_TUNING = "FINE_TUNING"
     VALIDATION = "VALIDATION"
     INCREMENTAL_TRAINING = "INCREMENTAL_TRAINING"
+    CUSTOMIZATION = "CUSTOMIZATION"
+
+
+def _coerce_capabilities(value: Any) -> Any:
+    """Coerce ``Capabilities`` values, tolerating unknown entries.
+
+    Known values are converted to ``CapabilityEnum`` members. Unknown values
+    are kept as plain strings with a warning, so a new service-side capability
+    cannot fail validation of the entire ``HubContentDocument`` for a pinned
+    SDK version.
+    """
+    if not isinstance(value, list):
+        return value
+    coerced = []
+    for item in value:
+        try:
+            coerced.append(CapabilityEnum(item))
+        except ValueError:
+            logger.warning(
+                "Unknown capability %r is not a member of CapabilityEnum; "
+                "keeping it as a string.",
+                item,
+            )
+            coerced.append(item)
+    return coerced
 
 
 class DemoNotebookModel(BaseConfig):
@@ -444,7 +472,14 @@ class HostingComponentsModel(BaseConfig):
     DynamicContainerDeploymentSupported: Optional[bool] = None
     HostingAdditionalDataSources: Optional[Dict[str, List[HostingAdditionalDataSourceModel]]] = None
     BedrockIOMappingId: Optional[str] = None
-    Capabilities: Optional[List[CapabilityEnum]] = None
+    Capabilities: Optional[List[Union[CapabilityEnum, str]]] = None
+
+    @field_validator("Capabilities", mode="before")
+    @classmethod
+    def _validate_capabilities(cls, value: Any) -> Any:
+        """Keep unknown capability values as strings instead of failing."""
+        return _coerce_capabilities(value)
+
     HostingEcrUri: Optional[str] = None
     HostingArtifactS3DataType: Optional[HostingArtifactS3DataTypeEnum] = None
     HostingArtifactCompressionType: Optional[HostingArtifactCompressionTypeEnum] = None
@@ -506,4 +541,10 @@ class HubContentDocument(HostingComponentsModel, TrainingComponentsModel):
     TrainingConfigRankings: Optional[Dict[str, RankingSchemaModel]] = None
     Resources: Optional[List[ResourceModel]] = None
     Highlights: Optional[List[str]] = None
-    Capabilities: List[CapabilityEnum] = None
+    Capabilities: List[Union[CapabilityEnum, str]] = None
+
+    @field_validator("Capabilities", mode="before")
+    @classmethod
+    def _validate_capabilities(cls, value: Any) -> Any:
+        """Keep unknown capability values as strings instead of failing."""
+        return _coerce_capabilities(value)

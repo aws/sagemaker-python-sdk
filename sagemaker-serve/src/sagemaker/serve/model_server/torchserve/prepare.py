@@ -26,20 +26,20 @@ def prepare_for_torchserve(
     session: Session,
     image_uri: str,
     inference_spec: InferenceSpec = None,
-) -> str:
+) -> None:
     """This is a one-line summary of the function.
 
-    Args:to
+    Nothing is returned: the SHA-256 digest of ``serve.pkl`` is recorded in
+    ``metadata.json`` and verified against it in the container, so there is no secret to
+    hand back to the caller.
+
+    Args:
         model_path (str) : Argument
         shared_libs (List[]) : Argument
         dependencies (dict) : Argument
         session (Session) : Argument
         inference_spec (InferenceSpec, optional) : Argument
             (default is None)
-
-    Returns:
-        ( str ) :
-
     """
     model_path = Path(model_path)
     if not model_path.exists():

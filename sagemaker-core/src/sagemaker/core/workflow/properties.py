@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 class PropertiesMeta(ABCMeta):
     """Load an internal shapes attribute from the botocore service model
 
-    for sagemaker and emr service.
+    for sagemaker, emr, and athena services.
     """
 
     _shapes_map = dict()
@@ -44,8 +44,10 @@ class PropertiesMeta(ABCMeta):
 
             sagemaker_model = loader.load_service_model("sagemaker", "service-2")
             emr_model = loader.load_service_model("emr", "service-2")
+            athena_model = loader.load_service_model("athena", "service-2")
             mcs._shapes_map["sagemaker"] = sagemaker_model["shapes"]
             mcs._shapes_map["emr"] = emr_model["shapes"]
+            mcs._shapes_map["athena"] = athena_model["shapes"]
 
         return super().__new__(mcs, *args, **kwargs)
 
