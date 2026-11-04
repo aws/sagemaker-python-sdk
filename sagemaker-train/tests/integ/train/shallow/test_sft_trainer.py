@@ -135,12 +135,12 @@ class TestSFTTrainerSubmission(RecipeTrainerCases):
         # does not pin the exact nesting. The recipe defaults for this model
         # differ from the overridden values, so finding 1 / 2e-5 proves the
         # override was applied rather than coinciding with a default.
-        assert _find_in_nested(resolved, "total_epochs") == 1, (
-            f"max_epochs override did not reach the resolved recipe: {resolved}"
-        )
-        assert _find_in_nested(resolved, "lr") == 2e-5, (
-            f"learning_rate override did not reach the resolved recipe: {resolved}"
-        )
+        assert (
+            _find_in_nested(resolved, "total_epochs") == 1
+        ), f"max_epochs override did not reach the resolved recipe: {resolved}"
+        assert (
+            _find_in_nested(resolved, "lr") == 2e-5
+        ), f"learning_rate override did not reach the resolved recipe: {resolved}"
 
         with submitted(trainer) as job:
             assert_submitted(job)
