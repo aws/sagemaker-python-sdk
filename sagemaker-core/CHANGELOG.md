@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.29.0 (2026-11-04)
+
+### New Features
+
+- change: update image_uri_configs 11-02-2026
+
+### Bug Fixes
+
+- fix: validate symlinks stay within source root during model packaging (#6545)
+
+
 ## v2.28.0 (2026-10-29)
 
 ### New Features

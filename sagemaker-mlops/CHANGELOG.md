@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.29.0 (2026-11-04)
+
+### Tests
+
+- test(mlops): add prompt field to DPO preference integ dataset (#6553)
+
+
 ## v1.28.0 (2026-10-29)
 
 ### New Features
