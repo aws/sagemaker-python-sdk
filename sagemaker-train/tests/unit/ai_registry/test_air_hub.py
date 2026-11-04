@@ -25,16 +25,25 @@ class TestAIRHubLazyClients:
     """Importing the module must have no AWS side effects (issue #6542)."""
 
     def test_import_without_region_has_no_aws_side_effects(self):
-        """Importing sagemaker.mlops must not require a configured AWS region.
+        """Importing AIRHub must not require a configured AWS region.
 
         Reproduces issue #6542: AIRHub used to create boto3 clients as class
         attributes, which ran at import time and raised NoRegionError when no
         region was configured. Clients are now created lazily, so the import
         must succeed in a subprocess with every region source scrubbed.
+
+        Imports sagemaker.mlops / sagemaker.serve too when they are installed
+        (the transitive path from the original report), but tolerates their
+        absence: the sagemaker-train unit-test environment installs only
+        sagemaker-train and sagemaker-core, and the defect lives in air_hub
+        itself, which the direct import below exercises.
         """
         script = textwrap.dedent("""
-            import sagemaker.mlops  # noqa: F401
-            import sagemaker.serve  # noqa: F401
+            for _mod in ("sagemaker.mlops", "sagemaker.serve"):
+                try:
+                    __import__(_mod)
+                except ImportError:
+                    pass
             from sagemaker.ai_registry.air_hub import AIRHub
 
             assert AIRHub._sagemaker_client is None, "sagemaker client created at import"
