@@ -28,25 +28,49 @@ from sagemaker.train.sft_trainer import SFTTrainer
 from .harness import assert_submitted, submitted
 from .recipe_cases import RecipeTrainerCases
 
+_MISSING = object()
+
+
+def _find_in_nested(obj, key):
+    """Return the first value for ``key`` found anywhere in a nested dict/list.
+
+    Returns the ``_MISSING`` sentinel if the key is absent. Used so override
+    assertions do not pin a service-owned recipe layout that changes over time.
+    """
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        for value in obj.values():
+            found = _find_in_nested(value, key)
+            if found is not _MISSING:
+                return found
+    elif isinstance(obj, (list, tuple)):
+        for item in obj:
+            found = _find_in_nested(item, key)
+            if found is not _MISSING:
+                return found
+    return _MISSING
+
 
 class TestSFTTrainerSubmission(RecipeTrainerCases):
     """SFT accepts every shared case with no deviations."""
 
     TRAINER = SFTTrainer
 
-    @pytest.mark.parametrize("sequence_length", ["4K"])
+    @pytest.mark.parametrize("sequence_length", ["16K"])
     def test_sequence_length_is_accepted(self, sagemaker_session, train_data_uri, sequence_length):
         """sequence_length selects a different recipe variant.
 
-        Only 4K is parametrized. Verified against AWS: for MODEL_ID the recipe
-        catalogue offers exactly one sequence length --
+        The value must be a sequence length the MODEL_ID catalogue offers *for
+        this trainer's training_type*. The shared cases build with
+        TrainingType.LORA, and for MODEL_ID only the 16K SFT recipe is LoRA (the
+        8K SFT recipe is full fine-tuning), so 16K is the LoRA-compatible choice.
+        Requesting an absent/incompatible length makes the SDK raise before
+        submission (e.g. ``No recipes found with SequenceLength == 4K``).
 
-            ValueError: No recipes found with SequenceLength == 16K.
-            Available sequence lengths: ['4K']
-
-        -- so a 16K case would assert a service-side limitation rather than SDK
-        behaviour. Left parametrized so another value can be added against a model
-        that supports one.
+        The catalogue is service-owned and has changed over time (it previously
+        offered only '4K'), so this value tracks what the service advertises and
+        may need updating again.
 
         Also requires the bundled service model: the public botocore model has no
         ServerlessJobConfig.SequenceLength (see the bundled_service_model
@@ -100,20 +124,23 @@ class TestSFTTrainerSubmission(RecipeTrainerCases):
         )
 
         resolved = trainer.get_resolved_recipe()
-        training_args = resolved["training_config"]["training_args"]
 
-        # Overrides are written flat under training_config but land nested in
-        # training_args -- verified against AWS by probing the resolver:
-        #   overrides {"training_config": {"max_epochs": 3}}
-        #     -> resolved training_config.training_args.max_epochs == 3
-        # The recipe default for this model is 5, so asserting 1 proves the
-        # override was applied rather than coinciding with the default.
-        assert (
-            training_args["max_epochs"] == 1
-        ), f"max_epochs override did not reach the resolved recipe: {training_args}"
-        assert (
-            training_args["learning_rate"] == 2e-5
-        ), f"learning_rate override did not reach the resolved recipe: {training_args}"
+        # The ``overrides`` keys (max_epochs, learning_rate) are mapped into the
+        # rendered recipe's own fields rather than echoed verbatim: verified
+        # against AWS, override {"training_config": {"max_epochs": 1}} lands at
+        # training_config.trainer.total_epochs and learning_rate at
+        # training_config.optim.lr. (Overrides previously surfaced under
+        # training_config.training_args, a key that no longer exists.) Search by
+        # the rendered key name anywhere in the resolved recipe so the assertion
+        # does not pin the exact nesting. The recipe defaults for this model
+        # differ from the overridden values, so finding 1 / 2e-5 proves the
+        # override was applied rather than coinciding with a default.
+        assert _find_in_nested(resolved, "total_epochs") == 1, (
+            f"max_epochs override did not reach the resolved recipe: {resolved}"
+        )
+        assert _find_in_nested(resolved, "lr") == 2e-5, (
+            f"learning_rate override did not reach the resolved recipe: {resolved}"
+        )
 
         with submitted(trainer) as job:
             assert_submitted(job)
