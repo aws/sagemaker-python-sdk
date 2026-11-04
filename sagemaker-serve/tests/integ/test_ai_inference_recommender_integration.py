@@ -43,7 +43,8 @@ logger = logging.getLogger(__name__)
 # serves /v1/chat/completions, matching the OpenAI api_standard the
 # synthetic Workload sends.
 MODEL_ID = "huggingface-llm-qwen2-1-5b-instruct"
-INSTANCE_TYPE = "ml.g5.2xlarge"
+MODEL_INSTANCE_TYPE = "ml.g6.2xlarge"
+RECOMMENDATION_INSTANCE_TYPE = "ml.g7.2xlarge"
 WORKLOAD_TOKENIZER = "gpt2"
 WORKLOAD_REQUEST_COUNT = 10
 WORKLOAD_CONCURRENCY = 1
@@ -63,7 +64,7 @@ def _build_synthetic_workload():
 
 
 def _build_jumpstart_model_builder(role_arn):
-    compute = Compute(instance_type=INSTANCE_TYPE)
+    compute = Compute(instance_type=MODEL_INSTANCE_TYPE)
     jumpstart_config = JumpStartConfig(model_id=MODEL_ID)
     return ModelBuilder.from_jumpstart_config(
         jumpstart_config=jumpstart_config, compute=compute, role_arn=role_arn
@@ -152,7 +153,7 @@ def test_recommendation_workflow_end_to_end():
         recommendation_job = model_builder.generate_deployment_recommendations(
             workload=_build_synthetic_workload(),
             performance_target="throughput",
-            instance_types=[INSTANCE_TYPE],
+            instance_types=[RECOMMENDATION_INSTANCE_TYPE],
             advanced_optimization=False,
             framework="LMI",
             role_arn=role,
@@ -197,10 +198,14 @@ def test_recommendation_workflow_end_to_end():
             wait=True,
         )
         logger.info(f"Recommendation endpoint deployed: {rec_endpoint.endpoint_name}")
+        rec_model = Model.get(model_name=rec_model_name)
         assert (
             rec_endpoint.endpoint_status == "InService"
         ), f"Endpoint did not reach InService: {rec_endpoint.endpoint_status}"
-        rec_model = Model.get(model_name=rec_model_name)
+        variants = EndpointConfig.get(
+            endpoint_config_name=rec_endpoint_config_name
+        ).production_variants
+        assert [variant.instance_type for variant in variants] == [RECOMMENDATION_INSTANCE_TYPE]
 
     finally:
         if rec_endpoint and rec_model:
