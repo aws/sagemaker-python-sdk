@@ -1616,8 +1616,12 @@ def test_hyperparameters_valid_json(mock_exists, modules_session):
             hyperparameters="hyperparameters.json",
         )
         assert model_trainer.hyperparameters == expected_hyperparameters
-        mock_file_open.assert_called_once_with("hyperparameters.json", "r")
-        mock_exists.assert_called_once_with("hyperparameters.json")
+        # assert_any_call (not assert_called_once_with): os.path.exists and open
+        # are patched globally, so unrelated calls elsewhere in a full-suite run
+        # would break an exact-count assertion. We only care that the
+        # hyperparameters file itself was checked and opened for reading.
+        mock_file_open.assert_any_call("hyperparameters.json", "r")
+        mock_exists.assert_any_call("hyperparameters.json")
 
 
 @patch("os.path.exists")
@@ -1635,8 +1639,12 @@ def test_hyperparameters_valid_yaml(mock_exists, modules_session):
             hyperparameters="hyperparameters.yaml",
         )
         assert model_trainer.hyperparameters == expected_hyperparameters
-        mock_file_open.assert_called_once_with("hyperparameters.yaml", "r")
-        mock_exists.assert_called_once_with("hyperparameters.yaml")
+        # assert_any_call (not assert_called_once_with): os.path.exists and open
+        # are patched globally, so unrelated calls elsewhere in a full-suite run
+        # would break an exact-count assertion. We only care that the
+        # hyperparameters file itself was checked and opened for reading.
+        mock_file_open.assert_any_call("hyperparameters.yaml", "r")
+        mock_exists.assert_any_call("hyperparameters.yaml")
 
 
 def test_hyperparameters_not_exist(modules_session):
