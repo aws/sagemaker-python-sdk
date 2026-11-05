@@ -2781,6 +2781,451 @@ class TestCreateOrUpdateCodeDir:
                     )
 
 
+def _fake_home_with_decoy(tmp_path):
+    """Create a fake home directory holding a decoy credentials file."""
+    home = tmp_path / "home"
+    aws_dir = home / ".aws"
+    aws_dir.mkdir(parents=True)
+    decoy = aws_dir / "credentials"
+    decoy.write_text("decoy-not-a-real-credential")
+    return home, decoy
+
+
+def _source_tree(tmp_path, name="source"):
+    """Create a small source directory with an entry script."""
+    source = tmp_path / name
+    (source / "pkg").mkdir(parents=True)
+    (source / "inference.py").write_text("# inference code")
+    (source / "pkg" / "helper.py").write_text("# helper code")
+    return source
+
+
+class TestValidateSymlinksWithinRoot:
+    """Test _validate_symlinks_within_root function."""
+
+    def test_allows_tree_without_symlinks(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        _validate_symlinks_within_root(str(_source_tree(tmp_path)), "source_directory")
+
+    def test_allows_symlinks_inside_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        os.symlink(source / "pkg" / "helper.py", source / "helper_link.py")
+        os.symlink("pkg", source / "pkg_link")
+        os.symlink("../inference.py", source / "pkg" / "relative_link.py")
+
+        _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_allows_root_that_is_a_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        os.symlink(source / "inference.py", source / "pkg" / "entry_link.py")
+        root_link = tmp_path / "source_link"
+        os.symlink(source, root_link)
+
+        _validate_symlinks_within_root(str(root_link), "source_directory")
+
+    def test_rejects_nested_file_symlink_outside_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        _, decoy = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        os.symlink(decoy, source / "pkg" / "config.ini")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_rejects_nested_directory_symlink_outside_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        home, _ = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        (source / "pkg" / "deep").mkdir()
+        os.symlink(home / ".aws", source / "pkg" / "deep" / "settings")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_rejects_relative_symlink_escaping_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        os.symlink("../../home/.aws/credentials", source / "pkg" / "config.ini")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_rejects_symlink_into_sibling_with_shared_prefix(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        sibling = tmp_path / "source-other"
+        sibling.mkdir()
+        (sibling / "data.txt").write_text("outside")
+        os.symlink(sibling / "data.txt", source / "data.txt")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_rejects_proc_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        os.symlink("/proc/self/environ", source / "env.txt")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_rejects_dangling_symlink_outside_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        os.symlink(tmp_path / "does-not-exist", source / "missing.txt")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_allows_dangling_symlink_inside_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        os.symlink("pkg/not-created-yet.py", source / "pending.py")
+
+        _validate_symlinks_within_root(str(source), "source_directory")
+
+    def test_virtualenv_layout_error_is_actionable(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        source = _source_tree(tmp_path)
+        interpreter = tmp_path / "python3"
+        interpreter.write_text("")
+        (source / ".venv" / "bin").mkdir(parents=True)
+        os.symlink(interpreter, source / ".venv" / "bin" / "python")
+
+        with pytest.raises(ValueError) as exc_info:
+            _validate_symlinks_within_root(str(source), "source_directory")
+
+        message = str(exc_info.value)
+        assert os.path.join(".venv", "bin", "python") in message
+        assert "Replace the symlink with a copy of its target" in message
+        assert "virtual environment" in message
+
+    def test_ignores_files_and_missing_paths(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        script = tmp_path / "train.py"
+        script.write_text("# train")
+
+        _validate_symlinks_within_root(str(script), "entry_point")
+        _validate_symlinks_within_root(str(tmp_path / "missing"), "entry_point")
+        _validate_symlinks_within_root(None, "entry_point")
+
+
+class TestSensitiveSystemPathMatching:
+    """Test denylist matching used by the source, dependency, and script validators."""
+
+    @pytest.mark.parametrize("path", ["/proc", "/proc/self/environ", "/sys/kernel", "/dev/null"])
+    def test_rejects_pseudo_file_systems(self, path):
+        from sagemaker.core.common_utils import (
+            _validate_dependency_path,
+            _validate_inference_script_path,
+            _validate_source_directory,
+        )
+
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_source_directory(path)
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_dependency_path(path)
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_inference_script_path(path)
+
+    def test_rejects_etc_after_symlink_resolution(self):
+        """/etc resolves to /private/etc on macOS; both forms must be rejected."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_source_directory("/etc")
+        with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+            _validate_source_directory(os.path.realpath("/etc"))
+
+    def test_rejects_path_under_symlinked_denylist_entry(self, tmp_path):
+        """A denylist entry that is itself a symlink (e.g. a symlinked HOME) still matches."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        real_home, _ = _fake_home_with_decoy(tmp_path)
+        linked_home = tmp_path / "linked_home"
+        os.symlink(real_home, linked_home)
+
+        with patch(
+            "sagemaker.core.common_utils._SENSITIVE_SYSTEM_PATHS", [str(linked_home / ".aws")]
+        ):
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                _validate_source_directory(str(real_home / ".aws"))
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                _validate_source_directory(str(linked_home / ".aws"))
+
+    def test_matches_whole_path_components(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        home, _ = _fake_home_with_decoy(tmp_path)
+        lookalike = home / ".awsfoo"
+        lookalike.mkdir()
+
+        with patch("sagemaker.core.common_utils._SENSITIVE_SYSTEM_PATHS", [str(home / ".aws")]):
+            _validate_dependency_path(str(lookalike))
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                _validate_dependency_path(str(home / ".aws"))
+
+    def test_allows_shared_memory_scratch_space(self):
+        from sagemaker.core.common_utils import _is_sensitive_system_path
+
+        assert _is_sensitive_system_path("/dev/shm") is False
+        assert _is_sensitive_system_path("/dev/shm/model/code") is False
+        assert _is_sensitive_system_path("/dev/null") is True
+
+    def test_reflects_updates_to_sensitive_paths(self, tmp_path):
+        from sagemaker.core.common_utils import _is_sensitive_system_path
+
+        target = tmp_path / "restricted"
+        target.mkdir()
+
+        assert _is_sensitive_system_path(str(target)) is False
+        with patch("sagemaker.core.common_utils._SENSITIVE_SYSTEM_PATHS", [str(target)]):
+            assert _is_sensitive_system_path(str(target / "file")) is True
+        assert _is_sensitive_system_path(str(target)) is False
+
+    def test_root_directory_is_not_matched(self):
+        from sagemaker.core.common_utils import _is_sensitive_system_path
+
+        assert _is_sensitive_system_path("/") is False
+
+
+class TestCreateOrUpdateCodeDirSymlinks:
+    """Test symlink handling in _create_or_update_code_dir."""
+
+    @staticmethod
+    def _model_dir(tmp_path):
+        model_dir = tmp_path / "model"
+        model_dir.mkdir()
+        return model_dir
+
+    def test_rejects_source_directory_with_outside_file_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        _, decoy = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        os.symlink(decoy, source / "pkg" / "config.ini")
+        model_dir = self._model_dir(tmp_path)
+
+        with pytest.raises(ValueError, match="source_directory contains a symlink"):
+            _create_or_update_code_dir(
+                str(model_dir), "inference.py", str(source), [], None, str(tmp_path)
+            )
+        assert not (model_dir / "code").exists()
+
+    def test_rejects_source_directory_with_outside_directory_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        home, _ = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        os.symlink(home / ".aws", source / "pkg" / "settings")
+        model_dir = self._model_dir(tmp_path)
+
+        with pytest.raises(ValueError, match="source_directory contains a symlink"):
+            _create_or_update_code_dir(
+                str(model_dir), "inference.py", str(source), [], None, str(tmp_path)
+            )
+        assert not (model_dir / "code").exists()
+
+    def test_rejects_dependency_with_outside_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        home, decoy = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        dep = tmp_path / "my_lib"
+        (dep / "nested").mkdir(parents=True)
+        os.symlink(decoy, dep / "nested" / "config.ini")
+        model_dir = self._model_dir(tmp_path)
+
+        with pytest.raises(ValueError, match="dependency contains a symlink"):
+            _create_or_update_code_dir(
+                str(model_dir), "inference.py", str(source), [str(dep)], None, str(tmp_path)
+            )
+        assert not (model_dir / "code" / "lib").exists()
+
+    def test_rejects_dependency_with_outside_directory_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        home, _ = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        dep = tmp_path / "my_lib"
+        dep.mkdir()
+        os.symlink(home / ".aws", dep / "settings")
+        model_dir = self._model_dir(tmp_path)
+
+        with pytest.raises(ValueError, match="dependency contains a symlink"):
+            _create_or_update_code_dir(
+                str(model_dir), "inference.py", str(source), [str(dep)], None, str(tmp_path)
+            )
+
+    def test_rejects_inference_script_resolving_to_sensitive_path(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        home, decoy = _fake_home_with_decoy(tmp_path)
+        script_link = tmp_path / "inference.py"
+        os.symlink(decoy, script_link)
+        model_dir = self._model_dir(tmp_path)
+
+        with patch("sagemaker.core.common_utils._SENSITIVE_SYSTEM_PATHS", [str(home / ".aws")]):
+            with pytest.raises(ValueError, match="inference_script cannot access"):
+                _create_or_update_code_dir(
+                    str(model_dir), str(script_link), None, [], None, str(tmp_path)
+                )
+        assert not (model_dir / "code").exists()
+
+    def test_rejects_proc_inference_script(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        model_dir = self._model_dir(tmp_path)
+
+        with pytest.raises(ValueError, match="inference_script cannot access"):
+            _create_or_update_code_dir(
+                str(model_dir), "/proc/self/environ", None, [], None, str(tmp_path)
+            )
+
+    def test_copies_symlinks_inside_root(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        source = _source_tree(tmp_path)
+        os.symlink(source / "pkg" / "helper.py", source / "helper_link.py")
+        os.symlink("pkg", source / "pkg_link")
+        dep = tmp_path / "my_lib"
+        dep.mkdir()
+        (dep / "util.py").write_text("# util")
+        os.symlink("util.py", dep / "util_link.py")
+        model_dir = self._model_dir(tmp_path)
+
+        _create_or_update_code_dir(
+            str(model_dir), "inference.py", str(source), [str(dep)], None, str(tmp_path)
+        )
+
+        code_dir = model_dir / "code"
+        assert (code_dir / "helper_link.py").read_text() == "# helper code"
+        assert (code_dir / "pkg_link" / "helper.py").read_text() == "# helper code"
+        assert (code_dir / "lib" / "my_lib" / "util_link.py").read_text() == "# util"
+
+
+class TestRepackModelSymlinks:
+    """End-to-end repack_model checks with local file:// URIs (no S3)."""
+
+    @staticmethod
+    def _model_tar(tmp_path):
+        model_src = tmp_path / "model_src"
+        model_src.mkdir()
+        (model_src / "model.pth").write_text("weights")
+        model_tar = tmp_path / "model.tar.gz"
+        with tarfile.open(model_tar, "w:gz") as tar:
+            tar.add(model_src, arcname=".")
+        return model_tar
+
+    @staticmethod
+    def _session():
+        session = Mock()
+        session.settings = None
+        return session
+
+    @staticmethod
+    def _archive_names(path):
+        with tarfile.open(path, "r:gz") as tar:
+            return tar.getnames()
+
+    def test_rejects_source_directory_with_outside_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import repack_model
+
+        _, decoy = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        os.symlink(decoy, source / "pkg" / "config.ini")
+        output = tmp_path / "output.tar.gz"
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            repack_model(
+                "inference.py",
+                str(source),
+                [],
+                f"file://{self._model_tar(tmp_path)}",
+                f"file://{output}",
+                self._session(),
+            )
+        assert not output.exists()
+
+    def test_rejects_dependency_with_outside_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import repack_model
+
+        home, _ = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        dep = tmp_path / "my_lib"
+        dep.mkdir()
+        os.symlink(home / ".aws", dep / "settings")
+        output = tmp_path / "output.tar.gz"
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            repack_model(
+                "inference.py",
+                str(source),
+                [str(dep)],
+                f"file://{self._model_tar(tmp_path)}",
+                f"file://{output}",
+                self._session(),
+            )
+        assert not output.exists()
+
+    def test_repacks_symlinks_inside_root(self, tmp_path):
+        from sagemaker.core.common_utils import repack_model
+
+        source = _source_tree(tmp_path)
+        os.symlink(source / "pkg" / "helper.py", source / "helper_link.py")
+        output = tmp_path / "output.tar.gz"
+
+        repack_model(
+            "inference.py",
+            str(source),
+            [],
+            f"file://{self._model_tar(tmp_path)}",
+            f"file://{output}",
+            self._session(),
+        )
+
+        names = {name.lstrip("/") for name in self._archive_names(output)}
+        assert "code/helper_link.py" in names
+        assert "code/inference.py" in names
+
+
+class TestCreateTarFileSymlinks:
+    """create_tar_file is shared with model uploads and keeps following symlinks."""
+
+    def test_follows_symlink_outside_source_root(self, tmp_path):
+        """Hugging Face cache snapshots link into ../../blobs, outside the snapshot root."""
+        from sagemaker.core.common_utils import create_tar_file
+
+        blobs = tmp_path / "blobs"
+        blobs.mkdir()
+        (blobs / "abc123").write_text("weights")
+        snapshot = tmp_path / "snapshots" / "rev"
+        snapshot.mkdir(parents=True)
+        os.symlink("../../blobs/abc123", snapshot / "model.safetensors")
+
+        tar_path = create_tar_file([str(snapshot / "model.safetensors")], str(tmp_path / "t.tgz"))
+
+        with tarfile.open(tar_path, "r:gz") as tar:
+            member = tar.getmember("model.safetensors")
+            assert member.isfile()
+            assert tar.extractfile(member).read() == b"weights"
+
+
 class TestDownloadFileSpotCheck:
     """Spot-check behavior in common_utils.download_file."""
 
