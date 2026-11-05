@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.29.0 (2026-11-04)
+
+### New Features
+
+- feat(serve): describe an endpoint's traffic and size workloads from it (#6552)
+
+### Bug Fixes
+
+- fix: normalize tar member paths when extracting Bedrock model artifacts (#6543)
+
+### Tests
+
+- test(serve): run the recommender integ tests on ml.g6 and ml.g7 instances (#6557)
+
+
+## v1.28.0 (2026-10-29)
+
+### Bug Fixes
+
+- fix: close the remaining gaps in optional torch support (#6531)
+- fix(serve): pin pandas below 3.1.0 to unblock serve unit tests (#6524)
+- fix(serve): decouple the SMD orchestrator entrypoint from the container's sagemaker (#6200) (#6534)
+
+
 ## v1.27.0 (2026-10-21)
 
 ### Bug Fixes

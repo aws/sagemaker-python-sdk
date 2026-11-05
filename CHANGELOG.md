@@ -1,5 +1,53 @@
 # Changelog
 
+## v3.29.0 (2026-11-04)
+
+### New Features
+
+- feat(serve): describe an endpoint's traffic and size workloads from it (#6552)
+- change: update image_uri_configs 11-02-2026
+
+### Bug Fixes
+
+- fix: normalize tar member paths when extracting Bedrock model artifacts (#6543)
+- fix: validate symlinks stay within source root during model packaging (#6545)
+- fix: align recipe git clone error handling with git_utils (#6544)
+- fix(train): shell-quote values written to the training env file (#6517)
+
+### Tests
+
+- test(train): fix shallow SFT integ tests for recipe-catalogue drift (#6562)
+- test(serve): run the recommender integ tests on ml.g6 and ml.g7 instances (#6557)
+- test(train): make hyperparameters-file tests robust to global open/exists calls (#6561)
+- test(mlops): add prompt field to DPO preference integ dataset (#6553)
+
+
+## v3.28.0 (2026-10-29)
+
+### New Features
+
+- feat(mlops): Add AthenaStep pipeline step (#6508)
+- add: metadata for huggingface vllm v0.30 and v0.31 (#6526)
+- change: add eusc-de-east-1 to PyTorch inference 2.6.0 image URI config (#6538)
+- change: add sa-west-1 to PyTorch training image URI config (#6516)
+
+### Bug Fixes
+
+- fix(codegen): restore codestyle-doc-tests compliance after botocore sync (#6523)
+- fix: set VolumeKmsKeyId on ModelStep runtime repack job (#6537)
+- fix: use pipeline code_hash for FrameworkProcessor sourcedir upload (#6494)
+- fix: keep job name in pipeline request for ModelTrainer and HyperparameterTuner (#6323)
+- Fix s3 sse kms validate path (#5931)
+- fix: preserve volume KMS key in HyperparameterTuner training job definition (#6522)
+- fix: close the remaining gaps in optional torch support (#6531)
+- fix(serve): pin pandas below 3.1.0 to unblock serve unit tests (#6524)
+- fix(serve): decouple the SMD orchestrator entrypoint from the container's sagemaker (#6200) (#6534)
+
+### Tests
+
+- test(train): make SFT recipe-override integ tests recipe-proof (#6548)
+
+
 ## v3.27.0 (2026-10-21)
 
 ### New Features

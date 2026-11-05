@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.29.0 (2026-11-04)
+
+### Bug Fixes
+
+- fix: align recipe git clone error handling with git_utils (#6544)
+- fix(train): shell-quote values written to the training env file (#6517)
+
+### Tests
+
+- test(train): fix shallow SFT integ tests for recipe-catalogue drift (#6562)
+- test(train): make hyperparameters-file tests robust to global open/exists calls (#6561)
+
+
+## v1.28.0 (2026-10-29)
+
+### Bug Fixes
+
+- fix: keep job name in pipeline request for ModelTrainer and HyperparameterTuner (#6323)
+- Fix s3 sse kms validate path (#5931)
+- fix: preserve volume KMS key in HyperparameterTuner training job definition (#6522)
+
+### Tests
+
+- test(train): make SFT recipe-override integ tests recipe-proof (#6548)
+
+
 ## v1.27.0 (2026-10-21)
 
 ### Bug Fixes

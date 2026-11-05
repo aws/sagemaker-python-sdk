@@ -92,6 +92,15 @@ _SENSITIVE_SYSTEM_PATHS = [
     "/root",
     "/var/lib",
     "/opt/ml/metadata",
+    "/proc",
+    "/sys",
+    "/dev",
+]
+
+# Locations under _SENSITIVE_SYSTEM_PATHS that are allowed, such as shared memory used
+# as scratch space.
+_SENSITIVE_SYSTEM_PATH_EXCEPTIONS = [
+    "/dev/shm",
 ]
 
 logger = logging.getLogger(__name__)
@@ -668,13 +677,11 @@ def _validate_source_directory(source_directory):
     # Resolve symlinks to get the actual path
     abs_source = abspath(realpath(source_directory))
 
-    # Check if the source path is under any sensitive directory
-    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if abs_source != "/" and abs_source.startswith(sensitive_path):
-            raise ValueError(
-                f"source_directory cannot access sensitive system paths. "
-                f"Got: {source_directory} (resolved to {abs_source})"
-            )
+    if _is_sensitive_system_path(abs_source):
+        raise ValueError(
+            f"source_directory cannot access sensitive system paths. "
+            f"Got: {source_directory} (resolved to {abs_source})"
+        )
 
 
 def _validate_dependency_path(dependency):
@@ -694,13 +701,126 @@ def _validate_dependency_path(dependency):
     # Resolve symlinks to get the actual path
     abs_dependency = abspath(realpath(dependency))
 
-    # Check if the dependency path is under any sensitive directory
-    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if abs_dependency != "/" and abs_dependency.startswith(sensitive_path):
-            raise ValueError(
-                f"dependency path cannot access sensitive system paths. "
-                f"Got: {dependency} (resolved to {abs_dependency})"
-            )
+    if _is_sensitive_system_path(abs_dependency):
+        raise ValueError(
+            f"dependency path cannot access sensitive system paths. "
+            f"Got: {dependency} (resolved to {abs_dependency})"
+        )
+
+
+def _validate_inference_script_path(inference_script):
+    """Validate that an inference script path is safe to use.
+
+    Ensures the inference script path does not access restricted system locations.
+
+    Args:
+        inference_script (str): The inference script path to validate.
+
+    Raises:
+        ValueError: If the path is not allowed.
+    """
+    if not inference_script:
+        return
+
+    # Resolve symlinks to get the actual path
+    abs_script = abspath(realpath(inference_script))
+
+    if _is_sensitive_system_path(abs_script):
+        raise ValueError(
+            f"inference_script cannot access sensitive system paths. "
+            f"Got: {inference_script} (resolved to {abs_script})"
+        )
+
+
+def _resolved_sensitive_system_paths():
+    """Return the sensitive system paths, both as configured and with symlinks resolved.
+
+    Paths such as ``/etc`` or a symlinked home directory resolve to a different location
+    (for example ``/private/etc`` on macOS), so both forms are checked.
+
+    Returns:
+        tuple[str, ...]: Normalized absolute sensitive paths.
+    """
+    return _resolve_path_variants(tuple(_SENSITIVE_SYSTEM_PATHS))
+
+
+@lru_cache(maxsize=8)
+def _resolve_path_variants(paths):
+    """Return each path both as configured and with symlinks resolved, without duplicates.
+
+    Args:
+        paths (tuple[str, ...]): Paths to resolve.
+
+    Returns:
+        tuple[str, ...]: Normalized absolute paths.
+    """
+    resolved = []
+    for path in paths:
+        for candidate in (normpath(abspath(path)), normpath(realpath(path))):
+            if candidate not in resolved:
+                resolved.append(candidate)
+    return tuple(resolved)
+
+
+def _is_sensitive_system_path(resolved_path):
+    """Check whether an already resolved absolute path is under a sensitive system path.
+
+    Matching is done on whole path components, so ``~/.aws`` does not match ``~/.awsfoo``.
+    Paths under ``_SENSITIVE_SYSTEM_PATH_EXCEPTIONS`` (for example ``/dev/shm``) are allowed.
+
+    Args:
+        resolved_path (str): An absolute path with symlinks resolved.
+
+    Returns:
+        bool: True if resolved_path is a sensitive path or nested under one.
+    """
+    resolved_path = normpath(resolved_path)
+    if resolved_path == os.path.sep:
+        return False
+    if any(
+        _is_within_base(resolved_path, allowed_path)
+        for allowed_path in _resolve_path_variants(tuple(_SENSITIVE_SYSTEM_PATH_EXCEPTIONS))
+    ):
+        return False
+    return any(
+        _is_within_base(resolved_path, sensitive_path)
+        for sensitive_path in _resolved_sensitive_system_paths()
+    )
+
+
+def _validate_symlinks_within_root(path, description):
+    """Validate that symlinks nested under a directory resolve to locations inside it.
+
+    Copying or archiving a directory follows nested symlinks, so a symlink that points
+    outside the directory would pull in content from elsewhere on the file system.
+    Symlinks that resolve to a location inside the directory are allowed. A path that
+    is not a directory has no nested entries and is not checked here.
+
+    Args:
+        path (str): The directory to check.
+        description (str): Name of the input, used in the error message.
+
+    Raises:
+        ValueError: If a nested symlink resolves outside of ``path``.
+    """
+    if not path or not os.path.isdir(path):
+        return
+
+    root = normpath(realpath(abspath(path)))
+    for dirpath, dirnames, filenames in os.walk(path):
+        for name in dirnames + filenames:
+            entry = joinpath(dirpath, name)
+            if not os.path.islink(entry):
+                continue
+            target = normpath(realpath(entry))
+            if not _is_within_base(target, root):
+                raise ValueError(
+                    f"{description} contains a symlink that resolves outside of {path}: "
+                    f"{entry} -> {target}. Symlinks under {description} must point to files "
+                    f"or directories inside it. Replace the symlink with a copy of its "
+                    f"target, or remove it from {path} (for example, move a virtual "
+                    f"environment or other tooling directory out of {description})."
+                )
 
 
 def _create_or_update_code_dir(
@@ -711,11 +831,10 @@ def _create_or_update_code_dir(
     resolved_code_dir = _get_resolved_path(code_dir)
 
     # Validate that code_dir does not resolve to a sensitive system path
-    for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if resolved_code_dir != "/" and resolved_code_dir.startswith(sensitive_path):
-            raise ValueError(
-                f"Invalid code_dir path: {code_dir} resolves to sensitive system path {resolved_code_dir}"
-            )
+    if _is_sensitive_system_path(resolved_code_dir):
+        raise ValueError(
+            f"Invalid code_dir path: {code_dir} resolves to sensitive system path {resolved_code_dir}"
+        )
 
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
@@ -725,12 +844,13 @@ def _create_or_update_code_dir(
             custom_extractall_tarfile(t, code_dir)
 
     elif source_directory:
-        # Validate source_directory for security
         _validate_source_directory(source_directory)
+        _validate_symlinks_within_root(source_directory, "source_directory")
         if os.path.exists(code_dir):
             shutil.rmtree(code_dir)
         shutil.copytree(source_directory, code_dir)
     else:
+        _validate_inference_script_path(inference_script)
         if not os.path.exists(code_dir):
             os.mkdir(code_dir)
         try:
@@ -742,8 +862,8 @@ def _create_or_update_code_dir(
                 raise
 
     for dependency in dependencies:
-        # Validate dependency path for security
         _validate_dependency_path(dependency)
+        _validate_symlinks_within_root(dependency, "dependency")
         lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
             shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))

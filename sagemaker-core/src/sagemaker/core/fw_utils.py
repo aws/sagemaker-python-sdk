@@ -460,6 +460,14 @@ def tar_and_upload_dir(
             "Inputted directory for storing newly generated temporary directory does "
             f"not exist: '{settings.local_download_dir}'"
         )
+    # create_tar_file follows symlinks, so ensure nested symlinks stay inside each input.
+    if directory:
+        utils._validate_symlinks_within_root(directory, "source_dir")
+    else:
+        utils._validate_symlinks_within_root(script, "entry_point")
+    for dependency in dependencies:
+        utils._validate_symlinks_within_root(dependency, "dependency")
+
     local_download_dir = None if settings is None else settings.local_download_dir
     tmp = tempfile.mkdtemp(dir=local_download_dir)
     encrypt_artifact = True if settings is None else settings.encrypt_repacked_artifacts

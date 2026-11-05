@@ -13,6 +13,11 @@
 
 import json
 import os
+import shutil
+import subprocess
+
+import pytest
+
 from unittest.mock import patch, mock_open
 from sagemaker.core.modules.train.container_drivers.scripts.environment import (
     num_cpus,
@@ -383,3 +388,61 @@ class TestEnvironment:
 
         # Verify file was written
         mock_file.assert_called_once()
+
+
+_CORE_ENV = "sagemaker.core.modules.train.container_drivers.scripts.environment"
+
+_CORE_RESOURCE_CONFIG = {
+    "current_host": "algo-1",
+    "current_instance_type": "ml.m5.large",
+    "hosts": ["algo-1"],
+    "network_interface_name": "eth0",
+}
+
+
+def _core_write_env(hyperparameters, output_file):
+    """Run set_env with the given hyperparameters and no source code or distributed config."""
+    patches = [
+        patch(f"{_CORE_ENV}.read_source_code_json", return_value={}),
+        patch(f"{_CORE_ENV}.read_distributed_json", return_value={}),
+        patch(f"{_CORE_ENV}.num_cpus", return_value=1),
+        patch(f"{_CORE_ENV}.num_gpus", return_value=0),
+        patch(f"{_CORE_ENV}.num_neurons", return_value=0),
+    ]
+    with patch.dict(os.environ, {"TRAINING_JOB_NAME": "test-job"}):
+        for p in patches:
+            p.start()
+        try:
+            set_env(
+                resource_config=_CORE_RESOURCE_CONFIG,
+                input_data_config={},
+                hyperparameters_config=hyperparameters,
+                output_file=output_file,
+            )
+        finally:
+            for p in patches:
+                p.stop()
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash to source the env file")
+@pytest.mark.parametrize(
+    "payload",
+    ["it's 0.001'; touch {marker}; echo '", "'$(touch {marker})'", "x';touch {marker};#"],
+)
+def test_set_env_hyperparameter_value_survives_source_verbatim(tmp_path, payload):
+    """A hyperparameter value must round-trip through `source` and never be executed."""
+    marker = tmp_path / "marker"
+    payload = payload.format(marker=marker)
+    output_file = str(tmp_path / "sm_training.env")
+
+    _core_write_env({"learning_rate": payload}, output_file)
+
+    result = subprocess.run(
+        ["bash", "-c", f'source "{output_file}"; printf "%s" "$SM_HP_LEARNING_RATE"'],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert result.stdout == payload
+    assert not marker.exists()
