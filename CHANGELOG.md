@@ -1,5 +1,27 @@
 # Changelog
 
+## v3.29.0 (2026-11-04)
+
+### New Features
+
+- feat(serve): describe an endpoint's traffic and size workloads from it (#6552)
+- change: update image_uri_configs 11-02-2026
+
+### Bug Fixes
+
+- fix: normalize tar member paths when extracting Bedrock model artifacts (#6543)
+- fix: validate symlinks stay within source root during model packaging (#6545)
+- fix: align recipe git clone error handling with git_utils (#6544)
+- fix(train): shell-quote values written to the training env file (#6517)
+
+### Tests
+
+- test(train): fix shallow SFT integ tests for recipe-catalogue drift (#6562)
+- test(serve): run the recommender integ tests on ml.g6 and ml.g7 instances (#6557)
+- test(train): make hyperparameters-file tests robust to global open/exists calls (#6561)
+- test(mlops): add prompt field to DPO preference integ dataset (#6553)
+
+
 ## v3.28.0 (2026-10-29)
 
 ### New Features
