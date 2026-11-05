@@ -1051,9 +1051,7 @@ class ModelTrainer(BaseModel):
             if isinstance(model_artifact_path, str) and model_artifact_path.endswith(
                 "/model.tar.gz"
             ):
-                output_artifact_path = (
-                    model_artifact_path[: -len("model.tar.gz")] + "output.tar.gz"
-                )
+                output_artifact_path = model_artifact_path[: -len("model.tar.gz")] + "output.tar.gz"
             self._latest_local_training_result = LocalTrainingResult(
                 training_job_name=training_request["training_job_name"],
                 model_artifact_path=model_artifact_path,
