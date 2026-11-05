@@ -42,7 +42,7 @@ def test_create_pipeline_version_context():
         create_method.assert_called_with(
             context_name=f"sm-fs-fe-{PIPELINE_NAME}-{LAST_UPDATE_TIME}-fep-ver",
             context_type=f"FeatureEngineeringPipelineVersion-{PIPELINE_NAME}",
-            source_uri=PIPELINE_ARN,
+            source_uri=f"{PIPELINE_ARN}/{LAST_UPDATE_TIME}",
             source_type=LAST_UPDATE_TIME,
             properties={
                 "PipelineName": PIPELINE_NAME,
