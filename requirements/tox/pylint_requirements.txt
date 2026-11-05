@@ -1,2 +1,2 @@
-pylint==3.0.3
+pylint==4.0.9
 astroid==3.0.2
