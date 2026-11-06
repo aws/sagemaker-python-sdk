@@ -25,11 +25,13 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
     3. On error, calls report_error
     4. Clears context when done
 
-    Works with both sync and async functions.
+    Works with both sync and async functions accepting a ``payload`` dict.
+    Any additional positional and keyword arguments are forwarded unchanged
+    to the handler.
 
     Example::
 
-        from sagemaker.train.rft import rft_handler
+        from sagemaker.train.rft import sagemaker_rft_handler
         from sagemaker.train.rft.adapters.strands import wrap_model
         from strands import Agent
         from strands.models.openai import OpenAIModel
@@ -38,7 +40,7 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
         agent = Agent(model=model, tools=[...])
 
         @app.entrypoint
-        @rft_handler
+        @sagemaker_rft_handler
         async def invoke_agent(payload):
             result = await agent.invoke_async(payload["instance"]["prompt"])
             return {"reward": compute_reward(result)}
@@ -46,13 +48,13 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
     if asyncio.iscoroutinefunction(func):
 
         @wraps(func)
-        async def async_wrapper(payload: dict) -> Any:
+        async def async_wrapper(payload: dict, *args, **kwargs) -> Any:
             metadata = payload.get("metadata") or {}
             inference_params = payload.get("inferenceParams") or payload.get("inference_params")
             set_rollout_context(metadata, inference_params)
             feedback = RolloutFeedbackClient(metadata)
             try:
-                result = await func(payload)
+                result = await func(payload, *args, **kwargs)
             except Exception as e:
                 error_str = str(e)
                 if _is_trajectory_already_processed(error_str):
@@ -77,13 +79,13 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
     else:
 
         @wraps(func)
-        def sync_wrapper(payload: dict) -> Any:
+        def sync_wrapper(payload: dict, *args, **kwargs) -> Any:
             metadata = payload.get("metadata") or {}
             inference_params = payload.get("inferenceParams") or payload.get("inference_params")
             set_rollout_context(metadata, inference_params)
             feedback = RolloutFeedbackClient(metadata)
             try:
-                result = func(payload)
+                result = func(payload, *args, **kwargs)
             except Exception as e:
                 error_str = str(e)
                 if _is_trajectory_already_processed(error_str):
