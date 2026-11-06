@@ -35,6 +35,8 @@ from sagemaker.core.utils.utils import serialize
 from sagemaker.core.apiutils._boto_functions import to_pascal_case
 from sagemaker.core.common_utils import name_from_base
 
+from dataclasses import dataclass
+
 from pydantic import BaseModel, ConfigDict, PrivateAttr, validate_call
 from sagemaker.core.config.config_schema import (
     _simple_path,
@@ -130,6 +132,25 @@ class Mode(Enum):
 
     LOCAL_CONTAINER = "LOCAL_CONTAINER"
     SAGEMAKER_TRAINING_JOB = "SAGEMAKER_TRAINING_JOB"
+
+
+@dataclass(frozen=True)
+class LocalTrainingResult:
+    """Result of a ``Mode.LOCAL_CONTAINER`` training run.
+
+    Exposes the local job state that has no remote ``TrainingJob`` equivalent, so
+    callers can handle local and remote results uniformly. See issue #6556.
+
+    Attributes:
+        training_job_name (str): The generated local training job name.
+        model_artifact_path (str): ``file://`` path to the local ``model.tar.gz``.
+        output_artifact_path (Optional[str]): ``file://`` path to the local
+            ``output.tar.gz`` when it can be derived, otherwise ``None``.
+    """
+
+    training_job_name: str
+    model_artifact_path: str
+    output_artifact_path: Optional[str] = None
 
 
 def _log_actionable_client_error(client_error: "ClientError") -> None:
@@ -302,6 +323,7 @@ class ModelTrainer(BaseModel):
 
     # Created Artifacts
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
+    _latest_local_training_result: Optional[LocalTrainingResult] = PrivateAttr(default=None)
 
     # Private TrainingJob Parameters
     _tensorboard_output_config: Optional[shapes.TensorBoardOutputConfig] = PrivateAttr(default=None)
@@ -351,6 +373,15 @@ class ModelTrainer(BaseModel):
     }
 
     config_mgr: SageMakerConfig = SageMakerConfig()
+
+    @property
+    def latest_local_training_result(self) -> Optional[LocalTrainingResult]:
+        """The result of the most recent ``Mode.LOCAL_CONTAINER`` training run.
+
+        Returns ``None`` if no local training job has been run on this trainer.
+        Remote jobs expose their state through ``_latest_training_job`` instead.
+        """
+        return self._latest_local_training_result
 
     @property
     def output_data(self) -> str:
@@ -1012,9 +1043,25 @@ class ModelTrainer(BaseModel):
                 hyper_parameters=training_request["hyper_parameters"],
                 environment=training_request["environment"],
             )
-            local_container.train(wait)
+            # _LocalContainer.train returns the local model.tar.gz path; capture it
+            # and the sibling output.tar.gz so callers can access local job state
+            # the way _latest_training_job exposes remote jobs. See issue #6556.
+            model_artifact_path = local_container.train(wait)
+            output_artifact_path = None
+            if isinstance(model_artifact_path, str) and model_artifact_path.endswith(
+                "/model.tar.gz"
+            ):
+                output_artifact_path = model_artifact_path[: -len("model.tar.gz")] + "output.tar.gz"
+            self._latest_local_training_result = LocalTrainingResult(
+                training_job_name=training_request["training_job_name"],
+                model_artifact_path=model_artifact_path,
+                output_artifact_path=output_artifact_path,
+            )
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
+        if self.training_mode == Mode.LOCAL_CONTAINER and self._latest_local_training_result:
+            return self._latest_local_training_result.model_artifact_path
+        return None
 
     def _resolve_staging_bucket(self) -> tuple[str, str]:
         """Resolve the S3 bucket and key prefix for staging training artifacts.
