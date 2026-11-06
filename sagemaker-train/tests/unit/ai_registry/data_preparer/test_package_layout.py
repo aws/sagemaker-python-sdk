@@ -62,6 +62,10 @@ LABELING_NAMES = [
     "Grader",
     "Routing",
     "Scoring",
+    "Confidence",
+    "JudgeModel",
+    "Optimizer",
+    "Review",
     "LabelingSummary",
 ]
 

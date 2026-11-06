@@ -88,6 +88,26 @@ Summarization is the one task shaped differently — graders instead of gold::
         text_fields=["article"],
         graders=[Grader(model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0")],
     )
+
+Classification alone takes three opt-in options, each off when unset:
+:class:`Confidence` (how the job scores its confidence), :class:`Optimizer` (a
+spec search inside a refine-round job) and :class:`Review` (a review-only run
+over labeled seed rows that labels nothing and registers no DataSet)::
+
+    from sagemaker.ai_registry import Confidence, JudgeModel, Review
+
+    judged = ClassificationLabelingOptions(
+        text_fields=["subject", "body"],
+        confidence=Confidence(
+            method="verbalized",
+            estimator="judge",
+            models=[JudgeModel(model_id="us.anthropic.claude-sonnet-4-6")],
+        ),
+    )
+    review = ClassificationLabelingOptions(
+        text_fields=["subject", "body"],
+        review=Review(label_field="gt_label", scope="seed"),
+    )
 """
 
 from __future__ import absolute_import
@@ -185,6 +205,84 @@ class Grader(_LabelingModel):
     reasoning_effort: Optional[str] = None
 
 
+class JudgeModel(_LabelingModel):
+    """One judge model (``Config.Confidence.Models[]``, ``Config.Review.JudgeModels[]``).
+
+    A model id plus an optional reasoning-effort hint. The service enforces the
+    allow-list, the ``ReasoningEffort`` values, and the per-field count.
+    """
+
+    model_id: str
+    reasoning_effort: Optional[str] = None
+
+
+class Confidence(_LabelingModel):
+    """How a classification job scores its confidence (``Config.Confidence``).
+
+    Opt-in; absent means the job's default agreement vote. ``method`` is one of
+    the service's ``agreement`` / ``stated`` / ``verbalized``. ``estimator``
+    (``judge`` or ``panel``) scores each row with the judge ``models``;
+    ``recalibration`` names a map fitted on the gold rows; ``floor_bypass`` lifts
+    the agreement floor. The service enforces the value sets, the judge count,
+    and that a judge does not grade its own labels. Only
+    :class:`ClassificationLabelingOptions` accepts it.
+    """
+
+    method: str
+    estimator: Optional[str] = None
+    models: Optional[List[JudgeModel]] = None
+    recalibration: Optional[str] = None
+    floor_bypass: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def _judges_need_an_estimator(self) -> "Confidence":
+        """``models`` are the estimator's judges, so they mean nothing without one."""
+        if self.models and not self.estimator:
+            raise ValueError("Confidence.models are the judges of an estimator; set estimator too")
+        return self
+
+
+class Optimizer(_LabelingModel):
+    """Run the spec search inside a refine-round job (``Config.Optimizer``).
+
+    Opt-in; absent means the job labels with the spec it was given. ``mode`` is
+    the service's ``protegi``. The service enforces the value sets and that an
+    optimizer is not combined with ``Routing``. Only
+    :class:`ClassificationLabelingOptions` accepts it.
+    """
+
+    mode: str
+    teacher_model: Optional[JudgeModel] = None
+    seed: Optional[int] = None
+    parser: Optional[str] = None
+    elicitation: Optional[str] = None
+
+
+class Review(_LabelingModel):
+    """Make the job a review-only run over labeled seed rows (``Config.Review``).
+
+    Opt-in. With ``Review`` set the job labels nothing and registers no DataSet:
+    it checks the seed's labels against the spec and writes its findings under
+    ``review/`` in the job's output. ``scope`` is ``seed`` (default) or
+    ``golden``; ``predictions_s3_uris`` are up to four earlier prediction files;
+    ``rules_s3_uri`` is a keyword-rules file; ``judge_models`` (at most one),
+    ``judge_scope``, ``max_judge_rows`` and ``estimate_only`` control the
+    optional guideline judge. The service enforces the bounds and value sets.
+    Only :class:`ClassificationLabelingOptions` accepts it, and a review job
+    takes no ``demos``, ``routing``, ``evaluation_data``, ``scoring``,
+    ``confidence`` or ``optimizer``.
+    """
+
+    label_field: Optional[str] = None
+    scope: Optional[str] = None
+    predictions_s3_uris: Optional[List[str]] = None
+    rules_s3_uri: Optional[str] = None
+    judge_models: Optional[List[JudgeModel]] = None
+    judge_scope: Optional[str] = None
+    max_judge_rows: Optional[int] = None
+    estimate_only: Optional[bool] = None
+
+
 class LabelingOptions(_LabelingModel):
     """Base class for the per-task labeling options.
 
@@ -257,9 +355,44 @@ class _ScoredLabelingOptions(LabelingOptions):
 
 
 class ClassificationLabelingOptions(_ScoredLabelingOptions):
-    """Assign each row one label from the spec's set (``labeling.classification``)."""
+    """Assign each row one label from the spec's set (``labeling.classification``).
+
+    Classification is the one task that also takes the opt-in ``confidence``,
+    ``optimizer`` and ``review`` options; each is off when unset. A ``review``
+    turns the job into a review-only run that labels nothing, so it excludes
+    every option that shapes a labeling run.
+    """
 
     TYPE: ClassVar[str] = "labeling.classification"
+
+    confidence: Optional[Confidence] = None
+    optimizer: Optional[Optimizer] = None
+    review: Optional[Review] = None
+
+    @model_validator(mode="after")
+    def _review_stands_alone(self) -> "ClassificationLabelingOptions":
+        """A review job labels nothing, so it refuses the fields that shape a labeling run."""
+        if self.review is None:
+            return self
+        clashing = [
+            name
+            for name in (
+                "demos",
+                "routing",
+                "evaluation_data",
+                "scoring",
+                "confidence",
+                "optimizer",
+            )
+            if getattr(self, name) is not None
+        ]
+        if clashing:
+            raise ValueError(
+                "review makes the job a review-only run that labels nothing, so it takes none of "
+                + ", ".join(clashing)
+                + "; drop them or drop review"
+            )
+        return self
 
 
 class NerLabelingOptions(_ScoredLabelingOptions):
@@ -331,4 +464,8 @@ __all__ = [
     "Grader",
     "Routing",
     "Scoring",
+    "Confidence",
+    "JudgeModel",
+    "Optimizer",
+    "Review",
 ]

@@ -29,14 +29,18 @@ from __future__ import absolute_import
 
 from sagemaker.ai_registry.data_preparer.auto_labeling.shapes import (  # noqa: F401
     ClassificationLabelingOptions,
+    Confidence,
     Demos,
     EvaluationData,
     Grader,
+    JudgeModel,
     LabelingOptions,
     LlmJudgeLabelingOptions,
     NerLabelingOptions,
+    Optimizer,
     OrdinalLabelingOptions,
     QaLabelingOptions,
+    Review,
     Routing,
     Scoring,
     SummarizationLabelingOptions,
@@ -58,5 +62,9 @@ __all__ = [
     "Grader",
     "Routing",
     "Scoring",
+    "Confidence",
+    "JudgeModel",
+    "Optimizer",
+    "Review",
     "LabelingSummary",
 ]
