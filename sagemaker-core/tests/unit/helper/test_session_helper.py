@@ -1072,6 +1072,90 @@ class TestCreateEndpointConfig:
                 assert result == "my-config"
 
 
+class TestImportHubContent:
+    """Test import_hub_content method."""
+
+    REQUIRED = {
+        "hub_name": "my-hub",
+        "hub_content_name": "my-dataset",
+        "hub_content_type": "DataSet",
+        "document_schema_version": "2.0.0",
+    }
+
+    def test_required_fields_only(self, mock_boto_session, mock_sagemaker_client):
+        mock_sagemaker_client.import_hub_content.return_value = {"HubContentArn": "arn:x"}
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+
+        result = session.import_hub_content(hub_content_document="{}", **self.REQUIRED)
+
+        assert result == {"HubContentArn": "arn:x"}
+        mock_sagemaker_client.import_hub_content.assert_called_once_with(
+            HubName="my-hub",
+            HubContentName="my-dataset",
+            HubContentType="DataSet",
+            DocumentSchemaVersion="2.0.0",
+            HubContentDocument="{}",
+        )
+
+    def test_dict_document_is_serialized(self, mock_boto_session, mock_sagemaker_client):
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        document = {"DatasetS3Prefix": "s3://bucket/data.jsonl"}
+
+        session.import_hub_content(hub_content_document=document, **self.REQUIRED)
+
+        kwargs = mock_sagemaker_client.import_hub_content.call_args.kwargs
+        assert kwargs["HubContentDocument"] == json.dumps(document)
+
+    def test_optional_fields_and_tags(self, mock_boto_session, mock_sagemaker_client):
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+
+        session.import_hub_content(
+            hub_content_document="{}",
+            hub_content_version="1.0.0",
+            hub_content_display_name="My dataset",
+            hub_content_description="desc",
+            hub_content_markdown="# md",
+            support_status="Supported",
+            hub_content_search_keywords=["tioga"],
+            tags=[{"Key": "team", "Value": "ml"}],
+            **self.REQUIRED,
+        )
+
+        kwargs = mock_sagemaker_client.import_hub_content.call_args.kwargs
+        assert kwargs["HubContentVersion"] == "1.0.0"
+        assert kwargs["HubContentDisplayName"] == "My dataset"
+        assert kwargs["HubContentDescription"] == "desc"
+        assert kwargs["HubContentMarkdown"] == "# md"
+        assert kwargs["SupportStatus"] == "Supported"
+        assert kwargs["HubContentSearchKeywords"] == ["tioga"]
+        assert kwargs["Tags"] == [{"Key": "team", "Value": "ml"}]
+
+    def test_empty_optional_values_are_sent(self, mock_boto_session, mock_sagemaker_client):
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+
+        session.import_hub_content(
+            hub_content_document="{}",
+            hub_content_description="",
+            hub_content_search_keywords=[],
+            **self.REQUIRED,
+        )
+
+        kwargs = mock_sagemaker_client.import_hub_content.call_args.kwargs
+        assert kwargs["HubContentDescription"] == ""
+        assert kwargs["HubContentSearchKeywords"] == []
+        assert "HubContentVersion" not in kwargs
+        assert "Tags" not in kwargs
+
+    def test_service_error_propagates(self, mock_boto_session, mock_sagemaker_client):
+        mock_sagemaker_client.import_hub_content.side_effect = ClientError(
+            {"Error": {"Code": "ResourceInUse", "Message": "already exists"}}, "ImportHubContent"
+        )
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+
+        with pytest.raises(ClientError, match="already exists"):
+            session.import_hub_content(hub_content_document="{}", **self.REQUIRED)
+
+
 class TestExpandRole:
     """Test expand_role function."""
 
