@@ -246,30 +246,11 @@ class TestListBaseModels:
         )
         assert list_base_models_in_region(hub) == ["provider-a/model-a"]
 
-    def test_static_region_list_surfaces_a_model_without_the_keyword(self):
-        # Until the Hub publishes the capability, a Region's static list stands in.
+    def test_excludes_a_model_without_the_capability_keyword(self):
         hub = _FakeCatalogHub(
             {"huggingface-vlm-qwen3-8-27b": (_MODEL_A_ARN, "Qwen/Qwen3.8-27B")},
             advertise_hf_id=True,
             region="us-west-2",
-            keywords_by_name={"huggingface-vlm-qwen3-8-27b": ["@huggingface-id:qwen/qwen3.8-27b"]},
-        )
-        assert list_base_models_in_region(hub) == ["Qwen/Qwen3.8-27B"]
-        assert resolve_base_model("Qwen/Qwen3.8-27B", hub) == (_MODEL_A_ARN, "Qwen/Qwen3.8-27B")
-
-    def test_static_region_list_is_per_region(self):
-        hub = _FakeCatalogHub(
-            {"huggingface-vlm-qwen3-6-27b": (_MODEL_A_ARN, "Qwen/Qwen3.6-27B")},
-            advertise_hf_id=True,
-            region="us-east-1",
-            keywords_by_name={"huggingface-vlm-qwen3-6-27b": ["@huggingface-id:qwen/qwen3.6-27b"]},
-        )
-        assert list_base_models_in_region(hub) == []
-
-    def test_static_region_list_needs_a_region(self):
-        hub = _FakeCatalogHub(
-            {"huggingface-vlm-qwen3-8-27b": (_MODEL_A_ARN, "Qwen/Qwen3.8-27B")},
-            advertise_hf_id=True,
             keywords_by_name={"huggingface-vlm-qwen3-8-27b": ["@huggingface-id:qwen/qwen3.8-27b"]},
         )
         assert list_base_models_in_region(hub) == []
