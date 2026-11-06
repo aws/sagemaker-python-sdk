@@ -33,7 +33,7 @@ from sagemaker.core import shapes
 from sagemaker.core.shapes import AlgorithmSpecification, ModelPackageConfig
 from sagemaker.core.utils.utils import serialize
 from sagemaker.core.apiutils._boto_functions import to_pascal_case
-from sagemaker.core.common_utils import name_from_base
+from sagemaker.core.common_utils import name_from_base, _validate_symlinks_within_root
 
 from dataclasses import dataclass
 
@@ -1242,6 +1242,11 @@ class ModelTrainer(BaseModel):
                         input_mode="File",
                     )
                 else:
+                    # Copying/archiving this directory for upload follows nested
+                    # symlinks, so a symlink pointing outside the directory would pull
+                    # in unrelated content from elsewhere on the file system. Validate
+                    # that nested symlinks resolve inside the directory before staging.
+                    _validate_symlinks_within_root(data_source, "data_source")
                     key_prefix = (
                         f"{key_prefix}/{channel_name}"
                         if key_prefix

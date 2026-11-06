@@ -2815,3 +2815,37 @@ def test_pipeline_and_interactive_emit_identical_tags(model_trainer):
     pipeline_tags = _pipeline_trainer([TAG])._create_training_job_args()["Tags"]
 
     assert pipeline_tags == _train_wire_tags(model_trainer)
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_local_dir_with_in_root_symlink(
+    mock_default_bucket, mock_upload_data, model_trainer
+):
+    """A local directory whose nested symlinks resolve inside it is staged normally."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+    with tempfile.TemporaryDirectory() as source_dir:
+        with open(os.path.join(source_dir, "train.py"), "w") as f:
+            f.write("print('hi')\n")
+        os.symlink(os.path.join(source_dir, "train.py"), os.path.join(source_dir, "entry_link.py"))
+        channel = model_trainer.create_input_data_channel("code", source_dir)
+    assert channel.channel_name == "code"
+    mock_upload_data.assert_called_once()
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_create_input_data_channel_local_dir_rejects_out_of_root_symlink(
+    mock_default_bucket, mock_upload_data, model_trainer
+):
+    """A nested symlink resolving outside the local directory is rejected before upload."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    with tempfile.TemporaryDirectory() as outside_dir, tempfile.TemporaryDirectory() as source_dir:
+        outside_file = os.path.join(outside_dir, "outside.txt")
+        with open(outside_file, "w") as f:
+            f.write("data\n")
+        os.symlink(outside_file, os.path.join(source_dir, "linked.txt"))
+        with pytest.raises(ValueError, match="resolves outside"):
+            model_trainer.create_input_data_channel("code", source_dir)
+    mock_upload_data.assert_not_called()
