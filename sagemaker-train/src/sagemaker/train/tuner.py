@@ -590,7 +590,10 @@ class HyperparameterTuner(object):
                             arcname = os.path.relpath(fpath, source_code.source_dir)
                             tar.add(fpath, arcname=arcname)
                 s3_client = session.boto_session.client("s3", region_name=session.boto_region_name)
-                s3_client.upload_file(tar_path, bucket, s3_key)
+                # Encrypt staged source with the trainer's output KMS key (parity with
+                # create_input_data_channel); None when no key is set. See issue #6555.
+                extra_args = model_trainer._resolve_upload_extra_args()
+                s3_client.upload_file(tar_path, bucket, s3_key, ExtraArgs=extra_args)
                 model_trainer.hyperparameters["sagemaker_submit_directory"] = (
                     f"s3://{bucket}/{s3_key}"
                 )
