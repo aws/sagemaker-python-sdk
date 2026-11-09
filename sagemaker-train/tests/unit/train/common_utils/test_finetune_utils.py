@@ -35,6 +35,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _is_hub_content_not_found,
     _validate_s3_path_exists,
     _parse_sequence_length,
+    _sequence_length_ceiling,
 )
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.ai_registry.dataset import DataSet
@@ -1287,6 +1288,81 @@ class TestResolveIntermediateCheckpointMpg:
 
     def test__parse_sequence_length_with_empty(self):
         assert _parse_sequence_length("") == 0
+
+    def test__sequence_length_ceiling_prefers_length_param_max_over_label(self):
+        # verl-grpo-rlvr-gemma-4-e4b-it-lora: 20480-token budget labelled "16K".
+        options = {
+            "max_prompt_length": {"default": 16384, "min": 512, "max": 20480},
+            "max_response_length": {"default": 4096, "min": 100, "max": 20480},
+        }
+        assert _sequence_length_ceiling(options, "16K") == 20480
+
+    def test__sequence_length_ceiling_uses_dataset_max_len_max(self):
+        assert _sequence_length_ceiling({"dataset_max_len": {"max": 24576}}, "16K") == 24576
+
+    def test__sequence_length_ceiling_falls_back_to_label(self):
+        assert _sequence_length_ceiling({"max_prompt_length": {"default": 1024}}, "8K") == 8192
+
+    def test__sequence_length_ceiling_ignores_max_outside_label_bucket(self):
+        # llmft llama-3-2-1b-instruct SFT: generic 131072 max on a "4K" recipe.
+        options = {"dataset_max_len": {"default": 4096, "min": 256, "max": 131072}}
+        assert _sequence_length_ceiling(options, "4K") == 4096
+
+    def test__sequence_length_ceiling_falls_back_to_label_when_budgets_disagree(self):
+        options = {
+            "max_prompt_length": {"default": 16384, "max": 20480},
+            "max_response_length": {"default": 4096, "max": 30000},
+        }
+        assert _sequence_length_ceiling(options, "16K") == 16384
+
+    def test__sequence_length_ceiling_ignores_max_below_label(self):
+        assert _sequence_length_ceiling({"dataset_max_len": {"max": 2048}}, "4K") == 4096
+
+    def test__sequence_length_ceiling_none_without_label(self):
+        assert _sequence_length_ceiling({"max_prompt_length": {"max": 20480}}, None) is None
+
+    @patch("sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata")
+    def test__get_fine_tuning_options_rl_defaults_fit_floored_label(self, mock_get_hub_content):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {
+            "Body": Mock(
+                read=Mock(
+                    return_value=(
+                        b'{"max_prompt_length": {"type": "integer", "default": 16384,'
+                        b' "min": 512, "max": 20480},'
+                        b' "max_response_length": {"type": "integer", "default": 4096,'
+                        b' "min": 100, "max": 20480}}'
+                    )
+                )
+            )
+        }
+        mock_session.boto_session.client.return_value = mock_s3
+        mock_get_hub_content.return_value = {
+            "hub_content_arn": "arn:aws:sagemaker:us-west-2:123456789012:model/test-model",
+            "hub_content_document": {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "RLVR",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params.json",
+                        "Peft": "LORA",
+                        "SequenceLength": "16K",
+                    }
+                ],
+            },
+        }
+
+        options, _, _ = _get_fine_tuning_options_and_model_arn(
+            "test-model", "RLVR", "LORA", mock_session
+        )
+
+        options.validate_length_constraints()
+        options.max_response_length = 4097
+        with pytest.raises(ValueError, match="exceeds the recipe's supported sequence length"):
+            options.validate_length_constraints()
 
     @patch("sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata")
     def test__get_fine_tuning_options_filters_by_exact_sequence_length(self, mock_get_hub_content):
