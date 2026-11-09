@@ -779,8 +779,12 @@ def logs_for_transform_job(sagemaker_session, job_name, wait=False, poll=10):
         ValueError: If the transform job fails.
     """
 
+    # Describe through the session's (region-aware) client: TransformJob.get() expects a
+    # boto3 Session, and _logs_init/_check_job_status read the API's PascalCase keys.
     description = _wait_until(
-        lambda: TransformJob.get(transform_job_name=job_name, session=sagemaker_session).__dict__,
+        lambda: sagemaker_session.sagemaker_client.describe_transform_job(
+            TransformJobName=job_name
+        ),
         poll,
     )
 
@@ -830,8 +834,9 @@ def logs_for_transform_job(sagemaker_session, job_name, wait=False, poll=10):
         if state == LogState.JOB_COMPLETE:
             state = LogState.COMPLETE
         elif time.time() - last_describe_job_call >= 30:
-            transform_job = TransformJob.get(transform_job_name=job_name, session=sagemaker_session)
-            description = transform_job.__dict__ if transform_job else None
+            description = sagemaker_session.sagemaker_client.describe_transform_job(
+                TransformJobName=job_name
+            )
             last_describe_job_call = time.time()
 
             status = description["TransformJobStatus"]
