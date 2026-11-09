@@ -48,6 +48,15 @@ def _to_processing_input_dict(processing_input: ProcessingInput) -> dict:
             "S3DataType": getattr(processing_input.s3_input, "s3_data_type", "S3Prefix"),
             "S3InputMode": getattr(processing_input.s3_input, "s3_input_mode", "File"),
         }
+        # Optional fields, e.g. DataConfig(s3_compression_type="Gzip"); skip unset
+        # (None/Unassigned) values.
+        for api_key, attr in (
+            ("S3DataDistributionType", "s3_data_distribution_type"),
+            ("S3CompressionType", "s3_compression_type"),
+        ):
+            value = getattr(processing_input.s3_input, attr, None)
+            if isinstance(value, str):
+                input_dict["S3Input"][api_key] = value
     return input_dict
 
 
@@ -121,7 +130,11 @@ def _build_check_job_request(
     if processor.env:
         request_dict["Environment"] = processor.env
     if processor.network_config:
-        request_dict["NetworkConfig"] = processor.network_config
+        network_config = processor.network_config
+        # CheckJobConfig.network_config is a NetworkConfig object; send its request dict.
+        if hasattr(network_config, "_to_request_dict"):
+            network_config = network_config._to_request_dict()
+        request_dict["NetworkConfig"] = network_config
     if processor.entrypoint:
         request_dict["AppSpecification"]["ContainerEntrypoint"] = processor.entrypoint
     if processor.arguments:
