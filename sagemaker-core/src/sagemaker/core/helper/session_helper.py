@@ -49,6 +49,7 @@ from sagemaker.core.common_utils import (
     instance_supports_kms,
     create_paginator_config,
     validate_path_within_directory,
+    _resolve_capacity_reservation_config,
 )
 
 from sagemaker.core.config.config_utils import _log_sagemaker_config_merge
@@ -2940,6 +2941,7 @@ def production_variant(
     managed_instance_scaling=None,
     routing_config=None,
     inference_ami_version=None,
+    capacity_reservation_config=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -2973,6 +2975,13 @@ def production_variant(
             https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html
             #your-algorithms
             -inference-algo-ping-requests
+        capacity_reservation_config (Union[dict,
+            sagemaker.core.shapes.ProductionVariantCapacityReservationConfig]): Runs the
+            variant's instances on reserved capacity, either a SageMaker training plan
+            created for the ``endpoint`` target resource or an ML reservation backed by
+            On-Demand Capacity Reservations (ODCRs). A dict must use the
+            ``CreateEndpointConfig`` request keys ``CapacityReservationPreference`` and
+            ``MlReservationArn``. Ignored for serverless variants (default: None).
 
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
@@ -3002,6 +3011,9 @@ def production_variant(
             ModelDataDownloadTimeoutInSeconds=model_data_download_timeout,
             ContainerStartupHealthCheckTimeoutInSeconds=container_startup_health_check_timeout,
             RoutingConfig=routing_config,
+            CapacityReservationConfig=_resolve_capacity_reservation_config(
+                capacity_reservation_config
+            ),
         )
 
     if inference_ami_version:

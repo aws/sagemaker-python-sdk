@@ -2271,6 +2271,61 @@ class TestResolveRoutingConfig:
         assert result is None
 
 
+class TestResolveCapacityReservationConfig:
+    """Test _resolve_capacity_reservation_config function."""
+
+    PLAN_ARN = "arn:aws:sagemaker:us-west-2:123456789012:training-plan/my-plan"
+
+    def test_shape_is_serialized_to_request_keys(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+        from sagemaker.core.shapes import ProductionVariantCapacityReservationConfig
+
+        config = ProductionVariantCapacityReservationConfig(
+            capacity_reservation_preference="capacity-reservations-only",
+            ml_reservation_arn=self.PLAN_ARN,
+        )
+        assert _resolve_capacity_reservation_config(config) == {
+            "CapacityReservationPreference": "capacity-reservations-only",
+            "MlReservationArn": self.PLAN_ARN,
+        }
+
+    def test_shape_with_arn_only_omits_preference(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+        from sagemaker.core.shapes import ProductionVariantCapacityReservationConfig
+
+        config = ProductionVariantCapacityReservationConfig(ml_reservation_arn=self.PLAN_ARN)
+        assert _resolve_capacity_reservation_config(config) == {"MlReservationArn": self.PLAN_ARN}
+
+    def test_dict_is_passed_through_without_none_values(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+
+        config = {"MlReservationArn": self.PLAN_ARN, "CapacityReservationPreference": None}
+        assert _resolve_capacity_reservation_config(config) == {"MlReservationArn": self.PLAN_ARN}
+
+    def test_empty_config_resolves_to_none(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+        from sagemaker.core.shapes import ProductionVariantCapacityReservationConfig
+
+        assert _resolve_capacity_reservation_config(None) is None
+        assert _resolve_capacity_reservation_config({}) is None
+        assert (
+            _resolve_capacity_reservation_config(ProductionVariantCapacityReservationConfig())
+            is None
+        )
+
+    def test_dict_with_unknown_key_raises(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+
+        with pytest.raises(ValueError, match="ml_reservation_arn"):
+            _resolve_capacity_reservation_config({"ml_reservation_arn": self.PLAN_ARN})
+
+    def test_unsupported_type_raises(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+
+        with pytest.raises(TypeError):
+            _resolve_capacity_reservation_config(self.PLAN_ARN)
+
+
 class TestWaitUntil:
     """Test _wait_until function."""
 
