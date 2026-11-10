@@ -6453,8 +6453,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if hasattr(self, "_deployables") and self._deployables:
             endpoints = []
+            # Only the capacity reservation is forwarded here; the endpoint created for the
+            # first inference component must launch on the reserved capacity.
+            ic_kwargs = {}
+            if kwargs.get("capacity_reservation_config") is not None:
+                ic_kwargs["capacity_reservation_config"] = kwargs["capacity_reservation_config"]
             for ic in self._deployables.get("InferenceComponents", []):
-                endpoints.append(self._deploy_for_ic(ic_data=ic, endpoint_name=endpoint_name))
+                endpoints.append(
+                    self._deploy_for_ic(ic_data=ic, endpoint_name=endpoint_name, **ic_kwargs)
+                )
 
             # Handle custom orchestrator if present
             if self._deployables.get("CustomOrchestrator"):

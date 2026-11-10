@@ -196,6 +196,44 @@ class TestDeployForwardsCapacityReservation(unittest.TestCase):
 
         assert mock_deploy.call_args.kwargs["capacity_reservation_config"] is config
 
+    @patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None)
+    @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_deploy_for_ic", return_value=Mock(spec=Endpoint))
+    def test_deployables_ic_path_forwards_config(self, mock_deploy_for_ic, *_):
+        config = _plan_config()
+        builder = self._builder()
+        builder._deployables = {
+            "InferenceComponents": [
+                {"Name": "ic-1", "ResourceRequirements": Mock(), "Model": Mock()},
+                {"Name": "ic-2", "ResourceRequirements": Mock(), "Model": Mock()},
+            ]
+        }
+
+        builder.deploy(
+            endpoint_name="multi-ic-endpoint",
+            instance_type="ml.p5.48xlarge",
+            capacity_reservation_config=config,
+        )
+
+        assert mock_deploy_for_ic.call_count == 2
+        for call in mock_deploy_for_ic.call_args_list:
+            assert call.kwargs["capacity_reservation_config"] is config
+
+    @patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None)
+    @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_deploy_for_ic", return_value=Mock(spec=Endpoint))
+    def test_deployables_ic_path_without_config_is_unchanged(self, mock_deploy_for_ic, *_):
+        builder = self._builder()
+        builder._deployables = {
+            "InferenceComponents": [
+                {"Name": "ic-1", "ResourceRequirements": Mock(), "Model": Mock()}
+            ]
+        }
+
+        builder.deploy(endpoint_name="multi-ic-endpoint", instance_type="ml.p5.48xlarge")
+
+        assert "capacity_reservation_config" not in mock_deploy_for_ic.call_args.kwargs
+
     @patch.object(ModelBuilder, "_deploy")
     def test_deploy_rejects_invalid_config_up_front(self, mock_deploy):
         with pytest.raises(TypeError):
