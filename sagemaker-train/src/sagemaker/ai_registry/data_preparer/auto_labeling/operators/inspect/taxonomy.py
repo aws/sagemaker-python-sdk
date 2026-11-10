@@ -28,12 +28,10 @@ Checks, all upfront and free:
    cannot yield a refiner rule; severe imbalance (``min / max`` under
    ``IMBALANCE_RATIO``) skews it; a seed label that matches no class is a typo, a
    casing difference or a retired class.
-3. **Semantic overlap**: each class's ``name: definition`` is embedded and pairs over
-   ``SEM_SIM_THRESHOLD`` cosine are flagged as likely-confusable merge candidates.
-   ``sentence-transformers`` is an optional dependency; without it a lexical Jaccard
-   check over ``LEX_SIM_THRESHOLD`` runs instead, which catches reworded near-duplicates
-   but misses synonyms with no shared word. The report says which ran
-   (``separability.method``) so a lexical result is read as the weaker signal it is.
+3. **Overlap**: class pairs whose ``name: definition`` token sets overlap (Jaccard)
+   over ``LEX_SIM_THRESHOLD`` are flagged as likely-confusable merge candidates. It
+   compares shared surface tokens, not meaning, so it can miss synonyms with no shared
+   word ("joy" vs "elation"). Reported as ``separability.method`` ``lexical``.
 
 The overlap check is skipped for ``ordinal``: adjacent tiers are neighbors, not
 confusions. A task with no label set (summarization, qa, ner, llm_judge, a scale-only
@@ -58,7 +56,7 @@ class TaxonomyReport(OperatorResult):
     ``verdict`` is ``clear``, ``review`` or ``skipped``; ``decision`` is ``proceed``,
     ``review-before-spend`` or ``skip``. ``issues`` lists ``{type, severity, classes,
     detail, suggestion}`` findings; ``coverage`` and ``separability`` say what was
-    checked and how (``separability.method`` is ``embedding`` or ``lexical``).
+    checked and how (``separability.method`` is ``lexical``).
     """
 
     verdict: str
@@ -75,11 +73,7 @@ class TaxonomyReport(OperatorResult):
 # Thresholds mirror references/taxonomy-guidance.md.
 MIN_PER_CLASS = 10  # < ~10 rows can't build a rule after the val split
 IMBALANCE_RATIO = 0.25  # min(count) / max(count) below this is severe
-SEM_SIM_THRESHOLD = 0.83  # cosine above this = likely-overlapping definitions
-LEX_SIM_THRESHOLD = 0.6  # Jaccard token-overlap fallback threshold
-# Same embedder as dataset-transformation's cluster_split, so "content similarity"
-# means one thing here.
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+LEX_SIM_THRESHOLD = 0.6  # Jaccard token-overlap threshold
 # Tasks for which a missing Label Set is itself a review-worthy problem. Only
 # classification requires a fixed label set to gate; every other task type
 # (summarization / qa / ner / llm_judge, and scale-only ordinal specs) has no
@@ -311,42 +305,28 @@ def seed_coverage(label_set, labeled_rows, gt_field):
 
 
 def overlap_pairs(label_set):
-    """Likely-confusable class pairs by similarity of ``name: definition``.
+    """Likely-confusable class pairs by Jaccard token overlap of ``name: definition``.
 
     Args:
         label_set: ``[(name, definition)]``.
 
     Returns:
-        ``(pairs, method, fallback_reason)``: ``pairs`` is ``[(a, b, score)]`` sorted
-        by score; ``method`` is ``embedding`` (sentence-transformers cosine over
-        ``SEM_SIM_THRESHOLD``) or ``lexical`` (Jaccard token overlap over
-        ``LEX_SIM_THRESHOLD``), the common case since sentence-transformers is an
-        optional install, with ``fallback_reason`` saying why. Jaccard catches reworded
-        near-duplicates but misses synonyms with no shared word.
+        ``(pairs, method)``: ``pairs`` is ``[(a, b, score)]`` sorted by score, each over
+        ``LEX_SIM_THRESHOLD``; ``method`` is ``lexical`` (``none`` with fewer than two
+        classes). It catches reworded near-duplicates but misses synonyms with no shared
+        word.
     """
     if len(label_set) < 2:
-        return [], "none", None
-    texts = [f"{n}: {d}" for n, d in label_set]
+        return [], "none"
+    toks = [_tokens(f"{n}: {d}") for n, d in label_set]
     names = [n for n, _ in label_set]
-    try:
-        from sentence_transformers import SentenceTransformer
-
-        emb = SentenceTransformer(EMBED_MODEL).encode(texts, normalize_embeddings=True)
-        pairs = []
-        for i, j in combinations(range(len(names)), 2):
-            score = float(sum(a * b for a, b in zip(emb[i], emb[j])))  # cosine (normed)
-            if score >= SEM_SIM_THRESHOLD:
-                pairs.append((names[i], names[j], round(score, 4)))
-        return sorted(pairs, key=lambda p: -p[2]), "embedding", None
-    except Exception as e:  # noqa: BLE001 - any import/runtime failure -> lexical
-        toks = [_tokens(t) for t in texts]
-        pairs = []
-        for i, j in combinations(range(len(names)), 2):
-            inter, union = toks[i] & toks[j], toks[i] | toks[j]
-            score = len(inter) / len(union) if union else 0.0
-            if score >= LEX_SIM_THRESHOLD:
-                pairs.append((names[i], names[j], round(score, 4)))
-        return (sorted(pairs, key=lambda p: -p[2]), "lexical", f"{type(e).__name__}: {e}")
+    pairs = []
+    for i, j in combinations(range(len(names)), 2):
+        inter, union = toks[i] & toks[j], toks[i] | toks[j]
+        score = len(inter) / len(union) if union else 0.0
+        if score >= LEX_SIM_THRESHOLD:
+            pairs.append((names[i], names[j], round(score, 4)))
+    return sorted(pairs, key=lambda p: -p[2]), "lexical"
 
 
 def gate(  # pylint: disable=too-many-locals,too-many-branches
@@ -480,10 +460,8 @@ def gate(  # pylint: disable=too-many-locals,too-many-branches
 
     separability = {"checked": task != "ordinal" and len(label_set) >= 2}
     if separability["checked"]:
-        pairs, method, reason = overlap_pairs(label_set)
+        pairs, method = overlap_pairs(label_set)
         separability.update(method=method, flagged_pairs=pairs)
-        if reason:
-            separability["fallback_reason"] = reason
         if pairs:
             issues.append(
                 {

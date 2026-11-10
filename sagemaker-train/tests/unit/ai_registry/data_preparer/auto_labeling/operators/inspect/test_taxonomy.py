@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 
 import sys
-import types
 
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.inspect import taxonomy as tg
 
@@ -86,36 +85,22 @@ class TestChecks:
         assert under == ["Refund"] and missing == ["other"] and imbalanced is True
         assert unknown == ["['x']", "typo"]
 
-    def test_overlap_lexical_fallback_and_embedding(self, monkeypatch):
+    def test_overlap_is_lexical(self, monkeypatch):
         ls = [
-            ("billing", "money owed on an account"),
-            ("bill", "money owed on an account"),
-            ("login", "cannot sign in"),
+            ("joy", "a feeling of great happiness and delight"),
+            ("happiness", "a feeling of great happiness and delight"),
+            ("weather", "the atmospheric conditions of rain wind and sun"),
         ]
-        monkeypatch.setitem(sys.modules, "sentence_transformers", None)  # import fails -> lexical
-        pairs, method, reason = tg.overlap_pairs(ls)
-        assert (
-            method == "lexical"
-            and pairs == [("billing", "bill", 0.7143)]
-            and "sentence_transformers" in reason
-        )
-        assert tg.overlap_pairs(ls[:1]) == ([], "none", None)
+        # an installed sentence-transformers is never imported: the check is lexical
+        monkeypatch.setitem(sys.modules, "sentence_transformers", None)
+        pairs, method = tg.overlap_pairs(ls)
+        assert method == "lexical"
+        flagged = {frozenset(p[:2]) for p in pairs}
+        assert frozenset({"joy", "happiness"}) in flagged
+        assert frozenset({"joy", "weather"}) not in flagged
+        assert tg.overlap_pairs(ls[:1]) == ([], "none")
+        assert not hasattr(tg, "EMBED_MODEL") and not hasattr(tg, "SEM_SIM_THRESHOLD")
 
-        class _Model:
-            def __init__(self, name):
-                assert name == tg.EMBED_MODEL
-
-            def encode(self, texts, normalize_embeddings=True):
-                return [[1.0, 0.0], [0.9, 0.436], [0.0, 1.0]][: len(texts)]
-
-        monkeypatch.setitem(
-            sys.modules, "sentence_transformers", types.SimpleNamespace(SentenceTransformer=_Model)
-        )
-        pairs, method, reason = tg.overlap_pairs(ls)
-        assert method == "embedding" and reason is None and pairs == [("billing", "bill", 0.9)]
-
-
-class TestGate:
     def test_clear_and_review(self, monkeypatch):
         monkeypatch.setitem(sys.modules, "sentence_transformers", None)
         spec = "### Label Set\n| L | D |\n|---|---|\n| billing | money owed |\n| login | cannot sign in |\n"
