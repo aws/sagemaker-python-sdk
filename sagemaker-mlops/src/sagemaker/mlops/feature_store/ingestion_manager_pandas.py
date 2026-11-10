@@ -8,7 +8,7 @@ import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from multiprocessing import Pool
-from typing import Any, Dict, Iterable, List, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 import pandas as pd
 from pandas import DataFrame
@@ -18,11 +18,23 @@ from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
 from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.core.telemetry import Feature, _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import TelemetryParamType
+from sagemaker.mlops.feature_store.write_audit import (
+    WriteAuditConfig,
+    _request_id_from_exception,
+    _write_audit,
+)
 
 logger = logging.getLogger(__name__)
 
 # Maximum number of records per BatchWriteRecord API call
 BATCH_WRITE_MAX_ENTRIES = 25
+
+
+def _request_id_suffix(error: BaseException) -> str:
+    """Return ``" (request ID: <id>)"`` for errors that carry an AWS request ID, else ``""``."""
+    request_id = _request_id_from_exception(error)
+    return f" (request ID: {request_id})" if request_id else ""
 
 
 class IngestionError(Exception):
@@ -59,6 +71,11 @@ class IngestionManagerPandas:
             If None, the region is resolved by boto3 from the environment
             (``AWS_DEFAULT_REGION``, ``AWS_REGION``, or the active profile in
             ``~/.aws/config``).
+        write_audit_config (WriteAuditConfig): if set, log one JSON line per record per
+            PutRecord/BatchWriteRecord attempt (record identifier, event time, AWS request
+            ID, status, timestamps) on the ``sagemaker.mlops.feature_store.write_audit``
+            logger at INFO level. Only the record identifier and event time are logged, no
+            other feature values. Default: None (disabled).
     """
 
     feature_group_name: str
@@ -67,6 +84,7 @@ class IngestionManagerPandas:
     max_processes: int = 1
     use_batch_write_record: bool = False
     region: str = None
+    write_audit_config: Optional[WriteAuditConfig] = None
     _async_result: Any = field(default=None, init=False)
     _processing_pool: Pool = field(default=None, init=False)
     _failed_indices: List[int] = field(default_factory=list, init=False)
@@ -80,7 +98,11 @@ class IngestionManagerPandas:
         """
         return self._failed_indices
 
-    @_telemetry_emitter(Feature.FEATURE_STORE, "IngestionManagerPandas.run")
+    @_telemetry_emitter(
+        Feature.FEATURE_STORE,
+        "IngestionManagerPandas.run",
+        telemetry_params=[("write_audit_config", TelemetryParamType.ATTR_EXISTS)],
+    )
     def run(
         self,
         data_frame: DataFrame,
@@ -150,34 +172,35 @@ class IngestionManagerPandas:
         """Ingest utilizing a single process and a single thread."""
         logger.info("Started single-threaded ingestion for %d rows", len(data_frame))
 
-        if self.use_batch_write_record:
-            logger.info(
-                "Using BatchWriteRecord API (batch size=%d). "
-                "Requires sagemaker:BatchWriteRecord AND sagemaker:PutRecord IAM permissions.",
-                BATCH_WRITE_MAX_ENTRIES,
-            )
-            failed_rows = IngestionManagerPandas._ingest_batch_write(
-                data_frame=data_frame,
-                feature_group_name=self.feature_group_name,
-                feature_definitions=self.feature_definitions,
-                start_index=0,
-                end_index=len(data_frame),
-                target_stores=target_stores,
-                region=self.region,
-            )
-        else:
-            failed_rows = []
-            fg = CoreFeatureGroup(feature_group_name=self.feature_group_name)
-            for row in data_frame.itertuples():
-                self._ingest_row(
+        with _write_audit(self.feature_group_name, self.write_audit_config, self.region):
+            if self.use_batch_write_record:
+                logger.info(
+                    "Using BatchWriteRecord API (batch size=%d). "
+                    "Requires sagemaker:BatchWriteRecord AND sagemaker:PutRecord IAM permissions.",
+                    BATCH_WRITE_MAX_ENTRIES,
+                )
+                failed_rows = IngestionManagerPandas._ingest_batch_write(
                     data_frame=data_frame,
-                    row=row,
-                    feature_group=fg,
+                    feature_group_name=self.feature_group_name,
                     feature_definitions=self.feature_definitions,
-                    failed_rows=failed_rows,
+                    start_index=0,
+                    end_index=len(data_frame),
                     target_stores=target_stores,
                     region=self.region,
                 )
+            else:
+                failed_rows = []
+                fg = CoreFeatureGroup(feature_group_name=self.feature_group_name)
+                for row in data_frame.itertuples():
+                    self._ingest_row(
+                        data_frame=data_frame,
+                        row=row,
+                        feature_group=fg,
+                        feature_definitions=self.feature_definitions,
+                        failed_rows=failed_rows,
+                        target_stores=target_stores,
+                        region=self.region,
+                    )
 
         self._failed_indices = failed_rows
         if self._failed_indices:
@@ -211,6 +234,7 @@ class IngestionManagerPandas:
                     timeout,
                     self.use_batch_write_record,
                     self.region,
+                    self.write_audit_config,
                 )
             )
 
@@ -238,46 +262,53 @@ class IngestionManagerPandas:
         timeout: Union[int, float] = None,
         use_batch_write_record: bool = False,
         region: str = None,
+        write_audit_config: Optional[WriteAuditConfig] = None,
     ) -> List[int]:
-        """Start multi-threaded ingestion within a single process."""
+        """Start multi-threaded ingestion within a single process.
+
+        Runs inside each worker process, so write audit logging (if configured) is set up
+        here rather than inherited from the parent process.
+        """
         executor = ThreadPoolExecutor(max_workers=max_workers)
         batch_size = math.ceil(data_frame.shape[0] / max_workers)
 
-        futures = {}
-        for i in range(max_workers):
-            start_index = min(i * batch_size, data_frame.shape[0])
-            end_index = min(i * batch_size + batch_size, data_frame.shape[0])
-            if use_batch_write_record:
-                future = executor.submit(
-                    IngestionManagerPandas._ingest_batch_write,
-                    data_frame=data_frame,
-                    feature_group_name=feature_group_name,
-                    feature_definitions=feature_definitions,
-                    start_index=start_index,
-                    end_index=end_index,
-                    target_stores=target_stores,
-                    region=region,
-                )
-            else:
-                future = executor.submit(
-                    IngestionManagerPandas._ingest_single_batch,
-                    data_frame=data_frame,
-                    feature_group_name=feature_group_name,
-                    feature_definitions=feature_definitions,
-                    start_index=start_index,
-                    end_index=end_index,
-                    target_stores=target_stores,
-                    region=region,
-                )
-            futures[future] = (start_index + row_offset, end_index + row_offset)
+        # Writes still running after a timeout are not audited (see write_audit module docs).
+        with _write_audit(feature_group_name, write_audit_config, region):
+            futures = {}
+            for i in range(max_workers):
+                start_index = min(i * batch_size, data_frame.shape[0])
+                end_index = min(i * batch_size + batch_size, data_frame.shape[0])
+                if use_batch_write_record:
+                    future = executor.submit(
+                        IngestionManagerPandas._ingest_batch_write,
+                        data_frame=data_frame,
+                        feature_group_name=feature_group_name,
+                        feature_definitions=feature_definitions,
+                        start_index=start_index,
+                        end_index=end_index,
+                        target_stores=target_stores,
+                        region=region,
+                    )
+                else:
+                    future = executor.submit(
+                        IngestionManagerPandas._ingest_single_batch,
+                        data_frame=data_frame,
+                        feature_group_name=feature_group_name,
+                        feature_definitions=feature_definitions,
+                        start_index=start_index,
+                        end_index=end_index,
+                        target_stores=target_stores,
+                        region=region,
+                    )
+                futures[future] = (start_index + row_offset, end_index + row_offset)
 
-        failed_indices = []
-        for future in as_completed(futures, timeout=timeout):
-            start, end = futures[future]
-            failed_rows = future.result()
-            if not failed_rows:
-                logger.info("Successfully ingested row %d to %d", start, end)
-            failed_indices.extend(failed_rows)
+            failed_indices = []
+            for future in as_completed(futures, timeout=timeout):
+                start, end = futures[future]
+                failed_rows = future.result()
+                if not failed_rows:
+                    logger.info("Successfully ingested row %d to %d", start, end)
+                failed_indices.extend(failed_rows)
 
         executor.shutdown(wait=False)
         return failed_indices
@@ -358,7 +389,7 @@ class IngestionManagerPandas:
             )
 
         except Exception as e:
-            logger.error("Failed to ingest row %d: %s", row[0], e)
+            logger.error("Failed to ingest row %d%s: %s", row[0], _request_id_suffix(e), e)
             failed_rows.append(row[0])
 
     @staticmethod
@@ -553,8 +584,9 @@ class IngestionManagerPandas:
 
             except Exception as e:
                 logger.error(
-                    "BatchWriteRecord call failed for batch starting at row %d: %s",
+                    "BatchWriteRecord call failed for batch starting at row %d%s: %s",
                     row_indices[0] if row_indices else start_index,
+                    _request_id_suffix(e),
                     e,
                 )
                 failed_rows.extend(row_indices)
