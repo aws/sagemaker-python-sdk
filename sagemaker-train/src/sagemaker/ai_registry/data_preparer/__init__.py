@@ -51,6 +51,7 @@ from sagemaker.ai_registry.data_preparer.exceptions import (  # noqa: F401
     DataPreparerJobFailedError,
     DataPreparerJobStoppedError,
     DataPreparerJobTimeoutError,
+    DataPreparerOperatorError,
     DataPreparerSchemaError,
     DataPreparerSchemaNotFoundError,
     DataPreparerSchemaValidationError,
@@ -87,4 +88,5 @@ __all__ = [
     "DataPreparerJobFailedError",
     "DataPreparerJobStoppedError",
     "DataPreparerJobTimeoutError",
+    "DataPreparerOperatorError",
 ]

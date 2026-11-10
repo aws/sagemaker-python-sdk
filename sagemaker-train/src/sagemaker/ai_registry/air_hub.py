@@ -56,6 +56,27 @@ class AIRHub:
             cls._s3_client = boto3.client("s3")
         return cls._s3_client
 
+    @staticmethod
+    def hub_name_for(region: str, account_id: str) -> str:
+        """The derived AI Registry hub name of an account in a region.
+
+        base32hex of ``SHA-256("AiRegistry-<region>-<account>")``, unpadded. Pure: no
+        session, no client, so a caller bound to another region can derive it too.
+
+        Args:
+            region: AWS region name
+            account_id: AWS account ID
+        """
+        hash_bytes = hashlib.sha256(
+            AIRHub.hub_display_name_for(region, account_id).encode()
+        ).digest()
+        return base32_encode(hash_bytes).strip("=")
+
+    @staticmethod
+    def hub_display_name_for(region: str, account_id: str) -> str:
+        """The derived AI Registry hub's display name: ``AiRegistry-<region>-<account>``."""
+        return f"AiRegistry-{region}-{account_id}"
+
     @classmethod
     def _generate_hub_names(cls, region: str, account_id: str) -> None:
         """Generate hub name and display name based on region and account ID.
@@ -64,11 +85,8 @@ class AIRHub:
             region: AWS region name
             account_id: AWS account ID
         """
-        hub_name_base = f"AiRegistry-{region}-{account_id}"
-        hash_bytes = hashlib.sha256(hub_name_base.encode()).digest()
-
-        cls.hubName = base32_encode(hash_bytes).strip("=")
-        cls.hubDisplayName = hub_name_base
+        cls.hubName = cls.hub_name_for(region, account_id)
+        cls.hubDisplayName = cls.hub_display_name_for(region, account_id)
 
     @classmethod
     def _ensure_hub_name_initialized(cls) -> None:

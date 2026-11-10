@@ -27,6 +27,15 @@ class DataPreparerConfigurationError(DataPreparerError):
     """Pre-submit configuration incomplete or invalid."""
 
 
+class DataPreparerOperatorError(DataPreparerError, ValueError):
+    """An operator under a primitive's ``operators`` package refused its input.
+
+    The message says what was wrong and what to pass instead; a command-line
+    caller prints it and exits. It is also a ``ValueError`` so code that guarded
+    these operators with ``except ValueError`` keeps working.
+    """
+
+
 class DataPreparerSchemaError(DataPreparerError):
     """Schema-related error base."""
 
