@@ -476,17 +476,23 @@ class TestWriteAuditContext:
 class _FakeFeatureStore(BaseHTTPRequestHandler):
     """Loopback fake Feature Store runtime: PutRecord (PUT) and BatchWriteRecord (POST).
 
-    The first record ID of each request is embedded in its request ID so tests can verify
-    that every logged record is attributed to the request that actually carried it.
+    Each response's request ID is recorded with the first record ID of its request, so
+    tests can verify every logged record is attributed to the request that carried it.
     """
 
     batch_calls = 0
+    first_record_by_request_id = {}
     lock = threading.Lock()
 
     def _reply(self, status, payload, first_record_id):
         body = json.dumps(payload).encode() if payload is not None else b""
+        # The header holds only a server-generated UUID, never request data; the mapping
+        # to the request's first record lives server-side for the tests to look up.
+        request_id = str(uuid.uuid4())
+        with type(self).lock:
+            type(self).first_record_by_request_id[request_id] = first_record_id
         self.send_response(status)
-        self.send_header("x-amzn-RequestId", f"{first_record_id}:{uuid.uuid4()}")
+        self.send_header("x-amzn-RequestId", request_id)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -530,6 +536,7 @@ def fake_endpoint(monkeypatch, tmp_path):
     from sagemaker.core.utils.utils import SageMakerClient
 
     _FakeFeatureStore.batch_calls = 0
+    _FakeFeatureStore.first_record_by_request_id = {}
     server = ThreadingHTTPServer(("127.0.0.1", 0), _FakeFeatureStore)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     # Isolate from the developer's AWS config: retry settings and profiles change behaviour.
@@ -641,7 +648,9 @@ class TestEndToEnd:
             by_request.setdefault(event["request_id"], []).append(event)
         for request_id, group in by_request.items():
             first = min(group, key=lambda e: e["entry_index"])
-            assert request_id.split(":")[0] == first["record_id"]
+            # The fake server runs in this process, so its mapping is visible here even
+            # though the writes came from forked worker processes.
+            assert _FakeFeatureStore.first_record_by_request_id[request_id] == first["record_id"]
             assert len(group) == first["batch_size"]
 
     def test_disabled_by_default_logs_nothing(self, fake_endpoint, audit_file):
