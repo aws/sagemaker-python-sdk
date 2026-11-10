@@ -24,6 +24,7 @@ model is called; the file copies stay with the caller.
 
 from __future__ import absolute_import
 
+import json
 import os
 from typing import Any, Dict, Optional
 
@@ -236,3 +237,120 @@ def no_adopted_spec_message(project, error):
         raise SystemExit(no_adopted_spec_message("proj", error))
     """
     return AdoptError(f"no adopted spec to ship in {project}/decision.json ({error})")
+
+
+# --- the project layer -------------------------------------------------------------------
+
+
+def _project_path(project_dir, path):
+    """A path as given, else relative to the project.
+
+    Absolute, or relative to the working directory when it exists there.
+    """
+    if not path:
+        return path
+    if os.path.isabs(path) or os.path.exists(path):
+        return os.path.normpath(os.path.abspath(path))
+    return os.path.normpath(os.path.join(os.path.abspath(project_dir), path))
+
+
+def adopt_job_pick(project_dir, pick_path, approval_id):
+    """Ship the in-job search's pick as the project's adopted spec, after the user's yes.
+
+    Checks the pick folder (``pick.json`` and ``optimizer_result.json`` beside the spec),
+    runs :func:`adopt` against the project's run log, copies the pick's bytes under
+    ``work/`` as the decision's ``spec``, writes ``<proj>/decision.json`` so Step 6 ships
+    it, and appends the decision entry that names the approval.
+
+    Example::
+
+        from sagemaker.ai_registry.data_preparer.auto_labeling import adopt_job_pick
+
+        out = adopt_job_pick("proj", "proj/work/job/optimize/spec.md", "approval-...-approved")
+        out["decision_entry"], out["spec"]
+
+    Args:
+        project_dir: The project directory.
+        pick_path: ``<out dir>/job/optimize/spec.md``.
+        approval_id: The approval entry's id.
+
+    Returns:
+        ``{"decision_entry": id, "spec": relative path, "decision": decision}``.
+
+    Raises:
+        AdoptError: The pick folder is incomplete, the approval is not recorded or does
+            not match the pick, or the pick is not the optimizer's.
+    """
+    from sagemaker.ai_registry.data_preparer.auto_labeling.operators._run_log import (
+        append_entry,
+        read_entries,
+    )
+
+    root = os.path.abspath(project_dir)
+    pick = _project_path(project_dir, pick_path)
+    folder = os.path.dirname(pick)
+    names = (os.path.basename(pick), *PICK_FILES)
+    check_pick_folder(pick_path, {f for f in names if os.path.isfile(os.path.join(folder, f))})
+    with open(pick, "rb") as fh:
+        data = fh.read()  # the bytes hashed are the bytes shipped
+    with open(os.path.join(folder, "pick.json"), encoding="utf-8") as fh:
+        pick_json = json.load(fh)
+    try:
+        with open(os.path.join(folder, "optimizer_result.json"), encoding="utf-8") as fh:
+            optimizer_result = json.load(fh)
+    except (OSError, ValueError):
+        optimizer_result = None
+    result = adopt(
+        read_entries(project_dir),
+        pick_bytes=data,
+        pick_json=pick_json,
+        optimizer_result=optimizer_result,
+        approval_id=approval_id,
+    )
+    os.makedirs(os.path.join(root, "work"), exist_ok=True)
+    with open(os.path.join(root, result.spec), "wb") as fh:
+        fh.write(data)
+    with open(os.path.join(root, "decision.json"), "w", encoding="utf-8") as fh:
+        fh.write(json.dumps(result.decision, indent=2, ensure_ascii=False) + "\n")
+    entry = None
+    for ev in result.events:
+        entry = append_entry(project_dir, dict(ev))
+    return {"decision_entry": entry, "spec": result.spec, "decision": result.decision}
+
+
+def ship_adopted_spec(project_dir, out_path):
+    """Copy ``decision.json``'s adopted spec to ``out_path`` once its bytes still match.
+
+    The sha256 is re-checked against the last adopt entry and the approval it names
+    (:func:`check_shippable`).
+
+    Example::
+
+        from sagemaker.ai_registry.data_preparer.auto_labeling import ship_adopted_spec
+
+        ship_adopted_spec("proj", "proj/labeling_spec.md")["sha256"]
+
+    Args:
+        project_dir: The project directory.
+        out_path: Where the shipped spec is written (``<proj>/labeling_spec.md``).
+
+    Returns:
+        ``{"shipped": out_path, "sha256": sha}``.
+
+    Raises:
+        AdoptError: No adopted spec, or its bytes changed since the approval.
+    """
+    from sagemaker.ai_registry.data_preparer.auto_labeling.operators._run_log import read_entries
+
+    root = os.path.abspath(project_dir)
+    try:
+        with open(os.path.join(root, "decision.json"), encoding="utf-8") as fh:
+            decision = json.load(fh)
+        with open(os.path.join(root, decision["spec"]), "rb") as fh:
+            data = fh.read()
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise no_adopted_spec_message(project_dir, e) from e
+    sha = check_shippable(read_entries(project_dir), decision, data)
+    with open(_project_path(project_dir, out_path), "wb") as fh:
+        fh.write(data)
+    return {"shipped": out_path, "sha256": sha}

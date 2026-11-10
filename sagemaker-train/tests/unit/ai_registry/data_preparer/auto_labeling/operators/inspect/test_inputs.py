@@ -213,3 +213,35 @@ def test_one_s3_splitter():
 
     assert ii._s3 is _s3
     assert _s3.split_s3_uri("s3://b/k/x.jsonl") == ("b", "k/x.jsonl")
+
+
+def test_read_first_row_follows_a_corpus_ref_pointer(tmp_path, monkeypatch):
+    # The pointer a resolve leaves in place of a remote corpus names its s3:// object; the
+    # first-row read follows it (one ranged read of that object), so Step 0 can take the
+    # pointer or the URI alike.
+    seen = {}
+
+    class _Body:
+        def read(self):
+            return b'{"id": 1, "text": "hello"}\n{"id": 2, "text": "x"}\n'
+
+    class _S3:
+        def head_object(self, Bucket, Key):
+            seen["head"] = (Bucket, Key)
+            return {"ContentLength": 52}
+
+        def get_object(self, Bucket, Key, Range):
+            seen["get"] = (Bucket, Key, Range)
+            return {"Body": _Body()}
+
+    monkeypatch.setattr(boto3, "client", lambda *a, **k: _S3())
+    monkeypatch.setattr(ii, "_s3_folder_object", lambda uri, region: uri)
+    ref = tmp_path / "corpus.ref.json"
+    ref.write_text(json.dumps({"source_s3_uri": "s3://b/k/corpus.jsonl", "etag": "e"}, indent=2))
+    row, n, size, resolved = ii.read_first_row(str(ref), region="us-west-2")
+    assert row == {"id": 1, "text": "hello"} and size == 52 and resolved == "s3://b/k/corpus.jsonl"
+    assert seen["head"] == ("b", "k/corpus.jsonl")
+    bad = tmp_path / "bad.ref.json"
+    bad.write_text("{}")
+    with pytest.raises(DataPreparerOperatorError, match="source_s3_uri"):
+        ii.read_first_row(str(bad))

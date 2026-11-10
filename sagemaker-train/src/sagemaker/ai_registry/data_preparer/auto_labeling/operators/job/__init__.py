@@ -63,9 +63,26 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.run_log imp
 
 # The operators, then the helpers their callers need beside them, then the names a
 # caller catches or compares against.
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.hub_project import (  # noqa: F401
+    cleanup_scratch,
+    dt_view_for_project,
+    promote_for_project,
+    record_scratch,
+    register_transform_output_for_project,
+    resolve_input,
+    scratch_entries,
+)
+
 __all__ = [
     # operators
     "run_labeling_round",
+    "resolve_input",
+    "record_scratch",
+    "cleanup_scratch",
+    "dt_view_for_project",
+    "promote_for_project",
+    "register_transform_output_for_project",
+    "scratch_entries",
     "tune_labeling_spec",
     "label_corpus",
     "prepare_round",

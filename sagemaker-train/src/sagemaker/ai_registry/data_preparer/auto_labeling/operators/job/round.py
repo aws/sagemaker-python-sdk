@@ -476,7 +476,7 @@ def option_gold(  # pylint: disable=too-many-arguments,too-many-locals
         st = split_state.load_state(d) if d else None
         if not st:
             raise DataPreparerOperatorError(
-                "--optimizer needs a frozen split (split_state.py freeze): the job takes "
+                "--optimizer needs a frozen split (code_templates/split_freeze.py, ACTION freeze): the job takes "
                 "dev and val rows only. Nothing was uploaded."
             )
         owner = {i: s for s in ("dev", "val") for i in st["splits"][s]["ids"]}
@@ -505,7 +505,7 @@ def option_gold(  # pylint: disable=too-many-arguments,too-many-locals
         ) from None
     if touched is None or touched.get("outside") or any(r.get("id") is None for r in rows):
         raise DataPreparerOperatorError(
-            "--recalibration-fit takes val rows of a frozen split (split_state.py "
+            "--recalibration-fit takes val rows of a frozen split (split_freeze.py "
             "freeze), each with its id. Nothing was uploaded."
         )
     _, fit, _ = split_gold(rows, label_field, text_fields=text_fields, int_ids=int_ids)
@@ -561,7 +561,7 @@ def guard_split_reads(  # pylint: disable=too-many-arguments,too-many-locals
     ):
         warnings.append(
             "WARNING: the project's splits/ has no split_state.json, so nothing guards the "
-            "split: run `split_state.py freeze` after Step 1 (references/full-loop.md)."
+            "split: freeze the split (code_templates/split_freeze.py) after Step 1 (references/full-loop.md)."
         )
     test_reads = []
     for path, step, allowed in reads:
@@ -1131,8 +1131,8 @@ def _prepare(  # noqa: C901 pylint: disable=too-many-arguments,too-many-locals,t
                 "the gold is not checked here (demos among the gold rows, fewer than "
                 f"{backend.MIN_EVAL_ROWS} gold rows, rows with no text field or no id, "
                 "labels outside the label set). "
-                "The gold is seed-sized: to check it, download it with `hub_io.py resolve "
-                "--ref <it> --out <proj>/work/gold.jsonl --download-sample` and pass "
+                "The gold is seed-sized: to check it, download it with the hub_ops resolve action "
+                "(REF = <it>, OUT = <proj>/work/gold.jsonl, DOWNLOAD = True) and pass "
                 "that file."
             )
         else:
@@ -1760,7 +1760,7 @@ def read_round(  # noqa: C901 pylint: disable=too-many-locals,too-many-branches,
         labels = labels_from_job(label_rows, task)
         # A refine round labels the seed's dev / val rows: client-readable.
         report_client_read(
-            f"run_indexed_labeling (the {stage} round's labels, seed rows)", len(label_rows)
+            f"labeling_round (the {stage} round's labels, seed rows)", len(label_rows)
         )
         texts[str(out)] = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in labels)
         n = len(labels)
@@ -1892,9 +1892,7 @@ def read_round(  # noqa: C901 pylint: disable=too-many-locals,too-many-branches,
             written["review_model_output"] = str(side)
             # The side file is seed-sized (one line per review row); the read is reported
             # like the seed reads.
-            report_client_read(
-                "run_indexed_labeling (the review rows' model answers)", len(side_rows)
-            )
+            report_client_read("labeling_round (the review rows' model answers)", len(side_rows))
             # A review.jsonl an earlier run left is not this job's review set, and an
             # overlay with it would score that job's spot-check rows in this verdict.
             from sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.labels import (

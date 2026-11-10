@@ -314,9 +314,9 @@ class LabelingSummary(BaseModel):
                 "summary to read."
             )
 
-        index = _read_s3_json(session, entry[_METADATA_URI_KEY])
-        artifacts = index.get("Artifacts")
-        artifacts = artifacts if isinstance(artifacts, dict) else {}
+        index_uri = entry[_METADATA_URI_KEY]
+        index = _read_s3_json(session, index_uri)
+        artifacts = _artifact_uris(index, index_uri)
         summary_uri = artifacts.get(_SUMMARY_ARTIFACT_KEY)
         if not summary_uri:
             raise DataPreparerError(
@@ -337,6 +337,28 @@ class LabelingSummary(BaseModel):
                 or summary.get("ReviewDatasetArn"),
             }
         )
+
+
+def _artifact_uris(index: Dict[str, Any], index_uri: str) -> Dict[str, Any]:
+    """The index's artifact URIs, each resolved from where the index itself sits.
+
+    The index lives at ``<job output>/labeling/index.json`` and its ``RelativePaths`` are
+    relative to ``<job output>``. Resolving them against the index's own URI finds the
+    files wherever the service placed the job's output folder; the container's absolute
+    ``Artifacts`` URIs can omit a folder level the service adds (a
+    ``synthetic-data-generation/<job>/<timestamp>/`` prefix), so a relative path wins
+    over them. An ``Artifacts`` entry with no relative path is kept as written.
+    """
+    artifacts = index.get("Artifacts")
+    artifacts = dict(artifacts) if isinstance(artifacts, dict) else {}
+    relative = index.get("RelativePaths")
+    suffix = "/labeling/index.json"
+    if isinstance(relative, dict) and isinstance(index_uri, str) and index_uri.endswith(suffix):
+        root = index_uri[: -len(suffix)]
+        for key, rel in relative.items():
+            if isinstance(rel, str) and rel:
+                artifacts[key] = f"{root}/{rel.lstrip('/')}"
+    return artifacts
 
 
 __all__ = ["LabelingSummary"]

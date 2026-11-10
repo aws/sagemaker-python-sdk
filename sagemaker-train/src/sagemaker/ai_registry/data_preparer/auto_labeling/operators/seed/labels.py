@@ -719,17 +719,17 @@ def overlay_handoff(
             "LabeledDatasetArn": arn,
             "OverlayRows": overlay_path,
             "OverlayRowCount": overlay_rows,
-            "OverlayDatasetArn": "<the ARN hub_io.py register prints for the overlay>",
-            "Order": ["<the dataset_arn hub_io.py dt-view prints>", "OverlayDatasetArn"],
+            "OverlayDatasetArn": "<the dataset_arn the hub_ops register action prints for the overlay>",
+            "Order": ["<the dataset_arn the hub_ops dt-view action prints>", "OverlayDatasetArn"],
         },
         "KeyField": id_field,
         "ReplaceFields": [pred_field, *OVERLAY_FIELDS],
         "ModelAnswerTo": MODEL_OUTPUT_FIELD,
         "Register": (
-            f"python scripts/hub_io.py register --labels {overlay_path} "
-            f"--name {name}-corrections --s3-prefix <s3://...>"
+            f"code_templates/hub_ops.py with ACTION = 'register', LABELS = {overlay_path!r}, "
+            f"NAME = '{name}-corrections', S3_PREFIX = '<s3://...>'"
         ),
-        "DtView": f"python scripts/hub_io.py dt-view --arn {arn} --project <proj>",
+        "DtView": f"code_templates/hub_ops.py with ACTION = 'dt-view', ARN = {arn!r}, PROJECT_DIR = '<proj>'",
         "Transform": (
             "one dataset-transformation CodeGen job with AutoExecute true over "
             "Inputs.Order, Specification as its instruction; its output, in "
@@ -750,18 +750,18 @@ def overlay_handoff(
             "in the output: tell the user before promoting it"
         ),
         "Promote": (
-            "python scripts/hub_io.py promote --from-arn <the OutputDatasetArns "
-            f"entry> --to-arn {arn} --project <proj>"
+            "code_templates/hub_ops.py with ACTION = 'promote', FROM_ARN = <the OutputDatasetArns "
+            f"entry>, TO_ARN = {arn!r}, PROJECT_DIR = '<proj>'"
         ),
         "LaterExport": (
             f"after an earlier promote, the labeled DataSet's latest version is "
             f"the one promote added, not {arn}: pass that version's ARN as "
-            f"DtView's --arn and Promote's --to-arn (promote refuses a version "
+            f"DtView's ARN and Promote's TO_ARN (promote refuses a version "
             f"that is not the latest)"
         ),
         "Output": {
             "DatasetName": name,
-            "As": "the labeled DataSet's next version, the dataset_arn hub_io.py promote prints",
+            "As": "the labeled DataSet's next version, the dataset_arn the promote action prints",
         },
         "DtJobs": 1,
     }

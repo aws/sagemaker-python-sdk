@@ -52,7 +52,7 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators._fields import 
     reserved_field_reason,
     reserved_text_field_conflicts,
 )
-from sagemaker.ai_registry.data_preparer.auto_labeling.operators import _s3
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators import _rows, _s3
 
 # The review fold's annotator columns, never text columns.
 ANNOTATOR_FIELDS = (
@@ -143,8 +143,9 @@ def read_first_row(
     chunk's compression ratio so ``size / first_row`` still estimates rows.
 
     Args:
-        path_or_uri: A local path, an ``s3://`` URI (object or single-object folder) or
-            a DataSet ARN.
+        path_or_uri: A local path, an ``s3://`` URI (object or single-object folder), a
+            DataSet ARN, or a ``corpus.ref.json`` pointer a resolve left in place of a
+            remote corpus (read as its ``source_s3_uri``).
         region: The S3 / Hub region.
         window: How many bytes to read.
         resolve_arn: ``(arn, region) -> s3 uri`` for a DataSet ARN; the Hub resolver by
@@ -159,8 +160,15 @@ def read_first_row(
             ``.gz`` object is not a gzip stream.
     """
     resolved = path_or_uri
-    if path_or_uri.startswith("arn:"):
-        resolved = (resolve_arn or _default_arn_resolver)(path_or_uri, region)
+    if path_or_uri.endswith(".ref.json"):
+        pointed = _rows.s3_uri_for_input(path_or_uri)
+        if not pointed:
+            raise DataPreparerOperatorError(
+                f"{path_or_uri} is not a readable corpus.ref.json pointer (no 'source_s3_uri')"
+            )
+        resolved = pointed
+    if resolved.startswith("arn:"):
+        resolved = (resolve_arn or _default_arn_resolver)(resolved, region)
     if resolved.startswith("s3://"):
         import boto3
 

@@ -725,7 +725,43 @@ def labeling_options_from_document(document: Dict[str, Any]) -> S.LabelingOption
             parser=opt.get("Parser"),
             elicitation=opt.get("Elicitation"),
         )
+    rev = cfg.get("Review")
+    if rev:
+        kwargs["review"] = S.Review(
+            label_field=rev.get("LabelField"),
+            scope=rev.get("Scope"),
+            predictions_s3_uris=rev.get("PredictionsS3Uris"),
+            rules_s3_uri=rev.get("RulesS3Uri"),
+            judge_models=(
+                [_judge(m) for m in rev["JudgeModels"]] if rev.get("JudgeModels") else None
+            ),
+            judge_scope=rev.get("JudgeScope"),
+            max_judge_rows=rev.get("MaxJudgeRows"),
+            estimate_only=rev.get("EstimateOnly"),
+        )
+    unmapped = sorted(set(cfg) - _MAPPED_CONFIG_KEYS)
+    if unmapped:
+        # A key this does not map would be dropped from the job silently: refuse it.
+        raise LabelingRequestError(
+            f"DatasetOptions.Config carries {', '.join(unmapped)}, which the typed "
+            "options do not take; nothing was submitted"
+        )
     return _OPTIONS_CLASSES[task](**kwargs)
+
+
+# Every Config key labeling_options_from_document carries into the typed options.
+_MAPPED_CONFIG_KEYS = frozenset(
+    {
+        "TextFields",
+        "Demos",
+        "Routing",
+        "Scoring",
+        "EvaluationData",
+        "Confidence",
+        "Optimizer",
+        "Review",
+    }
+)
 
 
 def to_dataset_job_config(document: Dict[str, Any], sagemaker_session=None) -> DatasetJobConfig:

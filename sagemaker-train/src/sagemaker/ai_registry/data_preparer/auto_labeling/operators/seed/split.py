@@ -304,7 +304,7 @@ def load_state(splits_dir: str) -> Optional[Dict[str, Any]]:
     with open(p, encoding="utf-8") as fh:
         st = json.load(fh)
     if st.get("version") != STATE_VERSION:
-        raise SplitGuardError(f"{p} is not a split_state.py state (version {STATE_VERSION})")
+        raise SplitGuardError(f"{p} is not a split state file (version {STATE_VERSION})")
     return st
 
 
@@ -535,7 +535,9 @@ def verify(splits_dir: str, st: Optional[Dict[str, Any]] = None) -> Dict[str, An
     """
     st = st or load_state(splits_dir)
     if st is None:
-        raise SplitGuardError(f"no {STATE_FILE} in {splits_dir}: run split_state.py freeze")
+        raise SplitGuardError(
+            f"no {STATE_FILE} in {splits_dir}: freeze the split (code_templates/split_freeze.py, ACTION freeze)"
+        )
     shas = []
     for s in SPLITS:
         p = os.path.join(splits_dir, st["splits"][s]["file"])
@@ -549,7 +551,7 @@ def verify(splits_dir: str, st: Optional[Dict[str, Any]] = None) -> Dict[str, An
                     "test is immutable; restore its frozen bytes"
                     if s == "test"
                     else "restore its frozen bytes, or after a person's edits run "
-                    "`split_state.py rehash --reason <why>`"
+                    "`code_templates/split_freeze.py` with ACTION = 'rehash' and REASON"
                 )
             )
         shas.append(got)
@@ -864,7 +866,9 @@ def rehash(splits_dir: str, reason: str, allow_val_removal: bool = False) -> Reh
     """
     st = load_state(splits_dir)
     if st is None:
-        raise SplitGuardError(f"no {STATE_FILE} in {splits_dir}: run split_state.py freeze")
+        raise SplitGuardError(
+            f"no {STATE_FILE} in {splits_dir}: freeze the split (code_templates/split_freeze.py, ACTION freeze)"
+        )
     if not (reason or "").strip():
         raise SplitGuardError("--reason names why dev or val changed")
     if (

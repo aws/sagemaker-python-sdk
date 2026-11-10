@@ -430,9 +430,17 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
         dp_kwargs["role"] = role_arn
     budget = _SUBMIT_MAX_WAIT_S if submit_max_wait_s is None else max(0, submit_max_wait_s)
     waited = 0.0
+    # A review-only job (Config.Review) registers no DataSet, so the SDK's wait, which
+    # rehydrates the DataSet, would fail on a job that succeeded: submit it without the
+    # wait and poll it to a terminal state the way a re-attach does.
+    review_only = bool(document["GenerationConfig"]["DatasetOptions"]["Config"].get("Review"))
     for attempt in range(1, _MAX_SUBMIT_ATTEMPTS + 1):  # pragma: no branch - returns or raises
         try:
-            ds = DataPreparer(**dp_kwargs).generate(cfg, job_name=job_name)
+            if review_only:
+                DataPreparer(**dp_kwargs).generate(cfg, job_name=job_name, wait=False)
+                ds = None
+            else:
+                ds = DataPreparer(**dp_kwargs).generate(cfg, job_name=job_name)
             break
         except Exception as e:  # noqa: BLE001 - classify, re-raise if not transient
             ended = _job_ended_record(e, session, job_name, output_s3_uri)
@@ -462,7 +470,9 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
             )
             waited += delay
             time.sleep(delay)
-    job = _describe_job(session, job_name) or {}
+    job = (
+        _wait_for_job(session, job_name) if review_only else _describe_job(session, job_name)
+    ) or {}
     record = _job_record(job, job_name, output_s3_uri, reattached=False)
     # The SDK rehydrates the DataSet by name; its ARN is the fallback when DescribeJob
     # carries none.

@@ -58,8 +58,10 @@ _log = logging.getLogger(__name__)
 DOCUMENT_SCHEMA_VERSION = "4.0.0"
 DATASET_FILE_FORMAT = "Custom"  # labeled JSONL; serializes to UNKNOWN on the wire enum
 
-# Fields the service writes after an import; a new version's document leaves them out.
-_SERVICE_FIELDS = ("ValidationManifest",)
+# Fields the service writes on its own registrations; a new version's document leaves them
+# out. ``DatasetType`` is the labeling job's: ``ImportHubContent`` refuses a customer
+# document that carries ``SyntheticDataGeneration`` ("Unknown Dataset type provided").
+_SERVICE_FIELDS = ("ValidationManifest", "DatasetType")
 
 # Provenance rides HubContentDescription, not the document: the Hub v4 document schema
 # rejects unknown fields at import. The description allows any text up to 1023 chars and

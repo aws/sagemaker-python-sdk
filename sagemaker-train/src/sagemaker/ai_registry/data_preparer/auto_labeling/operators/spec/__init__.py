@@ -31,6 +31,8 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.select imp
 )
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.adopt import (  # noqa: F401
     adopt,
+    adopt_job_pick,
+    ship_adopted_spec,
     check_pick_folder,
     check_shippable,
     no_adopted_spec_message,
@@ -50,6 +52,8 @@ __all__ = [
     "select",
     "select_labeling_spec",
     "adopt",
+    "adopt_job_pick",
+    "ship_adopted_spec",
     "rubric_gaps",
     # helpers
     "check_pick_folder",

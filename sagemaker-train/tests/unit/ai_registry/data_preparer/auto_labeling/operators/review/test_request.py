@@ -471,38 +471,58 @@ def test_events():
 # ---- the read-back ---------------------------------------------------------------------------
 
 
-def test_review_folder(monkeypatch):
+def _listing_s3(keys):
+    """An S3 client whose list_objects_v2 paginator serves the keys under each prefix."""
+
     class _S3:
+        def __init__(self):
+            self.prefixes = []
+
         def get_paginator(self, op):
             assert op == "list_objects_v2"
+            outer = self
 
             class _P:
                 def paginate(self, Bucket, Prefix):  # noqa: N803
-                    assert (Bucket, Prefix) == ("b", "p/out/autolabel-review-7")
-                    yield {"Contents": [{"Key": "p/out/autolabel-review-7/x/labeling/spec.md"}]}
-                    yield {"Contents": [{"Key": "p/out/autolabel-review-7/x/review/summary.json"}]}
+                    assert Bucket == "b"
+                    outer.prefixes.append(Prefix)
+                    yield {"Contents": [{"Key": k} for k in keys if k.startswith(Prefix)]}
 
             return _P()
 
-    monkeypatch.setattr(R._s3, "s3_client", lambda region: _S3())
-    assert (
-        R.review_folder("s3://b/p/out/", "autolabel-review-7", "us-west-2")
-        == "s3://b/p/out/autolabel-review-7/x/review/"
+    return _S3()
+
+
+def test_review_folder(monkeypatch):
+    job = "autolabel-review-7"
+    new = f"p/out/synthetic-data-generation/{job}/2026-11-09T18Z"
+    old = f"p/out/{job}-2026-10-01T00Z"
+    sibling_new = f"p/out/synthetic-data-generation/{job}0/2026-11-09T19Z"
+    sibling_old = f"p/out/{job}0-2026-10-01T01Z"
+
+    # the job folder (new layout), listed ahead of a sibling job's
+    s3 = _listing_s3(
+        [
+            f"{sibling_new}/review/summary.json",
+            f"{new}/labeling/spec.md",
+            f"{new}/review/summary.json",
+        ]
     )
+    monkeypatch.setattr(R._s3, "s3_client", lambda region: s3)
+    assert R.review_folder("s3://b/p/out/", job, "us-west-2") == f"s3://b/{new}/review/"
+    assert s3.prefixes == [f"p/out/synthetic-data-generation/{job}/"]
 
-    class _Empty(_S3):
-        def get_paginator(self, op):
-            class _P:
-                def paginate(self, **kw):
-                    yield {}
+    # a job that started before the move: the earlier layout, never the sibling's
+    s3 = _listing_s3([f"{sibling_old}/review/summary.json", f"{old}/review/summary.json"])
+    monkeypatch.setattr(R._s3, "s3_client", lambda region: s3)
+    assert R.review_folder("s3://b/p/out", job, "us-west-2") == f"s3://b/{old}/review/"
+    assert s3.prefixes == [f"p/out/synthetic-data-generation/{job}/", f"p/out/{job}-"]
 
-            return _P()
-
-    monkeypatch.setattr(R._s3, "s3_client", lambda region: _Empty())
-    with pytest.raises(
-        FileNotFoundError, match="no review/summary.json under s3://b/p/out/autolabel-review-7"
-    ):
-        R.review_folder("s3://b/p/out/", "autolabel-review-7", "us-west-2")
+    # only a sibling job's folder in each layout: not found
+    s3 = _listing_s3([f"{sibling_new}/review/summary.json", f"{sibling_old}/review/summary.json"])
+    monkeypatch.setattr(R._s3, "s3_client", lambda region: s3)
+    with pytest.raises(FileNotFoundError, match=f"synthetic-data-generation/{job}/ or "):
+        R.review_folder("s3://b/p/out/", job, "us-west-2")
 
 
 def test_check_summary():

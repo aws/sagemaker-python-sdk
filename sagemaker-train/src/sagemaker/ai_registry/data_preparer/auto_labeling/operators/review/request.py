@@ -56,6 +56,7 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators.review.decision
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.request import S3_URI_RE
 
 REVIEW_SUBDIR = "review"
+SDG_OUTPUT_SUBDIR = "synthetic-data-generation"  # the SDG job-type folder under OutputS3Uri
 GOLDEN_STEP = "golden-review"
 # The job's review/ files per scope (contradictions.csv carries the item cells the user reads).
 OUTPUT_FILES = {
@@ -232,7 +233,7 @@ def review_rows(  # pylint: disable=too-many-arguments,too-many-locals,too-many-
         if not st:
             raise DataPreparerOperatorError(
                 "--scope golden reviews the frozen test rows: freeze the split first "
-                "(split_state.py freeze)."
+                "(code_templates/split_freeze.py, ACTION freeze)."
             )
         test = set(st["splits"]["test"]["ids"])
         keep, step, allowed = [r for r in rows if str(r["id"]) in test], GOLDEN_STEP, {"test"}
@@ -440,21 +441,31 @@ def review_event(  # pylint: disable=too-many-arguments
 
 
 def review_folder(output_uri, job_name, region):
-    """The job's own ``review/`` folder, under its job subfolder of ``OutputS3Uri``.
+    """The job's own ``review/`` folder.
+
+    The service writes a job's output under
+    ``<OutputS3Uri>/synthetic-data-generation/<JobName>/<createdAt>/``; a job that started
+    before it moved there wrote ``<OutputS3Uri>/<JobName>-<createdAt>/``. Both are listed,
+    the job folder first. The ``/`` and the ``-`` end each folder name, so a job whose name
+    extends this one (``job-10`` for ``job-1``) matches in neither layout. An
+    ``OutputS3Uri`` without a trailing slash is read as a folder, as the service does.
 
     Raises:
-        FileNotFoundError: No ``review/summary.json`` under the job's folder.
+        FileNotFoundError: No ``review/summary.json`` under the job's folder in either layout.
     """
     bucket, key = _s3.split_s3_uri(output_uri)
-    for page in (
-        _s3.s3_client(region)
-        .get_paginator("list_objects_v2")
-        .paginate(Bucket=bucket, Prefix=key + job_name)
-    ):
-        for obj in page.get("Contents") or []:
-            if obj["Key"].endswith(f"/{REVIEW_SUBDIR}/summary.json"):
-                return f"s3://{bucket}/{obj['Key'][:-len('summary.json')]}"
-    raise FileNotFoundError(f"no {REVIEW_SUBDIR}/summary.json under {output_uri}{job_name}")
+    base = key if not key or key.endswith("/") else key + "/"
+    prefixes = (f"{base}{SDG_OUTPUT_SUBDIR}/{job_name}/", f"{base}{job_name}-")
+    paginator = _s3.s3_client(region).get_paginator("list_objects_v2")
+    for prefix in prefixes:
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents") or []:
+                if obj["Key"].endswith(f"/{REVIEW_SUBDIR}/summary.json"):
+                    return f"s3://{bucket}/{obj['Key'][:-len('summary.json')]}"
+    raise FileNotFoundError(
+        f"no {REVIEW_SUBDIR}/summary.json under s3://{bucket}/{prefixes[0]} "
+        f"or s3://{bucket}/{prefixes[1]}"
+    )
 
 
 def job_ended_message(job):

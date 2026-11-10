@@ -422,14 +422,17 @@ def test_overlay_spec_and_handoff():
     assert h["ModelAnswerTo"] == "_model_output" and h["KeyField"] == "id"
     assert (
         h["Register"]
-        == "python scripts/hub_io.py register --labels overlay.jsonl --name tickets-corrections --s3-prefix <s3://...>"
+        == "code_templates/hub_ops.py with ACTION = 'register', LABELS = 'overlay.jsonl', "
+        "NAME = 'tickets-corrections', S3_PREFIX = '<s3://...>'"
     )
-    assert h["DtView"] == "python scripts/hub_io.py dt-view --arn arn:ds --project <proj>"
+    assert h["DtView"] == (
+        "code_templates/hub_ops.py with ACTION = 'dt-view', ARN = 'arn:ds', PROJECT_DIR = '<proj>'"
+    )
     assert "overlay_matched equals 12." in h["Check"] and h["Specification"] == spec
-    assert h["Promote"].endswith("--to-arn arn:ds --project <proj>")
+    assert h["Promote"].endswith("TO_ARN = 'arn:ds', PROJECT_DIR = '<proj>'")
     assert h["Output"] == {
         "DatasetName": "tickets",
-        "As": "the labeled DataSet's next version, the dataset_arn hub_io.py promote prints",
+        "As": "the labeled DataSet's next version, the dataset_arn the promote action prints",
     }
     assert (
         "overlay_matched equals the overlay's row count."

@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 import importlib
 import hashlib
+import json
 
 import pytest
 
@@ -185,3 +186,71 @@ def test_no_adopted_spec_message():
     assert isinstance(err, A.AdoptError)
     assert str(err) == "adopt_job_pick: no adopted spec to ship in /p/decision.json ('spec')"
     assert _digest.sha256_hex(PICK) == SHA
+
+
+# --- the project layer -------------------------------------------------------------------
+
+
+def _pick_folder(tmp_path, pick=PICK, with_result=True):
+    folder = tmp_path / "work" / "job" / "optimize"
+    folder.mkdir(parents=True)
+    (folder / "spec.md").write_bytes(pick)
+    (folder / "pick.json").write_text(json.dumps({"job_name": JOB}))
+    if with_result:
+        (folder / "optimizer_result.json").write_text(
+            json.dumps({"pick_val": "Round 0 | Candidate 0"})
+        )
+    return str(folder / "spec.md")
+
+
+def test_adopt_job_pick_writes_the_spec_the_decision_and_the_entry(tmp_path):
+    from sagemaker.ai_registry.data_preparer.auto_labeling.operators import _run_log
+
+    proj = str(tmp_path)
+    aid = _run_log.append_entry(proj, {k: v for k, v in _approval().items() if k != "id"})
+    pick = _pick_folder(tmp_path)
+    out = A.adopt_job_pick(proj, pick, aid)
+    rel = f"work/optimizer_pick_{SHA[:12]}.md"
+    assert out["spec"] == rel
+    assert (tmp_path / rel).read_bytes() == PICK
+    decision = json.load(open(tmp_path / "decision.json"))
+    assert decision == out["decision"] and decision["ship"] == "initial"
+    entries = _run_log.read_entries(proj)
+    assert entries[-1]["id"] == out["decision_entry"]
+    assert (entries[-1]["kind"], entries[-1]["status"], entries[-1]["approval"]) == (
+        "decision",
+        "adopted",
+        aid,
+    )
+    # ship re-checks the bytes and copies them
+    shipped = A.ship_adopted_spec(proj, "labeling_spec.md")
+    assert shipped["sha256"] == SHA
+    assert (tmp_path / "labeling_spec.md").read_bytes() == PICK
+
+
+def test_adopt_job_pick_refuses_an_incomplete_folder_and_a_missing_approval(tmp_path):
+    from sagemaker.ai_registry.data_preparer.auto_labeling.operators import _run_log
+
+    proj = str(tmp_path)
+    pick = _pick_folder(tmp_path, with_result=False)
+    with pytest.raises(A.AdoptError, match="no pick, optimizer_result.json and pick.json"):
+        A.adopt_job_pick(proj, pick, "a1")
+    (tmp_path / "work" / "job" / "optimize" / "optimizer_result.json").write_text("{}")
+    with pytest.raises(A.AdoptError):
+        A.adopt_job_pick(proj, pick, "a1")  # no approval entry in the run log
+    assert not (tmp_path / "decision.json").exists()
+    assert _run_log.read_entries(proj) == []
+
+
+def test_ship_adopted_spec_refuses_changed_bytes_and_no_decision(tmp_path):
+    from sagemaker.ai_registry.data_preparer.auto_labeling.operators import _run_log
+
+    proj = str(tmp_path)
+    with pytest.raises(A.AdoptError, match="no adopted spec to ship"):
+        A.ship_adopted_spec(proj, "out.md")
+    aid = _run_log.append_entry(proj, {k: v for k, v in _approval().items() if k != "id"})
+    out = A.adopt_job_pick(proj, _pick_folder(tmp_path), aid)
+    (tmp_path / out["spec"]).write_bytes(b"edited\n")
+    with pytest.raises(A.AdoptError):
+        A.ship_adopted_spec(proj, "out.md")
+    assert not (tmp_path / "out.md").exists()

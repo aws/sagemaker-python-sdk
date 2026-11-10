@@ -52,7 +52,7 @@ def test_input_kind(tmp_path):
     assert L.input_kind(str(ref)) == ("s3", "s3://b/c.jsonl")
     ref.write_text("{}")
     with pytest.raises(
-        DataPreparerOperatorError, match="has no 'source_s3_uri'; re-run `hub_io.py resolve"
+        DataPreparerOperatorError, match="has no 'source_s3_uri'; re-run the hub_ops resolve action"
     ):
         L.input_kind(str(ref))
     ref.write_text("{nope")

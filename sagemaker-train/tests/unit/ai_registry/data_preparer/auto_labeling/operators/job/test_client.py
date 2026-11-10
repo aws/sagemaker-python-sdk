@@ -106,11 +106,14 @@ class _FakeDataPreparer:
     def __init__(self, **kw):
         type(self).kwargs.append(kw)
 
-    def generate(self, cfg, job_name=None):
+    waits = []
+
+    def generate(self, cfg, job_name=None, wait=True):
         type(self).calls.append((cfg, job_name))
+        type(self).waits.append(wait)
         if type(self).errors:
             raise type(self).errors.pop(0)
-        return _FakeDS()
+        return _FakeDS() if wait else object()
 
 
 @pytest.fixture
@@ -129,6 +132,7 @@ def doc():
 @pytest.fixture
 def stubbed(monkeypatch):
     _FakeDataPreparer.errors, _FakeDataPreparer.calls, _FakeDataPreparer.kwargs = [], [], []
+    _FakeDataPreparer.waits = []
     monkeypatch.setattr(J, "_data_preparer_class", lambda: _FakeDataPreparer)
     monkeypatch.setattr(J.time, "sleep", lambda s: None)
     return _FakeDataPreparer
@@ -172,6 +176,36 @@ class TestSubmit:
             "arn:job/x",
             False,
         )
+
+    def test_review_only_job_skips_the_dataset_wait_and_polls(self, doc, stubbed):
+        # A label review registers no DataSet; the SDK's wait would raise on the missing
+        # DatasetArn, so the submit does not wait and polls DescribeJob instead.
+        doc["GenerationConfig"]["DatasetOptions"]["Config"]["Review"] = {
+            "LabelField": "category",
+            "Scope": "seed",
+        }
+        sess = _FakeSession()
+        states = iter([{"JobStatus": "InProgress"}, {"JobStatus": "Completed", "JobArn": "a"}])
+
+        def on_submit(rec):
+            sess.describe[rec["job_name"]] = lambda: next(states)
+
+        rec = J.submit_labeling_job(doc, region="us-west-2", session=sess, on_submit=on_submit)
+        assert stubbed.waits == [False]
+        assert len(sess.describes) == 2
+        assert (rec["job_status"], rec["dataset_arn"]) == ("Completed", None)
+
+    def test_labeling_job_keeps_the_sdk_wait(self, doc, stubbed):
+        sess = _FakeSession()
+        J.submit_labeling_job(
+            doc,
+            region="us-west-2",
+            session=sess,
+            on_submit=lambda r: sess.describe.__setitem__(
+                r["job_name"], {"JobStatus": "Completed"}
+            ),
+        )
+        assert stubbed.waits == [True]
 
     def test_job_name_is_pattern_valid_and_bounded(self):
         name = J.job_name_for("auto label/dev_round!" + "x" * 80)

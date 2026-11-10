@@ -377,7 +377,7 @@ class TestRehash:
 
     def test_no_state_is_refused(self, project):
         root, splits, rows = project
-        with pytest.raises(ss.SplitGuardError, match="run split_state.py freeze"):
+        with pytest.raises(ss.SplitGuardError, match="freeze the split"):
             ss.rehash(splits, "x")
 
 

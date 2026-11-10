@@ -80,7 +80,7 @@ _OPERATORS = f"{_DATA_PREPARER}.auto_labeling.operators"
 PRIMITIVES = ["auto_labeling"]
 
 # The operator subsystems of the labeling primitive, by the question each answers.
-OPERATOR_PACKAGES = ["inspect", "seed", "spec", "job", "score", "review"]
+OPERATOR_PACKAGES = ["inspect", "seed", "spec", "job", "score", "review", "report"]
 
 # Every module under auto_labeling/operators, by its path under the package.
 OPERATOR_MODULES = [
@@ -95,12 +95,14 @@ OPERATOR_MODULES = [
     "inspect.task",
     "inspect.taxonomy",
     "seed._bounds",
+    "seed.bootstrap",
     "seed.cold_start",
     "seed.demos",
     "seed.folds",
     "seed.labels",
     "seed.review_export",
     "seed.split",
+    "seed.split_state",
     "spec._floor",
     "spec.adopt",
     "spec.induce",
@@ -111,6 +113,7 @@ OPERATOR_MODULES = [
     "job._scratch",
     "job.client",
     "job.dt_handoff",
+    "job.hub_project",
     "job.register",
     "job.request",
     "job.round",
@@ -120,6 +123,7 @@ OPERATOR_MODULES = [
     "review.decisions",
     "review.golden",
     "review.request",
+    "report.render",
 ]
 
 
@@ -259,7 +263,7 @@ class TestOperatorExports:
         assert len(set(ops.__all__)) == len(ops.__all__)
         operators = [n for n in ops.__all__ if inspect.isfunction(getattr(ops, n))]
         assert (
-            40 <= len(operators) <= 90
+            40 <= len(operators) <= 110
         ), "an export list a customer can read, not a catalogue of 337"
 
     def test_the_primitive_re_exports_them_lazily(self):

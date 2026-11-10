@@ -49,6 +49,7 @@ LABELED_DOC = {
         {"JobType": "SyntheticDataGeneration", "MetadataS3Uri": "s3://b/job/labeling/index.json"}
     ],
     "ValidationManifest": {"JobStatus": "SKIPPED"},
+    "DatasetType": "SyntheticDataGeneration",
 }
 DT_DOC = {
     "DatasetFileFormat": "Custom",
@@ -689,6 +690,8 @@ def test_promote_keeps_the_jobs_document_and_takes_the_transformation_fields(dt)
     assert doc["JobMetadata"] == LABELED_DOC["JobMetadata"]
     assert doc["ValidationReportS3Uri"] == LABELED_DOC["ValidationReportS3Uri"]
     assert "ValidationManifest" not in doc
+    # the job's own; a customer import carrying SyntheticDataGeneration is refused
+    assert "DatasetType" not in doc
     assert imp["HubContentSearchKeywords"] == ["auto-labeled"]
     assert imp["HubContentDescription"] == "Auto-labeled dataset from SDG job j"
     assert out == {

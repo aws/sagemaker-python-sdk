@@ -24,6 +24,7 @@ The operators are grouped by the question they answer:
     * :mod:`.job` - run it and read it back.
     * :mod:`.score` - how good is it, and can I prove it?
     * :mod:`.review` - which rows need a person?
+    * :mod:`.report` - what does the run show?
 
 Each subsystem lists its operators in ``__all__``; the ``_``-prefixed modules beside
 them are private to this primitive. ``from sagemaker.ai_registry.data_preparer.auto_labeling
@@ -34,12 +35,14 @@ from __future__ import absolute_import
 
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators import inspect as _inspect
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators import job as _job
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators import report as _report
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators import review as _review
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators import score as _score
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators import seed as _seed
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators import spec as _spec
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.inspect import *  # noqa: F401,F403
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job import *  # noqa: F401,F403
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators.report import *  # noqa: F401,F403
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.review import *  # noqa: F401,F403
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.score import *  # noqa: F401,F403
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed import *  # noqa: F401,F403
@@ -83,5 +86,6 @@ __all__ = (
     *_job.__all__,
     *_score.__all__,
     *_review.__all__,
+    *_report.__all__,
     *CLIENT_READ_EXPORTS,
 )

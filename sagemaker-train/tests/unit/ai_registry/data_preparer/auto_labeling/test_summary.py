@@ -143,6 +143,40 @@ class TestFromDataset:
         assert kwargs["session"] is session
 
     @patch("sagemaker.ai_registry.data_preparer.auto_labeling.summary.AIRHub")
+    def test_relative_paths_resolve_from_where_the_index_sits(self, mock_hub):
+        # The service can place the job's output one folder level deeper than the
+        # container's absolute Artifacts URIs say; RelativePaths, resolved against the
+        # index's own URI, find the files where they are.
+        root = "s3://out-bucket/tickets/synthetic-data-generation/tickets-sdg/2026-11-10T18Z"
+        index_uri = f"{root}/labeling/index.json"
+        summary_uri = f"{root}/labeling/labeling_summary.json"
+        index = {
+            "Status": "Certified",
+            "Artifacts": {
+                "LabelingSummary": "s3://out-bucket/tickets/labeling/labeling_summary.json",
+                "Labels": "s3://out-bucket/tickets/output/labels.jsonl",
+                "Extra": "s3://elsewhere/extra.json",
+            },
+            "RelativePaths": {
+                "LabelingSummary": "labeling/labeling_summary.json",
+                "Labels": "output/labels.jsonl",
+            },
+        }
+        mock_hub.describe_hub_content.return_value = _describe_response(
+            {"JobMetadata": [_labeling_entry(uri=index_uri)]}
+        )
+        session = _fake_session({index_uri: index, summary_uri: SUMMARY})
+
+        summary = LabelingSummary.from_dataset(DATASET_ARN, sagemaker_session=session)
+
+        assert summary.artifacts == {
+            "LabelingSummary": summary_uri,
+            "Labels": f"{root}/output/labels.jsonl",
+            "Extra": "s3://elsewhere/extra.json",  # no relative path: kept as written
+        }
+        assert summary.rows_labeled == 1000
+
+    @patch("sagemaker.ai_registry.data_preparer.auto_labeling.summary.AIRHub")
     def test_undeclared_keys_are_kept_as_extras(self, mock_hub):
         mock_hub.describe_hub_content.return_value = _describe_response(
             {"JobMetadata": [_labeling_entry()]}

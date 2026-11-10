@@ -195,7 +195,7 @@ def input_kind(ref):
         if not uri:
             raise DataPreparerOperatorError(
                 f"corpus.ref.json pointer {os.path.abspath(ref)!r} has no "
-                "'source_s3_uri'; re-run `hub_io.py resolve --no-download`."
+                "'source_s3_uri'; re-run the hub_ops resolve action (DOWNLOAD = False)."
             )
         return "s3", uri
     return "local", ref

@@ -136,13 +136,31 @@ Seed: what am I measuring against, and is it still trustworthy?
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.labels.merge_seed_labels
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.labels.build_overlay
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.review_export.flatten_export
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split_state.freeze_split
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split_state.verify_splits
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split_state.guard_split_read
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split_state.guard_split_read_or_raise
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split_state.log_test_read
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split_state.rehash_split
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split_state.relabel_split
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.cold_start_sample
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.write_sample
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.write_merged_labels
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.write_overlay
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.fold_human_labels
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.append_to_seed
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.check_fold
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split.find_splits_dir
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split.load_state
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split.state_path
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split.test_ids
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split.test_read_event
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.review_rows_from_side_file
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.review_path_of
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.spot_check_message
 .. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split.SplitGuardError
 .. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.labels.SeedAppendRefused
+.. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.SeedMergeRefused
 
 Spec: what are the rules, and which version ships?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -152,6 +170,8 @@ Spec: what are the rules, and which version ships?
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.select.select
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.select.select_labeling_spec
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.adopt.adopt
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.adopt.adopt_job_pick
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.adopt.ship_adopted_spec
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.rubric.rubric_gaps
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.adopt.check_pick_folder
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.adopt.check_shippable
@@ -175,6 +195,13 @@ Job: run it and read it back
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.register.register_labeled_output
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job._scratch.scratch_cleanup
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.dt_handoff.dt_view
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.hub_project.resolve_input
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.hub_project.record_scratch
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.hub_project.cleanup_scratch
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.hub_project.dt_view_for_project
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.hub_project.promote_for_project
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.hub_project.register_transform_output_for_project
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.hub_project.scratch_entries
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.run_log.labeling_run_record
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.round.round_summary
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.request.build_labeling_request
@@ -222,6 +249,13 @@ Review: which rows need a person?
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.review.request.review_rows
 .. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.review.golden.GoldenReviewError
 .. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.review.decisions.OverrideOutsideItem
+
+Report: what does the run show?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.report.render.write_report
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.report.render.build_html
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.report.render.build_markdown
 
 Client reads and the row rule
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
