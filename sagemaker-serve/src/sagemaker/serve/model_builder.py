@@ -2536,14 +2536,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         return None
 
-    def _find_reusable_endpoint(self, instance_type: Optional[str] = None) -> Optional[str]:
+    def _find_reusable_endpoint(
+        self,
+        instance_type: Optional[str] = None,
+        capacity_reservation_config: Optional[
+            Union[Dict[str, Any], ProductionVariantCapacityReservationConfig]
+        ] = None,
+    ) -> Optional[str]:
         """Return the name of an existing endpoint that can be reused, if any.
 
         A candidate must carry the same model-source tag and match the requested
-        deployment configuration (env vars, image URI, instance type).
+        deployment configuration (env vars, image URI, instance type, capacity
+        reservation).
 
         Args:
             instance_type: The instance type requested for this deploy, if any.
+            capacity_reservation_config: The capacity reservation requested for this
+                deploy, if any.
 
         Returns:
             The reusable endpoint name, or None if there is no suitable match.
@@ -2561,7 +2570,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         existing_name = existing_arn.rsplit("/", 1)[-1]
         if self._reused_endpoint_matches_config(
-            existing_name, instance_type=instance_type or self.instance_type
+            existing_name,
+            instance_type=instance_type or self.instance_type,
+            capacity_reservation_config=capacity_reservation_config,
         ):
             return existing_name
 
@@ -2573,19 +2584,27 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return None
 
     def _reused_endpoint_matches_config(
-        self, endpoint_name: str, instance_type: Optional[str] = None
+        self,
+        endpoint_name: str,
+        instance_type: Optional[str] = None,
+        capacity_reservation_config: Optional[
+            Union[Dict[str, Any], ProductionVariantCapacityReservationConfig]
+        ] = None,
     ) -> bool:
         """Check that a reuse candidate endpoint matches the requested deploy config.
 
         A source-tag match only proves the endpoint was built from the same model
         artifacts. Before reusing it, confirm the runtime configuration the caller
-        requested (container environment variables, instance type, and image URI)
-        also matches, so a differently-configured request does not silently get an
-        endpoint that contradicts it.
+        requested (container environment variables, instance type, image URI, and
+        capacity reservation) also matches, so a differently-configured request does
+        not silently get an endpoint that contradicts it.
 
         Args:
             endpoint_name: Name of the candidate endpoint to inspect.
             instance_type: The instance type requested for this deploy, if any.
+            capacity_reservation_config: The capacity reservation requested for this
+                deploy, if any. A candidate matches only if its variant uses the same
+                reservation ARN and preference.
 
         Returns:
             True if the candidate matches (or the config cannot be read and reuse
@@ -2609,6 +2628,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 and instance_type != variant["InstanceType"]
             ):
                 return False
+            # Like InstanceType, the reservation lives on the variant: check it before
+            # the IC early-return so an On-Demand endpoint is never reused for a
+            # reserved-capacity request.
+            requested_reservation = _resolve_capacity_reservation_config(
+                capacity_reservation_config
+            )
+            if requested_reservation:
+                existing_reservation = variant.get("CapacityReservationConfig") or {}
+                if any(
+                    existing_reservation.get(key) != requested_reservation.get(key)
+                    for key in ("MlReservationArn", "CapacityReservationPreference")
+                ):
+                    return False
             model_name = variant.get("ModelName")
             if not model_name:
                 # IC-based endpoint: no ModelName to validate container config
@@ -4334,7 +4366,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     explainer_config_dict=explainer_config_dict,
                     async_inference_config_dict=async_inference_config_dict,
                 )
-                self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+                self.sagemaker_session.update_endpoint(
+                    self.endpoint_name, endpoint_config_name, wait=wait
+                )
             else:
                 self.sagemaker_session.endpoint_from_production_variants(
                     name=self.endpoint_name,
@@ -6116,9 +6150,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         custom_orchestrator_instance_type: str = None,
         custom_orchestrator_initial_instance_count: int = None,
         reuse_resources: bool = False,
-        capacity_reservation_config: Optional[
-            Union[Dict[str, Any], ProductionVariantCapacityReservationConfig]
-        ] = None,
         # Recommendation-mode kwargs. These take effect only on the
         # recommendation deploy path (a recommendation job is attached and
         # use_recommendation is not False); they are ignored when deploying a
@@ -6133,6 +6164,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         role: Optional[str] = None,
         model_name: Optional[str] = None,
         endpoint_config_name: Optional[str] = None,
+        capacity_reservation_config: Optional[
+            Union[Dict[str, Any], ProductionVariantCapacityReservationConfig]
+        ] = None,
         **kwargs,
     ) -> Union[Endpoint, LocalEndpoint, Transformer]:
         """Deploy the built model to an ``Endpoint``.
@@ -6182,19 +6216,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ``ResourceRequirements``, or a ``modelbuilder_list`` build) are not
                 intercepted by this flag — they manage their own reuse by inference
                 component name (create vs. in-place update).
-            capacity_reservation_config (Union[dict,
-                sagemaker.core.shapes.ProductionVariantCapacityReservationConfig], optional):
-                Launches the endpoint's instances on reserved capacity instead of the
-                On-Demand pool. ``ml_reservation_arn`` is either the ARN of a SageMaker
-                training plan purchased with target resource ``endpoint`` (Flexible Training
-                Plans), or the ARN of an ML reservation backed by On-Demand Capacity
-                Reservations (ODCRs). With ``capacity_reservation_preference=
-                "capacity-reservations-only"``, instances launch only into the reservation
-                and the deployment fails if it has no free capacity; this setting is
-                required for training plans. A dict must use the API keys
-                ``CapacityReservationPreference`` and ``MlReservationArn``. The
-                ``instance_type`` must match the reservation's instance type. Not supported
-                with serverless inference. (Default: None).
             use_recommendation (bool, optional): Controls the recommendation deploy path.
                 None (default) deploys the recommendation when a recommendation job is
                 attached, else the built model. False forces the built-model path even if a
@@ -6221,6 +6242,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             endpoint_config_name (str, optional): Recommendation deploy only. Name for the created
                 EndpointConfig; auto-generated if omitted. Ignored when deploying a normally-built
                 model.
+            capacity_reservation_config (Union[dict,
+                sagemaker.core.shapes.ProductionVariantCapacityReservationConfig], optional):
+                Launches the endpoint's instances on reserved capacity instead of the
+                On-Demand pool. ``ml_reservation_arn`` is either the ARN of a SageMaker
+                training plan purchased with target resource ``endpoint`` (Flexible Training
+                Plans), or the ARN of an ML reservation backed by On-Demand Capacity
+                Reservations (ODCRs). With ``capacity_reservation_preference=
+                "capacity-reservations-only"``, instances launch only into the reservation
+                and the deployment fails if it has no free capacity; this setting is
+                required for training plans. A dict must use the API keys
+                ``CapacityReservationPreference`` and ``MlReservationArn``. The
+                ``instance_type`` must match the reservation's instance type. Not supported
+                with serverless inference. (Default: None).
         Returns:
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
@@ -6341,7 +6375,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # build() does not look for or cache an endpoint.
         if reuse_resources and not is_inference_component_deploy:
             requested_instance_type = instance_type or self.instance_type
-            reusable_endpoint = self._find_reusable_endpoint(instance_type=requested_instance_type)
+            reusable_endpoint = self._find_reusable_endpoint(
+                instance_type=requested_instance_type,
+                capacity_reservation_config=capacity_reservation_config,
+            )
             if reusable_endpoint:
                 if endpoint_name and endpoint_name != reusable_endpoint:
                     logger.warning(
@@ -6471,15 +6508,26 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if hasattr(self, "_deployables") and self._deployables:
             endpoints = []
-            # Only the capacity reservation is forwarded here; the endpoint created for the
-            # first inference component must launch on the reserved capacity.
-            ic_kwargs = {}
+            # The reservation belongs to the endpoint, which the first deploy call creates.
+            # Later calls add components to that endpoint, so they don't get the config
+            # (they would otherwise warn that it is ignored).
+            pending_capacity_kwargs = {}
             if kwargs.get("capacity_reservation_config") is not None:
-                ic_kwargs["capacity_reservation_config"] = kwargs["capacity_reservation_config"]
+                pending_capacity_kwargs["capacity_reservation_config"] = kwargs[
+                    "capacity_reservation_config"
+                ]
+            orchestrator_kwargs = {
+                k: v for k, v in kwargs.items() if k != "capacity_reservation_config"
+            }
             for ic in self._deployables.get("InferenceComponents", []):
                 endpoints.append(
-                    self._deploy_for_ic(ic_data=ic, endpoint_name=endpoint_name, **ic_kwargs)
+                    self._deploy_for_ic(
+                        ic_data=ic, endpoint_name=endpoint_name, **pending_capacity_kwargs
+                    )
                 )
+                pending_capacity_kwargs = {}
+            # The orchestrator only creates the endpoint when no component came first.
+            orchestrator_kwargs.update(pending_capacity_kwargs)
 
             # Handle custom orchestrator if present
             if self._deployables.get("CustomOrchestrator"):
@@ -6506,7 +6554,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         "endpoint_type": EndpointType.INFERENCE_COMPONENT_BASED,
                     }
 
-                    deploy_kwargs.update(kwargs)
+                    deploy_kwargs.update(orchestrator_kwargs)
                     endpoints.append(self._deploy(**deploy_kwargs))
                 elif custom_orchestrator["Mode"] == "InferenceComponent":
                     logger.info(
@@ -6521,7 +6569,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                             initial_instance_count=custom_orchestrator_initial_instance_count
                             or initial_instance_count,
                             endpoint_name=endpoint_name,
-                            **kwargs,
+                            **orchestrator_kwargs,
                         )
                     )
 
@@ -6707,6 +6755,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             )
             endpoint.wait_for_status("InService")
         else:
+            if capacity_reservation_shape is not None:
+                logger.warning(
+                    "capacity_reservation_config is ignored because endpoint %s already "
+                    "exists; the inference component is added to the endpoint's existing "
+                    "capacity.",
+                    endpoint_name,
+                )
             endpoint = Endpoint.get(endpoint_name=endpoint_name)
 
         if peft_type == "LORA":
