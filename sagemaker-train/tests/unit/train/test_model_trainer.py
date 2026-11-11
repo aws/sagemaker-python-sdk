@@ -2815,3 +2815,86 @@ def test_pipeline_and_interactive_emit_identical_tags(model_trainer):
     pipeline_tags = _pipeline_trainer([TAG])._create_training_job_args()["Tags"]
 
     assert pipeline_tags == _train_wire_tags(model_trainer)
+
+
+def _make_source_dir(root, entry_script="train.py"):
+    """Create a minimal valid source_dir with an entry script."""
+    with open(os.path.join(root, entry_script), "w") as f:
+        f.write("print('hi')\n")
+    return root
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_source_dir_with_in_root_symlink_is_staged(
+    mock_default_bucket, mock_upload_data, modules_session
+):
+    """A source_dir whose nested symlinks resolve inside it is staged normally."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/code"
+    with tempfile.TemporaryDirectory() as source_dir:
+        _make_source_dir(source_dir)
+        os.symlink(os.path.join(source_dir, "train.py"), os.path.join(source_dir, "entry_link.py"))
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            stopping_condition=DEFAULT_STOPPING_CONDITION,
+            output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+            source_code=SourceCode(source_dir=source_dir, entry_script="train.py"),
+            sagemaker_session=modules_session,
+        )
+        # Should not raise; the code channel is staged.
+        trainer._create_training_job_args(input_data_config=[])
+    assert mock_upload_data.called
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_source_dir_with_out_of_root_symlink_is_rejected(
+    mock_default_bucket, mock_upload_data, modules_session
+):
+    """A source_dir nested symlink resolving outside it is rejected before staging."""
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    with tempfile.TemporaryDirectory() as outside_dir, tempfile.TemporaryDirectory() as source_dir:
+        _make_source_dir(source_dir)
+        nested = os.path.join(source_dir, "configs")
+        os.mkdir(nested)
+        outside_file = os.path.join(outside_dir, "outside.txt")
+        with open(outside_file, "w") as f:
+            f.write("data\n")
+        os.symlink(outside_file, os.path.join(nested, "linked.cfg"))
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            stopping_condition=DEFAULT_STOPPING_CONDITION,
+            output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+            source_code=SourceCode(source_dir=source_dir, entry_script="train.py"),
+            sagemaker_session=modules_session,
+        )
+        with pytest.raises(ValueError, match="resolves outside"):
+            trainer._create_training_job_args(input_data_config=[])
+    mock_upload_data.assert_not_called()
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_data_channel_out_of_root_symlink_is_not_rejected(
+    mock_default_bucket, mock_upload_data, model_trainer
+):
+    """The validation is scoped to source_dir; user data channels keep their symlinks.
+
+    Shared-storage links (e.g. ``data/train.csv -> /mnt/datasets/train.csv``) and local
+    Hugging Face snapshot layouts must still upload, matching #6545's handling.
+    """
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/data"
+    with tempfile.TemporaryDirectory() as outside_dir, tempfile.TemporaryDirectory() as data_dir:
+        shared = os.path.join(outside_dir, "train.csv")
+        with open(shared, "w") as f:
+            f.write("a,b\n1,2\n")
+        os.symlink(shared, os.path.join(data_dir, "train.csv"))
+        channel = model_trainer.create_input_data_channel("train", data_dir)
+    assert channel.channel_name == "train"
+    mock_upload_data.assert_called_once()
