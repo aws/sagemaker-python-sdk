@@ -492,3 +492,48 @@ class TestDataCaptureConfigSummaryRequiredToOptionalOverride:
         assert members["capture_status"] == "StrPipeVar"
         assert members["current_sampling_percentage"] == "int"
         assert members["destination_s3_uri"] == "StrPipeVar"
+
+
+class TestQualifiedShapeNames:
+    """Shapes that a resource class shadows are emitted as ``shapes.<Name>`` (issue #6554)."""
+
+    _SHAPES = {
+        "Holder": {
+            "type": "structure",
+            "members": {
+                "Tag": {"shape": "Tag"},
+                "Tags": {"shape": "TagList"},
+                "TagMap": {"shape": "TagMap"},
+                "Other": {"shape": "Other"},
+            },
+        },
+        "Tag": {"type": "structure", "members": {}},
+        "Other": {"type": "structure", "members": {}},
+        "TagList": {"type": "list", "member": {"shape": "Tag"}},
+        "TagMap": {"type": "map", "key": {"shape": "String"}, "value": {"shape": "Tag"}},
+        "String": {"type": "string"},
+    }
+
+    @patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black")
+    def test_qualifies_only_listed_shapes(self, mock_reformat):
+        with patch("builtins.open", create=True):
+            extractor = ShapesExtractor(
+                combined_shapes=self._SHAPES, qualified_shape_names=frozenset({"Tag"})
+            )
+
+        members = extractor.generate_shape_members("Holder")
+
+        assert members["tag"] == "Optional[shapes.Tag] = Unassigned()"
+        assert members["tags"] == "Optional[List[shapes.Tag]] = Unassigned()"
+        assert members["tag_map"] == "Optional[Dict[StrPipeVar, shapes.Tag]] = Unassigned()"
+        assert members["other"] == "Optional[Other] = Unassigned()"
+
+    @patch("sagemaker.core.tools.shapes_extractor.reformat_file_with_black")
+    def test_default_leaves_names_unqualified(self, mock_reformat):
+        """Shape codegen (no qualified names) must keep emitting bare names."""
+        with patch("builtins.open", create=True):
+            extractor = ShapesExtractor(combined_shapes=self._SHAPES)
+
+        members = extractor.generate_shape_members("Holder")
+
+        assert members["tags"] == "Optional[List[Tag]] = Unassigned()"
