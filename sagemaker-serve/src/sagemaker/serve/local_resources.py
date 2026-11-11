@@ -179,7 +179,7 @@ class LocalEndpoint:
                 serialized_data, content_type, accept
             )
             return InvokeEndpointOutput(
-                body=deserializer.deserialize(io.BytesIO(raw_response)), content_type=accept
+                body=deserializer.deserialize(io.BytesIO(raw_response), accept), content_type=accept
             )
 
         else:
@@ -205,7 +205,7 @@ class LocalEndpoint:
                 raw_response = self.local_container_mode_obj._invoke_torch_serve(
                     serialized_data, content_type, accept
                 )
-                response_data = deserializer.deserialize(io.BytesIO(raw_response))
+                response_data = deserializer.deserialize(io.BytesIO(raw_response), accept)
 
             elif self.model_server == ModelServer.TRITON:
                 # Triton: Direct data, no serialization, fixed content types (V2 pattern)
@@ -247,7 +247,7 @@ class LocalEndpoint:
                 raw_response = self.local_container_mode_obj._invoke_tensorflow_serving(
                     serialized_data, content_type, accept
                 )
-                response_data = deserializer.deserialize(io.BytesIO(raw_response))
+                response_data = deserializer.deserialize(io.BytesIO(raw_response), accept)
 
             elif self.model_server == ModelServer.TEI:
                 # TEI: Use serializer-derived content types
@@ -255,7 +255,7 @@ class LocalEndpoint:
                 raw_response = self.local_container_mode_obj._invoke_serving(
                     serialized_data, content_type, accept
                 )
-                response_data = deserializer.deserialize(io.BytesIO(raw_response))
+                response_data = deserializer.deserialize(io.BytesIO(raw_response), accept)
 
             else:
                 raise ValueError(f"Unsupported model server: {self.model_server}")
