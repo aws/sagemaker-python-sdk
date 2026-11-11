@@ -23,7 +23,7 @@ from sagemaker.core.network import NetworkConfig
 from sagemaker.core.parameter import IntegerParameter
 from sagemaker.core.processing import Processor
 from sagemaker.core.transformer import Transformer
-from sagemaker.core.workflow import ElseIfBranch, IfExpression, Omit
+from sagemaker.core.workflow import ElseIf, If, Omit
 from sagemaker.core.workflow.conditions import ConditionEquals
 from sagemaker.core.workflow.parameters import ParameterBoolean, ParameterString
 from sagemaker.core.workflow.pipeline_context import PipelineSession
@@ -58,9 +58,7 @@ EXPECTED = {
 
 
 def _optional_value():
-    return IfExpression(
-        condition=ConditionEquals(left=ENABLED, right=True), then_value=VALUE, else_value=Omit()
-    )
+    return If(condition=ConditionEquals(left=ENABLED, right=True), then=VALUE, else_=Omit())
 
 
 @pytest.fixture
@@ -201,15 +199,11 @@ def test_model_builder_map_entry(session):
 
 def test_else_if_and_nested_if_through_builder(session):
     env = ParameterString("Env", default_value="none")
-    kms = IfExpression(
+    kms = If(
         condition=ConditionEquals(left=env, right="prod"),
-        then_value="prod-key",
-        else_if_branches=[
-            ElseIfBranch(condition=ConditionEquals(left=env, right="beta"), then_value="beta-key")
-        ],
-        else_value=IfExpression(
-            condition=ConditionEquals(left=ENABLED, right=True), then_value=VALUE, else_value=Omit()
-        ),
+        then="prod-key",
+        else_if=[ElseIf(condition=ConditionEquals(left=env, right="beta"), then="beta-key")],
+        else_=If(condition=ConditionEquals(left=ENABLED, right=True), then=VALUE, else_=Omit()),
     )
     trainer = _model_trainer(
         session,
@@ -259,16 +253,16 @@ def test_step_property_in_any_branch_creates_dependency(session, branch):
         instance_type="ml.m5.large",
         sagemaker_session=session,
         env={
-            "MODEL": IfExpression(
+            "MODEL": If(
                 condition=ConditionEquals(left=ENABLED, right=True),
-                then_value=values["then"],
-                else_if_branches=[
-                    ElseIfBranch(
+                then=values["then"],
+                else_if=[
+                    ElseIf(
                         condition=ConditionEquals(left=ENABLED, right=False),
-                        then_value=values["else_if"],
+                        then=values["else_if"],
                     )
                 ],
-                else_value=values["else"],
+                else_=values["else"],
             )
         },
     )
@@ -281,3 +275,13 @@ def test_step_property_in_any_branch_creates_dependency(session, branch):
     )
 
     assert PipelineGraph.from_pipeline(pipeline).adjacency_list["Train"] == ["Process"]
+
+
+def test_bare_omit_is_rejected_when_definition_is_built(session):
+    trainer = _model_trainer(
+        session,
+        output_data_config=OutputDataConfig(s3_output_path="s3://bucket/output", kms_key_id=Omit()),
+    )
+
+    with pytest.raises(ValueError, match="complete then or else_ branch"):
+        _step_arguments(TrainingStep(name="Train", step_args=trainer.train()), session)

@@ -1,9 +1,20 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 """Unit tests for ordered ElseIf support in argument-level conditional expressions."""
 
 import pytest
 
-from sagemaker.core.workflow import ElseIfBranch, IfExpression, Omit
+from sagemaker.core.workflow import ElseIf, If, Omit
 from sagemaker.core.workflow.conditions import (
     ConditionEquals,
     ConditionGreaterThan,
@@ -23,10 +34,10 @@ from sagemaker.core.workflow.parameters import (
 
 def test_empty_else_if_list_matches_legacy_wire_shape():
     mode = ParameterString("Mode")
-    expression = IfExpression(
+    expression = If(
         condition=ConditionEquals(left=mode, right="primary"),
-        then_value="primary",
-        else_value=Omit(),
+        then="primary",
+        else_=Omit(),
     )
     assert "ElseIf" not in expression.expr["Std:If"]
     assert expression.expr == {
@@ -44,16 +55,16 @@ def test_empty_else_if_list_matches_legacy_wire_shape():
 
 def test_single_else_if_serializes_between_then_and_else():
     mode = ParameterString("Mode")
-    expression = IfExpression(
+    expression = If(
         condition=ConditionEquals(left=mode, right="primary"),
-        then_value="primary",
-        else_if_branches=[
-            ElseIfBranch(
+        then="primary",
+        else_if=[
+            ElseIf(
                 condition=ConditionEquals(left=mode, right="fallback"),
-                then_value="fallback",
+                then="fallback",
             )
         ],
-        else_value=Omit(),
+        else_=Omit(),
     )
     assert expression.expr == {
         "Std:If": {
@@ -80,15 +91,15 @@ def test_single_else_if_serializes_between_then_and_else():
 
 def test_multiple_else_if_branches_preserve_declared_order():
     mode = ParameterString("Mode")
-    expression = IfExpression(
+    expression = If(
         condition=ConditionEquals(left=mode, right="a"),
-        then_value="a",
-        else_if_branches=[
-            ElseIfBranch(condition=ConditionEquals(left=mode, right="b"), then_value="b"),
-            ElseIfBranch(condition=ConditionEquals(left=mode, right="c"), then_value="c"),
-            ElseIfBranch(condition=ConditionEquals(left=mode, right="d"), then_value="d"),
+        then="a",
+        else_if=[
+            ElseIf(condition=ConditionEquals(left=mode, right="b"), then="b"),
+            ElseIf(condition=ConditionEquals(left=mode, right="c"), then="c"),
+            ElseIf(condition=ConditionEquals(left=mode, right="d"), then="d"),
         ],
-        else_value="z",
+        else_="z",
     )
     else_if = expression.expr["Std:If"]["ElseIf"]
     assert [branch["Then"] for branch in else_if] == ["b", "c", "d"]
@@ -99,41 +110,41 @@ def test_else_if_supports_every_condition_step_operator():
     mode = ParameterString("Mode")
     flag = ParameterBoolean("Flag")
 
-    expression = IfExpression(
+    expression = If(
         condition=ConditionGreaterThan(left=score, right=100),
-        then_value="high",
-        else_if_branches=[
-            ElseIfBranch(
+        then="high",
+        else_if=[
+            ElseIf(
                 condition=ConditionGreaterThanOrEqualTo(left=score, right=50),
-                then_value="medium",
+                then="medium",
             ),
-            ElseIfBranch(
+            ElseIf(
                 condition=ConditionLessThan(left=score, right=10),
-                then_value="tiny",
+                then="tiny",
             ),
-            ElseIfBranch(
+            ElseIf(
                 condition=ConditionLessThanOrEqualTo(left=score, right=25),
-                then_value="small",
+                then="small",
             ),
-            ElseIfBranch(
+            ElseIf(
                 condition=ConditionIn(value=mode, in_values=["allow", "permit"]),
-                then_value="listed",
+                then="listed",
             ),
-            ElseIfBranch(
+            ElseIf(
                 condition=ConditionNot(expression=ConditionEquals(left=flag, right=True)),
-                then_value="not-flag",
+                then="not-flag",
             ),
-            ElseIfBranch(
+            ElseIf(
                 condition=ConditionOr(
                     conditions=[
                         ConditionEquals(left=mode, right="x"),
                         ConditionEquals(left=mode, right="y"),
                     ]
                 ),
-                then_value="x-or-y",
+                then="x-or-y",
             ),
         ],
-        else_value=Omit(),
+        else_=Omit(),
     )
     body = expression.expr["Std:If"]
     branches = body["ElseIf"]
@@ -160,16 +171,16 @@ def test_else_if_supports_every_condition_step_operator():
 def test_else_if_recursively_serializes_pipeline_variables_and_structures():
     mode = ParameterString("Mode")
     subnet = ParameterString("SecondarySubnet")
-    expression = IfExpression(
+    expression = If(
         condition=ConditionEquals(left=mode, right="primary"),
-        then_value={"Subnets": ["subnet-primary"]},
-        else_if_branches=[
-            ElseIfBranch(
+        then={"Subnets": ["subnet-primary"]},
+        else_if=[
+            ElseIf(
                 condition=ConditionEquals(left=mode, right="secondary"),
-                then_value={"Subnets": [subnet]},
+                then={"Subnets": [subnet]},
             )
         ],
-        else_value=Omit(),
+        else_=Omit(),
     )
     assert expression.expr["Std:If"]["ElseIf"][0]["Then"] == {
         "Subnets": [{"Get": "Parameters.SecondarySubnet"}]
@@ -193,21 +204,21 @@ def test_else_if_collects_references_from_every_branch_in_order():
             return self._steps
 
     condition_value = _TestVariable("ConditionValue", ["ConditionStep"])
-    then_value = _TestVariable("Then", ["ThenStep"])
+    then = _TestVariable("Then", ["ThenStep"])
     branch_condition = _TestVariable("BranchCondition", ["BranchConditionStep"])
     branch_then = _TestVariable("BranchThen", ["BranchThenStep"])
-    else_value = _TestVariable("Else", ["ElseStep"])
+    else_ = _TestVariable("Else", ["ElseStep"])
 
-    expression = IfExpression(
+    expression = If(
         condition=ConditionEquals(left=condition_value, right="yes"),
-        then_value=then_value,
-        else_if_branches=[
-            ElseIfBranch(
+        then=then,
+        else_if=[
+            ElseIf(
                 condition=ConditionEquals(left=branch_condition, right="yes"),
-                then_value=branch_then,
+                then=branch_then,
             )
         ],
-        else_value=else_value,
+        else_=else_,
     )
     assert expression._referenced_steps == [
         "ConditionStep",
@@ -220,15 +231,15 @@ def test_else_if_collects_references_from_every_branch_in_order():
 
 def test_else_if_branch_rejects_non_condition():
     with pytest.raises(TypeError):
-        ElseIfBranch(condition=True, then_value="yes")
+        ElseIf(condition=True, then="yes")
 
 
 def test_if_expression_rejects_non_branch_in_else_if_list():
     mode = ParameterString("Mode")
     with pytest.raises(TypeError):
-        IfExpression(
+        If(
             condition=ConditionEquals(left=mode, right="primary"),
-            then_value="primary",
-            else_if_branches=[("not-a-branch",)],
-            else_value=Omit(),
+            then="primary",
+            else_if=[("not-a-branch",)],
+            else_=Omit(),
         )

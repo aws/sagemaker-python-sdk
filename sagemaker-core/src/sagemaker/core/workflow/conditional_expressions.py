@@ -24,6 +24,9 @@ from sagemaker.core.workflow.conditions import Condition
 if TYPE_CHECKING:
     from sagemaker.mlops.workflow.steps import Step
 
+# The service rejects Std:If expressions nested deeper than this.
+MAX_IF_DEPTH = 2
+
 
 def _serialize_expression_value(value: Any) -> Any:
     """Recursively translate pipeline variables into service expression dictionaries."""
@@ -36,6 +39,13 @@ def _serialize_expression_value(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_serialize_expression_value(child) for child in value]
     return value
+
+
+def _serialize_branch(value: Any) -> Any:
+    """Serialize a Then or Else branch, the only place ``Omit`` is allowed."""
+    if isinstance(value, Omit):
+        return {"Std:Omit": True}
+    return _serialize_expression_value(value)
 
 
 def _branch_to_string(value: Any) -> Any:
@@ -64,14 +74,32 @@ def _referenced_steps(value: Any) -> List[Union["Step", str]]:
     return []
 
 
+def _if_depth(value: Any) -> int:
+    """Return how deeply ``If`` expressions are nested in a branch value."""
+    if isinstance(value, If):
+        branches = [value.then, value.else_] + [branch.then for branch in value.else_if]
+        return 1 + max(_if_depth(branch) for branch in branches)
+    if isinstance(value, dict):
+        return max((_if_depth(child) for child in value.values()), default=0)
+    if isinstance(value, (list, tuple)):
+        return max((_if_depth(child) for child in value), default=0)
+    return 0
+
+
 @attr.s(frozen=True, slots=True)
 class Omit(PipelineVariable):
-    """Explicitly omit the containing API member, map entry, or list element."""
+    """Omit the containing API member, map entry, or list element.
+
+    Only valid as a complete ``then`` or ``else_`` branch of :class:`If` or :class:`ElseIf`.
+    Anywhere else the definition is rejected when it is built.
+    """
 
     @property
     def expr(self) -> RequestType:
-        """Return the canonical ``Std:Omit`` service expression."""
-        return {"Std:Omit": True}
+        """Reject an ``Omit`` used outside a branch, which the service would reject."""
+        raise ValueError(
+            "Omit() is supported only as a complete then or else_ branch of an If expression."
+        )
 
     def to_string(self) -> "Omit":
         """Return self; wrapping in ``Std:Join`` would stop the member from being omitted."""
@@ -84,111 +112,109 @@ class Omit(PipelineVariable):
 
 
 @attr.s(frozen=True, slots=True)
-class ElseIfBranch:
-    """One ordered ``ElseIf`` branch inside an :class:`IfExpression`.
+class ElseIf:
+    """One ordered ``ElseIf`` branch inside an :class:`If`.
 
-    Each branch carries its own :class:`Condition` and target-shaped value. Branches are
-    evaluated in list order by the SageMaker service; the first branch whose condition holds
-    supplies its ``then_value`` as the selected result.
+    Branches are evaluated in list order by the SageMaker service; the first branch whose
+    condition holds supplies its ``then`` value.
 
     Args:
         condition: Existing SageMaker Pipelines condition expression.
-        then_value: Value selected when this branch's condition evaluates to true.
+        then: Value selected when this branch's condition evaluates to true.
     """
 
     condition: Condition = attr.ib(validator=attr.validators.instance_of(Condition))
-    then_value: Any = attr.ib()
+    then: Any = attr.ib()
 
     def to_request(self) -> RequestType:
         """Return the canonical serialized form for this ``ElseIf`` entry."""
         return {
             "Condition": _serialize_expression_value(self.condition.to_request()),
-            "Then": _serialize_expression_value(self.then_value),
+            "Then": _serialize_branch(self.then),
         }
 
 
 @attr.s(frozen=True, slots=True)
-class IfExpression(PipelineVariable):
+class If(PipelineVariable):
     """Select one target-shaped argument value using a pipeline condition.
 
-    An optional ordered list of ``ElseIfBranch`` entries is evaluated between the outer
-    ``then_value`` and the outer ``else_value``. The first branch whose condition holds
-    supplies the selected value. If no branch matches, ``else_value`` is used.
-
-    ``ElseIfBranch`` entries and further nested ``IfExpression`` instances can be mixed
-    freely; the wire format emits the ``ElseIf`` key only when the list is non-empty so
-    existing recursive-``Else`` pipelines remain byte-identical.
+    Compiles to ``Std:If``. Optional ordered ``else_if`` branches are evaluated after
+    ``condition``; the first that holds supplies the value, otherwise ``else_`` is used. The
+    ``ElseIf`` key is emitted only when ``else_if`` is non-empty. A branch may hold one
+    nested ``If``; the service rejects deeper nesting, so it is rejected here too.
 
     Args:
         condition: Existing SageMaker Pipelines condition expression.
-        then_value: Value selected when ``condition`` evaluates to true.
-        else_value: Value selected when no branch matches.
-        else_if_branches: Optional ordered list of :class:`ElseIfBranch` entries.
+        then: Value selected when ``condition`` evaluates to true.
+        else_: Value selected when no branch matches.
+        else_if: Optional ordered list of :class:`ElseIf` branches.
     """
 
     condition: Condition = attr.ib(validator=attr.validators.instance_of(Condition))
-    then_value: Any = attr.ib()
-    else_value: Any = attr.ib()
-    else_if_branches: List[ElseIfBranch] = attr.ib(
+    then: Any = attr.ib()
+    else_: Any = attr.ib()
+    else_if: List[ElseIf] = attr.ib(
         factory=list,
         converter=lambda values: [] if values is None else list(values),
     )
 
-    @else_if_branches.validator
-    def _validate_else_if_branches(
+    @else_if.validator
+    def _validate_else_if(
         self,
         _attribute: attr.Attribute,
-        value: Sequence[ElseIfBranch],
+        value: Sequence[ElseIf],
     ) -> None:
-        """Ensure every ``ElseIfBranch`` supplied uses a valid :class:`Condition`."""
+        """Ensure every ``else_if`` entry is an :class:`ElseIf`."""
         for index, branch in enumerate(value):
-            if not isinstance(branch, ElseIfBranch):
-                raise TypeError(f"else_if_branches[{index}] must be an ElseIfBranch instance.")
+            if not isinstance(branch, ElseIf):
+                raise TypeError(f"else_if[{index}] must be an ElseIf instance.")
+
+    def __attrs_post_init__(self) -> None:
+        """Reject nesting deeper than the service accepts."""
+        if _if_depth(self) > MAX_IF_DEPTH:
+            raise ValueError(f"If expression depth cannot exceed {MAX_IF_DEPTH}.")
 
     @property
     def expr(self) -> RequestType:
         """Return the canonical recursive ``Std:If`` service expression."""
         body = {
             "Condition": _serialize_expression_value(self.condition.to_request()),
-            "Then": _serialize_expression_value(self.then_value),
+            "Then": _serialize_branch(self.then),
         }
-        if self.else_if_branches:
-            body["ElseIf"] = [branch.to_request() for branch in self.else_if_branches]
-        body["Else"] = _serialize_expression_value(self.else_value)
+        if self.else_if:
+            body["ElseIf"] = [branch.to_request() for branch in self.else_if]
+        body["Else"] = _serialize_branch(self.else_)
         return {"Std:If": body}
 
-    def to_string(self) -> "IfExpression":
+    def to_string(self) -> "If":
         """Stringify each branch so ``Std:If`` stays outermost and ``Std:Omit`` still omits."""
         return self._map_branches(_branch_to_string)
 
-    def _map_branches(self, fn: Callable[[Any], Any]) -> "IfExpression":
+    def _map_branches(self, fn: Callable[[Any], Any]) -> "If":
         def apply(value):
-            if isinstance(value, IfExpression):
+            if isinstance(value, If):
                 return value._map_branches(fn)
             if isinstance(value, Omit):
                 return value
             return fn(value)
 
-        return IfExpression(
+        return If(
             condition=self.condition,
-            then_value=apply(self.then_value),
-            else_value=apply(self.else_value),
-            else_if_branches=[
-                ElseIfBranch(condition=b.condition, then_value=apply(b.then_value))
-                for b in self.else_if_branches
-            ],
+            then=apply(self.then),
+            else_=apply(self.else_),
+            else_if=[ElseIf(condition=b.condition, then=apply(b.then)) for b in self.else_if],
         )
 
     @property
     def _referenced_steps(self) -> List[Union["Step", str]]:
         """Collect references conservatively from the condition and every branch."""
         references: List[Union["Step", str]] = list(self.condition._referenced_steps)
-        references.extend(_referenced_steps(self.then_value))
-        for branch in self.else_if_branches:
+        references.extend(_referenced_steps(self.then))
+        for branch in self.else_if:
             references.extend(branch.condition._referenced_steps)
-            references.extend(_referenced_steps(branch.then_value))
-        references.extend(_referenced_steps(self.else_value))
+            references.extend(_referenced_steps(branch.then))
+        references.extend(_referenced_steps(self.else_))
         return references
 
 
-__all__ = ["ElseIfBranch", "IfExpression", "Omit"]
+__all__ = ["ElseIf", "If", "Omit"]
