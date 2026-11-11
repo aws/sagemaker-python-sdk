@@ -28,11 +28,6 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
 
     Works with both sync and async functions.
 
-    For automatic success reporting, dictionary results must contain a finite numeric
-    ``reward`` or a non-empty list of finite numeric rewards. Booleans are not accepted.
-    Missing or invalid rewards are reported as failures with reward 0; the result is
-    returned unchanged.
-
     Example::
 
         from sagemaker.train.rft import rft_handler
@@ -132,20 +127,19 @@ def _handle_result(feedback: RolloutFeedbackClient, result: Any) -> None:
         return
 
     reward = result.get("reward")
-    rewards = reward if isinstance(reward, list) else [reward]
+    try:
+        rewards = [reward] if isinstance(reward, (int, float)) else list(reward)
+    except TypeError:
+        rewards = []
+
     if not rewards or not all(
-        not isinstance(value, bool)
-        and (isinstance(value, int) or isinstance(value, float) and math.isfinite(value))
+        isinstance(value, int) or (isinstance(value, float) and math.isfinite(value))
         for value in rewards
     ):
         feedback.report_error(
             "Handler result must contain a finite numeric reward "
-            "or a non-empty list of finite numeric rewards"
+            "or a non-empty iterable of finite numeric rewards"
         )
         return
 
-    if isinstance(reward, list):
-        feedback.complete_rollout()
-        feedback.update_reward(reward)
-    else:
-        feedback.report_complete(reward)
+    feedback.report_complete(rewards)
