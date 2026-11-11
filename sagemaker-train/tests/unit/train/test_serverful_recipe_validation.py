@@ -38,6 +38,7 @@ class _ConcreteTrainer(BaseTrainer):
         self.validation_dataset = None
         self.compute = MagicMock(
             instance_type="ml.p5.48xlarge",
+            instance_preferences=None,
             instance_count=4,
             volume_size_in_gb=100,
             keep_alive_period_in_seconds=None,
