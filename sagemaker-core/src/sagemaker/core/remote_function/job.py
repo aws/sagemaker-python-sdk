@@ -419,6 +419,7 @@ class _JobSettings:
         use_torchrun: bool = False,
         use_mpirun: bool = False,
         nproc_per_node: Optional[int] = None,
+        training_plan_arn: str = None,
     ):
         """Initialize a _JobSettings instance which configures the remote job.
 
@@ -543,6 +544,10 @@ class _JobSettings:
               also activates a new persistent cache feature, which will further reduce job start up
               latency than over using SageMaker managed warm pools alone by caching the package
               source downloaded in the previous runs.
+
+            training_plan_arn (str): The Amazon Resource Name (ARN) of the training plan to use
+              for this job. Training plans provide reserved capacity for training jobs. Defaults
+              to ``None``.
 
             max_retry_attempts (int, PipelineVariable): The max number of times the job is retried
               on ``InternalServerFailure`` Error from SageMaker service. Defaults to 1.
@@ -727,6 +732,7 @@ class _JobSettings:
 
         self.instance_count = instance_count
         self.volume_size = volume_size
+        self.training_plan_arn = training_plan_arn
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.max_retry_attempts = max_retry_attempts
         self.keep_alive_period_in_seconds = keep_alive_period_in_seconds
@@ -1158,6 +1164,8 @@ class _Job:
             resource_config["VolumeKmsKeyId"] = job_settings.volume_kms_key
         if job_settings.keep_alive_period_in_seconds is not None:
             resource_config["KeepAlivePeriodInSeconds"] = job_settings.keep_alive_period_in_seconds
+        if job_settings.training_plan_arn is not None:
+            resource_config["TrainingPlanArn"] = job_settings.training_plan_arn
 
         request_dict["ResourceConfig"] = resource_config
 
