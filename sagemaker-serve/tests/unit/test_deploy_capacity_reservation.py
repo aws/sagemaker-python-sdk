@@ -5,12 +5,15 @@ endpoint's production variant to a SageMaker training plan (Flexible Training Pl
 or an ODCR-backed ML reservation.
 """
 
+import inspect
+import logging
 import unittest
 from unittest.mock import Mock, patch
 
 import pytest
 
 from sagemaker.core.enums import EndpointType
+from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.inference_config import ResourceRequirements
 from sagemaker.core.resources import Endpoint
 from sagemaker.core.shapes import ProductionVariantCapacityReservationConfig
@@ -149,6 +152,47 @@ class TestDeployCoreEndpointCapacityReservation(_CoreEndpointTestBase):
         )
         self.mock_session.endpoint_from_production_variants.assert_not_called()
 
+    def test_update_endpoint_calls_match_real_session_signatures(self):
+        """Regression: the update path once passed kwargs create_endpoint_config doesn't take.
+
+        A plain Mock accepts any arguments, so bind each recorded call to the real
+        Session method signature to catch drift between the caller and the session API.
+        """
+        self._builder()._deploy_core_endpoint(
+            instance_type="ml.m5.large",
+            initial_instance_count=1,
+            endpoint_name="existing-endpoint",
+            update_endpoint=True,
+        )
+
+        for method_name in ("create_endpoint_config", "update_endpoint"):
+            call = getattr(self.mock_session, method_name).call_args
+            assert call is not None, f"{method_name} was not called"
+            inspect.signature(getattr(Session, method_name)).bind(
+                self.mock_session, *call.args, **call.kwargs
+            )
+
+    def test_existing_endpoint_ic_deploy_warns_capacity_reservation_ignored(self):
+        self.mock_session.endpoint_in_service_or_not = Mock(return_value=True)
+        resources = Mock(spec=ResourceRequirements)
+        resources.num_cpus = None
+        resources.copy_count = 1
+        resources.get_compute_resource_requirements.return_value = {}
+
+        with self.assertLogs("sagemaker", level=logging.WARNING) as logs:
+            self._builder()._deploy_core_endpoint(
+                instance_type="ml.p5.48xlarge",
+                initial_instance_count=1,
+                endpoint_name="existing-ic-endpoint",
+                endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+                resources=resources,
+                capacity_reservation_config=_plan_config(),
+            )
+
+        assert any("already exists" in line for line in logs.output)
+        self.mock_session.endpoint_from_production_variants.assert_not_called()
+        self.mock_session.create_inference_component.assert_called_once()
+
     def test_serverless_with_capacity_reservation_raises(self):
         with pytest.raises(ValueError, match="not supported for serverless"):
             self._builder()._deploy_core_endpoint(
@@ -278,3 +322,23 @@ class TestNovaDeployCapacityReservation(unittest.TestCase):
 
         variant = mock_config_create.call_args.kwargs["production_variants"][0]
         assert variant.capacity_reservation_config.ml_reservation_arn == PLAN_ARN
+
+
+class TestDeployForIcExistingComponent(unittest.TestCase):
+    @patch("sagemaker.serve.model_builder.Endpoint.get", return_value=Mock(spec=Endpoint))
+    def test_updating_existing_ic_warns_capacity_reservation_ignored(self, _):
+        builder = ModelBuilder.__new__(ModelBuilder)
+        builder.sagemaker_session = Mock()
+        builder.region = "us-west-2"
+        builder._does_ic_exist = Mock(return_value=True)
+        builder._update_inference_component = Mock()
+
+        with self.assertLogs("sagemaker", level=logging.WARNING) as logs:
+            builder._deploy_for_ic(
+                ic_data={"Name": "ic-1", "ResourceRequirements": Mock(), "Model": Mock()},
+                endpoint_name="existing-endpoint",
+                capacity_reservation_config=_plan_config(),
+            )
+
+        assert any("existing inference component ic-1" in line for line in logs.output)
+        builder._update_inference_component.assert_called_once()

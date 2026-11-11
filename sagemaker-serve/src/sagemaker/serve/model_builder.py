@@ -4185,7 +4185,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 else:
                     managed_instance_scaling_config["MinInstanceCount"] = initial_instance_count
 
-            if not self.sagemaker_session.endpoint_in_service_or_not(self.endpoint_name):
+            endpoint_exists = self.sagemaker_session.endpoint_in_service_or_not(self.endpoint_name)
+            if endpoint_exists and capacity_reservation_config:
+                logger.warning(
+                    "capacity_reservation_config is ignored because endpoint %s already "
+                    "exists; the inference component is added to the endpoint's existing "
+                    "capacity.",
+                    self.endpoint_name,
+                )
+            if not endpoint_exists:
                 production_variant = session_helper.production_variant(
                     instance_type=instance_type,
                     initial_instance_count=initial_instance_count,
@@ -4444,6 +4452,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         built_model = ic_data.get("Model")
 
         if self._does_ic_exist(ic_name):
+            if kwargs.get("capacity_reservation_config") is not None:
+                # The reservation is bound to the endpoint's production variant, not to the
+                # inference component, so an in-place IC update cannot apply or change it.
+                logger.warning(
+                    "capacity_reservation_config is ignored when updating existing inference "
+                    "component %s; capacity is reserved on the endpoint %s, which is not "
+                    "recreated.",
+                    ic_name,
+                    endpoint_name,
+                )
             # Update existing IC
             self._update_inference_component(ic_name, resource_requirements, **kwargs)
             # Return existing endpoint
