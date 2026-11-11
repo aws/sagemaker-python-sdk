@@ -183,6 +183,7 @@ class Pipeline:
         description: str = None,
         tags: Optional[Tags] = None,
         parallelism_config: ParallelismConfiguration = None,
+        pipeline_version_aliases: Optional[List[str]] = None,
         *,
         _log_name_collision_hint: bool = True,
     ) -> Dict[str, Any]:
@@ -195,6 +196,9 @@ class Pipeline:
             parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
                 that is applied to each of the executions of the pipeline. It takes precedence
                 over the parallelism configuration of the parent pipeline.
+            pipeline_version_aliases (Optional[List[str]]): Aliases to assign to the
+                first pipeline version (e.g. ["stable", "v1.0"]). Each alias must match
+                [a-zA-Z0-9._-]{1,128} and cannot be purely numeric. Max 10 per version.
 
         Returns:
             A response dict from the service.
@@ -213,6 +217,8 @@ class Pipeline:
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
+            if pipeline_version_aliases:
+                logger.warning("Pipeline version aliases are not supported in the local mode.")
             # TODO: replace with sagemaker-core methods
             return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
         tags = format_tags(tags)
@@ -222,6 +228,7 @@ class Pipeline:
         update_args(
             kwargs,
             Tags=tags,
+            PipelineVersionAliases=pipeline_version_aliases,
         )
         # TODO: replace with sagemaker-core methods
         try:
@@ -289,20 +296,27 @@ class Pipeline:
         )
         return kwargs
 
-    def describe(self, pipeline_version_id: int = None) -> Dict[str, Any]:
+    def describe(
+        self, pipeline_version_id: int = None, pipeline_version_alias: str = None
+    ) -> Dict[str, Any]:
         """Describes a Pipeline in the Workflow service.
 
         Args:
-            pipeline_version_id (Optional[str]): version ID of the pipeline to describe.
+            pipeline_version_id (Optional[int]): version ID of the pipeline to describe.
+            pipeline_version_alias (Optional[str]): alias of the pipeline version to describe.
+                Cannot be specified together with pipeline_version_id.
 
         Returns:
             Response dict from the service. See `boto3 client documentation
             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
 sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """
+        _validate_version_selector(pipeline_version_id, pipeline_version_alias)
         kwargs = dict(PipelineName=self.name)
         if pipeline_version_id:
             kwargs["PipelineVersionId"] = pipeline_version_id
+        if pipeline_version_alias:
+            kwargs["PipelineVersionAlias"] = pipeline_version_alias
 
         return self.sagemaker_session.sagemaker_client.describe_pipeline(**kwargs)
 
@@ -311,6 +325,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         role_arn: str = None,
         description: str = None,
         parallelism_config: ParallelismConfiguration = None,
+        pipeline_version_aliases: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Updates a Pipeline in the Workflow service.
 
@@ -320,6 +335,11 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
                 that is applied to each of the executions of the pipeline. It takes precedence
                 over the parallelism configuration of the parent pipeline.
+            pipeline_version_aliases (Optional[List[str]]): Aliases to assign to the new
+                pipeline version created by this update. Each alias must match
+                [a-zA-Z0-9._-]{1,128}. Only a definition change creates a new version; if the
+                definition is unchanged, the service rejects the aliases with a
+                ValidationException. To alias an existing version, use update_pipeline_version.
 
         Returns:
             A response dict from the service.
@@ -338,9 +358,12 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
+            if pipeline_version_aliases:
+                logger.warning("Pipeline version aliases are not supported in the local mode.")
             return self.sagemaker_session.sagemaker_client.update_pipeline(self, description)
 
         kwargs = self._create_args(role_arn, description, parallelism_config)
+        update_args(kwargs, PipelineVersionAliases=pipeline_version_aliases)
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
     def upsert(
@@ -349,6 +372,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         description: str = None,
         tags: Optional[Tags] = None,
         parallelism_config: ParallelismConfiguration = None,
+        pipeline_version_aliases: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Creates a pipeline or updates it, if it already exists.
 
@@ -358,6 +382,9 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             tags (Optional[Tags]): Tags to be passed.
             parallelism_config (Optional[Config for parallel steps, Parallelism configuration that
                 is applied to each of the executions
+            pipeline_version_aliases (Optional[List[str]]): Aliases to assign to the version this
+                call creates. When the pipeline already exists, the same rules as update() apply:
+                the service rejects aliases if the definition is unchanged.
 
         Returns:
             response dict from service
@@ -380,13 +407,19 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 description,
                 tags,
                 parallelism_config,
+                pipeline_version_aliases,
                 _log_name_collision_hint=False,
             )
         except ClientError as ce:
             if not _is_resource_already_exists_error(ce):
                 raise ce
             # already exists
-            response = self.update(role_arn, description, parallelism_config=parallelism_config)
+            response = self.update(
+                role_arn,
+                description,
+                parallelism_config=parallelism_config,
+                pipeline_version_aliases=pipeline_version_aliases,
+            )
             # add new tags to existing resource
             if tags is not None:
                 old_tags = self.sagemaker_session.sagemaker_client.list_tags(
@@ -415,6 +448,47 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
+    def update_pipeline_version(
+        self,
+        pipeline_version_id: int,
+        aliases_to_add: Optional[List[str]] = None,
+        aliases_to_remove: Optional[List[str]] = None,
+        version_description: str = None,
+        version_display_name: str = None,
+    ) -> Dict[str, Any]:
+        """Updates a pipeline version's metadata and/or aliases.
+
+        Args:
+            pipeline_version_id (int): The version ID to update.
+            aliases_to_add (Optional[List[str]]): Aliases to assign to this version.
+                Each alias must match [a-zA-Z0-9._-]{1,128}, cannot be purely numeric,
+                and must be unique within the pipeline.
+            aliases_to_remove (Optional[List[str]]): Aliases to remove from this version.
+            version_description (Optional[str]): Updated description for the version.
+            version_display_name (Optional[str]): Updated display name for the version.
+
+        Returns:
+            A response dict from the service.
+        """
+        kwargs = dict(
+            PipelineArn=self.describe()["PipelineArn"],
+            PipelineVersionId=pipeline_version_id,
+        )
+        alias_operations = {}
+        if aliases_to_add:
+            alias_operations["Add"] = aliases_to_add
+        if aliases_to_remove:
+            alias_operations["Remove"] = aliases_to_remove
+        if alias_operations:
+            kwargs["PipelineVersionAliasOperations"] = alias_operations
+
+        update_args(
+            kwargs,
+            PipelineVersionDescription=version_description,
+            PipelineVersionDisplayName=version_display_name,
+        )
+        return self.sagemaker_session.sagemaker_client.update_pipeline_version(**kwargs)
+
     @_telemetry_emitter(
         feature=Feature.MLOPS,
         func_name="pipeline.start",
@@ -432,6 +506,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         selective_execution_config: SelectiveExecutionConfig = None,
         mlflow_experiment_name: str = None,
         pipeline_version_id: int = None,
+        pipeline_version_alias: str = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -449,12 +524,15 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 the experiment name specified in the pipeline's mlflow_config.
                 If provided, this will override the experiment name for this specific
                 pipeline execution only, without modifying the pipeline definition.
-            pipeline_version_id (Optional[str]): version ID of the pipeline to start the execution from. If not
+            pipeline_version_id (Optional[int]): version ID of the pipeline to start the execution from. If not
                 specified, uses the latest version ID.
+            pipeline_version_alias (Optional[str]): alias of the pipeline version to start the
+                execution from. Cannot be specified together with pipeline_version_id.
 
         Returns:
             A `PipelineExecution` instance, if successful.
         """
+        _validate_version_selector(pipeline_version_id, pipeline_version_alias)
         if selective_execution_config is not None:
             if (
                 selective_execution_config.source_pipeline_execution_arn is None
@@ -475,6 +553,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             SelectiveExecutionConfig=selective_execution_config,
             MlflowExperimentName=mlflow_experiment_name,
             PipelineVersionId=pipeline_version_id,
+            PipelineVersionAlias=pipeline_version_alias,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
@@ -984,6 +1063,11 @@ def _resolve_parallelism_config(parallelism_config):
     if isinstance(parallelism_config, ParallelismConfiguration):
         return parallelism_config.to_request()
     return parallelism_config
+
+
+def _validate_version_selector(pipeline_version_id, pipeline_version_alias):
+    if pipeline_version_id and pipeline_version_alias:
+        raise ValueError("Specify only one of pipeline_version_id and pipeline_version_alias.")
 
 
 def update_args(args: Dict[str, Any], **kwargs):
