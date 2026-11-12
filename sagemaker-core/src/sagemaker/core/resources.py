@@ -24,6 +24,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.status import Status
 from rich.style import Style
 from sagemaker.core.shapes import *
+from sagemaker.core import shapes
 from sagemaker.core.helper.pipeline_variable import StrPipeVar
 from sagemaker.core.utils.code_injection.codec import transform
 from sagemaker.core.utils.code_injection.constants import Color
@@ -199,7 +200,7 @@ class AIBenchmarkJob(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -250,7 +251,7 @@ class AIBenchmarkJob(Base):
         ai_workload_config_identifier: StrPipeVar,
         role_arn: StrPipeVar,
         network_config: Optional[AIBenchmarkNetworkConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AIBenchmarkJob"]:
@@ -650,7 +651,7 @@ class AIRecommendationJob(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -700,7 +701,7 @@ class AIRecommendationJob(Base):
         optimize_model: Optional[bool] = Unassigned(),
         compute_spec: Optional[AIRecommendationComputeSpec] = Unassigned(),
         adapter_source: Optional[AIAdapterSource] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AIRecommendationJob"]:
@@ -1085,7 +1086,7 @@ class AIWorkloadConfig(Base):
     ai_workload_config_arn: Optional[StrPipeVar] = Unassigned()
     dataset_config: Optional[AIDatasetConfig] = Unassigned()
     ai_workload_configs: Optional[AIWorkloadConfigs] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
 
     def get_name(self) -> str:
@@ -1111,7 +1112,7 @@ class AIWorkloadConfig(Base):
         ai_workload_config_name: StrPipeVar,
         dataset_config: Optional[AIDatasetConfig] = Unassigned(),
         ai_workload_configs: Optional[AIWorkloadConfigs] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AIWorkloadConfig"]:
@@ -1429,7 +1430,7 @@ class Action(Base):
         status: Optional[StrPipeVar] = Unassigned(),
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Action"]:
@@ -1825,7 +1826,7 @@ class Algorithm(Base):
         inference_specification: Optional[InferenceSpecification] = Unassigned(),
         validation_specification: Optional[AlgorithmValidationSpecification] = Unassigned(),
         certify_for_marketplace: Optional[bool] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Algorithm"]:
@@ -2261,7 +2262,7 @@ class App(Base):
         app_name: StrPipeVar,
         user_profile_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         space_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         resource_spec: Optional[ResourceSpec] = Unassigned(),
         recovery_mode: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
@@ -2716,7 +2717,7 @@ class AppImageConfig(Base):
     def create(
         cls,
         app_image_config_name: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         kernel_gateway_image_config: Optional[KernelGatewayImageConfig] = Unassigned(),
         jupyter_lab_app_image_config: Optional[JupyterLabAppImageConfig] = Unassigned(),
         code_editor_app_image_config: Optional[CodeEditorAppImageConfig] = Unassigned(),
@@ -3082,7 +3083,7 @@ class Artifact(Base):
         artifact_name: Optional[StrPipeVar] = Unassigned(),
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Artifact"]:
@@ -3715,7 +3716,7 @@ class AutoMLJob(Base):
         auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned(),
         auto_ml_job_config: Optional[AutoMLJobConfig] = Unassigned(),
         generate_candidate_definitions_only: Optional[bool] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         model_deploy_config: Optional[ModelDeployConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -4230,7 +4231,7 @@ class AutoMLJobV2(Base):
         output_data_config: AutoMLOutputDataConfig,
         auto_ml_problem_type_config: AutoMLProblemTypeConfig,
         role_arn: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         security_config: Optional[AutoMLSecurityConfig] = Unassigned(),
         auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned(),
         model_deploy_config: Optional[ModelDeployConfig] = Unassigned(),
@@ -4554,7 +4555,7 @@ class Cluster(Base):
             ClusterRestrictedInstanceGroupsConfig
         ] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         orchestrator: Optional[ClusterOrchestrator] = Unassigned(),
         node_recovery: Optional[StrPipeVar] = Unassigned(),
         tiered_storage_config: Optional[ClusterTieredStorageConfig] = Unassigned(),
@@ -5315,7 +5316,7 @@ class ClusterSchedulerConfig(Base):
         cluster_arn: StrPipeVar,
         scheduler_config: SchedulerConfig,
         description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ClusterSchedulerConfig"]:
@@ -5819,7 +5820,7 @@ class CodeRepository(Base):
         cls,
         code_repository_name: StrPipeVar,
         git_config: GitConfig,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CodeRepository"]:
@@ -6211,7 +6212,7 @@ class CompilationJob(Base):
         model_package_version_arn: Optional[StrPipeVar] = Unassigned(),
         input_config: Optional[InputConfig] = Unassigned(),
         vpc_config: Optional[NeoVpcConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CompilationJob"]:
@@ -6640,7 +6641,7 @@ class ComputeQuota(Base):
         compute_quota_target: ComputeQuotaTarget,
         description: Optional[StrPipeVar] = Unassigned(),
         activation_state: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ComputeQuota"]:
@@ -7159,7 +7160,7 @@ class Context(Base):
         context_type: StrPipeVar,
         description: Optional[StrPipeVar] = Unassigned(),
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Context"]:
@@ -7569,7 +7570,7 @@ class DataQualityJobDefinition(Base):
         data_quality_baseline_config: Optional[DataQualityBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["DataQualityJobDefinition"]:
@@ -8118,7 +8119,7 @@ class DeviceFleet(Base):
         output_config: EdgeOutputConfig,
         role_arn: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         enable_iot_role_alias: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -8523,7 +8524,7 @@ class DeviceFleet(Base):
     def register_devices(
         self,
         devices: List[Device],
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -8758,7 +8759,7 @@ class Domain(Base):
         domain_settings: Optional[DomainSettings] = Unassigned(),
         subnet_ids: Optional[List[StrPipeVar]] = Unassigned(),
         vpc_id: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         app_network_access_type: Optional[StrPipeVar] = Unassigned(),
         home_efs_file_system_kms_key_id: Optional[StrPipeVar] = Unassigned(),
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
@@ -9258,7 +9259,7 @@ class EdgeDeploymentPlan(Base):
         model_configs: List[EdgeDeploymentModelConfig],
         device_fleet_name: Union[StrPipeVar, object],
         stages: Optional[List[DeploymentStage]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EdgeDeploymentPlan"]:
@@ -9837,7 +9838,7 @@ class EdgePackagingJob(Base):
         role_arn: StrPipeVar,
         output_config: EdgeOutputConfig,
         resource_key: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EdgePackagingJob"]:
@@ -10261,7 +10262,7 @@ class Endpoint(Base):
         endpoint_name: StrPipeVar,
         endpoint_config_name: Union[StrPipeVar, object],
         deployment_config: Optional[DeploymentConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Endpoint"]:
@@ -11096,7 +11097,7 @@ class EndpointConfig(Base):
         endpoint_config_name: StrPipeVar,
         production_variants: List[ProductionVariant],
         data_capture_config: Optional[DataCaptureConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
         async_inference_config: Optional[AsyncInferenceConfig] = Unassigned(),
         explainer_config: Optional[ExplainerConfig] = Unassigned(),
@@ -11419,7 +11420,7 @@ class Experiment(Base):
         experiment_name: StrPipeVar,
         display_name: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Experiment"]:
@@ -11812,7 +11813,7 @@ class FeatureGroup(Base):
         throughput_config: Optional[ThroughputConfig] = Unassigned(),
         role_arn: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FeatureGroup"]:
@@ -12920,7 +12921,7 @@ class FlowDefinition(Base):
         human_loop_request_source: Optional[HumanLoopRequestSource] = Unassigned(),
         human_loop_activation_config: Optional[HumanLoopActivationConfig] = Unassigned(),
         human_loop_config: Optional[HumanLoopConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FlowDefinition"]:
@@ -13367,7 +13368,7 @@ class Hub(Base):
         hub_display_name: Optional[StrPipeVar] = Unassigned(),
         hub_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
         s3_storage_config: Optional[HubS3StorageConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Hub"]:
@@ -14131,7 +14132,7 @@ class HubContent(Base):
         hub_content_markdown: Optional[StrPipeVar] = Unassigned(),
         support_status: Optional[StrPipeVar] = Unassigned(),
         hub_content_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HubContent"]:
@@ -14414,7 +14415,7 @@ class HubContentReference(Base):
     hub_content_arn: StrPipeVar
     hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     min_version: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -14440,7 +14441,7 @@ class HubContentReference(Base):
         sage_maker_public_hub_content_arn: StrPipeVar,
         hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         min_version: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HubContentReference"]:
@@ -14627,7 +14628,7 @@ class HumanTaskUi(Base):
         cls,
         human_task_ui_name: StrPipeVar,
         ui_template: UiTemplate,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HumanTaskUi"]:
@@ -15089,7 +15090,7 @@ class HyperParameterTuningJob(Base):
             List[HyperParameterTrainingJobDefinition]
         ] = Unassigned(),
         warm_start_config: Optional[HyperParameterTuningJobWarmStartConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         autotune: Optional[Autotune] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -15643,7 +15644,7 @@ class Image(Base):
         role_arn: StrPipeVar,
         description: Optional[StrPipeVar] = Unassigned(),
         display_name: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Image"]:
@@ -16693,7 +16694,7 @@ class InferenceComponent(Base):
         specification: Optional[InferenceComponentSpecification] = Unassigned(),
         specifications: Optional[List[InferenceComponentSpecification]] = Unassigned(),
         runtime_config: Optional[InferenceComponentRuntimeConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceComponent"]:
@@ -17273,7 +17274,7 @@ class InferenceExperiment(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         data_storage_config: Optional[InferenceExperimentDataStorageConfig] = Unassigned(),
         kms_key: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceExperiment"]:
@@ -17833,7 +17834,7 @@ class InferenceRecommendationsJob(Base):
         job_description: Optional[StrPipeVar] = Unassigned(),
         stopping_conditions: Optional[RecommendationJobStoppingConditions] = Unassigned(),
         output_config: Optional[RecommendationJobOutputConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceRecommendationsJob"]:
@@ -18327,7 +18328,7 @@ class Job(Base):
     secondary_status: Optional[StrPipeVar] = Unassigned()
     secondary_status_transitions: Optional[List[JobSecondaryStatusTransition]] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -18368,7 +18369,7 @@ class Job(Base):
         job_category: StrPipeVar,
         job_config_schema_version: StrPipeVar,
         job_config_document: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Job"]:
@@ -18840,7 +18841,7 @@ class LabelingJob(Base):
     stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned()
     labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned()
     human_task_config: Optional[HumanTaskConfig] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
     labeling_job_output: Optional[LabelingJobOutput] = Unassigned()
 
     def get_name(self) -> str:
@@ -18907,7 +18908,7 @@ class LabelingJob(Base):
         label_category_config_s3_uri: Optional[StrPipeVar] = Unassigned(),
         stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned(),
         labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["LabelingJob"]:
@@ -19569,7 +19570,7 @@ class MlflowApp(Base):
         weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
         account_default_status: Optional[StrPipeVar] = Unassigned(),
         default_domain_id_list: Optional[List[StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MlflowApp"]:
@@ -20116,7 +20117,7 @@ class MlflowTrackingServer(Base):
         mlflow_version: Optional[StrPipeVar] = Unassigned(),
         automatic_model_registration: Optional[bool] = Unassigned(),
         weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         s3_bucket_owner_account_id: Optional[StrPipeVar] = Unassigned(),
         s3_bucket_owner_verification: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
@@ -20739,7 +20740,7 @@ class Model(Base):
         containers: Optional[List[ContainerDefinition]] = Unassigned(),
         inference_execution_config: Optional[InferenceExecutionConfig] = Unassigned(),
         execution_role_arn: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
@@ -21149,7 +21150,7 @@ class ModelBiasJobDefinition(Base):
         model_bias_baseline_config: Optional[ModelBiasBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelBiasJobDefinition"]:
@@ -21490,7 +21491,7 @@ class ModelCard(Base):
         content: StrPipeVar,
         model_card_status: StrPipeVar,
         security_config: Optional[ModelCardSecurityConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelCard"]:
@@ -22389,7 +22390,7 @@ class ModelExplainabilityJobDefinition(Base):
         ] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelExplainabilityJobDefinition"]:
@@ -22819,7 +22820,7 @@ class ModelPackage(Base):
         validation_specification: Optional[ModelPackageValidationSpecification] = Unassigned(),
         source_algorithm_specification: Optional[SourceAlgorithmSpecification] = Unassigned(),
         certify_for_marketplace: Optional[bool] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         model_approval_status: Optional[StrPipeVar] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         model_metrics: Optional[ModelMetrics] = Unassigned(),
@@ -23431,7 +23432,7 @@ class ModelPackageGroup(Base):
         cls,
         model_package_group_name: StrPipeVar,
         model_package_group_description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         managed_configuration: Optional[ManagedConfiguration] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -24032,7 +24033,7 @@ class ModelQualityJobDefinition(Base):
         model_quality_baseline_config: Optional[ModelQualityBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelQualityJobDefinition"]:
@@ -24747,7 +24748,7 @@ class MonitoringSchedule(Base):
         cls,
         monitoring_schedule_name: StrPipeVar,
         monitoring_schedule_config: MonitoringScheduleConfig,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MonitoringSchedule"]:
@@ -25298,7 +25299,7 @@ class NotebookInstance(Base):
         security_group_ids: Optional[List[StrPipeVar]] = Unassigned(),
         ip_address_type: Optional[StrPipeVar] = Unassigned(),
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         lifecycle_config_name: Optional[StrPipeVar] = Unassigned(),
         direct_internet_access: Optional[StrPipeVar] = Unassigned(),
         volume_size_in_gb: Optional[int] = Unassigned(),
@@ -25931,7 +25932,7 @@ class NotebookInstanceLifecycleConfig(Base):
         notebook_instance_lifecycle_config_name: StrPipeVar,
         on_create: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned(),
         on_start: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["NotebookInstanceLifecycleConfig"]:
@@ -26337,7 +26338,7 @@ class OptimizationJob(Base):
         stopping_condition: StoppingCondition,
         max_instance_count: Optional[int] = Unassigned(),
         optimization_environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         vpc_config: Optional[OptimizationVpcConfig] = Unassigned(),
         training_plan_arns: Optional[List[StrPipeVar]] = Unassigned(),
         session: Optional[Session] = None,
@@ -26812,7 +26813,7 @@ class PartnerApp(Base):
         enable_iam_session_based_identity: Optional[bool] = Unassigned(),
         enable_auto_minor_version_upgrade: Optional[bool] = Unassigned(),
         client_token: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["PartnerApp"]:
@@ -26999,7 +27000,7 @@ class PartnerApp(Base):
         enable_auto_minor_version_upgrade: Optional[bool] = Unassigned(),
         app_version: Optional[StrPipeVar] = Unassigned(),
         client_token: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
     ) -> Optional["PartnerApp"]:
         """
         Update a PartnerApp resource
@@ -27421,7 +27422,7 @@ class Pipeline(Base):
         pipeline_definition: Optional[StrPipeVar] = Unassigned(),
         pipeline_definition_s3_location: Optional[PipelineDefinitionS3Location] = Unassigned(),
         pipeline_description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -29052,7 +29053,7 @@ class ProcessingJob(Base):
         stopping_condition: Optional[ProcessingStoppingCondition] = Unassigned(),
         environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         network_config: Optional[NetworkConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -29507,7 +29508,7 @@ class Project(Base):
         service_catalog_provisioning_details: Optional[
             ServiceCatalogProvisioningDetails
         ] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         template_providers: Optional[List[CreateTemplateProvider]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -29665,7 +29666,7 @@ class Project(Base):
         service_catalog_provisioning_update_details: Optional[
             ServiceCatalogProvisioningUpdateDetails
         ] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         template_providers_to_update: Optional[List[UpdateTemplateProvider]] = Unassigned(),
     ) -> Optional["Project"]:
         """
@@ -30153,7 +30154,7 @@ class Space(Base):
         cls,
         domain_id: StrPipeVar,
         space_name: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         space_settings: Optional[SpaceSettings] = Unassigned(),
         ownership_settings: Optional[OwnershipSettings] = Unassigned(),
         space_sharing_settings: Optional[SpaceSharingSettings] = Unassigned(),
@@ -30644,7 +30645,7 @@ class StudioLifecycleConfig(Base):
         studio_lifecycle_config_name: StrPipeVar,
         studio_lifecycle_config_content: StrPipeVar,
         studio_lifecycle_config_app_type: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["StudioLifecycleConfig"]:
@@ -31173,7 +31174,7 @@ class Tag(Base):
     def add_tags(
         cls,
         resource_arn: StrPipeVar,
-        tags: List[Tag],
+        tags: List[shapes.Tag],
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -31429,7 +31430,7 @@ class TrainingJob(Base):
         resource_config: Optional[ResourceConfig] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         stopping_condition: Optional[StoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
         enable_inter_container_traffic_encryption: Optional[bool] = Unassigned(),
         enable_managed_spot_training: Optional[bool] = Unassigned(),
@@ -32094,7 +32095,7 @@ class TrainingPlan(Base):
         training_plan_name: StrPipeVar,
         training_plan_offering_id: StrPipeVar,
         spare_instance_count_per_ultra_server: Optional[int] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingPlan"]:
@@ -32435,7 +32436,7 @@ class TrainingSession(Base):
         output_config: TrainingSessionOutputConfig,
         model_package_group_arn: Optional[StrPipeVar] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingSession"]:
@@ -32907,7 +32908,7 @@ class TransformJob(Base):
         environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         data_capture_config: Optional[BatchDataCaptureConfig] = Unassigned(),
         data_processing: Optional[DataProcessing] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -33327,7 +33328,7 @@ class Trial(Base):
         experiment_name: Union[StrPipeVar, object],
         display_name: Optional[StrPipeVar] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Trial"]:
@@ -33704,7 +33705,7 @@ class TrialComponent(Base):
         input_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
         output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrialComponent"]:
@@ -34376,7 +34377,7 @@ class UserProfile(Base):
         user_profile_name: StrPipeVar,
         single_sign_on_user_identifier: Optional[StrPipeVar] = Unassigned(),
         single_sign_on_user_value: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         user_settings: Optional[UserSettings] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -34882,7 +34883,7 @@ class Workforce(Base):
         cognito_config: Optional[CognitoConfig] = Unassigned(),
         oidc_config: Optional[OidcConfig] = Unassigned(),
         source_ip_config: Optional[SourceIpConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         workforce_vpc_config: Optional[WorkforceVpcConfigRequest] = Unassigned(),
         ip_address_type: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
@@ -35343,7 +35344,7 @@ class Workteam(Base):
         workforce_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         notification_configuration: Optional[NotificationConfiguration] = Unassigned(),
         worker_access_configuration: Optional[WorkerAccessConfiguration] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Workteam"]:

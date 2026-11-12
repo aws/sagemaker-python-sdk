@@ -29,6 +29,7 @@ from sagemaker.core.tools.constants import (
     LOGGER_STRING,
     CONFIG_SCHEMA_FILE_NAME,
     PYTHON_TYPES_TO_BASIC_JSON_TYPES,
+    RESOURCE_SHADOWED_SHAPE_NAMES,
     CONFIGURABLE_ATTRIBUTE_SUBSTRINGS,
     RESOURCE_WITH_LOGS,
     DEFAULT_TIMEOUT_MESSAGE,
@@ -154,7 +155,7 @@ class ResourcesCodeGen:
 
         # Initialize the resources and shapes extractors
         self.resources_extractor = ResourcesExtractor()
-        self.shapes_extractor = ShapesExtractor()
+        self.shapes_extractor = ShapesExtractor(qualified_shape_names=RESOURCE_SHADOWED_SHAPE_NAMES)
 
         # Extract the resources plan and shapes DAG
         self.resources_plan = self.resources_extractor.get_resource_plan()
@@ -196,6 +197,9 @@ class ResourcesCodeGen:
             "from rich.status import Status",
             "from rich.style import Style",
             "from sagemaker.core.shapes import *",
+            # Qualified access for shape names a resource class shadows (see
+            # RESOURCE_SHADOWED_SHAPE_NAMES), e.g. ``shapes.Tag`` vs resource ``Tag``.
+            "from sagemaker.core import shapes",
             "from sagemaker.core.helper.pipeline_variable import StrPipeVar",
             "from sagemaker.core.utils.code_injection.codec import transform",
             "from sagemaker.core.utils.code_injection.constants import Color",
