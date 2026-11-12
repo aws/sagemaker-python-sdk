@@ -99,7 +99,7 @@ def _make_source_code(entry_script="train.py", source_dir=None):
     sc.entry_script = entry_script
     sc.source_dir = source_dir
     sc.model_dump.return_value = {"entry_script": entry_script, "source_dir": source_dir}
-    sc.ignore_patterns = [".git"]
+    sc.ignore_patterns = [".git", ".DS_Store"]
     return sc
 
 
@@ -315,6 +315,37 @@ class TestBuildDriverAndCodeChannels:
         HyperparameterTuner._build_driver_and_code_channels(trainer)
 
         assert mock_s3_client.upload_file.call_args.kwargs["ExtraArgs"] is None
+
+    @patch("tarfile.open")
+    def test_ignores_file_in_sourcedir(self, mock_tarfile_open, tmp_path):
+        """Should ignore specified directories and files in a local source_dir."""
+        src_dir = str(tmp_path)
+        git_subdir = src_dir + "/.git"
+        package_subdir = src_dir + "/test_package"
+        os.makedirs(git_subdir)
+        os.makedirs(package_subdir)
+        train_file = os.path.join(src_dir, "train.py")
+        package_file = os.path.join(package_subdir, "__init__.py")
+        with open(train_file, "w") as f:
+            f.write("print('hello')")
+        with open(package_file, "w") as f:
+            f.write("")
+        with open(os.path.join(src_dir, ".DS_Store"), "w") as f:
+            f.write("A file to ignore")
+        with open(os.path.join(git_subdir, "description"), "w") as f:
+            f.write("A repository with a .git directory to ignore")
+
+        source_code = _make_source_code(source_dir=src_dir)
+        trainer = _mock_model_trainer(source_code=source_code)
+
+        mock_tarfile_add = MagicMock()
+        mock_tarfile_open.return_value.__enter__.return_value.add = mock_tarfile_add
+
+        HyperparameterTuner._build_driver_and_code_channels(trainer)
+        # the .DS_Store file and .git directory should be excluded from the sourcedir tarfile
+        mock_tarfile_add.assert_any_call(train_file, arcname="train.py")
+        mock_tarfile_add.assert_any_call(package_file, arcname="test_package/__init__.py")
+        assert len(mock_tarfile_add.mock_calls) == 2, "tarfile should contain only two files"
 
     def test_sets_submit_directory_for_s3_source_dir(self, tmp_path):
         """Should set sagemaker_submit_directory directly when source_dir is an S3 URI."""
