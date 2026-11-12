@@ -256,6 +256,7 @@ class TestDeployForwardsCapacityReservation(unittest.TestCase):
 
     @patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None)
     @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_does_ic_exist", return_value=False)
     @patch.object(ModelBuilder, "_deploy_for_ic", return_value=Mock(spec=Endpoint))
     def test_deployables_ic_path_forwards_config(self, mock_deploy_for_ic, *_):
         config = _plan_config()
@@ -280,6 +281,7 @@ class TestDeployForwardsCapacityReservation(unittest.TestCase):
 
     @patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None)
     @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_does_ic_exist", return_value=False)
     @patch.object(ModelBuilder, "_deploy_for_ic", return_value=Mock(spec=Endpoint))
     def test_orchestrator_after_components_does_not_get_config(self, mock_deploy_for_ic, *_):
         config = _plan_config()
@@ -335,6 +337,105 @@ class TestDeployForwardsCapacityReservation(unittest.TestCase):
         builder.deploy(endpoint_name="multi-ic-endpoint", instance_type="ml.p5.48xlarge")
 
         assert "capacity_reservation_config" not in mock_deploy_for_ic.call_args.kwargs
+
+    @patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None)
+    @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_deploy_for_ic", return_value=Mock(spec=Endpoint))
+    def test_existing_first_component_does_not_consume_config(self, mock_deploy_for_ic, *_):
+        config = _plan_config()
+        builder = self._builder()
+        builder._deployables = {
+            "InferenceComponents": [
+                {"Name": "existing-ic", "ResourceRequirements": Mock(), "Model": Mock()},
+                {"Name": "new-ic", "ResourceRequirements": Mock(), "Model": Mock()},
+            ]
+        }
+
+        with patch.object(
+            ModelBuilder, "_does_ic_exist", side_effect=lambda name: name == "existing-ic"
+        ):
+            builder.deploy(
+                endpoint_name="multi-ic-endpoint",
+                instance_type="ml.p5.48xlarge",
+                capacity_reservation_config=config,
+            )
+
+        existing_call, new_call = mock_deploy_for_ic.call_args_list
+        assert "capacity_reservation_config" not in existing_call.kwargs
+        assert new_call.kwargs["capacity_reservation_config"] is config
+
+    @patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None)
+    @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_does_ic_exist", return_value=True)
+    @patch.object(ModelBuilder, "_deploy_for_ic", return_value=Mock(spec=Endpoint))
+    def test_all_components_existing_warns_config_ignored(self, mock_deploy_for_ic, *_):
+        builder = self._builder()
+        builder._deployables = {
+            "InferenceComponents": [
+                {"Name": "existing-ic", "ResourceRequirements": Mock(), "Model": Mock()}
+            ]
+        }
+
+        with self.assertLogs("sagemaker", level=logging.WARNING) as logs:
+            builder.deploy(
+                endpoint_name="multi-ic-endpoint",
+                instance_type="ml.p5.48xlarge",
+                capacity_reservation_config=_plan_config(),
+            )
+
+        assert "capacity_reservation_config" not in mock_deploy_for_ic.call_args.kwargs
+        assert any("every inference component already exists" in line for line in logs.output)
+
+    def _reuse_candidate(self, variant):
+        client = self.mock_session.sagemaker_client
+        client.describe_endpoint.return_value = {"EndpointConfigName": "cfg"}
+        client.describe_endpoint_config.return_value = {"ProductionVariants": [variant]}
+        client.describe_model.return_value = {
+            "PrimaryContainer": {"Environment": {}, "Image": "img"}
+        }
+
+    @patch(
+        "sagemaker.serve.model_builder.find_existing_sagemaker_endpoint",
+        return_value="arn:aws:sagemaker:us-west-2:123456789012:endpoint/existing-endpoint",
+    )
+    @patch.object(ModelBuilder, "_resolve_model_source_id", return_value="model-source")
+    @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_deploy", return_value=Mock(spec=Endpoint))
+    def test_deploy_reuse_skips_on_demand_endpoint_for_reservation_request(self, mock_deploy, *_):
+        self._reuse_candidate({"ModelName": "m", "InstanceType": "ml.p5.48xlarge"})
+
+        self._builder().deploy(
+            instance_type="ml.p5.48xlarge",
+            reuse_resources=True,
+            capacity_reservation_config=_plan_config(),
+        )
+
+        mock_deploy.assert_called_once()
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get", return_value=Mock(spec=Endpoint))
+    @patch(
+        "sagemaker.serve.model_builder.find_existing_sagemaker_endpoint",
+        return_value="arn:aws:sagemaker:us-west-2:123456789012:endpoint/existing-endpoint",
+    )
+    @patch.object(ModelBuilder, "_resolve_model_source_id", return_value="model-source")
+    @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_deploy", return_value=Mock(spec=Endpoint))
+    def test_deploy_reuses_endpoint_on_same_reservation(self, mock_deploy, *_):
+        self._reuse_candidate(
+            {
+                "ModelName": "m",
+                "InstanceType": "ml.p5.48xlarge",
+                "CapacityReservationConfig": EXPECTED_REQUEST,
+            }
+        )
+
+        self._builder().deploy(
+            instance_type="ml.p5.48xlarge",
+            reuse_resources=True,
+            capacity_reservation_config={"MlReservationArn": PLAN_ARN},
+        )
+
+        mock_deploy.assert_not_called()
 
     @patch.object(ModelBuilder, "_deploy")
     def test_deploy_rejects_invalid_config_up_front(self, mock_deploy):
@@ -404,6 +505,23 @@ class TestReuseMatchesCapacityReservation:
         assert (
             builder._reused_endpoint_matches_config(
                 "ep", instance_type="ml.p5.48xlarge", capacity_reservation_config=_plan_config()
+            )
+            is True
+        )
+
+    def test_arn_only_request_matches_endpoint_with_a_preference(self):
+        builder = self._builder(
+            {
+                "ModelName": "m",
+                "InstanceType": "ml.p5.48xlarge",
+                "CapacityReservationConfig": EXPECTED_REQUEST,
+            }
+        )
+        assert (
+            builder._reused_endpoint_matches_config(
+                "ep",
+                instance_type="ml.p5.48xlarge",
+                capacity_reservation_config={"MlReservationArn": PLAN_ARN},
             )
             is True
         )
@@ -500,3 +618,111 @@ class TestModelCustomizationExistingEndpoint(unittest.TestCase):
 
         assert any("endpoint existing-endpoint already exists" in line for line in logs.output)
         mock_config_create.assert_not_called()
+
+
+class TestModelCustomizationVariantsGetCapacityReservation(unittest.TestCase):
+    def _builder(self, model_package=None):
+        builder = ModelBuilder.__new__(ModelBuilder)
+        builder._is_nova_model = Mock(return_value=False)
+        builder._fetch_model_package = Mock(return_value=model_package)
+        builder._fetch_peft = Mock(return_value=None)
+        builder._prepare_reused_model_customization_deployment_state = Mock()
+        builder._cached_compute_requirements = Mock()
+        builder.built_model = Mock(enable_network_isolation=False, model_name="custom-model")
+        builder._enable_network_isolation = False
+        builder._does_endpoint_exist = Mock(return_value=False)
+        builder.instance_type = "ml.p5.48xlarge"
+        builder.role_arn = ROLE_ARN
+        builder._tags = None
+        return builder
+
+    @staticmethod
+    def _variant(mock_config_create):
+        return mock_config_create.call_args.kwargs["production_variants"][0]
+
+    # Endpoint.create raises "stop" right after EndpointConfig.create, which is what's under test.
+    @patch("sagemaker.serve.model_builder.Endpoint.create", side_effect=RuntimeError("stop"))
+    @patch("sagemaker.serve.model_builder.EndpointConfig.create")
+    def test_new_endpoint_variant_gets_config(self, mock_config_create, _):
+        with pytest.raises(RuntimeError, match="stop"):
+            self._builder()._deploy_model_customization(
+                endpoint_name="custom-endpoint", capacity_reservation_config=_plan_config()
+            )
+
+        assert (
+            self._variant(mock_config_create).capacity_reservation_config.ml_reservation_arn
+            == PLAN_ARN
+        )
+
+    @patch(
+        "sagemaker.serve.utils.model_package_utils.is_restricted_model_package", return_value=True
+    )
+    @patch("sagemaker.serve.model_builder.Endpoint.create", side_effect=RuntimeError("stop"))
+    @patch("sagemaker.serve.model_builder.EndpointConfig.create")
+    def test_restricted_model_package_variant_gets_config(self, mock_config_create, *_):
+        with pytest.raises(RuntimeError, match="stop"):
+            self._builder(model_package=Mock())._deploy_model_customization(
+                endpoint_name="custom-endpoint", capacity_reservation_config=_plan_config()
+            )
+
+        variant = self._variant(mock_config_create)
+        assert variant.model_name == "custom-model"
+        assert variant.capacity_reservation_config.ml_reservation_arn == PLAN_ARN
+
+    def test_nova_model_is_handed_the_config(self):
+        builder = self._builder()
+        builder._is_nova_model = Mock(return_value=True)
+        builder._deploy_nova_model = Mock(return_value=Mock(spec=Endpoint))
+
+        builder._deploy_model_customization(
+            endpoint_name="nova-endpoint", capacity_reservation_config=_plan_config()
+        )
+
+        shape = builder._deploy_nova_model.call_args.kwargs["capacity_reservation_config"]
+        assert shape.ml_reservation_arn == PLAN_ARN
+
+
+class TestRecommendationDeployCapacityReservation:
+    @patch(
+        "sagemaker.serve.model_builder.resolve_and_validate_role",
+        return_value="arn:aws:iam::123456789012:role/ambient-execution-role",
+    )
+    def test_recommendation_variant_gets_config(self, _):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        session = MagicMock()
+        session.sagemaker_config = {}
+        builder = ModelBuilder(sagemaker_session=session)
+        builder.role_arn = ROLE_ARN
+        builder._recommendation_job = SimpleNamespace(
+            recommendations=[
+                SimpleNamespace(
+                    model_details=SimpleNamespace(
+                        model_package_arn="arn:aws:sagemaker:us-west-2:1:model-package/p/1",
+                        inference_specification_name="A",
+                    ),
+                    deployment_configuration=SimpleNamespace(
+                        instance_type="ml.p5.48xlarge", instance_count=1, copy_count_per_instance=1
+                    ),
+                    expected_performance=[],
+                )
+            ],
+            ai_recommendation_job_status="Completed",
+        )
+        session.sagemaker_client.describe_model_package.return_value = {
+            "ModelApprovalStatus": "Approved",
+            "InferenceSpecification": {"Containers": [{"Image": "123.dkr.ecr/x:1"}]},
+        }
+
+        with patch("sagemaker.core.resources.Model.create"), patch(
+            "sagemaker.serve.model_builder.EndpointConfig.create"
+        ) as mock_config_create, patch(
+            "sagemaker.serve.model_builder.Endpoint.create", return_value=MagicMock()
+        ):
+            builder.deploy(
+                endpoint_name="rec-endpoint", wait=False, capacity_reservation_config=_plan_config()
+            )
+
+        variant = mock_config_create.call_args.kwargs["production_variants"][0]
+        assert variant.capacity_reservation_config.ml_reservation_arn == PLAN_ARN

@@ -2636,9 +2636,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             )
             if requested_reservation:
                 existing_reservation = variant.get("CapacityReservationConfig") or {}
+                # Compare only the keys the request sets: an ARN-only request matches an
+                # endpoint on that reservation whatever its preference.
                 if any(
-                    existing_reservation.get(key) != requested_reservation.get(key)
-                    for key in ("MlReservationArn", "CapacityReservationPreference")
+                    existing_reservation.get(key) != value
+                    for key, value in requested_reservation.items()
                 ):
                     return False
             model_name = variant.get("ModelName")
@@ -6508,9 +6510,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if hasattr(self, "_deployables") and self._deployables:
             endpoints = []
-            # The reservation belongs to the endpoint, which the first deploy call creates.
-            # Later calls add components to that endpoint, so they don't get the config
-            # (they would otherwise warn that it is ignored).
+            # The reservation belongs to the endpoint, which only a new component's deploy can
+            # create. Pass the config to the first component that doesn't exist yet; existing
+            # components are updated in place and later ones join that endpoint.
             pending_capacity_kwargs = {}
             if kwargs.get("capacity_reservation_config") is not None:
                 pending_capacity_kwargs["capacity_reservation_config"] = kwargs[
@@ -6520,13 +6522,26 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 k: v for k, v in kwargs.items() if k != "capacity_reservation_config"
             }
             for ic in self._deployables.get("InferenceComponents", []):
+                creates_component = bool(pending_capacity_kwargs) and not self._does_ic_exist(
+                    ic.get("Name")
+                )
                 endpoints.append(
                     self._deploy_for_ic(
-                        ic_data=ic, endpoint_name=endpoint_name, **pending_capacity_kwargs
+                        ic_data=ic,
+                        endpoint_name=endpoint_name,
+                        **(pending_capacity_kwargs if creates_component else {}),
                     )
                 )
-                pending_capacity_kwargs = {}
-            # The orchestrator only creates the endpoint when no component came first.
+                if creates_component:
+                    pending_capacity_kwargs = {}
+            if pending_capacity_kwargs and not self._deployables.get("CustomOrchestrator"):
+                logger.warning(
+                    "capacity_reservation_config is ignored because every inference component "
+                    "already exists on endpoint %s; capacity is reserved when the endpoint is "
+                    "created.",
+                    endpoint_name,
+                )
+            # The orchestrator gets the config only if no component created the endpoint.
             orchestrator_kwargs.update(pending_capacity_kwargs)
 
             # Handle custom orchestrator if present
