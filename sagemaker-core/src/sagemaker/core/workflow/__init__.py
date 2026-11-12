@@ -67,6 +67,13 @@ from sagemaker.core.workflow.functions import (  # noqa: E402
     JsonGet,
 )
 
+# Conditional argument expressions
+from sagemaker.core.workflow.conditional_expressions import (  # noqa: E402
+    ElseIf,
+    If,
+    Omit,
+)
+
 # Parameters
 from sagemaker.core.workflow.parameters import (  # noqa: E402
     Parameter,
@@ -123,6 +130,10 @@ __all__ = [
     # Functions (primitives)
     "Join",
     "JsonGet",
+    # Conditional argument expressions
+    "ElseIf",
+    "If",
+    "Omit",
     # Parameters (primitives)
     "Parameter",
     "ParameterBoolean",
