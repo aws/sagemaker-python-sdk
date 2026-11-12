@@ -343,8 +343,10 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
     resume_job=None,
     endpoint=None,
     option_fields=(),
+    wait=True,
+    before_submit=None,
 ):
-    """Create the labeling job and wait for it; the job record.
+    """Create the labeling job (and, by default, wait for it); the job record.
 
     Use it for every labeling job once :func:`build_labeling_request` passed.
     ``on_submit({"job_name", "output_s3_uri", "dataset_name"})`` is called *before*
@@ -352,6 +354,10 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
     as ``resume_job``: a Completed job is read instead of resubmitted, a running one is
     waited on, and only a Failed, Stopped or unknown job is submitted again. Never call it
     twice for the same round without ``resume_job``: that is how duplicate jobs happen.
+    With ``wait=False`` it returns as soon as the job is submitted, or, on a re-attach, as
+    soon as it has described a job that is still running: ``job_status`` is then the job's
+    current status (``InProgress``), its DataSet ARNs may still be ``None``, and the caller
+    calls it again with the same ``resume_job`` to collect the finished job.
     It tags the process as the SageMaker agent plugin (telemetry attribution) before the
     first service call.
 
@@ -376,6 +382,10 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
         endpoint: The control-plane endpoint, named in a HALT message.
         option_fields: The opt-in request fields sent, so a refusal naming one is an
             :class:`OptionRefused`.
+        wait: ``True`` (the default) waits until the job ends; ``False`` returns once the
+            job is submitted, or described as still running on a re-attach.
+        before_submit: Called with no arguments once a new job is to be submitted (not on
+            a re-attach), before ``on_submit``; the caller uploads the job's inputs there.
 
     Returns:
         ``{"job_name", "job_arn", "job_status", "dataset_arn", "review_dataset_arn",
@@ -397,6 +407,9 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
         job = _describe_job(session, name)
         status = (job or {}).get("JobStatus")
         if job is not None and status not in _JOB_DEAD:
+            if status != _JOB_DONE and not wait:
+                _log.info("SDG job %s from an earlier run is still %s", name, status)
+                return _job_record(job, name, output_s3_uri, reattached=True)
             if status != _JOB_DONE:
                 _log.warning(
                     "SDG job %s from an earlier run is still %s; waiting for it "
@@ -415,6 +428,8 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
             status or "not found",
         )
 
+    if before_submit is not None:
+        before_submit()
     job_name = job_name_for(base_job_name)
     if on_submit is not None:
         on_submit(
@@ -434,13 +449,14 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
     # rehydrates the DataSet, would fail on a job that succeeded: submit it without the
     # wait and poll it to a terminal state the way a re-attach does.
     review_only = bool(document["GenerationConfig"]["DatasetOptions"]["Config"].get("Review"))
+    sdk_wait = wait and not review_only
     for attempt in range(1, _MAX_SUBMIT_ATTEMPTS + 1):  # pragma: no branch - returns or raises
         try:
-            if review_only:
+            if sdk_wait:
+                ds = DataPreparer(**dp_kwargs).generate(cfg, job_name=job_name)
+            else:
                 DataPreparer(**dp_kwargs).generate(cfg, job_name=job_name, wait=False)
                 ds = None
-            else:
-                ds = DataPreparer(**dp_kwargs).generate(cfg, job_name=job_name)
             break
         except Exception as e:  # noqa: BLE001 - classify, re-raise if not transient
             ended = _job_ended_record(e, session, job_name, output_s3_uri)
@@ -471,9 +487,14 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
             waited += delay
             time.sleep(delay)
     job = (
-        _wait_for_job(session, job_name) if review_only else _describe_job(session, job_name)
+        _wait_for_job(session, job_name)
+        if (review_only and wait)
+        else _describe_job(session, job_name)
     ) or {}
     record = _job_record(job, job_name, output_s3_uri, reattached=False)
+    if not wait and record["job_status"] is None:
+        # CreateJob succeeded but DescribeJob has not caught up: the job is running.
+        record["job_status"] = "InProgress"
     # The SDK rehydrates the DataSet by name; its ARN is the fallback when DescribeJob
     # carries none.
     record["dataset_arn"] = record["dataset_arn"] or getattr(ds, "arn", None)

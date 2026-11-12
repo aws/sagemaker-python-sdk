@@ -223,10 +223,20 @@ class RoundPlan(OperatorResult):
         return out
 
 
+# DescribeJob's terminal job statuses; any other status is a job that is still running.
+_ENDED_JOB_STATUSES = ("Completed", "Failed", "Stopped")
+
+
 class SubmittedRound(OperatorResult):
     """The job :func:`submit_round` submitted or re-attached to: ``job`` is ``submit_labeling_job``'s record."""
 
     job: Dict[str, Any]
+
+    @property
+    def running(self) -> bool:
+        """Whether the job has not ended yet (only after ``submit_round(wait=False)``)."""
+        status = (self.job or {}).get("job_status")
+        return status is not None and status not in _ENDED_JOB_STATUSES
 
 
 class RoundOutputs(OperatorResult):
@@ -1126,15 +1136,29 @@ def _prepare(  # noqa: C901 pylint: disable=too-many-arguments,too-many-locals,t
             # The job reads remote gold as it is: the checks below (gold that is a demo,
             # fewer than 50 gold rows, rows with no text field or no id, and the scored
             # count after the run) need the rows on the client.
-            warnings.append(
-                f"NOTE: --eval is {'a DataSet' if ek == 'arn' else 'an s3:// object'}, so "
-                "the gold is not checked here (demos among the gold rows, fewer than "
-                f"{backend.MIN_EVAL_ROWS} gold rows, rows with no text field or no id, "
-                "labels outside the label set). "
-                "The gold is seed-sized: to check it, download it with the hub_ops resolve action "
-                "(REF = <it>, OUT = <proj>/work/gold.jsonl, DOWNLOAD = True) and pass "
-                "that file."
-            )
+            if eref == input_ref:
+                # One file with labeled and unlabeled rows: the gold is the corpus itself,
+                # so it is never downloaded to check it.
+                warnings.append(
+                    "NOTE: --eval is the --input itself (one file with labeled and unlabeled "
+                    "rows). The job scores the rows that carry a gold value against their "
+                    "own labels, and those rows ship with the people's labels; it labels "
+                    "the rest; its summary then warns that the unlabeled rows had no gold "
+                    "value and were not scored, which is expected. This gold is the corpus: "
+                    "it is not checked here and is never downloaded to check it. Each row "
+                    "needs an id the file itself carries, so a gold row joins its own corpus "
+                    "row."
+                )
+            else:
+                warnings.append(
+                    f"NOTE: --eval is {'a DataSet' if ek == 'arn' else 'an s3:// object'}, so "
+                    "the gold is not checked here (demos among the gold rows, fewer than "
+                    f"{backend.MIN_EVAL_ROWS} gold rows, rows with no text field or no id, "
+                    "labels outside the label set). "
+                    "The gold is seed-sized: to check it, download it with the hub_ops resolve action "
+                    "(REF = <it>, OUT = <proj>/work/gold.jsonl, DOWNLOAD = True) and pass "
+                    "that file."
+                )
         else:
             try:
                 eval_rows = read_local_rows(eref, "evaluation_data")
@@ -1521,14 +1545,21 @@ def submit_round(  # pylint: disable=too-many-branches
     on_submit: Optional[Callable[[str], None]] = None,
     on_refused: Optional[Callable[[], None]] = None,
     endpoint: Optional[str] = None,
+    wait: bool = True,
 ) -> SubmittedRound:
     """Re-attach to the round's job, or upload its inputs and submit it.
 
     A run with an explicit run id whose ``plan.job_record_path`` holds a job record with
     the same request digest re-attaches to that job; a different digest is refused. A
     corpus run that is not a re-attach checks first that its DataSet names are free
-    (unless ``plan.append``). Then the spec, demos, gold and input are uploaded and the job
-    is submitted and waited on.
+    (unless ``plan.append``). A job that is submitted (not re-attached) first has its spec,
+    demos, gold and input uploaded; then it is waited on.
+
+    With ``wait=False`` it returns once the job is submitted, or once a re-attach finds the
+    job still running; :attr:`SubmittedRound.running` is then ``True``, and the caller ends
+    its turn and later calls it again under the same run id (``plan.explicit_run_id``) to
+    collect the job before :func:`read_round`. A re-attach reads the job's status from
+    ``DescribeJob``, never from the job record.
 
     Example::
 
@@ -1550,6 +1581,8 @@ def submit_round(  # pylint: disable=too-many-branches
             changed request.
         endpoint: The SageMaker endpoint override (``AWS_ENDPOINT_URL_SAGEMAKER``), named
             in a refusal.
+        wait: ``True`` (the default) waits until the job ends; ``False`` returns while it
+            runs (fire-and-forget).
 
     Returns:
         A :class:`SubmittedRound` with the job record.
@@ -1597,34 +1630,38 @@ def submit_round(  # pylint: disable=too-many-branches
                 "--review-dataset-name, or pass --append to add a version on purpose. "
                 "Nothing was uploaded or submitted."
             )
-    try:
-        job_client.upload_text(
-            plan.spec_text,
-            plan.spec_uri,
-            plan.region,
-            field="DatasetSpecification.SpecS3Uri (the spec)",
-            max_bytes=backend.MAX_SPEC_BYTES,
-        )
-        if plan.demos_uri:
+
+    def _upload():
+        # Only a new submission uploads: a re-attach's request digest already matched,
+        # so the same spec, demos, gold and input are at these URIs.
+        try:
             job_client.upload_text(
-                plan.demos_text,
-                plan.demos_uri,
+                plan.spec_text,
+                plan.spec_uri,
                 plan.region,
-                field="Demos (demos.jsonl)",
-                max_bytes=backend.MAX_DEMOS_BYTES,
+                field="DatasetSpecification.SpecS3Uri (the spec)",
+                max_bytes=backend.MAX_SPEC_BYTES,
             )
-        if plan.gold_text is not None:
-            job_client.upload_text(
-                plan.gold_text, plan.eval_uri, plan.region, field="EvaluationData"
-            )
-        if plan.input_rows_text is not None:
-            job_client.upload_text(
-                plan.input_rows_text, plan.input_s3, plan.region, field="InputDataS3Uri"
-            )
-        if plan.input_file is not None:
-            _s3.upload_file(plan.input_file, plan.input_s3, plan.region)
-    except backend.LabelingRequestError as e:
-        raise DataPreparerOperatorError(str(e)) from None
+            if plan.demos_uri:
+                job_client.upload_text(
+                    plan.demos_text,
+                    plan.demos_uri,
+                    plan.region,
+                    field="Demos (demos.jsonl)",
+                    max_bytes=backend.MAX_DEMOS_BYTES,
+                )
+            if plan.gold_text is not None:
+                job_client.upload_text(
+                    plan.gold_text, plan.eval_uri, plan.region, field="EvaluationData"
+                )
+            if plan.input_rows_text is not None:
+                job_client.upload_text(
+                    plan.input_rows_text, plan.input_s3, plan.region, field="InputDataS3Uri"
+                )
+            if plan.input_file is not None:
+                _s3.upload_file(plan.input_file, plan.input_s3, plan.region)
+        except backend.LabelingRequestError as e:
+            raise DataPreparerOperatorError(str(e)) from None
 
     def _on_submit(rec):
         rec = dict(
@@ -1647,6 +1684,8 @@ def submit_round(  # pylint: disable=too-many-branches
             resume_job=resume,
             endpoint=endpoint,
             option_fields=plan.option_fields,
+            wait=wait,
+            before_submit=_upload,
         )
     except (job_client.CreateJobRefused, job_client.LabelingBackendUnavailable) as e:
         # CreateJob made no job: the record on_submit wrote goes, so a rerun under the same
@@ -1713,8 +1752,15 @@ def read_round(  # noqa: C901 pylint: disable=too-many-locals,too-many-branches,
         ``round_summary(outputs, run_log_entry=<the artifact entry's id>)``.
 
     Raises:
-        DataPreparerOperatorError: The result could not be read, or names no labels.
+        DataPreparerOperatorError: The job is still running, or the result could not be
+            read, or names no labels.
     """
+    if job.get("job_status") is not None and job["job_status"] not in _ENDED_JOB_STATUSES:
+        raise DataPreparerOperatorError(
+            f"SDG labeling job {job.get('job_name')} is still {job.get('job_status')}; "
+            "nothing to read yet. Call submit_round again under the same run id to "
+            "re-attach (it submits nothing new), then read_round once the job has ended."
+        )
     warnings: List[str] = []
     texts: Dict[str, str] = {}
     copies: Dict[str, str] = {}

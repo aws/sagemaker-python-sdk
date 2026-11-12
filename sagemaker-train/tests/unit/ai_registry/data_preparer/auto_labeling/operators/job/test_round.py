@@ -163,6 +163,8 @@ class _Fake:
         self.submits.append(dict(kw, document=document))
         resume = kw.get("resume_job")
         name = resume["job_name"] if resume else f"{kw['base_job_name']}-{len(self.submits)}"
+        if not resume and kw.get("before_submit"):
+            kw["before_submit"]()
         if not resume and kw.get("on_submit"):
             kw["on_submit"](
                 {
@@ -328,6 +330,43 @@ def test_reattach_reads_the_job_already_submitted(proj, monkeypatch):
     monkeypatch.setattr(R, "default_run_id", lambda: "20250101T000000-abcdef12")
     plan = R.prepare_round(**proj.dev_kw(run_id=None))
     assert plan.run_id == "20250101T000000-abcdef12" and plan.explicit_run_id is False
+
+
+def test_fire_and_forget_submit_then_collect(proj, monkeypatch):
+    # wait=False returns while the job runs; read_round refuses it; a later submit_round
+    # under the same run id re-attaches (nothing re-uploaded or resubmitted) and reads.
+    fake = _Fake(job_status="InProgress").install(monkeypatch)
+    plan = R.prepare_round(**proj.dev_kw())
+    sub = R.submit_round(plan, wait=False, **_shim(plan))
+    assert sub.running and fake.submits[0]["wait"] is False
+    assert json.loads(Path(plan.job_record_path).read_text())["job_name"] == sub.job["job_name"]
+    with pytest.raises(DataPreparerOperatorError, match="still InProgress; nothing to read yet"):
+        R.read_round(plan, sub.job)
+    uploads = dict(fake.uploads)
+    fake.uploads.clear()
+    again = R.submit_round(R.prepare_round(**proj.dev_kw()), wait=False, **_shim(plan))
+    assert again.running and again.job["reattached"] and fake.uploads == {}
+    assert fake.submits[1]["resume_job"]["job_name"] == sub.job["job_name"]
+    fake.job_status = "Completed"
+    plan = R.prepare_round(**proj.dev_kw())
+    done = R.submit_round(plan, wait=False, **_shim(plan))
+    assert not done.running and fake.uploads == {} and len(fake.submits) == 3
+    assert set(uploads) >= {"DatasetSpecification.SpecS3Uri", "InputDataS3Uri"}
+    fake.uploads.update(uploads)  # the fake's read builds the labels from the first upload
+    outs = R.read_round(plan, done.job)
+    assert len(outs.texts[os.path.join(proj.root, "work", "dev_pred.jsonl")].splitlines()) == 8
+
+
+def test_submitted_round_running():
+    for status, running in (
+        ("InProgress", True),
+        ("Stopping", True),
+        ("Completed", False),
+        ("Failed", False),
+        ("Stopped", False),
+        (None, False),
+    ):
+        assert R.SubmittedRound(job={"job_status": status}).running is running
 
 
 # ---- the corpus run ----------------------------------------------------------------------------
@@ -619,6 +658,30 @@ def test_no_seed_confirmed_and_remote_gold(proj):
     assert any(w.startswith("NOTE: --eval is an s3:// object") for w in plan.warnings)
     plan = R.prepare_round(**proj.dev_kw(eval_data=_arn("gold")))
     assert plan.eval_arn == _arn("gold")
+
+
+def test_one_mixed_file_is_never_offered_for_download(proj, monkeypatch):
+    # --eval naming the --input object itself: the gold is the corpus, so the note says the
+    # job picks the rows with a gold value and never suggests downloading it.
+    from sagemaker.ai_registry.data_preparer.auto_labeling.operators.inspect import (
+        inputs as inspect_input,
+    )
+
+    uri = "s3://b/mixed.jsonl"
+    monkeypatch.setattr(
+        inspect_input,
+        "read_first_row",
+        lambda ref, region=None: ({"id": 0, "text": "t", "gt_label": "a"}, 40, 4000, ref),
+    )
+    plan = R.prepare_round(**proj.corpus_kw(input_data=uri, eval_data=uri, label_field="gt_label"))
+    assert plan.eval_uri == uri and plan.input_s3 == uri and plan.gold_text is None
+    (note,) = [w for w in plan.warnings if w.startswith("NOTE: --eval is")]
+    assert note.startswith("NOTE: --eval is the --input itself")
+    assert "DOWNLOAD" not in note and "never downloaded" in note
+    plan = R.prepare_round(
+        **proj.corpus_kw(input_data=uri, eval_data="s3://b/gold.jsonl", label_field="gt_label")
+    )
+    assert any("DOWNLOAD = True" in w for w in plan.warnings)
 
 
 # ---- the options -------------------------------------------------------------------------------

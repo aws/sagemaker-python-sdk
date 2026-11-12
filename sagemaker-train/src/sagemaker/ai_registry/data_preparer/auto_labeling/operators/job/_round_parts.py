@@ -151,6 +151,20 @@ _JOB_SUMMARY_KEYS = (
 def check_run_id(run_id):
     """The run id as a Hub-name fragment: letters, digits and single hyphens, at most 40.
 
+    Underscores become hyphens. Call it before a run id goes into a DataSet name.
+
+    Example::
+
+        from sagemaker.ai_registry.data_preparer.auto_labeling import check_run_id
+
+        check_run_id("iter_2")   # "iter-2"
+
+    Args:
+        run_id: The run id to check.
+
+    Returns:
+        The run id as it goes into a DataSet name.
+
     Raises:
         DataPreparerOperatorError: Other characters, or too long.
     """

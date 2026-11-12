@@ -50,6 +50,12 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.register im
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job._scratch import (  # noqa: F401
     scratch_cleanup,
 )
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job._run_context import (  # noqa: F401
+    run_context,
+)
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job._round_parts import (  # noqa: F401
+    check_run_id,
+)
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.dt_handoff import (  # noqa: F401
     dt_view,
 )
@@ -104,6 +110,8 @@ __all__ = [
     "latest_labeling_runs",
     "labeling_run_invocation",
     "labeling_run_for_output",
+    "run_context",
+    "check_run_id",
     # constants and exceptions
     "RoundRefused",
     "MAX_SPEC_BYTES",

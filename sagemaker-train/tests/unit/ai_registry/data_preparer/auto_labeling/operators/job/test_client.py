@@ -207,6 +207,65 @@ class TestSubmit:
         )
         assert stubbed.waits == [True]
 
+    def test_wait_false_returns_once_submitted(self, doc, stubbed):
+        # Fire-and-forget: the SDK's wait is skipped and the record carries the status
+        # DescribeJob reports right after CreateJob (InProgress when it has none yet).
+        for describe, status in (({"JobStatus": "InProgress", "JobArn": "a"}), "InProgress"), (
+            {},
+            "InProgress",
+        ):
+            stubbed.waits, stubbed.calls = [], []
+            sess = _FakeSession()
+            rec = J.submit_labeling_job(
+                doc,
+                region="us-west-2",
+                session=sess,
+                wait=False,
+                on_submit=lambda r, s=sess, d=describe: s.describe.__setitem__(r["job_name"], d),
+            )
+            assert stubbed.waits == [False] and len(stubbed.calls) == 1
+            assert (rec["job_status"], rec["dataset_arn"], rec["reattached"]) == (
+                status,
+                None,
+                False,
+            )
+
+    def test_wait_false_review_only_job_does_not_poll(self, doc, stubbed):
+        doc["GenerationConfig"]["DatasetOptions"]["Config"]["Review"] = {
+            "LabelField": "category",
+            "Scope": "seed",
+        }
+        sess = _FakeSession()
+        rec = J.submit_labeling_job(
+            doc,
+            region="us-west-2",
+            session=sess,
+            wait=False,
+            on_submit=lambda r: sess.describe.__setitem__(
+                r["job_name"], {"JobStatus": "InProgress"}
+            ),
+        )
+        assert stubbed.waits == [False] and len(sess.describes) == 1
+        assert rec["job_status"] == "InProgress"
+
+    def test_wait_false_reattach_reads_the_job_and_never_resubmits(self, doc, stubbed):
+        sess = _FakeSession({"j": {"JobStatus": "InProgress", "JobArn": "arn:j"}})
+        rec = J.submit_labeling_job(
+            doc, region="us-west-2", session=sess, resume_job={"job_name": "j"}, wait=False
+        )
+        assert stubbed.calls == [] and len(sess.describes) == 1
+        assert (rec["job_name"], rec["job_status"], rec["reattached"]) == ("j", "InProgress", True)
+        sess = _FakeSession(
+            {"j": {"JobStatus": "Completed", "JobArn": "arn:j", "DatasetArn": LABELED}}
+        )
+        rec = J.submit_labeling_job(
+            doc, region="us-west-2", session=sess, resume_job={"job_name": "j"}, wait=False
+        )
+        assert stubbed.calls == [] and (rec["job_status"], rec["dataset_arn"]) == (
+            "Completed",
+            LABELED,
+        )
+
     def test_job_name_is_pattern_valid_and_bounded(self):
         name = J.job_name_for("auto label/dev_round!" + "x" * 80)
         assert len(name) <= 63 and name != J.job_name_for("a")

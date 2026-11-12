@@ -192,5 +192,27 @@ def _prune_all_but(scope, keep_files):
 
 
 def run_context(explicit=None, env=None):
-    """A :class:`RunContext` from an explicit id or the ``RUN_ID`` environment variable."""
+    """A :class:`RunContext` from an explicit id or the ``RUN_ID`` environment variable.
+
+    The context names the run-scoped staging directory (``<base>/_sdg_work/<run_id>``) and
+    S3 prefix (``<base>run-<run_id>/``), and prunes old staging directories.
+
+    Example::
+
+        from sagemaker.ai_registry.data_preparer.auto_labeling import run_context
+
+        ctx = run_context("iter-2")
+        ctx.staging_dir("proj/work")              # proj/work/_sdg_work/iter-2
+        ctx.s3_prefix("s3://bucket/autolabel/")   # s3://bucket/autolabel/run-iter-2/
+        ctx.prune_old_scopes("proj/work", keep=10)
+
+    Args:
+        explicit: The run id; ``None`` reads ``RUN_ID`` from ``env`` (default
+            ``os.environ``). The id is sanitized for paths and S3 keys
+            (:func:`sanitize_run_id`).
+        env: The environment mapping to read ``RUN_ID`` from.
+
+    Returns:
+        A :class:`RunContext`.
+    """
     return RunContext(resolve_run_id(explicit, env))

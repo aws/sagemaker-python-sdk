@@ -158,6 +158,7 @@ Seed: what am I measuring against, and is it still trustworthy?
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.review_rows_from_side_file
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.review_path_of
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.spot_check_message
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed._bounds.calibration_sample_size
 .. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split.SplitGuardError
 .. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.labels.SeedAppendRefused
 .. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap.SeedMergeRefused
@@ -213,6 +214,8 @@ Job: run it and read it back
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.run_log.latest_labeling_runs
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.run_log.labeling_run_invocation
 .. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.run_log.labeling_run_for_output
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job._run_context.run_context
+.. autofunction:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job._round_parts.check_run_id
 .. autoexception:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.round.RoundRefused
 .. autodata:: sagemaker.ai_registry.data_preparer.auto_labeling.operators.MAX_SPEC_BYTES
    :annotation:

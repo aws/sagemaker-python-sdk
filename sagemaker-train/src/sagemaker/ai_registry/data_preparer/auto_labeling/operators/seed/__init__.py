@@ -73,6 +73,11 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.bootstrap 
     spot_check_message,
 )
 
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed._bounds import (  # noqa: F401
+    calibration_sample_size,
+    MIN_CALIBRATION_TARGET,
+)
+
 # The operators, then the helpers their callers need beside them, then the names a
 # caller catches or compares against.
 __all__ = [
@@ -112,7 +117,9 @@ __all__ = [
     "review_rows_from_side_file",
     "review_path_of",
     "spot_check_message",
+    "calibration_sample_size",
     # constants and exceptions
+    "MIN_CALIBRATION_TARGET",
     "SplitGuardError",
     "SeedAppendRefused",
     "SeedMergeRefused",
