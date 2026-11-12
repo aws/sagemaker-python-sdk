@@ -18,6 +18,7 @@ function or class is defined, so a bare ``Tag`` written above ``class Tag`` mean
 shape. Python 3.14 evaluates annotations lazily (PEP 649), so the same text resolves to
 the resource class and rejects shape instances (issue #6554).
 """
+
 import ast
 import inspect
 import typing
