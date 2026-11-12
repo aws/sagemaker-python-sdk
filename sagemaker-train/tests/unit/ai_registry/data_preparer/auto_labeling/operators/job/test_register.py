@@ -1023,3 +1023,179 @@ def test_view_versions_paginates_and_ignores_non_views(stub):
     assert _scratch._view_versions(_v(1)) == ([_v(3), _v(1)], [])
     assert _scratch._view_versions(LABELED) == ([], [])
     assert _scratch._version_key(_v(10)) == [0, 0, 10] and _scratch._version_key("x/1.a") == [1, 0]
+
+
+# ---------------------------------------------------------------------------
+# CSE SEC-A43A7972 — TOCTOU re-verify before the Hub append
+# ---------------------------------------------------------------------------
+
+
+class _VersionDriftSm(_FakeSm):
+    """Returns different HubContentVersion values on successive describe_hub_content calls.
+
+    The first call simulates the pre-check; the second simulates the concurrent
+    write that moves the version between the uploads and the import.
+    """
+
+    def __init__(self, description, prior_ver="2.0.0", drifted_ver="3.0.0"):
+        super().__init__(description=description, exists=True)
+        self._describe_calls = 0
+        self._prior_ver = prior_ver
+        self._drifted_ver = drifted_ver
+
+    def describe_hub_content(self, **kw):
+        self._describe_calls += 1
+        self.calls.append(("describe_hub_content", kw))
+        resp = {
+            "HubContentDocument": "{}",
+            "HubContentVersion": (
+                self._prior_ver if self._describe_calls == 1 else self._drifted_ver
+            ),
+        }
+        if self.description is not None:
+            resp["HubContentDescription"] = self.description
+        return resp
+
+
+def test_toctou_version_moved_skips_import(stub, labels, caplog):
+    """A version added between the pre-check and the import must block the import."""
+    desc = _desc()  # auto-labeled + correct lineage
+    sm = _VersionDriftSm(desc, prior_ver="2.0.0", drifted_ver="3.0.0")
+    stub(sm)
+    with caplog.at_level(logging.WARNING, logger=register.__name__):
+        res = register.register_labeled_output(
+            labels_path=labels,
+            name="support-tickets",
+            s3_prefix="s3://b/p",
+            region="us-west-2",
+            provenance={"source_arn": ARN},
+            label_set=["billing", "refund"],
+            allow_append=True,
+            run_id="RUN-TOCTOU",
+        )
+    # Hub import must NOT have been called.
+    assert not sm.imports()
+    # Result must signal failure.
+    assert res["hub_registered"] is False
+    assert "hub_error" in res
+    # Error message must mention the change.
+    assert "2.0.0" in res["hub_error"] and "3.0.0" in res["hub_error"]
+    # S3 bytes were already uploaded (per-run prefix, re-run is safe).
+    assert "labels_s3_uri" in res and "RUN-TOCTOU" in res["labels_s3_uri"]
+    # A warning must have been logged.
+    assert "labeled data is in S3" in caplog.text
+
+
+def test_toctou_verdict_flip_new_to_append_skips_import(stub, labels):
+    """A verdict flip (new → append, content appeared mid-flight) also blocks import."""
+    # First call: content does not exist → ("new", None).
+    # Second call (re-check): content now exists with auto-labeled description.
+    call_count = [0]
+
+    def _patched_guard(client, hub, content_name, source_arn, label_digest):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return "new", None
+        # Content appeared between the pre-check and the import.
+        return "append", "1.0.0"
+
+    sm, _ = stub(_FakeSm(exists=False))
+    import unittest.mock as _mock
+
+    with _mock.patch.object(register, "_append_guard", side_effect=_patched_guard):
+        res = register.register_labeled_output(
+            labels_path=labels,
+            name="x",
+            s3_prefix="s3://b/p",
+            region="us-west-2",
+            run_id="FLIP",
+        )
+    assert not sm.imports()
+    assert res["hub_registered"] is False
+    assert "hub_error" in res
+    assert call_count[0] == 2
+
+
+def test_toctou_version_unchanged_imports_normally(stub, labels):
+    """Happy path: when the version did not change, import proceeds as before."""
+    # Both describe_hub_content calls return the same version → no TOCTOU issue.
+    desc = _desc()
+    sm = _VersionDriftSm(desc, prior_ver="2.0.0", drifted_ver="2.0.0")  # no drift
+    stub(sm)
+    res = register.register_labeled_output(
+        labels_path=labels,
+        name="support-tickets",
+        s3_prefix="s3://b/p",
+        region="us-west-2",
+        provenance={"source_arn": ARN},
+        label_set=["billing", "refund"],
+        allow_append=True,
+        run_id="UNCHANGED",
+    )
+    assert res["hub_registered"] is True
+    # Exactly one import must have been called.
+    assert len(sm.imports()) == 1
+    assert "hub_error" not in res
+
+
+def test_toctou_recheck_raises_operator_error_becomes_hub_error(stub, labels, caplog):
+    """DataPreparerOperatorError from the re-check must not propagate; it becomes hub_error."""
+    call_count = [0]
+
+    def _patched_guard(client, hub, content_name, source_arn, label_digest):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return "new", None  # pre-check passes
+        # Re-check detects lineage mismatch.
+        raise DataPreparerOperatorError("lineage mismatch injected by test")
+
+    sm, _ = stub(_FakeSm(exists=False))
+    import unittest.mock as _mock
+
+    with caplog.at_level(logging.WARNING, logger=register.__name__):
+        with _mock.patch.object(register, "_append_guard", side_effect=_patched_guard):
+            res = register.register_labeled_output(
+                labels_path=labels,
+                name="x",
+                s3_prefix="s3://b/p",
+                region="us-west-2",
+                run_id="ERR",
+            )
+    # Must NOT have propagated as an exception.
+    assert res["hub_registered"] is False
+    assert "hub_error" in res
+    # The re-check exception must be reflected in the error message.
+    assert "re-verified" in res["hub_error"] or "lineage mismatch" in res["hub_error"]
+    # S3 bytes are still there.
+    assert "labels_s3_uri" in res and "ERR" in res["labels_s3_uri"]
+    # A warning must have been logged.
+    assert "labeled data is in S3" in caplog.text
+    assert call_count[0] == 2
+
+
+def test_toctou_recheck_raises_botocore_error_becomes_hub_error(stub, labels):
+    """Any exception type (not just DataPreparerOperatorError) from the re-check is converted."""
+    call_count = [0]
+    from botocore.exceptions import ClientError as BotoCE
+
+    def _patched_guard(client, hub, content_name, source_arn, label_digest):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return "new", None
+        raise BotoCE({"Error": {"Code": "Throttling", "Message": "rate exceeded"}}, "Op")
+
+    sm, _ = stub(_FakeSm(exists=False))
+    import unittest.mock as _mock
+
+    with _mock.patch.object(register, "_append_guard", side_effect=_patched_guard):
+        res = register.register_labeled_output(
+            labels_path=labels,
+            name="x",
+            s3_prefix="s3://b/p",
+            region="us-west-2",
+            run_id="BOTOERR",
+        )
+    assert res["hub_registered"] is False
+    assert "hub_error" in res
+    assert "labels_s3_uri" in res
+    assert call_count[0] == 2

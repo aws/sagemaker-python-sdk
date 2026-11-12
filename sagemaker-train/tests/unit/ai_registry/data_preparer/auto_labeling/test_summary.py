@@ -139,7 +139,7 @@ class TestFromDataset:
         # The DataSet is looked up by the name, version and hub its ARN names.
         args, kwargs = mock_hub.describe_hub_content.call_args
         assert args[:3] == ("DataSet", "tickets-labeled", "3.0.0")
-        assert kwargs["hub_name"] == "my-hub"
+        assert kwargs["hub_name"] == "arn:aws:sagemaker:us-west-2:123456789012:hub/my-hub"
         assert kwargs["session"] is session
 
     @patch("sagemaker.ai_registry.data_preparer.auto_labeling.summary.AIRHub")

@@ -38,6 +38,7 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.register im
     _not_found,
     _s3_from_document,
     _validate_hub_name,
+    hub_arn_from_dataset_arn,
     parse_dataset_arn,
 )
 
@@ -92,6 +93,12 @@ def promote_transform_output(*, from_arn, to_arn, region=None):  # pylint: disab
     """
     hub, name, version, arn_region = parse_dataset_arn(to_arn)
     f_hub, f_name, f_version, _r = parse_dataset_arn(from_arn)
+    # NOTE: f_hub is a bare HubName from parse_dataset_arn(from_arn); DescribeHubContent
+    # resolves it in the caller's account, so a cross-account SOURCE arn reads the wrong
+    # hub below.  `hub` comes from to_arn and names the local DESTINATION, so its bare
+    # form is correct -- do not "fix" it.  The source-side defect is fixed in
+    # resolve_dataset_ref and dt_view via hub_arn_from_dataset_arn; this one site is
+    # knowingly unaddressed pending the owning team's decision.
     if (f_hub, f_name) != (hub, _view_name(name)):
         raise DataPreparerOperatorError(
             f"{from_arn} is not a version of '{_view_name(name)}', the dt-view "
@@ -248,7 +255,10 @@ def dt_view(  # pylint: disable=too-many-locals,too-many-branches
         region = region or arn_region
         sm = register._sm_client(region)
         resp = sm.describe_hub_content(
-            HubName=hub, HubContentType="DataSet", HubContentName=name, **_version_kwargs(version)
+            HubName=hub_arn_from_dataset_arn(arn),
+            HubContentType="DataSet",
+            HubContentName=name,
+            **_version_kwargs(version),
         )
         doc = json.loads(resp.get("HubContentDocument") or "{}")
         pinned, source = resp.get("HubContentArn") or arn, _s3_from_document(doc)
@@ -331,6 +341,7 @@ def register_transform_output(*, from_arn, name, source_arn=None, region=None):
     """
     _validate_hub_name(name)
     hub, _n, version, arn_region = parse_dataset_arn(from_arn)
+    # NOTE: hub is a bare HubName; same cross-account caveat as promote_transform_output.
     region = region or arn_region
     sm = register._sm_client(region)
     src = sm.describe_hub_content(

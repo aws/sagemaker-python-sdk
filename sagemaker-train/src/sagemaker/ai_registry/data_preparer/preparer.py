@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from sagemaker.ai_registry.data_preparer._api_shape import DqShape
+from sagemaker.ai_registry.data_preparer._s3_session import _STREAM_CHUNK_BYTES, _s3_owner_kwargs
 from sagemaker.ai_registry.data_preparer.configs import DatasetJobConfig
 from sagemaker.ai_registry.data_preparer.constants import JobCategory
 from sagemaker.ai_registry.data_preparer.defaults import DataPreparerDefaults
@@ -44,7 +45,9 @@ from sagemaker.ai_registry.data_preparer.exceptions import (
     DataPreparerJobStoppedError,
     DataPreparerJobTimeoutError,
 )
-from sagemaker.core.jumpstart.hub.utils import get_info_from_hub_resource_arn
+from sagemaker.core.jumpstart.hub.utils import (
+    get_info_from_hub_resource_arn,
+)
 from sagemaker.core.shapes import Tag
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
@@ -57,13 +60,25 @@ logger = logging.getLogger(__name__)
 # treated as non-empty so completed jobs never trigger a large download.
 _EMPTY_CHECK_MAX_BYTES = 64 * 1024
 
+# Largest prefix fetched for the preview (a Range read so only this many bytes
+# are downloaded regardless of total file size). 1 MB is enough for 20 typical
+# JSONL records; _preview_output drops the partial last record when the read is
+# truncated, so the cap is always safe.
+_PREVIEW_MAX_BYTES = 1 * 1024 * 1024
+
 
 def _parse_dataset_arn(arn: str) -> Tuple[str, Optional[str], Optional[str]]:
-    """Split a hub-content DataSet ARN into ``(content_name, hub_name, version)``.
+    """Split a hub-content DataSet ARN into ``(content_name, hub_identifier, version)``.
 
     Delegates to sagemaker-core's shared hub-ARN parser rather than splitting on
     ``/`` here, so the accepted shape stays in one place:
     ``arn:{partition}:sagemaker:{region}:{account}:hub-content/{hub}/{type}/{name}/{version}``.
+
+    When the ARN parses cleanly as a hub-content ARN the hub is returned as a
+    **fully-qualified hub ARN** built from the ARN's own partition/region/account —
+    not a bare name. This ensures that a dataset ARN naming another account's hub
+    resolves against that account rather than silently falling back to a locally-
+    derived hub (which would produce ResourceNotFound or the wrong dataset).
 
     Anything that is not a well-formed hub-content ARN yields a best-effort name
     with ``(None, None)`` for hub and version, leaving the caller to fall back to
@@ -77,7 +92,15 @@ def _parse_dataset_arn(arn: str) -> Tuple[str, Optional[str], Optional[str]]:
         version = info.hub_content_version
         if not version or "/" in version:
             return info.hub_content_name, None, None
-        return info.hub_content_name, info.hub_name, version
+        # Build directly from the ARN's own partition/region/account; the shared
+        # helper construct_hub_arn_from_name derives the partition from the region
+        # via aws_partition(), which may not round-trip for a cross-partition ARN
+        # (e.g. aws-cn or aws-iso) where the region lookup could return the wrong
+        # partition.
+        hub_arn = (
+            f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub/{info.hub_name}"
+        )
+        return info.hub_content_name, hub_arn, version
 
     parts = arn.split("/")
     return (parts[-2] if len(parts) >= 2 else arn), None, None
@@ -236,6 +259,7 @@ class DataPreparer(BaseModel):
         wait: bool = True,
         logs: bool = False,
         sagemaker_session: Optional[Any] = None,
+        timeout: Optional[int] = None,
     ):
         """Re-attach to an existing Data Preparation job by ARN.
 
@@ -254,6 +278,9 @@ class DataPreparer(BaseModel):
                 when ``wait=True``.
             sagemaker_session: Optional SageMaker session. If not provided,
                 a default session is created.
+            timeout: Maximum seconds to wait before raising
+                ``DataPreparerJobTimeoutError``. Defaults to ``None`` (no
+                limit). Only applies when ``wait=True``.
 
         Returns:
             The result, depending on ``wait`` and the job state:
@@ -316,7 +343,7 @@ class DataPreparer(BaseModel):
             logger.info("Job '%s' already in terminal state: %s.", job_name, job.job_status)
         else:
             try:
-                job.wait(logs=logs)
+                job.wait(logs=logs, timeout=timeout)
             except Exception as e:
                 if "Timeout" in type(e).__name__ or "WaiterError" in type(e).__name__:
                     raise DataPreparerJobTimeoutError(
@@ -365,6 +392,7 @@ class DataPreparer(BaseModel):
         wait: bool = True,
         logs: bool = False,
         sagemaker_session: Optional[Any] = None,
+        timeout: Optional[int] = None,
     ):
         """Stop a running Data Preparation job.
 
@@ -391,6 +419,9 @@ class DataPreparer(BaseModel):
             sagemaker_session: Optional SageMaker session. Only used when
                 ``job_or_arn`` is an ARN; ignored when a live ``Job`` handle
                 is passed (the handle carries its own session).
+            timeout: Maximum seconds to wait before raising
+                ``DataPreparerJobTimeoutError``. Defaults to ``None`` (no
+                limit). Only applies when ``wait=True``.
 
         Returns:
             Job: The ``Job`` handle, refreshed with the latest state. With
@@ -448,7 +479,7 @@ class DataPreparer(BaseModel):
             return job
 
         try:
-            job.wait(logs=logs)
+            job.wait(logs=logs, timeout=timeout)
         except Exception as e:
             if "Timeout" in type(e).__name__ or "WaiterError" in type(e).__name__:
                 raise DataPreparerJobTimeoutError(
@@ -470,6 +501,7 @@ class DataPreparer(BaseModel):
         wait: bool = True,
         logs: bool = False,
         tags: Optional[List[Tag]] = None,
+        timeout: Optional[int] = None,
     ):
         """Submit a SyntheticDataGeneration job.
 
@@ -507,6 +539,9 @@ class DataPreparer(BaseModel):
             logs (bool): Whether to stream job logs while waiting. Requires
                 ``wait=True``. Defaults to ``False``.
             tags (Optional[List[Tag]]): Tags to apply to the job.
+            timeout (Optional[int]): Maximum seconds to wait before raising
+                ``DataPreparerJobTimeoutError``. Defaults to ``None`` (no
+                limit). Only applies when ``wait=True``.
 
         Returns:
             DataSet: With ``wait=True``, the output dataset containing the
@@ -533,6 +568,7 @@ class DataPreparer(BaseModel):
             wait=wait,
             logs=logs,
             tags=tags,
+            timeout=timeout,
         )
 
     @_telemetry_emitter(feature=Feature.DATA_PREPARATION, func_name="DataPreparer.evaluate")
@@ -545,6 +581,7 @@ class DataPreparer(BaseModel):
         wait: bool = True,
         logs: bool = False,
         tags: Optional[List[Tag]] = None,
+        timeout: Optional[int] = None,
     ):
         """Submit a DataQualityEvaluation job.
 
@@ -584,6 +621,9 @@ class DataPreparer(BaseModel):
             logs (bool): Whether to stream job logs while waiting. Requires
                 ``wait=True``. Defaults to ``False``.
             tags (Optional[List[Tag]]): Tags to apply to the job.
+            timeout (Optional[int]): Maximum seconds to wait before raising
+                ``DataPreparerJobTimeoutError``. Defaults to ``None`` (no
+                limit). Only applies when ``wait=True``.
 
         Returns:
             DataSet: With ``wait=True``, the input dataset rehydrated from the
@@ -611,6 +651,7 @@ class DataPreparer(BaseModel):
             wait=wait,
             logs=logs,
             tags=tags,
+            timeout=timeout,
         )
 
     @_telemetry_emitter(feature=Feature.DATA_PREPARATION, func_name="DataPreparer.transform")
@@ -623,6 +664,7 @@ class DataPreparer(BaseModel):
         wait: bool = True,
         logs: bool = False,
         tags: Optional[List[Tag]] = None,
+        timeout: Optional[int] = None,
     ):
         """Submit a DataTransformation job.
 
@@ -671,6 +713,9 @@ class DataPreparer(BaseModel):
             logs (bool): Whether to stream job logs while waiting. Requires
                 ``wait=True``. Defaults to ``False``.
             tags (Optional[List[Tag]]): Tags to apply to the job.
+            timeout (Optional[int]): Maximum seconds to wait before raising
+                ``DataPreparerJobTimeoutError``. Defaults to ``None`` (no
+                limit). Only applies when ``wait=True``.
 
         Returns:
             List[DataSet]: With ``wait=True``, the output datasets — one per
@@ -699,6 +744,7 @@ class DataPreparer(BaseModel):
             wait=wait,
             logs=logs,
             tags=tags,
+            timeout=timeout,
         )
 
     # Public dual-callable methods. Accept the same kwargs as
@@ -730,6 +776,8 @@ class DataPreparer(BaseModel):
         wait: bool = True,
         logs: bool = True,
         tags: Optional[List[Tag]] = None,
+        *,
+        timeout: Optional[int] = None,
     ):
         """Job-lifecycle orchestration."""
         # Category inference / mismatch check
@@ -788,7 +836,7 @@ class DataPreparer(BaseModel):
 
         if wait:
             try:
-                job.wait(logs=logs)
+                job.wait(logs=logs, timeout=timeout)
             except Exception as e:
                 if "Timeout" in type(e).__name__:
                     raise DataPreparerJobTimeoutError(
@@ -1069,14 +1117,20 @@ class DataPreparer(BaseModel):
             parsed = urlparse(records_uri)
             bucket, key = parsed.netloc, parsed.path.lstrip("/")
             s3 = boto3.client("s3", region_name=self.sagemaker_session.boto_region_name)
-            size = s3.head_object(Bucket=bucket, Key=key).get("ContentLength")
+            size = s3.head_object(
+                Bucket=bucket, Key=key, **_s3_owner_kwargs(self.sagemaker_session, bucket)
+            ).get("ContentLength")
             if size is None:
                 return None
             if size == 0:
                 return True
             if size > _EMPTY_CHECK_MAX_BYTES:
                 return False
-            body = s3.get_object(Bucket=bucket, Key=key)["Body"].read()
+            body = s3.get_object(
+                Bucket=bucket,
+                Key=key,
+                **_s3_owner_kwargs(self.sagemaker_session, bucket),
+            )["Body"].read()
             lines = [line for line in body.splitlines() if line.strip()]
             data_lines = lines[1:] if key.lower().endswith(".csv") else lines
             return not data_lines
@@ -1147,8 +1201,49 @@ class DataPreparer(BaseModel):
             key = parsed.path.lstrip("/")
 
             s3 = boto3.client("s3", region_name=self.sagemaker_session.boto_region_name)
-            obj = s3.get_object(Bucket=bucket, Key=key)
-            content = obj["Body"].read().decode("utf-8")
+            obj = s3.get_object(
+                Bucket=bucket,
+                Key=key,
+                Range=f"bytes=0-{_PREVIEW_MAX_BYTES - 1}",
+                **_s3_owner_kwargs(self.sagemaker_session, bucket),
+            )
+            raw = obj["Body"].read()
+            # Determine truncation from ContentRange (e.g. "bytes 0-1048575/2097152"):
+            # the value after "/" is the object's total size; truncated iff len(raw)
+            # < total.  This fixes a boundary case: an object of exactly
+            # _PREVIEW_MAX_BYTES has total == len(raw) and is NOT truncated — the old
+            # heuristic (len >= cap) incorrectly dropped its last record.  When
+            # ContentRange is absent or unparseable, fall back to the heuristic so
+            # behaviour is never worse than before this fix.
+            _total = None
+            _cr = obj.get("ContentRange")
+            if _cr:
+                try:
+                    _total = int(_cr.split("/", 1)[1])
+                except (IndexError, ValueError):
+                    pass
+            truncated = len(raw) < _total if _total is not None else len(raw) >= _PREVIEW_MAX_BYTES
+            last_nl = raw.rfind(b"\n")
+            if not truncated:
+                # Whole object: nothing was cut off, decode as-is.
+                content = raw.decode("utf-8")
+            elif last_nl >= 0:
+                # Truncated by the Range cap: drop everything after the last
+                # newline so pd.read_json(lines=True) never receives a partial
+                # record.  If the surviving prefix has fewer than n lines that
+                # is fine — do not loop to fetch more.
+                content = raw[:last_nl].decode("utf-8")
+            else:
+                # Range filled the window and there is no newline at all — one
+                # record is larger than the cap and was truncated; parsing it
+                # would raise, so skip the preview rather than silently losing it.
+                logger.debug(
+                    "Preview skipped: Range read of %d bytes contained no newline "
+                    "(record larger than _PREVIEW_MAX_BYTES); %s",
+                    _PREVIEW_MAX_BYTES,
+                    jsonl_uri,
+                )
+                return
 
             df = pd.read_json(StringIO(content), lines=True, nrows=n)
 
@@ -1200,7 +1295,12 @@ class DataPreparer(BaseModel):
             s3 = boto3.client("s3", region_name=self.sagemaker_session.boto_region_name)
 
             # List objects under the prefix to find the JSONL file
-            listing = s3.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=50)
+            listing = s3.list_objects_v2(
+                Bucket=bucket,
+                Prefix=prefix,
+                MaxKeys=50,
+                **_s3_owner_kwargs(self.sagemaker_session, bucket),
+            )
             objects = listing.get("Contents", []) or []
             target = next((o["Key"] for o in objects if o["Key"].endswith(".jsonl")), None)
             if not target:
@@ -1209,14 +1309,24 @@ class DataPreparer(BaseModel):
             if not target:
                 return None
 
-            resp = s3.get_object(Bucket=bucket, Key=target)
-            body = resp["Body"].read()
-            if not body:
-                return 0
-            # Count non-empty lines to handle files without a trailing newline
-            # (N records without trailing \n counted as N-1 by b"\n".count()),
-            # \r\n line endings, and blank lines that are not valid JSONL records.
-            return sum(1 for line in body.splitlines() if line.strip())
+            resp = s3.get_object(
+                Bucket=bucket, Key=target, **_s3_owner_kwargs(self.sagemaker_session, bucket)
+            )
+            # Stream chunk-by-chunk to avoid loading the full dataset into memory.
+            # Records are delimited by \n; \r\n endings are handled by strip() on each
+            # candidate line.  A bare-\r-delimited file (no \n) is out of scope and
+            # would be counted as a single record.  Blank lines are skipped (not valid
+            # JSONL records), and a file with no trailing newline still counts its last
+            # record.
+            remainder = b""
+            count = 0
+            for chunk in resp["Body"].iter_chunks(chunk_size=_STREAM_CHUNK_BYTES):
+                chunk = remainder + chunk
+                *lines, remainder = chunk.split(b"\n")
+                count += sum(1 for line in lines if line.strip())
+            if remainder.strip():
+                count += 1
+            return count
         except Exception as e:
             logger.debug("Failed to count input dataset records: %s", e)
             return None

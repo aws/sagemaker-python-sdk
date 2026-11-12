@@ -36,6 +36,7 @@ _LOGGER = "sagemaker.ai_registry.data_preparer.preparer"
 def preparer():
     session = MagicMock()
     session.boto_region_name = "us-west-2"
+    session._get_account_id_if_default_bucket.return_value = None
     return DataPreparer(sagemaker_session=session)
 
 
@@ -62,7 +63,7 @@ def _s3_with(objects):
             raise RuntimeError("NoSuchKey")
         return {"ContentLength": len(objects[Key])}
 
-    def get_object(Bucket, Key):  # pylint: disable=invalid-name,unused-argument
+    def get_object(Bucket, Key, **kwargs):  # pylint: disable=invalid-name,unused-argument
         body = MagicMock()
         body.read.return_value = objects[Key]
         return {"Body": body}

@@ -50,6 +50,11 @@ def _get_object_response(count: int):
         def read(self):
             return self._data
 
+        def iter_chunks(self, chunk_size=None):
+            """Yield the body as a single chunk for streaming line-count tests."""
+            if self._data:
+                yield self._data
+
     return {"Body": _Body(body_bytes)}
 
 

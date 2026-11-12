@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 from botocore.exceptions import ClientError
 from rich.panel import Panel
 
+from sagemaker.ai_registry.data_preparer._s3_session import _STREAM_CHUNK_BYTES, _s3_owner_kwargs
 from sagemaker.core.helper.session_helper import Session
 
 if TYPE_CHECKING:  # import cycle at runtime: the summary module reaches back here
@@ -1585,17 +1586,29 @@ class Job:
         def get_line_count(key: str) -> Optional[int]:
             r"""GET s3://{bucket}/{key} and count non-empty lines.
 
-            Uses ``splitlines()`` to handle ``\r\n`` line endings and trailing
-            blank lines. Blank lines (whitespace-only) are not counted — they
-            are not valid JSONL records. Returns ``None`` on ``NoSuchKey`` so
-            callers can distinguish "file not found" from "file found, 0 records".
+            Records are delimited by ``\n``; ``\r\n`` endings are handled by
+            ``strip()`` on each candidate line.  A bare-``\r``-delimited file
+            (no ``\n``) is out of scope: the whole body is treated as one record.
+            Blank (whitespace-only) lines are not counted — they are not valid
+            JSONL records. A file with no trailing newline still counts its last
+            record correctly via the remainder check.
+            Returns ``None`` on ``NoSuchKey`` so callers can distinguish "file not
+            found" from "file found, 0 records". Returns ``0`` for an empty body.
             """
             try:
-                resp = s3.get_object(Bucket=bucket, Key=key)
-                body = resp["Body"].read()
-                if not body:
-                    return 0
-                return sum(1 for line in body.splitlines() if line.strip())
+                resp = s3.get_object(
+                    Bucket=bucket, Key=key, **_s3_owner_kwargs(self._session, bucket)
+                )
+                remainder = b""
+                count = 0
+                for chunk in resp["Body"].iter_chunks(chunk_size=_STREAM_CHUNK_BYTES):
+                    chunk = remainder + chunk
+                    *lines, remainder = chunk.split(b"\n")
+                    count += sum(1 for line in lines if line.strip())
+                # File with no trailing newline: the last segment is its own record.
+                if remainder.strip():
+                    count += 1
+                return count  # 0 when the body was empty (no chunks consumed)
             except s3.exceptions.NoSuchKey:
                 return None
             except Exception as e:  # pragma: no cover — best-effort telemetry
@@ -1630,6 +1643,7 @@ class Job:
                     Bucket=bucket,
                     Prefix=search_prefix,
                     PaginationConfig={"MaxItems": 1000},
+                    **_s3_owner_kwargs(self._session, bucket),
                 ):
                     collected.extend(page.get("Contents", []) or [])
                 return collected

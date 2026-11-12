@@ -52,9 +52,16 @@ def _make_job(**kwargs):
 
 
 def _s3_body(content: bytes):
-    """Wrap bytes in a minimal S3 GetObject 'Body' mock."""
+    """Wrap bytes in a minimal S3 GetObject 'Body' mock.
+
+    Configures both ``read()`` (for callers that materialise the whole body)
+    and ``iter_chunks()`` (for the streaming line-counter) so the same helper
+    works regardless of which API the code-under-test uses.
+    """
     stream = MagicMock()
     stream.read.return_value = content
+    # iter_chunks must yield the content as one chunk; empty content → no chunks.
+    stream.iter_chunks.return_value = [content] if content else []
     return {"Body": stream}
 
 
@@ -191,6 +198,7 @@ class TestCountInputDatasetRecords:
         s3_mock.list_objects_v2.return_value = listing_response
         s3_body_mock = MagicMock()
         s3_body_mock.read.return_value = body_bytes
+        s3_body_mock.iter_chunks.return_value = [body_bytes] if body_bytes else []
         s3_mock.get_object.return_value = {"Body": s3_body_mock}
 
         with (
@@ -271,11 +279,11 @@ class TestDqProgressLookup:
         )
         s3_mock = MagicMock()
         s3_mock.get_paginator.return_value.paginate.side_effect = (
-            lambda Bucket, Prefix, PaginationConfig: [
+            lambda Bucket, Prefix, PaginationConfig, **kw: [
                 {"Contents": [{"Key": k} for k in keys if k.startswith(Prefix)]}
             ]
         )
-        s3_mock.get_object.side_effect = lambda Bucket, Key: _s3_body(
+        s3_mock.get_object.side_effect = lambda Bucket, Key, **kw: _s3_body(
             b'{"id": 0}\n{"id": 1}\n{"id": 2}\n' if Key != self._EARLIER_RUN else b'{"id": 0}\n'
         )
         with patch("boto3.client", return_value=s3_mock):

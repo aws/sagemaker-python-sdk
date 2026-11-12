@@ -26,6 +26,7 @@ from sagemaker.ai_registry.data_preparer.preparer import DataPreparer
 def preparer():
     session = MagicMock()
     session.boto_region_name = "us-west-2"
+    session._get_account_id_if_default_bucket.return_value = None
     p = DataPreparer(sagemaker_session=session)
     return p
 
@@ -60,6 +61,7 @@ class TestSDGPathConstruction:
         mock_s3.get_object.assert_called_once_with(
             Bucket="bucket",
             Key="jobs/sdg-123/output/output_samples.jsonl",
+            Range="bytes=0-1048575",
         )
 
 
@@ -79,6 +81,7 @@ class TestDQPathConstruction:
         mock_s3.get_object.assert_called_once_with(
             Bucket="bucket",
             Key="jobs/dq-456/record_level/evaluated_data.jsonl",
+            Range="bytes=0-1048575",
         )
 
 
@@ -182,7 +185,9 @@ class TestDQOutputPath:
         preparer._preview_output(dataset_dq, JobCategory.DATA_QUALITY_EVALUATION, job=job)
 
         mock_s3.get_object.assert_called_once_with(
-            Bucket="bucket", Key=f"{folder}/record_level/evaluated_data.jsonl"
+            Bucket="bucket",
+            Key=f"{folder}/record_level/evaluated_data.jsonl",
+            Range="bytes=0-1048575",
         )
 
     @patch("boto3.client")
@@ -202,6 +207,7 @@ class TestDQOutputPath:
         mock_s3.get_object.assert_called_once_with(
             Bucket="bucket",
             Key="jobs/dq-456/record_level/evaluated_data.jsonl",
+            Range="bytes=0-1048575",
         )
 
 
@@ -225,5 +231,6 @@ class TestSDGUnchangedWithJob:
         mock_s3.get_object.assert_called_once_with(
             Bucket="bucket",
             Key="jobs/sdg-123/output/output_samples.jsonl",
+            Range="bytes=0-1048575",
         )
         mock_s3.list_objects_v2.assert_not_called()

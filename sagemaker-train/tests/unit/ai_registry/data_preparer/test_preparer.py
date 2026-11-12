@@ -108,6 +108,7 @@ class TestDualCallable:
             "wait": True,
             "logs": False,
             "tags": None,
+            "timeout": None,
         }
 
     def test_classmethod_call_builds_transient_instance(self, mock_session, resolved_dataset):
@@ -1034,7 +1035,7 @@ class TestAttach:
         mock_job.job_config_schema_version = "1.0.0"
 
         # After wait, status changes to Completed
-        def fake_wait(logs=False):
+        def fake_wait(logs=False, timeout=None):
             pass
 
         mock_job.wait = fake_wait
@@ -1242,7 +1243,7 @@ class TestStop:
         self._wire_arn_path(mock_get_job_cls, job)
 
         # After wait, status flips to Stopped via the built-in waiter.
-        def _wait(logs=False):
+        def _wait(logs=False, timeout=None):
             job.job_status = "Stopped"
 
         job.wait.side_effect = _wait
@@ -1250,7 +1251,7 @@ class TestStop:
         result = DataPreparer.stop(self._ARN, wait=True, logs=True)
 
         job.stop.assert_called_once_with()
-        job.wait.assert_called_once_with(logs=True)
+        job.wait.assert_called_once_with(logs=True, timeout=None)
         # attach()-style: refresh() after wait to pick up final state.
         assert job.refresh.call_count >= 1
         assert result.job_status == "Stopped"
@@ -1403,7 +1404,11 @@ class TestParseDatasetArn:
     def test_well_formed_arn_yields_name_hub_and_version(self):
         assert _parse_dataset_arn(
             "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/my-ds/3.0.0"
-        ) == ("my-ds", "MyHub", "3.0.0")
+        ) == (
+            "my-ds",
+            "arn:aws:sagemaker:us-west-2:123456789012:hub/MyHub",
+            "3.0.0",
+        )
 
     @pytest.mark.parametrize(
         "arn,expected_name",
@@ -1422,6 +1427,19 @@ class TestParseDatasetArn:
     )
     def test_unexpected_shape_falls_back_to_name_only(self, arn, expected_name):
         assert _parse_dataset_arn(arn) == (expected_name, None, None)
+
+    def test_non_aws_partition_round_trips(self):
+        """A non-aws partition (e.g. aws-cn) in the source ARN must be preserved
+        verbatim in the returned hub ARN; the partition must not be re-derived
+        from the region."""
+        cn_arn = (
+            "arn:aws-cn:sagemaker:cn-north-1:123456789012:hub-content/HubCN/DataSet/cn-ds/1.0.0"
+        )
+        assert _parse_dataset_arn(cn_arn) == (
+            "cn-ds",
+            "arn:aws-cn:sagemaker:cn-north-1:123456789012:hub/HubCN",
+            "1.0.0",
+        )
 
 
 class TestCountInputDatasetRecords:
@@ -1444,7 +1462,7 @@ class TestCountInputDatasetRecords:
         mock_get.assert_called_once_with(
             name="in-ds",
             sagemaker_session=mock_session,
-            hub_name="OtherHub",
+            hub_name="arn:aws:sagemaker:us-west-2:123:hub/OtherHub",
             version="2.0.0",
         )
 
@@ -1457,3 +1475,137 @@ class TestCountInputDatasetRecords:
             side_effect=RuntimeError("ResourceNotFound"),
         ):
             assert dc._count_input_dataset_records(_V2_DQ_DATASET_ARN) is None
+
+
+class TestPreviewOutput:
+    """_preview_output uses ContentRange to detect truncation, not len >= cap.
+
+    A ranged get_object returns ContentRange "bytes first-last/total"; truncated
+    iff len(raw) < total.  This correctly handles an object whose size equals the
+    Range cap: total == len(raw) → not truncated, so the final record (even with
+    no trailing newline) is never dropped.  When ContentRange is absent, falls back
+    to the original heuristic (len >= cap) so behaviour is never worse.
+    """
+
+    _SDG = JobCategory.SYNTHETIC_DATA_GENERATION
+
+    # Four complete JSONL records; the last has NO trailing newline.
+    # 32 bytes total — small enough to serve as a patched _PREVIEW_MAX_BYTES cap.
+    _BODY = b'{"n":1}\n{"n":2}\n{"n":3}\n{"n":99}'
+
+    def _make_dc(self, session):
+        return DataPreparer(sagemaker_session=session, role="arn:role")
+
+    @staticmethod
+    def _mock_s3(body: bytes, content_range=None):
+        import io
+
+        resp = {"Body": io.BytesIO(body)}
+        if content_range is not None:
+            resp["ContentRange"] = content_range
+        mock_s3 = MagicMock()
+        mock_s3.get_object.return_value = resp
+        return mock_s3
+
+    def test_exact_cap_with_content_range_preserves_final_record(self, mock_session):
+        """Bug: len(raw) == _cap classified as truncated by old heuristic.
+
+        Fix: ContentRange total == len(raw) → truncated=False → decode as-is →
+        the final record (no trailing newline) is included in the content passed
+        to pd.read_json.
+        """
+        cap = len(self._BODY)  # 32: body == cap triggers old heuristic
+        cr = f"bytes 0-{cap - 1}/{cap}"  # total == cap → NOT truncated
+
+        content_seen = []
+
+        # Save the real read_json before patching so we can re-use it.
+        import io as _io
+        import pandas as _pd
+
+        _real = _pd.read_json
+
+        def _capture(sio, **kwargs):
+            content_seen.append(sio.getvalue())
+            return _real(_io.StringIO(content_seen[-1]), **kwargs)
+
+        dc = self._make_dc(mock_session)
+        with patch("sagemaker.ai_registry.data_preparer.preparer._PREVIEW_MAX_BYTES", cap):
+            with patch("boto3.client", return_value=self._mock_s3(self._BODY, cr)):
+                with patch("pandas.read_json", side_effect=_capture):
+                    with patch.object(
+                        dc,
+                        "_resolve_output_records_uri",
+                        return_value="s3://bucket/key.jsonl",
+                    ):
+                        with patch("builtins.print"):
+                            dc._preview_output(MagicMock(), self._SDG)
+
+        assert content_seen, "pd.read_json was never called — preview was incorrectly skipped"
+        # The final record {"n":99}, which has no trailing newline, must be present.
+        assert (
+            '"n":99' in content_seen[0] or '"n": 99' in content_seen[0]
+        ), f"Final record missing from content: {content_seen[0]!r}"
+
+    def test_truncated_object_drops_partial_tail_record(self, mock_session):
+        """ContentRange total > len(raw) → truncated=True → tail after last \\n dropped."""
+        cap = len(self._BODY)  # 32
+        total = cap + 50  # object is larger than the Range read (genuinely truncated)
+        cr = f"bytes 0-{cap - 1}/{total}"
+
+        content_seen = []
+        import io as _io
+        import pandas as _pd
+
+        _real = _pd.read_json
+
+        def _capture(sio, **kwargs):
+            content_seen.append(sio.getvalue())
+            return _real(_io.StringIO(content_seen[-1]), **kwargs)
+
+        dc = self._make_dc(mock_session)
+        with patch("sagemaker.ai_registry.data_preparer.preparer._PREVIEW_MAX_BYTES", cap):
+            with patch("boto3.client", return_value=self._mock_s3(self._BODY, cr)):
+                with patch("pandas.read_json", side_effect=_capture):
+                    with patch.object(
+                        dc,
+                        "_resolve_output_records_uri",
+                        return_value="s3://bucket/key.jsonl",
+                    ):
+                        with patch("builtins.print"):
+                            dc._preview_output(MagicMock(), self._SDG)  # must not raise
+
+        assert content_seen, "pd.read_json was never called"
+        # The partial tail {"n":99} (after the last \n) must be absent.
+        assert (
+            '"n":99' not in content_seen[0] and '"n": 99' not in content_seen[0]
+        ), f"Partial tail unexpectedly present in content: {content_seen[0]!r}"
+        # Complete records before the tail must be present.
+        assert '"n":1' in content_seen[0] or '"n": 1' in content_seen[0]
+
+    def test_no_content_range_fallback_heuristic(self, mock_session):
+        """No ContentRange → fallback: truncated = len(raw) >= cap.
+
+        Body == cap, no newlines (single oversized record): heuristic fires →
+        truncated=True, no newline found → preview skipped, no exception raised.
+        """
+        body = b"x" * 50  # 50 bytes, no valid JSONL and no newlines
+        cap = 50  # len(body) == cap → heuristic: truncated = True
+
+        read_json_called = []
+
+        dc = self._make_dc(mock_session)
+        with patch("sagemaker.ai_registry.data_preparer.preparer._PREVIEW_MAX_BYTES", cap):
+            with patch("boto3.client", return_value=self._mock_s3(body, None)):
+                with patch(
+                    "pandas.read_json", side_effect=lambda *a, **k: read_json_called.append(1)
+                ):
+                    with patch.object(
+                        dc,
+                        "_resolve_output_records_uri",
+                        return_value="s3://bucket/key.jsonl",
+                    ):
+                        dc._preview_output(MagicMock(), self._SDG)  # must not raise
+
+        # Heuristic fires (len == cap), no newline → preview skipped before read_json.
+        assert not read_json_called, "read_json should not be called when preview is skipped"

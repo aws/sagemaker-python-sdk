@@ -258,7 +258,7 @@ class TestRehydrateDatasetsForDT:
         mock_get.assert_called_once_with(
             name="out",
             sagemaker_session=mock_session,
-            hub_name="DTBugBashHub",
+            hub_name="arn:aws:sagemaker:us-west-2:123:hub/DTBugBashHub",
             version="0.0.2",
         )
 

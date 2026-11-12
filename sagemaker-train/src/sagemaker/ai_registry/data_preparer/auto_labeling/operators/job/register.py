@@ -45,7 +45,9 @@ import time
 import uuid
 from typing import Any, Dict, Optional, Tuple
 
-from sagemaker.core.jumpstart.hub.utils import get_info_from_hub_resource_arn
+from sagemaker.core.jumpstart.hub.utils import (
+    get_info_from_hub_resource_arn,
+)
 
 from sagemaker.ai_registry.air_hub import AIRHub
 from sagemaker.ai_registry.data_preparer.exceptions import DataPreparerOperatorError
@@ -186,6 +188,20 @@ def delete_hub_content_version(arn, region=None):
 # ---------------------------------------------------------------------------
 
 
+def _parse_hub_content_arn_info(arn: str):
+    """Normalize a hub-content ARN and return its parsed fields.
+
+    Applies the versionless trailing-slash heuristic — a hub-content ARN with
+    exactly three ``/`` segments (no version) needs a trailing ``/`` appended
+    before the core regex can match it — then delegates to sagemaker-core's
+    shared parser.  Returns ``None`` when the input does not match.
+    """
+    text = arn or ""
+    if ":hub-content/" in text and text.count("/") == 3:
+        text += "/"
+    return get_info_from_hub_resource_arn(text)
+
+
 def parse_hub_content_arn(arn: str) -> Tuple[str, str, str, Optional[str], str]:
     """``(hub, type, name, version or None, region)`` of a Hub content ARN.
 
@@ -198,10 +214,7 @@ def parse_hub_content_arn(arn: str) -> Tuple[str, str, str, Optional[str], str]:
     Raises:
         DataPreparerOperatorError: Not a hub-content ARN.
     """
-    text = arn or ""
-    if ":hub-content/" in text and text.count("/") == 3:
-        text += "/"
-    info = get_info_from_hub_resource_arn(text)
+    info = _parse_hub_content_arn_info(arn)
     if (
         info is None
         or not info.hub_content_name
@@ -231,11 +244,48 @@ def parse_dataset_arn(ref):
 
     Raises:
         DataPreparerOperatorError: Not a hub-content ARN, or not a DataSet one.
+
+    Note:
+        The returned ``hub`` is a bare ``HubName``.  Passing it directly to
+        ``DescribeHubContent`` resolves it in the **caller's** account, so a
+        cross-account source ARN would hit the wrong hub — the same defect fixed
+        in :func:`resolve_dataset_ref` and ``dt_handoff.dt_view`` via
+        :func:`hub_arn_from_dataset_arn`.  Call sites in ``dt_handoff.py`` that
+        still pass the bare name are knowingly unaddressed pending the owning
+        team's decision.
     """
     hub, ctype, name, version, region = parse_hub_content_arn(ref)
     if ctype != "DataSet":
         raise DataPreparerOperatorError(f"hub-content type is {ctype!r}, expected DataSet: {ref}")
     return hub, name, version, region
+
+
+def hub_arn_from_dataset_arn(arn: str) -> str:
+    """The fully-qualified hub ARN for a hub-content ARN.
+
+    Built directly from the ARN's own partition, region and account, never from
+    the session or a default.  ``DescribeHubContent`` accepts either a hub name
+    or a hub ARN in ``HubName``; passing the ARN ensures a cross-account DataSet
+    resolves against the ARN's hub, not a same-named hub in the caller's account.
+
+    The shared helper ``construct_hub_arn_from_name`` is intentionally not used
+    here: it derives the partition from the region via ``aws_partition()``, which
+    may not round-trip for a cross-partition ARN (e.g. ``aws-cn`` or ``aws-iso``).
+
+    Args:
+        arn: A hub-content ARN
+            (``arn:{partition}:sagemaker:{region}:{account}:hub-content/{hub}/...``).
+
+    Returns:
+        ``arn:{partition}:sagemaker:{region}:{account}:hub/{hub}``.
+
+    Raises:
+        DataPreparerOperatorError: Not a hub-content ARN.
+    """
+    info = _parse_hub_content_arn_info(arn)
+    if info is None or not info.hub_name:
+        raise DataPreparerOperatorError(f"not a hub-content ARN: {arn!r}")
+    return f"arn:{info.partition}:sagemaker:{info.region}:{info.account_id}:hub/{info.hub_name}"
 
 
 def _s3_from_document(doc):
@@ -290,7 +340,9 @@ def resolve_dataset_ref(ref, out_path, region, download=False):
     if ref.startswith("arn:"):
         hub, name, version, arn_region = parse_dataset_arn(ref)
         region = arn_region
-        kwargs = dict(HubName=hub, HubContentType="DataSet", HubContentName=name)
+        kwargs = dict(
+            HubName=hub_arn_from_dataset_arn(ref), HubContentType="DataSet", HubContentName=name
+        )
         if version:
             kwargs["HubContentVersion"] = version
         resp = _sm_client(region).describe_hub_content(**kwargs)
@@ -615,14 +667,19 @@ def register_labeled_output(  # pylint: disable=too-many-locals,too-many-argumen
     }
 
     # 2) Hub registration, only with a guard that was actually evaluated.
+    def _skip_registration(reason):
+        # Nested: closes over result and labels_uri, keeping all three skip paths
+        # identical by construction so a future fourth cannot drift.
+        result["hub_error"] = reason
+        _log.warning("labeled data is in S3 (%s) but %s", labels_uri, reason)
+        return result
+
     if sm is None or hub is None:
-        result["hub_error"] = (
+        return _skip_registration(
             f"Hub unreachable during the lineage pre-check ({precheck_error}); "
             f"registration skipped -- never appending an unverified version. "
             f"Re-run register once the Hub is reachable."
         )
-        _log.warning("labeled data is in S3 (%s) but %s", labels_uri, result["hub_error"])
-        return result
     try:
         _warn_if_untrusted_caller(region)
         bucket, key = _s3.split_s3_uri(labels_uri)
@@ -643,6 +700,29 @@ def register_labeled_output(  # pylint: disable=too-many-locals,too-many-argumen
                 f"source-name:{provenance.get('source_name', '').lower()}"
                 if provenance.get("source_name")
                 else "source:hub-dataset"
+            )
+        # TOCTOU re-verify: re-run the guard immediately before the import.  A
+        # concurrent writer can add a version to the same Hub content in the window
+        # between the initial pre-check (step 0) and here.  The S3 bytes are already
+        # under a per-run prefix (base includes run_id) so nothing is lost on a skip.
+        try:
+            fresh_verdict, fresh_version = _append_guard(
+                sm, hub, content_name, source_arn, label_digest
+            )
+        except Exception as e:  # noqa: BLE001
+            return _skip_registration(
+                f"Hub content could not be re-verified before import "
+                f"({type(e).__name__}: {e}); registration skipped rather than "
+                f"append an unverified version. Re-run register; the labeled data "
+                f"is already in S3 and no data was lost."
+            )
+        if fresh_version != prior_version or fresh_verdict != verdict:
+            return _skip_registration(
+                f"Hub content '{content_name}' changed while the bytes were uploading "
+                f"(version was {prior_version!r}, now {fresh_version!r}); "
+                f"registration skipped rather than append an unverified version -- "
+                f"never appending an unverified version. Re-run register; "
+                f"the labeled data is already in S3 and no data was lost."
             )
         arn = sm.import_hub_content(
             HubName=hub,

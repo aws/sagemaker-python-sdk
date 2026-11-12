@@ -35,6 +35,7 @@ from __future__ import absolute_import
 import collections
 import json
 import random
+import re
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from sagemaker.ai_registry.data_preparer.exceptions import DataPreparerOperatorError
@@ -44,6 +45,40 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators.spec.rubric imp
     scale_levels,
     select_rubric_anchors,
 )
+
+# Characters that can inject a line break or visually reorder/mask surrounding text.
+# ZWNJ (U+200C) and ZWJ (U+200D) are deliberately excluded: they are orthographically
+# required in Persian/Farsi, Arabic, Devanagari, and ZWJ emoji sequences, so removing
+# them corrupts legitimate text without preventing any structural attack.
+# \u2060-\u2065 (WORD JOINER and invisible math operators) are similarly excluded.
+# Tags block U+E0000-E007F IS stripped: TAG characters mirror printable ASCII
+# invisibly and are the standard ASCII-smuggling vector. Tradeoff: the only live
+# legitimate use is subdivision-flag emoji (Scotland/Wales/England), which degrade
+# to plain U+1F3F4. That cost is accepted over invisible instruction injection.
+_UNSAFE_CHARS = re.compile(
+    r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u200b\u200e\u200f\u2028-\u202e\u2066-\u206f\ufeff\U000e0000-\U000e007f]"
+)
+
+
+def _safe_prompt_text(text):
+    """Untrusted row text, made safe to interpolate into one prompt line.
+
+    Folds newlines to spaces AND drops the invisible characters that could
+    restructure the prompt. Both halves are here on purpose: _UNSAFE_CHARS
+    deliberately keeps \\n, so stripping without folding still leaves a
+    break-out from the surrounding line.
+    """
+    return _UNSAFE_CHARS.sub("", text.replace("\n", " ")).strip()
+
+
+def _safe_spec_text(text):
+    """The model's returned spec, made safe to write and re-upload.
+
+    Drops the same invisible characters but KEEPS newlines: the spec is
+    markdown and its line structure is meaningful.
+    """
+    return _UNSAFE_CHARS.sub("", text)
+
 
 DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 Invoke = Callable[[str, str, Optional[str]], str]
@@ -84,7 +119,7 @@ def _row_text(row, text_fields):
     Several fields (premise + hypothesis, say) join with spaces.
     """
     parts = [str(row.get(f, "")) for f in text_fields if row.get(f)]
-    return " ".join(parts).replace("\n", " ").strip()[:400]
+    return _safe_prompt_text(" ".join(parts))[:400]
 
 
 def build_induction_prompt(  # pylint: disable=too-many-positional-arguments
@@ -188,9 +223,9 @@ def _anchor_text(row, text_fields, cap=ANCHOR_CHARS):
     """
     present = [f for f in text_fields if row.get(f)]
     if len(present) <= 1:
-        return " ".join(str(row.get(f, "")) for f in present).replace("\n", " ").strip()[:cap]
+        return _safe_prompt_text(" ".join(str(row.get(f, "")) for f in present))[:cap]
     per = max(80, cap // len(present))
-    return " | ".join(f"{f}: " + str(row[f]).replace("\n", " ").strip()[:per] for f in present)
+    return " | ".join(f"{f}: " + _safe_prompt_text(str(row[f]))[:per] for f in present)
 
 
 def build_rubric_induction_prompt(  # pylint: disable=too-many-positional-arguments
@@ -302,7 +337,7 @@ Do not write a `### Label Set` section. Output ONLY the markdown spec."""
 
 def _span_context(text, span, width=90):
     """Sentence context around a span, newlines stripped, capped."""
-    t = (text or "").replace("\n", " ")
+    t = _safe_prompt_text(text or "")
     i = t.lower().find(span.lower())
     if i < 0:
         return t[:width]
@@ -353,7 +388,8 @@ def build_ner_induction_prompt(  # pylint: disable=too-many-positional-arguments
         ex = by.get(lbl, [])[:max_per_type]
         lines = [f"## Type: {lbl}  ({n} labeled spans)"]
         for span, text in ex:
-            lines.append(f'- "{span}"   in: ...{_span_context(text, span)}...')
+            clean_span = _safe_prompt_text(span)
+            lines.append(f'- "{clean_span}"   in: ...{_span_context(text, clean_span)}...')
         blocks.append("\n".join(lines))
     examples_block = "\n\n".join(blocks)
 
@@ -539,7 +575,7 @@ def induce_spec(  # pylint: disable=too-many-locals,too-many-branches,too-many-a
             task=task,
             gt_key=gt_field,
         )
-        spec = call(prompt, model_id, region)
+        spec = _safe_spec_text(call(prompt, model_id, region))
         summary = {
             "task": task,
             "levels": [format_level(v) for v in anchors],
@@ -587,7 +623,7 @@ def induce_spec(  # pylint: disable=too-many-locals,too-many-branches,too-many-a
             label_key=gt_field,
             reply_keys_line=reply_keys_line,
         )
-    spec = call(prompt, model_id, region)
+    spec = _safe_spec_text(call(prompt, model_id, region))
     summary = {"labels": labels, "induce_rows": len(rows), "chars": len(spec)}
     return InducedSpec(spec=spec, prompt=prompt, summary=summary, warnings=notes)
 
