@@ -1196,6 +1196,73 @@ class Session(object):  # pylint: disable=too-many-public-methods
             config_options, submit, self.create_endpoint_config.__name__
         )
 
+    def import_hub_content(
+        self,
+        hub_name,
+        hub_content_name,
+        hub_content_type,
+        document_schema_version,
+        hub_content_document,
+        hub_content_version=None,
+        hub_content_display_name=None,
+        hub_content_description=None,
+        hub_content_markdown=None,
+        support_status=None,
+        hub_content_search_keywords=None,
+        tags=None,
+    ):
+        """Import content into a SageMaker hub.
+
+        This is the producer for a pipeline ``HubContentStep``.
+
+        Args:
+            hub_name (str): Name or ARN of the hub to import into.
+            hub_content_name (str): Name of the hub content.
+            hub_content_type (str): Type of the hub content, for example
+                ``Model``, ``DataSet`` or ``JsonDoc``.
+            document_schema_version (str): Version of the content document schema.
+            hub_content_document (Union[str, dict]): The content document. A dict
+                is serialized to JSON when the request is sent.
+            hub_content_version (str): Version to import. When omitted, the
+                service assigns the next version.
+            hub_content_display_name (str): Display name of the hub content.
+            hub_content_description (str): Description of the hub content.
+            hub_content_markdown (str): Markdown description of the hub content.
+            support_status (str): Support status of the hub content.
+            hub_content_search_keywords (list[str]): Searchable keywords.
+            tags (Optional[Tags]): Tags to apply to the hub content.
+
+        Returns:
+            dict: The ``ImportHubContent`` response. Under a ``PipelineSession``
+            the captured step arguments are returned instead and no service call
+            is made.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+            "DocumentSchemaVersion": document_schema_version,
+            "HubContentDocument": hub_content_document,
+        }
+        optional = {
+            "HubContentVersion": hub_content_version,
+            "HubContentDisplayName": hub_content_display_name,
+            "HubContentDescription": hub_content_description,
+            "HubContentMarkdown": hub_content_markdown,
+            "SupportStatus": support_status,
+            "HubContentSearchKeywords": hub_content_search_keywords,
+            "Tags": _append_project_tags(format_tags(tags)),
+        }
+        request.update({key: value for key, value in optional.items() if value is not None})
+
+        def submit(request):
+            if isinstance(request["HubContentDocument"], dict):
+                request["HubContentDocument"] = json.dumps(request["HubContentDocument"])
+            logger.info("Importing hub content %s into hub %s", hub_content_name, hub_name)
+            return self.sagemaker_client.import_hub_content(**request)
+
+        return self._intercept_create_request(request, submit, self.import_hub_content.__name__)
+
     def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True, live_logging=False):
         """Create an Amazon SageMaker ``Endpoint`` according to the configuration in the request.
 
