@@ -10,6 +10,7 @@ Version 3 became generally available on 2025-11-19 and is the actively developed
 major version. Version 2 is in maintenance mode: it receives critical bug fixes
 and security updates only, and will not receive new features, API updates, or new
 region support.
+Version 1 has reached End-of-Support and receives no further releases.
 
 .. note::
    We recommend all users migrate to V3. See the `migration guide
@@ -38,6 +39,10 @@ SDK and where each is in the maintenance lifecycle.
      - Maintenance mode
      - ``pip install "sagemaker<3"``
      - 2020-08-04
+   * - Version 1
+     - End-of-Support
+     - ``pip install "sagemaker<2"``
+     - 2017-11-30
 
 Lifecycle Phases
 ----------------
@@ -92,6 +97,28 @@ phases and timelines.
      - 2027-07-05
    * - End-of-Support
      - 2027-07-06
+     - N/A
+
+Version 1
+---------
+
+Version 1 has reached **End-of-Support**. Its final release, ``1.72.1``, was
+published to PyPI on 2020-09-28. Version 1 receives no further updates, bug
+fixes, or security fixes. Releases remain available on PyPI, but we strongly
+recommend upgrading to V3.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 30 30
+
+   * - Phase
+     - Start Date
+     - End Date
+   * - General Availability
+     - 2017-11-30
+     - 2021-02-03
+   * - End-of-Support
+     - 2021-02-04
      - N/A
 
 Managing Your Version
