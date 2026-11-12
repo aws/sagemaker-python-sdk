@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from functools import wraps
 from typing import Any, Callable
 
@@ -21,7 +22,7 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
 
     Automatically:
     1. Sets rollout context (metadata + inference_params) for header injection
-    2. On success, calls CompleteTrajectory + UpdateReward if "reward" in result
+    2. On success, calls CompleteTrajectory + UpdateReward for valid rewards
     3. On error, calls report_error
     4. Clears context when done
 
@@ -128,11 +129,19 @@ def _handle_result(feedback: RolloutFeedbackClient, result: Any) -> None:
         return
 
     reward = result.get("reward")
-    if reward is not None:
-        if isinstance(reward, list):
-            feedback.complete_rollout()
-            feedback.update_reward(reward)
-        else:
-            feedback.report_complete(reward)
-    else:
-        feedback.complete_rollout()
+    try:
+        rewards = [reward] if isinstance(reward, (int, float)) else list(reward)
+    except TypeError:
+        rewards = []
+
+    if not rewards or not all(
+        isinstance(value, int) or (isinstance(value, float) and math.isfinite(value))
+        for value in rewards
+    ):
+        feedback.report_error(
+            "Handler result must contain a finite numeric reward "
+            "or a non-empty iterable of finite numeric rewards"
+        )
+        return
+
+    feedback.report_complete(rewards)
