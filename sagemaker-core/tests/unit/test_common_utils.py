@@ -2275,6 +2275,7 @@ class TestResolveCapacityReservationConfig:
     """Test _resolve_capacity_reservation_config function."""
 
     PLAN_ARN = "arn:aws:sagemaker:us-west-2:123456789012:training-plan/my-plan"
+    ML_ARN = "arn:aws:sagemaker:us-west-2:123456789012:ml-reservation/my-reservation"
 
     def test_shape_is_serialized_to_request_keys(self):
         from sagemaker.core.common_utils import _resolve_capacity_reservation_config
@@ -2289,18 +2290,50 @@ class TestResolveCapacityReservationConfig:
             "MlReservationArn": self.PLAN_ARN,
         }
 
-    def test_shape_with_arn_only_omits_preference(self):
+    def test_shape_with_ml_reservation_arn_only_omits_preference(self):
         from sagemaker.core.common_utils import _resolve_capacity_reservation_config
         from sagemaker.core.shapes import ProductionVariantCapacityReservationConfig
 
-        config = ProductionVariantCapacityReservationConfig(ml_reservation_arn=self.PLAN_ARN)
-        assert _resolve_capacity_reservation_config(config) == {"MlReservationArn": self.PLAN_ARN}
+        config = ProductionVariantCapacityReservationConfig(ml_reservation_arn=self.ML_ARN)
+        assert _resolve_capacity_reservation_config(config) == {"MlReservationArn": self.ML_ARN}
 
     def test_dict_is_passed_through_without_none_values(self):
         from sagemaker.core.common_utils import _resolve_capacity_reservation_config
 
+        config = {"MlReservationArn": self.ML_ARN, "CapacityReservationPreference": None}
+        assert _resolve_capacity_reservation_config(config) == {"MlReservationArn": self.ML_ARN}
+
+    def test_shape_with_training_plan_arn_only_gets_reservations_only(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+        from sagemaker.core.shapes import ProductionVariantCapacityReservationConfig
+
+        config = ProductionVariantCapacityReservationConfig(ml_reservation_arn=self.PLAN_ARN)
+        assert _resolve_capacity_reservation_config(config) == {
+            "MlReservationArn": self.PLAN_ARN,
+            "CapacityReservationPreference": "capacity-reservations-only",
+        }
+
+    def test_dict_with_training_plan_arn_only_gets_reservations_only(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+
         config = {"MlReservationArn": self.PLAN_ARN, "CapacityReservationPreference": None}
-        assert _resolve_capacity_reservation_config(config) == {"MlReservationArn": self.PLAN_ARN}
+        assert _resolve_capacity_reservation_config(config) == {
+            "MlReservationArn": self.PLAN_ARN,
+            "CapacityReservationPreference": "capacity-reservations-only",
+        }
+
+    def test_training_plan_dict_input_is_not_mutated(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+
+        config = {"MlReservationArn": self.PLAN_ARN}
+        _resolve_capacity_reservation_config(config)
+        assert config == {"MlReservationArn": self.PLAN_ARN}
+
+    def test_explicit_preference_is_kept(self):
+        from sagemaker.core.common_utils import _resolve_capacity_reservation_config
+
+        config = {"MlReservationArn": self.PLAN_ARN, "CapacityReservationPreference": "other"}
+        assert _resolve_capacity_reservation_config(config) == config
 
     def test_empty_config_resolves_to_none(self):
         from sagemaker.core.common_utils import _resolve_capacity_reservation_config

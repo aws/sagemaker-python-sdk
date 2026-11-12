@@ -2603,8 +2603,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             endpoint_name: Name of the candidate endpoint to inspect.
             instance_type: The instance type requested for this deploy, if any.
             capacity_reservation_config: The capacity reservation requested for this
-                deploy, if any. A candidate matches only if its variant uses the same
-                reservation ARN and preference.
+                deploy, if any. A candidate matches when its variant has each value the
+                request sets; keys the request leaves unset are not compared.
 
         Returns:
             True if the candidate matches (or the config cannot be read and reuse
@@ -4481,13 +4481,25 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             runtime_config=runtime_config,
         )
 
-    def _deploy_for_ic(self, ic_data: Dict[str, Any], endpoint_name: str, **kwargs) -> Endpoint:
-        """Deploy/update inference component and return V3 Endpoint."""
+    def _deploy_for_ic(
+        self,
+        ic_data: Dict[str, Any],
+        endpoint_name: str,
+        ic_exists: Optional[bool] = None,
+        **kwargs,
+    ) -> Endpoint:
+        """Deploy/update inference component and return V3 Endpoint.
+
+        ``ic_exists`` lets a caller that already described the component skip a second
+        DescribeInferenceComponent call; None means look it up here.
+        """
         ic_name = ic_data.get("Name")
         resource_requirements = ic_data.get("ResourceRequirements")
         built_model = ic_data.get("Model")
 
-        if self._does_ic_exist(ic_name):
+        if ic_exists is None:
+            ic_exists = self._does_ic_exist(ic_name)
+        if ic_exists:
             if kwargs.get("capacity_reservation_config") is not None:
                 # The reservation is bound to the endpoint's production variant, not to the
                 # inference component, so an in-place IC update cannot apply or change it.
@@ -6522,13 +6534,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 k: v for k, v in kwargs.items() if k != "capacity_reservation_config"
             }
             for ic in self._deployables.get("InferenceComponents", []):
-                creates_component = bool(pending_capacity_kwargs) and not self._does_ic_exist(
-                    ic.get("Name")
-                )
+                # Only look the component up here when a reservation is pending; the result is
+                # passed on so _deploy_for_ic doesn't describe it again.
+                ic_exists = self._does_ic_exist(ic.get("Name")) if pending_capacity_kwargs else None
+                creates_component = bool(pending_capacity_kwargs) and not ic_exists
                 endpoints.append(
                     self._deploy_for_ic(
                         ic_data=ic,
                         endpoint_name=endpoint_name,
+                        ic_exists=ic_exists,
                         **(pending_capacity_kwargs if creates_component else {}),
                     )
                 )

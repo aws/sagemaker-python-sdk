@@ -23,6 +23,7 @@ from sagemaker.core.inference_config import ServerlessInferenceConfig
 
 ROLE_ARN = "arn:aws:iam::123456789012:role/TestRole"
 PLAN_ARN = "arn:aws:sagemaker:us-west-2:123456789012:training-plan/p5-for-endpoints"
+ML_RESERVATION_ARN = "arn:aws:sagemaker:us-west-2:123456789012:ml-reservation/p5-reserved"
 EXPECTED_REQUEST = {
     "CapacityReservationPreference": "capacity-reservations-only",
     "MlReservationArn": PLAN_ARN,
@@ -93,13 +94,23 @@ class TestDeployCoreEndpointCapacityReservation(_CoreEndpointTestBase):
         self._builder()._deploy_core_endpoint(
             instance_type="ml.p5.48xlarge",
             initial_instance_count=1,
+            endpoint_name="ml-reservation-endpoint",
+            capacity_reservation_config={"MlReservationArn": ML_RESERVATION_ARN},
+        )
+
+        assert self._deployed_variant()["CapacityReservationConfig"] == {
+            "MlReservationArn": ML_RESERVATION_ARN
+        }
+
+    def test_training_plan_without_preference_gets_reservations_only(self):
+        self._builder()._deploy_core_endpoint(
+            instance_type="ml.p5.48xlarge",
+            initial_instance_count=1,
             endpoint_name="ftp-endpoint",
             capacity_reservation_config={"MlReservationArn": PLAN_ARN},
         )
 
-        assert self._deployed_variant()["CapacityReservationConfig"] == {
-            "MlReservationArn": PLAN_ARN
-        }
+        assert self._deployed_variant()["CapacityReservationConfig"] == EXPECTED_REQUEST
 
     def test_no_config_leaves_variant_unchanged(self):
         self._builder()._deploy_core_endpoint(
@@ -165,6 +176,30 @@ class TestDeployCoreEndpointCapacityReservation(_CoreEndpointTestBase):
         self.mock_session.update_endpoint.assert_called_once_with(
             "existing-endpoint", "new-endpoint-config", wait=False
         )
+
+    def test_update_endpoint_keeps_serverless_and_accelerator_settings(self):
+        self._builder()._deploy_core_endpoint(
+            serverless_inference_config=ServerlessInferenceConfig(),
+            endpoint_name="existing-endpoint",
+            update_endpoint=True,
+        )
+        serverless_variant = self.mock_session.create_endpoint_config.call_args.kwargs[
+            "production_variants"
+        ][0]
+        assert "ServerlessConfig" in serverless_variant
+        assert "InstanceType" not in serverless_variant
+
+        self._builder()._deploy_core_endpoint(
+            instance_type="ml.m5.large",
+            initial_instance_count=1,
+            accelerator_type="ml.eia2.medium",
+            endpoint_name="existing-endpoint",
+            update_endpoint=True,
+        )
+        accelerator_variant = self.mock_session.create_endpoint_config.call_args.kwargs[
+            "production_variants"
+        ][0]
+        assert accelerator_variant["AcceleratorType"] == "ml.eia2.medium"
 
     def test_update_endpoint_calls_match_real_session_signatures(self):
         """Regression: the update path once passed kwargs create_endpoint_config doesn't take.
@@ -313,15 +348,19 @@ class TestDeployForwardsCapacityReservation(unittest.TestCase):
             "CustomOrchestrator": {"Mode": "Endpoint", "Name": "orch", "Model": Mock()},
         }
 
-        builder.deploy(
-            endpoint_name="orchestrator-endpoint",
-            instance_type="ml.p5.48xlarge",
-            custom_orchestrator_instance_type="ml.p5.48xlarge",
-            custom_orchestrator_initial_instance_count=1,
-            capacity_reservation_config=config,
-        )
+        with patch("sagemaker.serve.model_builder.logger") as mock_logger:
+            builder.deploy(
+                endpoint_name="orchestrator-endpoint",
+                instance_type="ml.p5.48xlarge",
+                custom_orchestrator_instance_type="ml.p5.48xlarge",
+                custom_orchestrator_initial_instance_count=1,
+                capacity_reservation_config=config,
+            )
 
         assert mock_deploy.call_args.kwargs["capacity_reservation_config"] is config
+        # The orchestrator consumed the config, so no "ignored" warning is logged.
+        warnings = [str(c.args[0]) for c in mock_logger.warning.call_args_list if c.args]
+        assert not any("is ignored" in w for w in warnings)
 
     @patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None)
     @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
@@ -385,6 +424,31 @@ class TestDeployForwardsCapacityReservation(unittest.TestCase):
 
         assert "capacity_reservation_config" not in mock_deploy_for_ic.call_args.kwargs
         assert any("every inference component already exists" in line for line in logs.output)
+
+    @patch.object(ModelBuilder, "_resolve_model_source_id", return_value=None)
+    @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
+    @patch.object(ModelBuilder, "_update_inference_component")
+    @patch.object(ModelBuilder, "_deploy", return_value=Mock(spec=Endpoint))
+    @patch("sagemaker.serve.model_builder.Endpoint.get", return_value=Mock(spec=Endpoint))
+    def test_each_component_is_described_once(self, *_):
+        builder = self._builder()
+        builder._deployables = {
+            "InferenceComponents": [
+                {"Name": "existing-ic", "ResourceRequirements": Mock(), "Model": Mock()},
+                {"Name": "new-ic", "ResourceRequirements": Mock(), "Model": Mock()},
+            ]
+        }
+
+        with patch.object(
+            ModelBuilder, "_does_ic_exist", side_effect=lambda name: name == "existing-ic"
+        ) as mock_exists:
+            builder.deploy(
+                endpoint_name="multi-ic-endpoint",
+                instance_type="ml.p5.48xlarge",
+                capacity_reservation_config=_plan_config(),
+            )
+
+        assert [c.args[0] for c in mock_exists.call_args_list] == ["existing-ic", "new-ic"]
 
     def _reuse_candidate(self, variant):
         client = self.mock_session.sagemaker_client
@@ -715,10 +779,10 @@ class TestRecommendationDeployCapacityReservation:
             "InferenceSpecification": {"Containers": [{"Image": "123.dkr.ecr/x:1"}]},
         }
 
-        with patch("sagemaker.core.resources.Model.create"), patch(
-            "sagemaker.serve.model_builder.EndpointConfig.create"
-        ) as mock_config_create, patch(
-            "sagemaker.serve.model_builder.Endpoint.create", return_value=MagicMock()
+        with (
+            patch("sagemaker.core.resources.Model.create"),
+            patch("sagemaker.serve.model_builder.EndpointConfig.create") as mock_config_create,
+            patch("sagemaker.serve.model_builder.Endpoint.create", return_value=MagicMock()),
         ):
             builder.deploy(
                 endpoint_name="rec-endpoint", wait=False, capacity_reservation_config=_plan_config()

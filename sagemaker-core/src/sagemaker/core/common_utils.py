@@ -2130,6 +2130,7 @@ def _resolve_routing_config(routing_config: Optional[Dict[str, Any]]) -> Optiona
 
 
 _CAPACITY_RESERVATION_CONFIG_KEYS = ("CapacityReservationPreference", "MlReservationArn")
+_CAPACITY_RESERVATIONS_ONLY = "capacity-reservations-only"
 
 
 def _resolve_capacity_reservation_config(
@@ -2146,7 +2147,10 @@ def _resolve_capacity_reservation_config(
 
     Returns:
         Optional[Dict[str, Any]]: The ``CapacityReservationConfig`` request dict, or None if
-            no config was given or it has no fields set.
+            no config was given or it has no fields set. A training plan ARN
+            (``...:training-plan/<name>``) given without a preference gets
+            ``CapacityReservationPreference="capacity-reservations-only"``, the only value
+            SageMaker accepts for training plans. Other ARNs are returned as given.
 
     Raises:
         ValueError: If a dict contains keys other than ``CapacityReservationPreference`` and
@@ -2162,7 +2166,7 @@ def _resolve_capacity_reservation_config(
     from sagemaker.core.utils.utils import serialize
 
     if isinstance(capacity_reservation_config, ProductionVariantCapacityReservationConfig):
-        return serialize(capacity_reservation_config) or None
+        return _default_training_plan_preference(serialize(capacity_reservation_config) or None)
 
     if isinstance(capacity_reservation_config, dict):
         unknown_keys = set(capacity_reservation_config) - set(_CAPACITY_RESERVATION_CONFIG_KEYS)
@@ -2172,13 +2176,26 @@ def _resolve_capacity_reservation_config(
                 f"Supported keys are: {list(_CAPACITY_RESERVATION_CONFIG_KEYS)}."
             )
         resolved = {k: v for k, v in capacity_reservation_config.items() if v is not None}
-        return resolved or None
+        return _default_training_plan_preference(resolved or None)
 
     raise TypeError(
         "capacity_reservation_config must be a dict or a "
         "sagemaker.core.shapes.ProductionVariantCapacityReservationConfig, got "
         f"{type(capacity_reservation_config).__name__}."
     )
+
+
+def _default_training_plan_preference(
+    resolved: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Set the preference a training plan requires when the caller left it unset."""
+    if (
+        resolved
+        and ":training-plan/" in str(resolved.get("MlReservationArn", ""))
+        and "CapacityReservationPreference" not in resolved
+    ):
+        return {**resolved, "CapacityReservationPreference": _CAPACITY_RESERVATIONS_ONLY}
+    return resolved
 
 
 @lru_cache
