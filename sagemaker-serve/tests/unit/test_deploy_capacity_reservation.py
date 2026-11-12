@@ -24,6 +24,10 @@ from sagemaker.core.inference_config import ServerlessInferenceConfig
 ROLE_ARN = "arn:aws:iam::123456789012:role/TestRole"
 PLAN_ARN = "arn:aws:sagemaker:us-west-2:123456789012:training-plan/p5-for-endpoints"
 ML_RESERVATION_ARN = "arn:aws:sagemaker:us-west-2:123456789012:ml-reservation/p5-reserved"
+ML_RESERVATION_WITH_PREFERENCE = {
+    "MlReservationArn": ML_RESERVATION_ARN,
+    "CapacityReservationPreference": "capacity-reservations-only",
+}
 EXPECTED_REQUEST = {
     "CapacityReservationPreference": "capacity-reservations-only",
     "MlReservationArn": PLAN_ARN,
@@ -485,18 +489,19 @@ class TestDeployForwardsCapacityReservation(unittest.TestCase):
     @patch.object(ModelBuilder, "_is_model_customization", return_value=False)
     @patch.object(ModelBuilder, "_deploy", return_value=Mock(spec=Endpoint))
     def test_deploy_reuses_endpoint_on_same_reservation(self, mock_deploy, *_):
+        # An ML reservation ARN, because a training plan ARN gets a preference added before matching.
         self._reuse_candidate(
             {
                 "ModelName": "m",
                 "InstanceType": "ml.p5.48xlarge",
-                "CapacityReservationConfig": EXPECTED_REQUEST,
+                "CapacityReservationConfig": ML_RESERVATION_WITH_PREFERENCE,
             }
         )
 
         self._builder().deploy(
             instance_type="ml.p5.48xlarge",
             reuse_resources=True,
-            capacity_reservation_config={"MlReservationArn": PLAN_ARN},
+            capacity_reservation_config={"MlReservationArn": ML_RESERVATION_ARN},
         )
 
         mock_deploy.assert_not_called()
@@ -574,18 +579,19 @@ class TestReuseMatchesCapacityReservation:
         )
 
     def test_arn_only_request_matches_endpoint_with_a_preference(self):
+        # An ML reservation ARN, because a training plan ARN gets a preference added before matching.
         builder = self._builder(
             {
                 "ModelName": "m",
                 "InstanceType": "ml.p5.48xlarge",
-                "CapacityReservationConfig": EXPECTED_REQUEST,
+                "CapacityReservationConfig": ML_RESERVATION_WITH_PREFERENCE,
             }
         )
         assert (
             builder._reused_endpoint_matches_config(
                 "ep",
                 instance_type="ml.p5.48xlarge",
-                capacity_reservation_config={"MlReservationArn": PLAN_ARN},
+                capacity_reservation_config={"MlReservationArn": ML_RESERVATION_ARN},
             )
             is True
         )
