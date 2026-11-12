@@ -887,3 +887,313 @@ class TestPipelineDefinitionMethod:
         assert "Version" in parsed
         assert "Steps" in parsed
         assert parsed["Steps"][0]["Name"] == "test-step"
+
+
+class TestPipelineVersionAliases:
+    """Tests for Pipeline Version Alias support."""
+
+    @patch(
+        "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role",
+        return_value="arn:aws:iam::123:role/Role",
+    )
+    def test_create_with_aliases(self, _mock_validate, mock_session):
+        """Test create passes PipelineVersionAliases to client."""
+        mock_session.sagemaker_client.create_pipeline = Mock(
+            return_value={"PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test"}
+        )
+
+        with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config") as mock_resolve:
+            with patch("sagemaker.mlops.workflow.pipeline.format_tags") as mock_format:
+                with patch("sagemaker.mlops.workflow.pipeline._append_project_tags") as mock_append:
+                    mock_resolve.return_value = "arn:aws:iam::123:role/Role"
+                    mock_format.return_value = []
+                    mock_append.return_value = []
+
+                    pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+                    with patch.object(pipeline, "definition", return_value='{"Steps": []}'):
+                        pipeline.create(
+                            role_arn="arn:aws:iam::123:role/Role",
+                            pipeline_version_aliases=["stable", "v1.0"],
+                        )
+
+                    call_kwargs = mock_session.sagemaker_client.create_pipeline.call_args[1]
+                    assert call_kwargs["PipelineVersionAliases"] == ["stable", "v1.0"]
+
+    @patch(
+        "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role",
+        return_value="arn:aws:iam::123:role/Role",
+    )
+    def test_create_without_aliases_omits_field(self, _mock_validate, mock_session):
+        """Test create without aliases does not send PipelineVersionAliases."""
+        mock_session.sagemaker_client.create_pipeline = Mock(
+            return_value={"PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test"}
+        )
+
+        with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config") as mock_resolve:
+            with patch("sagemaker.mlops.workflow.pipeline.format_tags") as mock_format:
+                with patch("sagemaker.mlops.workflow.pipeline._append_project_tags") as mock_append:
+                    mock_resolve.return_value = "arn:aws:iam::123:role/Role"
+                    mock_format.return_value = []
+                    mock_append.return_value = []
+
+                    pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+                    with patch.object(pipeline, "definition", return_value='{"Steps": []}'):
+                        pipeline.create(role_arn="arn:aws:iam::123:role/Role")
+
+                    call_kwargs = mock_session.sagemaker_client.create_pipeline.call_args[1]
+                    assert "PipelineVersionAliases" not in call_kwargs
+
+    @patch(
+        "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role",
+        return_value="arn:aws:iam::123:role/Role",
+    )
+    def test_update_with_aliases(self, _mock_validate, mock_session):
+        """Test update passes PipelineVersionAliases to client."""
+        mock_session.sagemaker_client.update_pipeline = Mock(
+            return_value={"PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test"}
+        )
+
+        with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config") as mock_resolve:
+            mock_resolve.return_value = "arn:aws:iam::123:role/Role"
+
+            pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+            with patch.object(pipeline, "definition", return_value='{"Steps": []}'):
+                pipeline.update(
+                    role_arn="arn:aws:iam::123:role/Role",
+                    pipeline_version_aliases=["production"],
+                )
+
+            call_kwargs = mock_session.sagemaker_client.update_pipeline.call_args[1]
+            assert call_kwargs["PipelineVersionAliases"] == ["production"]
+
+    def test_describe_with_alias(self, mock_session):
+        """Test describe passes PipelineVersionAlias to client."""
+        mock_session.sagemaker_client.describe_pipeline = Mock(
+            return_value={
+                "PipelineName": "test",
+                "PipelineVersionAliases": ["stable"],
+            }
+        )
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        result = pipeline.describe(pipeline_version_alias="stable")
+
+        call_kwargs = mock_session.sagemaker_client.describe_pipeline.call_args[1]
+        assert call_kwargs["PipelineVersionAlias"] == "stable"
+        assert result["PipelineVersionAliases"] == ["stable"]
+
+    def test_describe_without_alias_omits_field(self, mock_session):
+        """Test describe without alias does not send PipelineVersionAlias."""
+        mock_session.sagemaker_client.describe_pipeline = Mock(
+            return_value={
+                "PipelineName": "test",
+            }
+        )
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        pipeline.describe()
+
+        call_kwargs = mock_session.sagemaker_client.describe_pipeline.call_args[1]
+        assert "PipelineVersionAlias" not in call_kwargs
+
+    def test_start_with_alias(self, mock_session):
+        """Test start passes PipelineVersionAlias to client."""
+        mock_session.sagemaker_client.start_pipeline_execution = Mock(
+            return_value={
+                "PipelineExecutionArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test/execution/abc"
+            }
+        )
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        pipeline.start(pipeline_version_alias="stable")
+
+        call_kwargs = mock_session.sagemaker_client.start_pipeline_execution.call_args[1]
+        assert call_kwargs["PipelineVersionAlias"] == "stable"
+
+    def test_start_without_alias_omits_field(self, mock_session):
+        """Test start without alias does not send PipelineVersionAlias."""
+        mock_session.sagemaker_client.start_pipeline_execution = Mock(
+            return_value={
+                "PipelineExecutionArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test/execution/abc"
+            }
+        )
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        pipeline.start()
+
+        call_kwargs = mock_session.sagemaker_client.start_pipeline_execution.call_args[1]
+        assert "PipelineVersionAlias" not in call_kwargs
+
+    def test_update_pipeline_version_add_aliases(self, mock_session):
+        """Test update_pipeline_version sends correct AliasOperations."""
+        mock_session.sagemaker_client.update_pipeline_version = Mock(
+            return_value={
+                "PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test",
+                "PipelineVersionId": 3,
+            }
+        )
+
+        mock_session.sagemaker_client.describe_pipeline = Mock(
+            return_value={"PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test"}
+        )
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        pipeline.update_pipeline_version(
+            pipeline_version_id=3,
+            aliases_to_add=["stable", "v2.0"],
+        )
+
+        call_kwargs = mock_session.sagemaker_client.update_pipeline_version.call_args[1]
+        mock_session.sagemaker_client.describe_pipeline.assert_called_once_with(PipelineName="test")
+        assert call_kwargs["PipelineArn"] == "arn:aws:sagemaker:us-west-2:123:pipeline/test"
+        assert call_kwargs["PipelineVersionId"] == 3
+        assert call_kwargs["PipelineVersionAliasOperations"] == {"Add": ["stable", "v2.0"]}
+
+    def test_update_pipeline_version_remove_aliases(self, mock_session):
+        """Test update_pipeline_version with Remove."""
+        mock_session.sagemaker_client.update_pipeline_version = Mock(
+            return_value={
+                "PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test",
+                "PipelineVersionId": 3,
+            }
+        )
+
+        mock_session.sagemaker_client.describe_pipeline = Mock(
+            return_value={"PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test"}
+        )
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        pipeline.update_pipeline_version(
+            pipeline_version_id=3,
+            aliases_to_remove=["old-alias"],
+        )
+
+        call_kwargs = mock_session.sagemaker_client.update_pipeline_version.call_args[1]
+        assert call_kwargs["PipelineVersionAliasOperations"] == {"Remove": ["old-alias"]}
+
+    def test_update_pipeline_version_add_and_remove(self, mock_session):
+        """Test update_pipeline_version with both Add and Remove."""
+        mock_session.sagemaker_client.update_pipeline_version = Mock(
+            return_value={
+                "PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test",
+                "PipelineVersionId": 5,
+            }
+        )
+
+        mock_session.sagemaker_client.describe_pipeline = Mock(
+            return_value={"PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test"}
+        )
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        pipeline.update_pipeline_version(
+            pipeline_version_id=5,
+            aliases_to_add=["stable"],
+            aliases_to_remove=["beta"],
+        )
+
+        call_kwargs = mock_session.sagemaker_client.update_pipeline_version.call_args[1]
+        assert call_kwargs["PipelineVersionAliasOperations"] == {
+            "Add": ["stable"],
+            "Remove": ["beta"],
+        }
+
+    def test_update_pipeline_version_metadata_only(self, mock_session):
+        """Test update_pipeline_version with only metadata, no aliases."""
+        mock_session.sagemaker_client.update_pipeline_version = Mock(
+            return_value={
+                "PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test",
+                "PipelineVersionId": 1,
+            }
+        )
+
+        mock_session.sagemaker_client.describe_pipeline = Mock(
+            return_value={"PipelineArn": "arn:aws:sagemaker:us-west-2:123:pipeline/test"}
+        )
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        pipeline.update_pipeline_version(
+            pipeline_version_id=1,
+            version_description="updated desc",
+        )
+
+        call_kwargs = mock_session.sagemaker_client.update_pipeline_version.call_args[1]
+        assert "PipelineVersionAliasOperations" not in call_kwargs
+        assert call_kwargs["PipelineVersionDescription"] == "updated desc"
+
+    @patch(
+        "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role",
+        return_value="arn:aws:iam::123:role/Role",
+    )
+    def test_upsert_passes_aliases_to_create(self, _mock_validate, mock_session):
+        """Test upsert forwards pipeline_version_aliases when the pipeline is new."""
+        with patch.object(Pipeline, "create") as mock_create:
+            with patch("sagemaker.mlops.workflow.pipeline.format_tags", return_value=[]):
+                mock_create.return_value = {"PipelineArn": "arn"}
+
+                pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+                pipeline.upsert(
+                    role_arn="arn:aws:iam::123:role/Role", pipeline_version_aliases=["stable"]
+                )
+
+        assert mock_create.call_args[0][4] == ["stable"]
+
+    @patch(
+        "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role",
+        return_value="arn:aws:iam::123:role/Role",
+    )
+    def test_upsert_passes_aliases_to_update(self, _mock_validate, mock_session):
+        """Test upsert forwards pipeline_version_aliases when the pipeline already exists."""
+        error_response = {
+            "Error": {"Code": "ValidationException", "Message": "Pipeline already exists"}
+        }
+        with patch.object(Pipeline, "create") as mock_create:
+            with patch.object(Pipeline, "update") as mock_update:
+                with patch("sagemaker.mlops.workflow.pipeline.format_tags", return_value=None):
+                    mock_create.side_effect = ClientError(error_response, "create_pipeline")
+                    mock_update.return_value = {"PipelineArn": "arn"}
+
+                    pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+                    pipeline.upsert(
+                        role_arn="arn:aws:iam::123:role/Role", pipeline_version_aliases=["stable"]
+                    )
+
+        assert mock_update.call_args[1]["pipeline_version_aliases"] == ["stable"]
+
+    def test_describe_with_id_and_alias_raises(self, mock_session):
+        """Test describe rejects both a version ID and an alias before calling the service."""
+        mock_session.sagemaker_client.describe_pipeline = Mock()
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        with pytest.raises(ValueError, match="only one of"):
+            pipeline.describe(pipeline_version_id=1, pipeline_version_alias="stable")
+
+        mock_session.sagemaker_client.describe_pipeline.assert_not_called()
+
+    def test_start_with_id_and_alias_raises(self, mock_session):
+        """Test start rejects both a version ID and an alias before calling the service."""
+        mock_session.sagemaker_client.start_pipeline_execution = Mock()
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        with pytest.raises(ValueError, match="only one of"):
+            pipeline.start(pipeline_version_id=1, pipeline_version_alias="stable")
+
+        mock_session.sagemaker_client.start_pipeline_execution.assert_not_called()
+
+    @pytest.mark.parametrize("method", ["create", "update"])
+    @patch(
+        "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role",
+        return_value="arn:aws:iam::123:role/Role",
+    )
+    def test_local_mode_warns_on_aliases(self, _mock_validate, method, mock_session, caplog):
+        """Test create and update warn that aliases are dropped in local mode."""
+        import logging
+
+        mock_session.local_mode = True
+
+        pipeline = Pipeline(name="test", sagemaker_session=mock_session)
+        with caplog.at_level(logging.WARNING):
+            getattr(pipeline, method)(
+                role_arn="arn:aws:iam::123:role/Role", pipeline_version_aliases=["stable"]
+            )
+
+        assert "Pipeline version aliases are not supported in the local mode." in caplog.text
