@@ -1,9 +1,15 @@
 import io
+import threading
+import time
 import unittest
 from unittest.mock import Mock, patch
 
 from sagemaker.core.deserializers import JSONDeserializer
 from sagemaker.core.serializers import JSONSerializer
+from botocore.exceptions import WaiterError
+
+from sagemaker.core.exceptions import AsyncInferenceModelError, PollingTimeoutError
+from sagemaker.serve.async_inference import WaiterConfig
 from sagemaker.serve.predictor_async import AsyncPredictor
 
 
@@ -231,3 +237,59 @@ class TestAsyncPredictorSerializerOverrides(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCheckOutputAndFailurePaths(unittest.TestCase):
+    """_check_output_and_failure_paths must return or raise once both waiters are done."""
+
+    def setUp(self):
+        self.mock_predictor = Mock()
+        self.mock_predictor.endpoint_name = "test-endpoint"
+        self.async_predictor = AsyncPredictor(self.mock_predictor)
+        self.async_predictor.s3_client = Mock()
+        self.waiter_config = WaiterConfig(max_attempts=1, delay=1)
+
+    def _run_with_timeout(self, timeout=10):
+        outcome = {}
+
+        def run():
+            try:
+                outcome["result"] = self.async_predictor._check_output_and_failure_paths(
+                    "s3://bucket/output", "s3://bucket/failure", self.waiter_config
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                outcome["error"] = e
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout)
+        self.assertFalse(thread.is_alive(), "_check_output_and_failure_paths did not return")
+        return outcome
+
+    def test_raises_polling_timeout_when_both_waiters_time_out(self):
+        waiter = Mock()
+        waiter.wait.side_effect = WaiterError("ObjectExists", "Max attempts exceeded", {})
+        self.async_predictor.s3_client.get_waiter.return_value = waiter
+
+        outcome = self._run_with_timeout()
+
+        self.assertIsInstance(outcome.get("error"), PollingTimeoutError)
+        self.async_predictor.s3_client.get_object.assert_not_called()
+
+    def test_raises_model_error_when_failure_file_appears_after_output_waiter_times_out(self):
+        def wait(Bucket, Key, WaiterConfig):
+            if Key == "output":
+                raise WaiterError("ObjectExists", "Max attempts exceeded", {})
+            time.sleep(0.2)
+
+        waiter = Mock()
+        waiter.wait.side_effect = wait
+        self.async_predictor.s3_client.get_waiter.return_value = waiter
+        self.mock_predictor._handle_response.return_value = "model failure"
+
+        outcome = self._run_with_timeout()
+
+        self.assertIsInstance(outcome.get("error"), AsyncInferenceModelError)
+        self.async_predictor.s3_client.get_object.assert_called_once_with(
+            Bucket="bucket", Key="failure"
+        )
