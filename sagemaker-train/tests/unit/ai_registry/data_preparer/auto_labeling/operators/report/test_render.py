@@ -355,3 +355,88 @@ def test_md_escape():
 
 def test_inline_html_authored_markup():
     assert report._inline_html("**b** `c` <x>") == "<b>b</b> <code>c</code> &lt;x&gt;"
+
+
+# --- fmt "both" with an out directory -------------------------------------------------
+
+
+def _listing(d):
+    return {
+        n: _read(os.path.join(d, n))
+        for n in sorted(os.listdir(d))
+        if os.path.isfile(os.path.join(d, n))
+    }
+
+
+def test_both_into_an_out_dir_leaves_the_project_untouched(job_proj, tmp_path):
+    before = _listing(job_proj)
+    out = os.path.join(str(tmp_path), "reports", "nested")  # not created yet
+    res = report.write_report(job_proj, out=out)
+    assert sorted(os.listdir(out)) == ["report.html", "report.md"]
+    assert "# Auto-Labeling Report" in _read(os.path.join(out, "report.md"))
+    assert res == {
+        "wrote": [os.path.join(out, "report.html"), os.path.join(out, "report.md")],
+        "html": os.path.join(out, "report.html"),
+        "md": os.path.join(out, "report.md"),
+    }
+    assert _listing(job_proj) == before
+
+
+def test_both_into_an_existing_out_dir(job_proj, tmp_path):
+    out = str(tmp_path / "existing")
+    os.makedirs(out)
+    report.write_report(job_proj, out=out)
+    assert sorted(os.listdir(out)) == ["report.html", "report.md"]
+
+
+@pytest.mark.parametrize("name", ["report.html", "r.md", "existing-file"])
+def test_both_refuses_an_out_that_is_a_file(job_proj, tmp_path, name):
+    out = str(tmp_path / name)
+    if name == "existing-file":
+        with open(out, "w") as fp:
+            fp.write("x")
+    before = _listing(job_proj)
+    with pytest.raises(DataPreparerOperatorError, match="is a file"):
+        report.write_report(job_proj, out=out)
+    assert _listing(job_proj) == before
+    assert not os.path.exists(out) or name == "existing-file"  # nothing created, nothing clobbered
+
+
+def test_both_incomplete_run_creates_no_out_dir(proj, tmp_path):
+    # the completion gate raises before anything is written: no directory appears either
+    out = str(tmp_path / "out")
+    with pytest.raises(DataPreparerOperatorError):
+        report.write_report(proj, out=out)
+    assert not os.path.exists(out)
+
+
+def test_both_partial_write_removes_the_first_report(job_proj, tmp_path):
+    # OUT exists already; a directory where report.md goes makes the second write fail.
+    out = str(tmp_path / "out")
+    os.makedirs(os.path.join(out, "report.md"))
+    with pytest.raises(OSError):
+        report.write_report(job_proj, out=out)
+    assert os.path.isdir(out)  # pre-existing: never removed
+    assert not os.path.exists(os.path.join(out, "report.html"))
+
+
+def test_both_partial_write_removes_a_dir_this_call_created(job_proj, tmp_path, monkeypatch):
+    out = str(tmp_path / "fresh")
+    real_open = open
+
+    def failing_md(path, *a, **k):
+        if str(path).endswith("report.md"):
+            raise OSError("disk full")
+        return real_open(path, *a, **k)
+
+    monkeypatch.setattr("builtins.open", failing_md)
+    with pytest.raises(OSError, match="disk full"):
+        report.write_report(job_proj, out=out)
+    assert not os.path.exists(out)
+
+
+def test_single_format_out_is_still_the_file(job_proj, tmp_path):
+    out = str(tmp_path / "r.md")
+    res = report.write_report(job_proj, fmt="md", out=out)
+    assert os.path.exists(out) and res["md"] == out and res["html"] is None
+    assert not os.path.exists(os.path.join(job_proj, "report.md"))

@@ -40,7 +40,7 @@ import logging
 import os
 import re
 from collections import Counter
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators import _run_log
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators._fields import (
@@ -1355,8 +1355,13 @@ def write_report(
     """Write the run report to ``<project_dir>/report.html`` and/or ``report.md``.
 
     Both documents are built before anything is written, so a run that did not complete
-    writes no file. NER predictions live under ``entities``: with ``gt_field``
-    ``gt_entities`` and the default ``pred_field``, ``entities`` is read. ``gt`` is
+    writes no file. With ``fmt="both"``, ``out`` names the directory both files go into
+    (``report.html`` and ``report.md``); it is created when missing, a path that is or
+    looks like a file is refused, and when the second write fails the first file is removed
+    again (and the directory, when this call created it and it is empty), so no stray
+    report is left for a reader to mistake for a finished one. NER predictions live under
+    ``entities``: with ``gt_field`` ``gt_entities`` and the default ``pred_field``,
+    ``entities`` is read. ``gt`` is
     passed to the builders as is; checking it against the frozen split is the caller's
     (``guard_read`` with the ``dev``, ``val`` and ``test`` splits, then
     ``log_test_read`` once this returns).
@@ -1372,7 +1377,8 @@ def write_report(
         project_dir: The project folder holding the run outputs.
         dataset: The dataset name shown in the title.
         fmt: ``html``, ``md`` or ``both``.
-        out: The output path when ``fmt`` is a single format; ignored for ``both``.
+        out: The output path for a single format, or the output directory for ``both``;
+            ``None`` writes into ``project_dir``.
         calibration: The labeling job's ``labeling_summary.json`` (default: the
             project's, else the corpus run's run-log entry).
         pred_field: The prediction field of a local ``labels.jsonl``.
@@ -1388,7 +1394,8 @@ def write_report(
 
     Raises:
         DataPreparerOperatorError: ``fmt``, ``task`` or ``qa_match`` is not a value this
-            accepts, or the run did not complete (nothing is written).
+            accepts, ``out`` is a file with ``fmt="both"``, or the run did not complete
+            (nothing is written).
     """
     if fmt not in FORMATS:
         raise DataPreparerOperatorError(f"fmt must be one of {', '.join(FORMATS)}, not {fmt!r}")
@@ -1400,24 +1407,45 @@ def write_report(
     if qa_match is not None:  # a bad qa_match rule is still refused
         parse_qa_match(qa_match)
 
+    out_dir = project_dir
+    created_dir = False
+    if fmt == "both" and out:
+        if os.path.isfile(out) or out.lower().endswith((".html", ".md")):
+            raise DataPreparerOperatorError(
+                f"out {out!r} is a file; with fmt 'both' it is the directory both reports go into "
+                "(pass fmt 'html' or 'md' to name one report file)"
+            )
+        out_dir = out
     html_out = md_out = None
     if fmt in ("html", "both"):
-        html_out = out if (out and fmt == "html") else os.path.join(project_dir, "report.html")
+        html_out = out if (out and fmt == "html") else os.path.join(out_dir, "report.html")
     if fmt in ("md", "both"):
-        md_out = out if (out and fmt == "md") else os.path.join(project_dir, "report.md")
+        md_out = out if (out and fmt == "md") else os.path.join(out_dir, "report.md")
 
     # Build first: the completion gate raises before anything is written.
     args = (project_dir, dataset, threshold, diagram, gt, gt_field, pred_field, task)
     html_doc = build_html(*args, calibration, qa_match) if html_out else None
     md_doc = build_markdown(*args, calibration, qa_match) if md_out else None
 
-    wrote = []
-    if html_out:
-        with open(html_out, "w") as fp:
-            fp.write(html_doc)
-        wrote.append(html_out)
-    if md_out:
-        with open(md_out, "w") as fp:
-            fp.write(md_doc)
-        wrote.append(md_out)
+    if fmt == "both" and out and not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+        created_dir = True
+    wrote: List[str] = []
+    try:
+        if html_out:
+            with open(html_out, "w") as fp:
+                fp.write(html_doc)
+            wrote.append(html_out)
+        if md_out:
+            with open(md_out, "w") as fp:
+                fp.write(md_doc)
+            wrote.append(md_out)
+    except OSError:
+        # A second write that fails must not leave the first report behind.
+        for path in wrote:
+            if os.path.exists(path):
+                os.remove(path)
+        if created_dir and os.path.isdir(out_dir) and not os.listdir(out_dir):
+            os.rmdir(out_dir)
+        raise
     return {"wrote": wrote, "html": html_out, "md": md_out}
