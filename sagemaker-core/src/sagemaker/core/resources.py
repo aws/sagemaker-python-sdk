@@ -24,6 +24,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.status import Status
 from rich.style import Style
 from sagemaker.core.shapes import *
+from sagemaker.core import shapes
 from sagemaker.core.helper.pipeline_variable import StrPipeVar
 from sagemaker.core.utils.code_injection.codec import transform
 from sagemaker.core.utils.code_injection.constants import Color
@@ -199,7 +200,7 @@ class AIBenchmarkJob(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -250,7 +251,7 @@ class AIBenchmarkJob(Base):
         ai_workload_config_identifier: StrPipeVar,
         role_arn: StrPipeVar,
         network_config: Optional[AIBenchmarkNetworkConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AIBenchmarkJob"]:
@@ -650,7 +651,7 @@ class AIRecommendationJob(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -700,7 +701,7 @@ class AIRecommendationJob(Base):
         optimize_model: Optional[bool] = Unassigned(),
         compute_spec: Optional[AIRecommendationComputeSpec] = Unassigned(),
         adapter_source: Optional[AIAdapterSource] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AIRecommendationJob"]:
@@ -1085,7 +1086,7 @@ class AIWorkloadConfig(Base):
     ai_workload_config_arn: Optional[StrPipeVar] = Unassigned()
     dataset_config: Optional[AIDatasetConfig] = Unassigned()
     ai_workload_configs: Optional[AIWorkloadConfigs] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
 
     def get_name(self) -> str:
@@ -1111,7 +1112,7 @@ class AIWorkloadConfig(Base):
         ai_workload_config_name: StrPipeVar,
         dataset_config: Optional[AIDatasetConfig] = Unassigned(),
         ai_workload_configs: Optional[AIWorkloadConfigs] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AIWorkloadConfig"]:
@@ -1429,7 +1430,7 @@ class Action(Base):
         status: Optional[StrPipeVar] = Unassigned(),
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Action"]:
@@ -1825,7 +1826,7 @@ class Algorithm(Base):
         inference_specification: Optional[InferenceSpecification] = Unassigned(),
         validation_specification: Optional[AlgorithmValidationSpecification] = Unassigned(),
         certify_for_marketplace: Optional[bool] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Algorithm"]:
@@ -2261,7 +2262,7 @@ class App(Base):
         app_name: StrPipeVar,
         user_profile_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         space_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         resource_spec: Optional[ResourceSpec] = Unassigned(),
         recovery_mode: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
@@ -2716,7 +2717,7 @@ class AppImageConfig(Base):
     def create(
         cls,
         app_image_config_name: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         kernel_gateway_image_config: Optional[KernelGatewayImageConfig] = Unassigned(),
         jupyter_lab_app_image_config: Optional[JupyterLabAppImageConfig] = Unassigned(),
         code_editor_app_image_config: Optional[CodeEditorAppImageConfig] = Unassigned(),
@@ -3082,7 +3083,7 @@ class Artifact(Base):
         artifact_name: Optional[StrPipeVar] = Unassigned(),
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Artifact"]:
@@ -3715,7 +3716,7 @@ class AutoMLJob(Base):
         auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned(),
         auto_ml_job_config: Optional[AutoMLJobConfig] = Unassigned(),
         generate_candidate_definitions_only: Optional[bool] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         model_deploy_config: Optional[ModelDeployConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -4230,7 +4231,7 @@ class AutoMLJobV2(Base):
         output_data_config: AutoMLOutputDataConfig,
         auto_ml_problem_type_config: AutoMLProblemTypeConfig,
         role_arn: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         security_config: Optional[AutoMLSecurityConfig] = Unassigned(),
         auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned(),
         model_deploy_config: Optional[ModelDeployConfig] = Unassigned(),
@@ -4554,7 +4555,7 @@ class Cluster(Base):
             ClusterRestrictedInstanceGroupsConfig
         ] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         orchestrator: Optional[ClusterOrchestrator] = Unassigned(),
         node_recovery: Optional[StrPipeVar] = Unassigned(),
         tiered_storage_config: Optional[ClusterTieredStorageConfig] = Unassigned(),
@@ -5247,6 +5248,308 @@ class Cluster(Base):
         return BatchDeleteClusterNodesResponse(**transformed_response)
 
 
+class ClusterExtension(Base):
+    """
+    Class representing resource ClusterExtension
+
+    Attributes:
+        extension_details: The details of the extension.
+        node_summary: A summary of how many nodes in your cluster the extension targets, and how many of them run the extension's current version and configuration.
+
+    """
+
+    extension_details: Optional[ExtensionDetails] = Unassigned()
+    node_summary: Optional[ExtensionNodeSummary] = Unassigned()
+
+    def get_name(self) -> str:
+        attributes = vars(self)
+        resource_name = "cluster_extension_name"
+        resource_name_split = resource_name.split("_")
+        attribute_name_candidates = []
+
+        l = len(resource_name_split)
+        for i in range(0, l):
+            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
+
+        for attribute, value in attributes.items():
+            if attribute == "name" or attribute in attribute_name_candidates:
+                return value
+        logger.error("Name attribute not found for object cluster_extension")
+        return None
+
+    @classmethod
+    @Base.add_validate_call
+    def create(
+        cls,
+        cluster_arn: StrPipeVar,
+        extension_name: StrPipeVar,
+        extension_version: Optional[StrPipeVar] = Unassigned(),
+        configuration_values: Optional[StrPipeVar] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["ClusterExtension"]:
+        """
+        Create a ClusterExtension resource
+
+        Parameters:
+            cluster_arn: The Amazon Resource Name (ARN) of the SageMaker HyperPod cluster on which to install the extension. The cluster must use Slurm as the orchestrator and have NodeProvisioningMode set to Continuous.
+            extension_name: The name of the extension to install, for example sagemaker-observability.
+            extension_version: The version of the extension to install, in MAJOR.MINOR.PATCH format, for example 1.0.0. If you don't specify a version, SageMaker HyperPod installs the latest available version of the extension.
+            configuration_values: The configuration settings for the extension, as a JSON object serialized as a string, for example {"metricsProvider":{"nodeMetrics":{"level":"ADVANCED"}}}. Each extension version defines which settings it accepts. SageMaker HyperPod validates the settings against that definition, and rejects the request if a setting is unknown or has an invalid value. Settings that you omit use the extension's default values. If you omit ConfigurationValues, all settings use their default values.
+            tags: Custom tags for managing the extension as an Amazon Web Services resource. You can add tags to your extension in the same way you add them in other Amazon Web Services services that support tagging. To learn more about tagging Amazon Web Services resources in general, see Tagging Amazon Web Services Resources User Guide. To use this operation to add tags when you create an extension, you must have the sagemaker:AddTags permission.
+            client_token: A unique, case-sensitive identifier that you provide so that the operation completes no more than one time. This token is valid for 8 hours. If you retry the request with the same client token and the same parameters within this time, the API returns the Amazon Resource Name (ARN) of the extension that the original request created, without creating a duplicate. If you use the same client token with different parameters, the request fails.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The ClusterExtension resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceInUse: Resource being accessed is in use.
+            ResourceNotFound: Resource being access is not found.
+            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
+            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
+            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
+        """
+
+        logger.info("Creating cluster_extension resource.")
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionName": extension_name,
+            "ExtensionVersion": extension_version,
+            "ConfigurationValues": configuration_values,
+            "Tags": tags,
+            "ClientToken": client_token,
+        }
+
+        operation_input_args = Base.populate_chained_attributes(
+            resource_name="ClusterExtension", operation_input_args=operation_input_args
+        )
+
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.create_cluster_extension(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        return cls.get(
+            cluster_arn=cluster_arn,
+            extension_arn=response["ExtensionArn"],
+            session=session,
+            region=region,
+        )
+
+    @classmethod
+    @Base.add_validate_call
+    def get(
+        cls,
+        cluster_arn: StrPipeVar,
+        extension_arn: StrPipeVar,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["ClusterExtension"]:
+        """
+        Get a ClusterExtension resource
+
+        Parameters:
+            cluster_arn: The Amazon Resource Name (ARN) of the SageMaker HyperPod cluster on which the extension is installed.
+            extension_arn: The Amazon Resource Name (ARN) of the extension to describe. CreateClusterExtension returns this ARN, and ListClusterExtensions lists it. If you delete an extension and create it again, the new extension has a new ARN.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The ClusterExtension resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionArn": extension_arn,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+        response = client.describe_cluster_extension(**operation_input_args)
+
+        logger.debug(response)
+
+        # deserialize the response
+        transformed_response = transform(response, "DescribeClusterExtensionResponse")
+        cluster_extension = cls(**transformed_response)
+        cluster_extension._set_client_context(session=session, region=region)
+        return cluster_extension
+
+    @Base.add_validate_call
+    def refresh(
+        self,
+        cluster_arn: StrPipeVar,
+        extension_arn: StrPipeVar,
+    ) -> Optional["ClusterExtension"]:
+        """
+        Refresh a ClusterExtension resource
+
+        Returns:
+            The ClusterExtension resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionArn": extension_arn,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = self._get_client()
+        response = client.describe_cluster_extension(**operation_input_args)
+
+        # deserialize response and update self
+        transform(response, "DescribeClusterExtensionResponse", self)
+        return self
+
+    @Base.add_validate_call
+    def update(
+        self,
+        cluster_arn: StrPipeVar,
+        extension_arn: StrPipeVar,
+        extension_version: Optional[StrPipeVar] = Unassigned(),
+        configuration_values: Optional[StrPipeVar] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
+    ) -> Optional["ClusterExtension"]:
+        """
+        Update a ClusterExtension resource
+
+        Parameters:
+            cluster_arn: The Amazon Resource Name (ARN) of the SageMaker HyperPod cluster on which the extension is installed.
+            extension_arn: The Amazon Resource Name (ARN) of the extension to update.
+            extension_version: The version to update the extension to, in MAJOR.MINOR.PATCH format. The version must be later than the extension's current version. If you omit this parameter, the extension keeps its current version.
+            configuration_values: The configuration changes to apply, as a JSON object serialized as a string. Settings that you include are changed, settings that you omit are unchanged, and a setting with the value null returns to its default value. The resulting configuration must be valid for the target extension version. If you omit ConfigurationValues, the configuration is unchanged.
+            client_token: A unique, case-sensitive identifier that you provide so that the request is idempotent. If you send the same update more than once, SageMaker HyperPod applies it once and doesn't return an error.
+
+        Returns:
+            The ClusterExtension resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        logger.info("Updating cluster_extension resource.")
+        client = self._get_client()
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionArn": extension_arn,
+            "ExtensionVersion": extension_version,
+            "ConfigurationValues": configuration_values,
+            "ClientToken": client_token,
+        }
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.update_cluster_extension(**operation_input_args)
+        logger.debug(f"Response: {response}")
+        self.refresh()
+
+        return self
+
+    @Base.add_validate_call
+    def delete(
+        self,
+        cluster_arn: StrPipeVar,
+        extension_arn: StrPipeVar,
+    ) -> None:
+        """
+        Delete a ClusterExtension resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceInUse: Resource being accessed is in use.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = self._get_client()
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionArn": extension_arn,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.delete_cluster_extension(**operation_input_args)
+
+        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
+
+
 class ClusterHealthCheck(Base):
     """
     Class representing resource ClusterHealthCheck
@@ -5315,7 +5618,7 @@ class ClusterSchedulerConfig(Base):
         cluster_arn: StrPipeVar,
         scheduler_config: SchedulerConfig,
         description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ClusterSchedulerConfig"]:
@@ -5819,7 +6122,7 @@ class CodeRepository(Base):
         cls,
         code_repository_name: StrPipeVar,
         git_config: GitConfig,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CodeRepository"]:
@@ -6211,7 +6514,7 @@ class CompilationJob(Base):
         model_package_version_arn: Optional[StrPipeVar] = Unassigned(),
         input_config: Optional[InputConfig] = Unassigned(),
         vpc_config: Optional[NeoVpcConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CompilationJob"]:
@@ -6640,7 +6943,7 @@ class ComputeQuota(Base):
         compute_quota_target: ComputeQuotaTarget,
         description: Optional[StrPipeVar] = Unassigned(),
         activation_state: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ComputeQuota"]:
@@ -7159,7 +7462,7 @@ class Context(Base):
         context_type: StrPipeVar,
         description: Optional[StrPipeVar] = Unassigned(),
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Context"]:
@@ -7569,7 +7872,7 @@ class DataQualityJobDefinition(Base):
         data_quality_baseline_config: Optional[DataQualityBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["DataQualityJobDefinition"]:
@@ -8118,7 +8421,7 @@ class DeviceFleet(Base):
         output_config: EdgeOutputConfig,
         role_arn: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         enable_iot_role_alias: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -8523,7 +8826,7 @@ class DeviceFleet(Base):
     def register_devices(
         self,
         devices: List[Device],
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -8758,7 +9061,7 @@ class Domain(Base):
         domain_settings: Optional[DomainSettings] = Unassigned(),
         subnet_ids: Optional[List[StrPipeVar]] = Unassigned(),
         vpc_id: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         app_network_access_type: Optional[StrPipeVar] = Unassigned(),
         home_efs_file_system_kms_key_id: Optional[StrPipeVar] = Unassigned(),
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
@@ -9258,7 +9561,7 @@ class EdgeDeploymentPlan(Base):
         model_configs: List[EdgeDeploymentModelConfig],
         device_fleet_name: Union[StrPipeVar, object],
         stages: Optional[List[DeploymentStage]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EdgeDeploymentPlan"]:
@@ -9837,7 +10140,7 @@ class EdgePackagingJob(Base):
         role_arn: StrPipeVar,
         output_config: EdgeOutputConfig,
         resource_key: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EdgePackagingJob"]:
@@ -10261,7 +10564,7 @@ class Endpoint(Base):
         endpoint_name: StrPipeVar,
         endpoint_config_name: Union[StrPipeVar, object],
         deployment_config: Optional[DeploymentConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Endpoint"]:
@@ -11096,7 +11399,7 @@ class EndpointConfig(Base):
         endpoint_config_name: StrPipeVar,
         production_variants: List[ProductionVariant],
         data_capture_config: Optional[DataCaptureConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
         async_inference_config: Optional[AsyncInferenceConfig] = Unassigned(),
         explainer_config: Optional[ExplainerConfig] = Unassigned(),
@@ -11419,7 +11722,7 @@ class Experiment(Base):
         experiment_name: StrPipeVar,
         display_name: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Experiment"]:
@@ -11812,7 +12115,7 @@ class FeatureGroup(Base):
         throughput_config: Optional[ThroughputConfig] = Unassigned(),
         role_arn: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FeatureGroup"]:
@@ -12920,7 +13223,7 @@ class FlowDefinition(Base):
         human_loop_request_source: Optional[HumanLoopRequestSource] = Unassigned(),
         human_loop_activation_config: Optional[HumanLoopActivationConfig] = Unassigned(),
         human_loop_config: Optional[HumanLoopConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FlowDefinition"]:
@@ -13312,6 +13615,8 @@ class Hub(Base):
         hub_search_keywords: The searchable keywords for the hub.
         s3_storage_config: The Amazon S3 storage configuration for the hub.
         failure_reason: The failure reason if importing hub content failed.
+        created_by: Information about the user who created the hub.
+        last_modified_by: Information about the user who last modified the hub.
 
     """
 
@@ -13325,6 +13630,8 @@ class Hub(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
+    created_by: Optional[UserContext] = Unassigned()
+    last_modified_by: Optional[UserContext] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -13367,7 +13674,7 @@ class Hub(Base):
         hub_display_name: Optional[StrPipeVar] = Unassigned(),
         hub_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
         s3_storage_config: Optional[HubS3StorageConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Hub"]:
@@ -13829,6 +14136,8 @@ class HubContent(Base):
         hub_content_dependencies: The location of any dependencies that the hub content has, such as scripts, model artifacts, datasets, or notebooks.
         failure_reason: The failure reason if importing hub content failed.
         last_modified_time: The last modified time of the hub content.
+        created_by: Information about the user who created the hub content.
+        last_modified_by: Information about the user who last modified the hub content.
 
     """
 
@@ -13852,6 +14161,8 @@ class HubContent(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
+    created_by: Optional[UserContext] = Unassigned()
+    last_modified_by: Optional[UserContext] = Unassigned()
     hub_name: Optional[str] = Unassigned()
 
     def get_name(self) -> str:
@@ -14131,7 +14442,7 @@ class HubContent(Base):
         hub_content_markdown: Optional[StrPipeVar] = Unassigned(),
         support_status: Optional[StrPipeVar] = Unassigned(),
         hub_content_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HubContent"]:
@@ -14414,7 +14725,7 @@ class HubContentReference(Base):
     hub_content_arn: StrPipeVar
     hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     min_version: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -14440,7 +14751,7 @@ class HubContentReference(Base):
         sage_maker_public_hub_content_arn: StrPipeVar,
         hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         min_version: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HubContentReference"]:
@@ -14627,7 +14938,7 @@ class HumanTaskUi(Base):
         cls,
         human_task_ui_name: StrPipeVar,
         ui_template: UiTemplate,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HumanTaskUi"]:
@@ -15089,7 +15400,7 @@ class HyperParameterTuningJob(Base):
             List[HyperParameterTrainingJobDefinition]
         ] = Unassigned(),
         warm_start_config: Optional[HyperParameterTuningJobWarmStartConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         autotune: Optional[Autotune] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -15643,7 +15954,7 @@ class Image(Base):
         role_arn: StrPipeVar,
         description: Optional[StrPipeVar] = Unassigned(),
         display_name: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Image"]:
@@ -16693,7 +17004,7 @@ class InferenceComponent(Base):
         specification: Optional[InferenceComponentSpecification] = Unassigned(),
         specifications: Optional[List[InferenceComponentSpecification]] = Unassigned(),
         runtime_config: Optional[InferenceComponentRuntimeConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceComponent"]:
@@ -17273,7 +17584,7 @@ class InferenceExperiment(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         data_storage_config: Optional[InferenceExperimentDataStorageConfig] = Unassigned(),
         kms_key: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceExperiment"]:
@@ -17833,7 +18144,7 @@ class InferenceRecommendationsJob(Base):
         job_description: Optional[StrPipeVar] = Unassigned(),
         stopping_conditions: Optional[RecommendationJobStoppingConditions] = Unassigned(),
         output_config: Optional[RecommendationJobOutputConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceRecommendationsJob"]:
@@ -18327,7 +18638,7 @@ class Job(Base):
     secondary_status: Optional[StrPipeVar] = Unassigned()
     secondary_status_transitions: Optional[List[JobSecondaryStatusTransition]] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -18368,7 +18679,7 @@ class Job(Base):
         job_category: StrPipeVar,
         job_config_schema_version: StrPipeVar,
         job_config_document: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Job"]:
@@ -18840,7 +19151,7 @@ class LabelingJob(Base):
     stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned()
     labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned()
     human_task_config: Optional[HumanTaskConfig] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
+    tags: Optional[List[shapes.Tag]] = Unassigned()
     labeling_job_output: Optional[LabelingJobOutput] = Unassigned()
 
     def get_name(self) -> str:
@@ -18907,7 +19218,7 @@ class LabelingJob(Base):
         label_category_config_s3_uri: Optional[StrPipeVar] = Unassigned(),
         stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned(),
         labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["LabelingJob"]:
@@ -19569,7 +19880,7 @@ class MlflowApp(Base):
         weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
         account_default_status: Optional[StrPipeVar] = Unassigned(),
         default_domain_id_list: Optional[List[StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MlflowApp"]:
@@ -20116,7 +20427,7 @@ class MlflowTrackingServer(Base):
         mlflow_version: Optional[StrPipeVar] = Unassigned(),
         automatic_model_registration: Optional[bool] = Unassigned(),
         weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         s3_bucket_owner_account_id: Optional[StrPipeVar] = Unassigned(),
         s3_bucket_owner_verification: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
@@ -20739,7 +21050,7 @@ class Model(Base):
         containers: Optional[List[ContainerDefinition]] = Unassigned(),
         inference_execution_config: Optional[InferenceExecutionConfig] = Unassigned(),
         execution_role_arn: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
@@ -21149,7 +21460,7 @@ class ModelBiasJobDefinition(Base):
         model_bias_baseline_config: Optional[ModelBiasBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelBiasJobDefinition"]:
@@ -21490,7 +21801,7 @@ class ModelCard(Base):
         content: StrPipeVar,
         model_card_status: StrPipeVar,
         security_config: Optional[ModelCardSecurityConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelCard"]:
@@ -22389,7 +22700,7 @@ class ModelExplainabilityJobDefinition(Base):
         ] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelExplainabilityJobDefinition"]:
@@ -22819,7 +23130,7 @@ class ModelPackage(Base):
         validation_specification: Optional[ModelPackageValidationSpecification] = Unassigned(),
         source_algorithm_specification: Optional[SourceAlgorithmSpecification] = Unassigned(),
         certify_for_marketplace: Optional[bool] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         model_approval_status: Optional[StrPipeVar] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         model_metrics: Optional[ModelMetrics] = Unassigned(),
@@ -23431,7 +23742,7 @@ class ModelPackageGroup(Base):
         cls,
         model_package_group_name: StrPipeVar,
         model_package_group_description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         managed_configuration: Optional[ManagedConfiguration] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -24032,7 +24343,7 @@ class ModelQualityJobDefinition(Base):
         model_quality_baseline_config: Optional[ModelQualityBaselineConfig] = Unassigned(),
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelQualityJobDefinition"]:
@@ -24747,7 +25058,7 @@ class MonitoringSchedule(Base):
         cls,
         monitoring_schedule_name: StrPipeVar,
         monitoring_schedule_config: MonitoringScheduleConfig,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MonitoringSchedule"]:
@@ -25298,7 +25609,7 @@ class NotebookInstance(Base):
         security_group_ids: Optional[List[StrPipeVar]] = Unassigned(),
         ip_address_type: Optional[StrPipeVar] = Unassigned(),
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         lifecycle_config_name: Optional[StrPipeVar] = Unassigned(),
         direct_internet_access: Optional[StrPipeVar] = Unassigned(),
         volume_size_in_gb: Optional[int] = Unassigned(),
@@ -25931,7 +26242,7 @@ class NotebookInstanceLifecycleConfig(Base):
         notebook_instance_lifecycle_config_name: StrPipeVar,
         on_create: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned(),
         on_start: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["NotebookInstanceLifecycleConfig"]:
@@ -26337,7 +26648,7 @@ class OptimizationJob(Base):
         stopping_condition: StoppingCondition,
         max_instance_count: Optional[int] = Unassigned(),
         optimization_environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         vpc_config: Optional[OptimizationVpcConfig] = Unassigned(),
         training_plan_arns: Optional[List[StrPipeVar]] = Unassigned(),
         session: Optional[Session] = None,
@@ -26812,7 +27123,7 @@ class PartnerApp(Base):
         enable_iam_session_based_identity: Optional[bool] = Unassigned(),
         enable_auto_minor_version_upgrade: Optional[bool] = Unassigned(),
         client_token: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["PartnerApp"]:
@@ -26999,7 +27310,7 @@ class PartnerApp(Base):
         enable_auto_minor_version_upgrade: Optional[bool] = Unassigned(),
         app_version: Optional[StrPipeVar] = Unassigned(),
         client_token: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
     ) -> Optional["PartnerApp"]:
         """
         Update a PartnerApp resource
@@ -27361,6 +27672,7 @@ class Pipeline(Base):
         parallelism_configuration: Lists the parallelism configuration applied to the pipeline.
         pipeline_version_display_name: The display name of the pipeline version.
         pipeline_version_description: The description of the pipeline version.
+        pipeline_version_aliases: The aliases assigned to the pipeline version.
 
     """
 
@@ -27379,6 +27691,7 @@ class Pipeline(Base):
     parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned()
     pipeline_version_display_name: Optional[StrPipeVar] = Unassigned()
     pipeline_version_description: Optional[StrPipeVar] = Unassigned()
+    pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -27421,8 +27734,9 @@ class Pipeline(Base):
         pipeline_definition: Optional[StrPipeVar] = Unassigned(),
         pipeline_definition_s3_location: Optional[PipelineDefinitionS3Location] = Unassigned(),
         pipeline_description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
+        pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Pipeline"]:
@@ -27439,6 +27753,7 @@ class Pipeline(Base):
             pipeline_description: A description of the pipeline.
             tags: A list of tags to apply to the created pipeline.
             parallelism_configuration: This is the configuration that controls the parallelism of the pipeline. If specified, it applies to all runs of this pipeline by default.
+            pipeline_version_aliases: The aliases to assign to the first version of the pipeline. You can use an alias instead of a pipeline version ID to start an execution, describe the pipeline, or list its executions. Each alias can contain 1-128 letters, numbers, periods (.), hyphens (-), and underscores (_), and can't consist of numbers only. An alias must be unique within the pipeline, and a version can have up to 10 aliases.
             session: Boto3 session.
             region: Region name.
 
@@ -27478,6 +27793,7 @@ class Pipeline(Base):
             "RoleArn": role_arn,
             "Tags": tags,
             "ParallelismConfiguration": parallelism_configuration,
+            "PipelineVersionAliases": pipeline_version_aliases,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -27501,6 +27817,7 @@ class Pipeline(Base):
         cls,
         pipeline_name: StrPipeVar,
         pipeline_version_id: Optional[int] = Unassigned(),
+        pipeline_version_alias: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Pipeline"]:
@@ -27509,7 +27826,8 @@ class Pipeline(Base):
 
         Parameters:
             pipeline_name: The name or Amazon Resource Name (ARN) of the pipeline to describe.
-            pipeline_version_id: The ID of the pipeline version to describe.
+            pipeline_version_id: The ID of the pipeline version to describe. You can't specify this with PipelineVersionAlias.
+            pipeline_version_alias: The alias of the pipeline version to describe. You can't specify this with PipelineVersionId. If no version of the pipeline has this alias, the request fails with a ResourceNotFound error. If you specify neither, SageMaker describes the latest version of the pipeline.
             session: Boto3 session.
             region: Region name.
 
@@ -27532,6 +27850,7 @@ class Pipeline(Base):
         operation_input_args = {
             "PipelineName": pipeline_name,
             "PipelineVersionId": pipeline_version_id,
+            "PipelineVersionAlias": pipeline_version_alias,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -27554,6 +27873,7 @@ class Pipeline(Base):
     def refresh(
         self,
         pipeline_version_id: Optional[int] = Unassigned(),
+        pipeline_version_alias: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["Pipeline"]:
         """
         Refresh a Pipeline resource
@@ -27577,6 +27897,7 @@ class Pipeline(Base):
         operation_input_args = {
             "PipelineName": self.pipeline_name,
             "PipelineVersionId": pipeline_version_id,
+            "PipelineVersionAlias": pipeline_version_alias,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -27599,6 +27920,7 @@ class Pipeline(Base):
         pipeline_description: Optional[StrPipeVar] = Unassigned(),
         role_arn: Optional[StrPipeVar] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
+        pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["Pipeline"]:
         """
         Update a Pipeline resource
@@ -27634,6 +27956,7 @@ class Pipeline(Base):
             "PipelineDescription": pipeline_description,
             "RoleArn": role_arn,
             "ParallelismConfiguration": parallelism_configuration,
+            "PipelineVersionAliases": pipeline_version_aliases,
         }
         logger.debug(f"Input request: {operation_input_args}")
         # serialize the input request
@@ -27804,6 +28127,7 @@ class Pipeline(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
+        managed_by: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Pipeline"]:
@@ -27818,6 +28142,7 @@ class Pipeline(Base):
             sort_order: The sort order for results.
             next_token: If the result of the previous ListPipelines request was truncated, the response includes a NextToken. To retrieve the next set of pipelines, use the token in the next request.
             max_results: The maximum number of pipelines to return in the response.
+            managed_by: Filters the pipelines by who manages them. Specify AWS to return pipelines that Amazon Web Services manages, or CUSTOMER to return pipelines that you created. If you don't specify a value, the response includes both.
             session: Boto3 session.
             region: Region name.
 
@@ -27846,6 +28171,7 @@ class Pipeline(Base):
             "CreatedBefore": created_before,
             "SortBy": sort_by,
             "SortOrder": sort_order,
+            "ManagedBy": managed_by,
         }
 
         # serialize the input request
@@ -27884,6 +28210,8 @@ class PipelineExecution(Base):
         selective_execution_config: The selective execution configuration applied to the pipeline run.
         pipeline_version_id: The ID of the pipeline version.
         m_lflow_config:  The MLflow configuration of the pipeline execution.
+        pipeline_version_aliases: The aliases currently assigned to the pipeline version that the execution ran.
+        role_arn: The Amazon Resource Name (ARN) of the IAM role that the execution uses. SageMaker returns this value only for executions of pipelines that Amazon Web Services manages.
 
     """
 
@@ -27902,6 +28230,8 @@ class PipelineExecution(Base):
     selective_execution_config: Optional[SelectiveExecutionConfig] = Unassigned()
     pipeline_version_id: Optional[int] = Unassigned()
     m_lflow_config: Optional[MLflowConfiguration] = Unassigned()
+    pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -28063,6 +28393,7 @@ class PipelineExecution(Base):
         client_request_token: StrPipeVar,
         pipeline_parameters: Optional[List[Parameter]] = Unassigned(),
         mlflow_experiment_name: Optional[StrPipeVar] = Unassigned(),
+        pipeline_version_alias: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -28098,6 +28429,8 @@ class PipelineExecution(Base):
             "SelectiveExecutionConfig": self.selective_execution_config,
             "PipelineVersionId": self.pipeline_version_id,
             "MlflowExperimentName": mlflow_experiment_name,
+            "PipelineVersionAlias": pipeline_version_alias,
+            "RoleArn": self.role_arn,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -28213,6 +28546,7 @@ class PipelineExecution(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
+        pipeline_version_alias: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["PipelineExecution"]:
@@ -28227,6 +28561,7 @@ class PipelineExecution(Base):
             sort_order: The sort order for results.
             next_token: If the result of the previous ListPipelineExecutions request was truncated, the response includes a NextToken. To retrieve the next set of pipeline executions, use the token in the next request.
             max_results: The maximum number of pipeline executions to return in the response.
+            pipeline_version_alias: The alias of a pipeline version. The response includes only the executions of the version that has this alias when you make the request. If no version of the pipeline has this alias, the request fails with a ResourceNotFound error.
             session: Boto3 session.
             region: Region name.
 
@@ -28256,6 +28591,7 @@ class PipelineExecution(Base):
             "CreatedBefore": created_before,
             "SortBy": sort_by,
             "SortOrder": sort_order,
+            "PipelineVersionAlias": pipeline_version_alias,
         }
 
         # serialize the input request
@@ -29052,7 +29388,7 @@ class ProcessingJob(Base):
         stopping_condition: Optional[ProcessingStoppingCondition] = Unassigned(),
         environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         network_config: Optional[NetworkConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -29507,7 +29843,7 @@ class Project(Base):
         service_catalog_provisioning_details: Optional[
             ServiceCatalogProvisioningDetails
         ] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         template_providers: Optional[List[CreateTemplateProvider]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -29665,7 +30001,7 @@ class Project(Base):
         service_catalog_provisioning_update_details: Optional[
             ServiceCatalogProvisioningUpdateDetails
         ] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         template_providers_to_update: Optional[List[UpdateTemplateProvider]] = Unassigned(),
     ) -> Optional["Project"]:
         """
@@ -30153,7 +30489,7 @@ class Space(Base):
         cls,
         domain_id: StrPipeVar,
         space_name: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         space_settings: Optional[SpaceSettings] = Unassigned(),
         ownership_settings: Optional[OwnershipSettings] = Unassigned(),
         space_sharing_settings: Optional[SpaceSharingSettings] = Unassigned(),
@@ -30644,7 +30980,7 @@ class StudioLifecycleConfig(Base):
         studio_lifecycle_config_name: StrPipeVar,
         studio_lifecycle_config_content: StrPipeVar,
         studio_lifecycle_config_app_type: StrPipeVar,
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["StudioLifecycleConfig"]:
@@ -31173,7 +31509,7 @@ class Tag(Base):
     def add_tags(
         cls,
         resource_arn: StrPipeVar,
-        tags: List[Tag],
+        tags: List[shapes.Tag],
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -31429,7 +31765,7 @@ class TrainingJob(Base):
         resource_config: Optional[ResourceConfig] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         stopping_condition: Optional[StoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
         enable_inter_container_traffic_encryption: Optional[bool] = Unassigned(),
         enable_managed_spot_training: Optional[bool] = Unassigned(),
@@ -32094,7 +32430,7 @@ class TrainingPlan(Base):
         training_plan_name: StrPipeVar,
         training_plan_offering_id: StrPipeVar,
         spare_instance_count_per_ultra_server: Optional[int] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingPlan"]:
@@ -32435,7 +32771,7 @@ class TrainingSession(Base):
         output_config: TrainingSessionOutputConfig,
         model_package_group_arn: Optional[StrPipeVar] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingSession"]:
@@ -32907,7 +33243,7 @@ class TransformJob(Base):
         environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         data_capture_config: Optional[BatchDataCaptureConfig] = Unassigned(),
         data_processing: Optional[DataProcessing] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -33327,7 +33663,7 @@ class Trial(Base):
         experiment_name: Union[StrPipeVar, object],
         display_name: Optional[StrPipeVar] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Trial"]:
@@ -33704,7 +34040,7 @@ class TrialComponent(Base):
         input_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
         output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrialComponent"]:
@@ -34376,7 +34712,7 @@ class UserProfile(Base):
         user_profile_name: StrPipeVar,
         single_sign_on_user_identifier: Optional[StrPipeVar] = Unassigned(),
         single_sign_on_user_value: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         user_settings: Optional[UserSettings] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -34882,7 +35218,7 @@ class Workforce(Base):
         cognito_config: Optional[CognitoConfig] = Unassigned(),
         oidc_config: Optional[OidcConfig] = Unassigned(),
         source_ip_config: Optional[SourceIpConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         workforce_vpc_config: Optional[WorkforceVpcConfigRequest] = Unassigned(),
         ip_address_type: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
@@ -35343,7 +35679,7 @@ class Workteam(Base):
         workforce_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         notification_configuration: Optional[NotificationConfiguration] = Unassigned(),
         worker_access_configuration: Optional[WorkerAccessConfiguration] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Workteam"]:
