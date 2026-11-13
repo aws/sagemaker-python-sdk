@@ -603,6 +603,47 @@ using ``IngestionManagerPandas`` directly:
    )
    manager.run(data_frame=data, target_stores=["OnlineStore"])
 
+**Tracing ingested records to AWS request IDs:**
+
+When you open a support case about a specific record, AWS Support asks for the request ID of the
+call that wrote it. Pass ``enable_write_audit=True`` to log one JSON line per record per
+``PutRecord`` or ``BatchWriteRecord`` attempt on the ``sagemaker.mlops.feature_store.write_audit``
+logger at ``INFO`` level. Each line holds the record identifier, event time, request ID, HTTP status,
+per-entry outcome (``accepted``, ``error``, ``unprocessed``, ``request_failed`` or ``unknown``) and
+client-side timestamps. Retried attempts each get their own line and request ID. Only the record
+identifier and event time are logged, no other feature values. Record identifiers can be sensitive
+(for example customer IDs), so handle these logs accordingly.
+
+.. code-block:: python
+
+   import logging
+   from sagemaker.mlops.feature_store import ingest_dataframe
+
+   # Route the audit lines wherever your application sends its logs.
+   logging.basicConfig(level=logging.WARNING)
+   logging.getLogger("sagemaker.mlops.feature_store.write_audit").setLevel(logging.INFO)
+
+   ingest_dataframe(
+       feature_group_name="customer-features",
+       data_frame=data,
+       max_workers=4,
+       use_batch_write_record=True,
+       enable_write_audit=True,
+   )
+
+   # Example line:
+   # {"operation": "BatchWriteRecord", "feature_group_name": "customer-features",
+   #  "record_id": "cust-2", "event_time": "2026-01-01T00:00:00Z", "entry_index": 1,
+   #  "batch_size": 3, "entry_status": "accepted", "attempt": 1, "request_id": "...",
+   #  "http_status": 200, "request_sent_at": "...", "response_received_at": "...", ...}
+
+To turn this on without a code change, set the ``SAGEMAKER_FEATURE_STORE_WRITE_AUDIT=true``
+environment variable. When using ``IngestionManagerPandas`` directly, pass
+``write_audit_config=WriteAuditConfig(record_identifier_feature_name=..., event_time_feature_name=...)``.
+Audit logging is off by default because it writes one line per record. Records that fail before any
+request is sent (for example parameter validation), and writes still running after an ingestion
+``timeout``, get no audit line.
+
 **Listing records from the OnlineStore:**
 
 Use ``list_records`` to retrieve record identifiers from a FeatureGroup's OnlineStore. Results are
