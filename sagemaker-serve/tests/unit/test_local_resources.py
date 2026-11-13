@@ -4,9 +4,12 @@ Unit tests for sagemaker.serve.local_resources module.
 Tests local endpoint and endpoint configuration classes for V3 ModelBuilder local mode support.
 """
 
+import datetime
+import json
 import unittest
 from unittest.mock import Mock, patch
-import datetime
+
+from sagemaker.core.deserializers import JSONDeserializer
 
 from sagemaker.serve.local_resources import (
     InvokeEndpointOutput,
@@ -283,6 +286,60 @@ class TestLocalEndpointInvoke(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLocalEndpointInvokeWithRealDeserializers(unittest.TestCase):
+    """Invoke with the real sagemaker-core deserializers, which need a content type."""
+
+    def setUp(self):
+        self.mock_session = Mock()
+
+    def _container_endpoint(self, model_server, invoke_method, raw_response, **kwargs):
+        container_obj = Mock()
+        getattr(container_obj, invoke_method).return_value = raw_response
+        return LocalEndpoint(
+            endpoint_name="test-endpoint",
+            endpoint_config_name="test-config",
+            local_session=self.mock_session,
+            in_process_mode=False,
+            local_container_mode_obj=container_obj,
+            model_server=model_server,
+            **kwargs,
+        )
+
+    def test_in_process_mode_with_default_json_deserializer(self):
+        in_process_obj = Mock()
+        in_process_obj._invoke_serving.return_value = b'{"result": "success"}'
+        endpoint = LocalEndpoint(
+            endpoint_name="test-endpoint",
+            endpoint_config_name="test-config",
+            local_session=self.mock_session,
+            in_process_mode=True,
+            in_process_mode_obj=in_process_obj,
+        )
+
+        result = endpoint.invoke(body={"input": "test"})
+
+        self.assertEqual(result.body, {"result": "success"})
+
+    def test_container_mode_with_json_deserializer(self):
+        cases = [
+            (ModelServer.TORCHSERVE, "_invoke_torch_serve"),
+            (ModelServer.TENSORFLOW_SERVING, "_invoke_tensorflow_serving"),
+            (ModelServer.TEI, "_invoke_serving"),
+        ]
+        for model_server, invoke_method in cases:
+            with self.subTest(model_server=model_server):
+                endpoint = self._container_endpoint(
+                    model_server,
+                    invoke_method,
+                    b'{"predictions": [0.9]}',
+                    deserializer=JSONDeserializer(),
+                )
+
+                result = endpoint.invoke(body={"input": "test"})
+
+                self.assertEqual(json.loads(result.body.read()), {"predictions": [0.9]})
 
 
 class TestLocalEndpointCreate(unittest.TestCase):
