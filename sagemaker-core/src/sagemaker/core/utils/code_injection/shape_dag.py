@@ -410,6 +410,26 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "AcceleratorPartitionLayout": {
+        "members": [
+            {
+                "name": "AcceleratorPartitionTypes",
+                "shape": "AcceleratorPartitionTypeList",
+                "type": "list",
+            }
+        ],
+        "type": "structure",
+    },
+    "AcceleratorPartitionLayouts": {
+        "member_shape": "AcceleratorPartitionLayout",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "AcceleratorPartitionTypeList": {
+        "member_shape": "AcceleratorPartitionType",
+        "member_type": "string",
+        "type": "list",
+    },
     "AccessForbidden": {
         "members": [{"name": "Message", "shape": "Message", "type": "string"}],
         "type": "structure",
@@ -642,6 +662,13 @@ SHAPE_DAG = {
         "members": [
             {"name": "ValidationRole", "shape": "RoleArn", "type": "string"},
             {"name": "ValidationProfiles", "shape": "AlgorithmValidationProfiles", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "AliasOperations": {
+        "members": [
+            {"name": "Add", "shape": "PipelineVersionAliasList", "type": "list"},
+            {"name": "Remove", "shape": "PipelineVersionAliasList", "type": "list"},
         ],
         "type": "structure",
     },
@@ -3395,6 +3422,29 @@ SHAPE_DAG = {
         "members": [{"name": "AutoMLJobArn", "shape": "AutoMLJobArn", "type": "string"}],
         "type": "structure",
     },
+    "CreateClusterExtensionRequest": {
+        "members": [
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "ExtensionName", "shape": "ExtensionName", "type": "string"},
+            {"name": "ExtensionVersion", "shape": "ExtensionVersion", "type": "string"},
+            {
+                "name": "ConfigurationValues",
+                "shape": "ExtensionConfigurationValues",
+                "type": "string",
+            },
+            {"name": "Tags", "shape": "TagList", "type": "list"},
+            {
+                "name": "ClientToken",
+                "shape": "CreateClusterExtensionRequestClientTokenString",
+                "type": "string",
+            },
+        ],
+        "type": "structure",
+    },
+    "CreateClusterExtensionResponse": {
+        "members": [{"name": "ExtensionArn", "shape": "ExtensionArn", "type": "string"}],
+        "type": "structure",
+    },
     "CreateClusterRequest": {
         "members": [
             {"name": "ClusterName", "shape": "ClusterName", "type": "string"},
@@ -4467,6 +4517,7 @@ SHAPE_DAG = {
                 "shape": "ParallelismConfiguration",
                 "type": "structure",
             },
+            {"name": "PipelineVersionAliases", "shape": "PipelineVersionAliasList", "type": "list"},
         ],
         "type": "structure",
     },
@@ -5261,6 +5312,17 @@ SHAPE_DAG = {
             {"name": "SourceArn", "shape": "AssociationEntityArn", "type": "string"},
             {"name": "DestinationArn", "shape": "AssociationEntityArn", "type": "string"},
         ],
+        "type": "structure",
+    },
+    "DeleteClusterExtensionRequest": {
+        "members": [
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "ExtensionArn", "shape": "ExtensionArn", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "DeleteClusterExtensionResponse": {
+        "members": [{"name": "ExtensionArn", "shape": "ExtensionArn", "type": "string"}],
         "type": "structure",
     },
     "DeleteClusterRequest": {
@@ -6071,6 +6133,20 @@ SHAPE_DAG = {
         "members": [{"name": "EventDetails", "shape": "ClusterEventDetail", "type": "structure"}],
         "type": "structure",
     },
+    "DescribeClusterExtensionRequest": {
+        "members": [
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "ExtensionArn", "shape": "ExtensionArn", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "DescribeClusterExtensionResponse": {
+        "members": [
+            {"name": "ExtensionDetails", "shape": "ExtensionDetails", "type": "structure"},
+            {"name": "NodeSummary", "shape": "ExtensionNodeSummary", "type": "structure"},
+        ],
+        "type": "structure",
+    },
     "DescribeClusterNodeRequest": {
         "members": [
             {"name": "ClusterName", "shape": "ClusterNameOrArn", "type": "string"},
@@ -6633,6 +6709,8 @@ SHAPE_DAG = {
             {"name": "FailureReason", "shape": "FailureReason", "type": "string"},
             {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
             {"name": "LastModifiedTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "CreatedBy", "shape": "UserContext", "type": "structure"},
+            {"name": "LastModifiedBy", "shape": "UserContext", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -6652,6 +6730,8 @@ SHAPE_DAG = {
             {"name": "FailureReason", "shape": "FailureReason", "type": "string"},
             {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
             {"name": "LastModifiedTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "CreatedBy", "shape": "UserContext", "type": "structure"},
+            {"name": "LastModifiedBy", "shape": "UserContext", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -7608,6 +7688,8 @@ SHAPE_DAG = {
             },
             {"name": "PipelineVersionId", "shape": "PipelineVersionId", "type": "long"},
             {"name": "MLflowConfig", "shape": "MLflowConfiguration", "type": "structure"},
+            {"name": "PipelineVersionAliases", "shape": "PipelineVersionAliasList", "type": "list"},
+            {"name": "RoleArn", "shape": "RoleArn", "type": "string"},
         ],
         "type": "structure",
     },
@@ -7615,6 +7697,7 @@ SHAPE_DAG = {
         "members": [
             {"name": "PipelineName", "shape": "PipelineNameOrArn", "type": "string"},
             {"name": "PipelineVersionId", "shape": "PipelineVersionId", "type": "long"},
+            {"name": "PipelineVersionAlias", "shape": "PipelineVersionAlias", "type": "string"},
         ],
         "type": "structure",
     },
@@ -7647,6 +7730,7 @@ SHAPE_DAG = {
                 "shape": "PipelineVersionDescription",
                 "type": "string",
             },
+            {"name": "PipelineVersionAliases", "shape": "PipelineVersionAliasList", "type": "list"},
         ],
         "type": "structure",
     },
@@ -8884,6 +8968,45 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ExtensionDetails": {
+        "members": [
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "ExtensionArn", "shape": "ExtensionArn", "type": "string"},
+            {"name": "ExtensionName", "shape": "ExtensionName", "type": "string"},
+            {"name": "ExtensionVersion", "shape": "ExtensionVersion", "type": "string"},
+            {"name": "Status", "shape": "ExtensionStatus", "type": "string"},
+            {
+                "name": "ConfigurationValues",
+                "shape": "ExtensionConfigurationValues",
+                "type": "string",
+            },
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "LastModifiedTime", "shape": "Timestamp", "type": "timestamp"},
+        ],
+        "type": "structure",
+    },
+    "ExtensionNodeSummary": {
+        "members": [
+            {"name": "TotalCount", "shape": "ExtensionNodeCount", "type": "integer"},
+            {"name": "ActiveCount", "shape": "ExtensionNodeCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ExtensionSummaries": {
+        "member_shape": "ExtensionSummary",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ExtensionSummary": {
+        "members": [
+            {"name": "ExtensionArn", "shape": "ExtensionArn", "type": "string"},
+            {"name": "ExtensionName", "shape": "ExtensionName", "type": "string"},
+            {"name": "ExtensionVersion", "shape": "ExtensionVersion", "type": "string"},
+            {"name": "Status", "shape": "ExtensionStatus", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+        ],
+        "type": "structure",
+    },
     "FSxLustreConfig": {
         "members": [
             {"name": "SizeInGiB", "shape": "FSxLustreSizeInGiB", "type": "integer"},
@@ -9352,6 +9475,8 @@ SHAPE_DAG = {
             {"name": "FailureReason", "shape": "FailureReason", "type": "string"},
             {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
             {"name": "LastModifiedTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "CreatedBy", "shape": "UserContext", "type": "structure"},
+            {"name": "LastModifiedBy", "shape": "UserContext", "type": "structure"},
             {"name": "Tags", "shape": "TagList", "type": "list"},
         ],
         "type": "structure",
@@ -9403,6 +9528,13 @@ SHAPE_DAG = {
         "member_shape": "HubContentSearchKeyword",
         "member_type": "string",
         "type": "list",
+    },
+    "HubContentStepMetadata": {
+        "members": [
+            {"name": "HubArn", "shape": "String2048", "type": "string"},
+            {"name": "HubContentArn", "shape": "String2048", "type": "string"},
+        ],
+        "type": "structure",
     },
     "HubInfo": {
         "members": [
@@ -10051,6 +10183,11 @@ SHAPE_DAG = {
             },
             {"name": "MinMemoryRequiredInMb", "shape": "MemoryInMb", "type": "integer"},
             {"name": "MaxMemoryRequiredInMb", "shape": "MemoryInMb", "type": "integer"},
+            {
+                "name": "AcceleratorPartitionType",
+                "shape": "AcceleratorPartitionType",
+                "type": "string",
+            },
         ],
         "type": "structure",
     },
@@ -11299,6 +11436,23 @@ SHAPE_DAG = {
         "members": [
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
             {"name": "Events", "shape": "ClusterEventSummaries", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterExtensionsRequest": {
+        "members": [
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "MaxResults", "shape": "MaxResults", "type": "integer"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+            {"name": "CreationTimeAfter", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "CreationTimeBefore", "shape": "Timestamp", "type": "timestamp"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterExtensionsResponse": {
+        "members": [
+            {"name": "Extensions", "shape": "ExtensionSummaries", "type": "list"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
         ],
         "type": "structure",
     },
@@ -12584,6 +12738,7 @@ SHAPE_DAG = {
             {"name": "SortOrder", "shape": "SortOrder", "type": "string"},
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
             {"name": "MaxResults", "shape": "MaxResults", "type": "integer"},
+            {"name": "PipelineVersionAlias", "shape": "PipelineVersionAlias", "type": "string"},
         ],
         "type": "structure",
     },
@@ -12644,6 +12799,7 @@ SHAPE_DAG = {
             {"name": "SortOrder", "shape": "SortOrder", "type": "string"},
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
             {"name": "MaxResults", "shape": "MaxResults", "type": "integer"},
+            {"name": "ManagedBy", "shape": "PipelineManagedBy", "type": "string"},
         ],
         "type": "structure",
     },
@@ -14947,6 +15103,11 @@ SHAPE_DAG = {
                 "shape": "ProductionVariantRoutingConfig",
                 "type": "structure",
             },
+            {
+                "name": "AcceleratorPartitionLayouts",
+                "shape": "AcceleratorPartitionLayouts",
+                "type": "list",
+            },
         ],
         "type": "structure",
     },
@@ -15118,6 +15279,7 @@ SHAPE_DAG = {
             {"name": "Athena", "shape": "AthenaStepMetadata", "type": "structure"},
             {"name": "Cleanup", "shape": "CleanupStepMetadata", "type": "structure"},
             {"name": "ForEach", "shape": "ForEachStepMetadata", "type": "structure"},
+            {"name": "HubContent", "shape": "HubContentStepMetadata", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -15141,6 +15303,7 @@ SHAPE_DAG = {
                 "type": "string",
             },
             {"name": "PipelineExecutionFailureReason", "shape": "String3072", "type": "string"},
+            {"name": "PipelineVersionAliases", "shape": "PipelineVersionAliasList", "type": "list"},
         ],
         "type": "structure",
     },
@@ -15207,8 +15370,14 @@ SHAPE_DAG = {
                 "shape": "PipelineExecutionStatus",
                 "type": "string",
             },
+            {"name": "PipelineVersionAliases", "shape": "PipelineVersionAliasList", "type": "list"},
         ],
         "type": "structure",
+    },
+    "PipelineVersionAliasList": {
+        "member_shape": "PipelineVersionAlias",
+        "member_type": "string",
+        "type": "list",
     },
     "PipelineVersionSummary": {
         "members": [
@@ -15230,6 +15399,7 @@ SHAPE_DAG = {
                 "shape": "PipelineExecutionArn",
                 "type": "string",
             },
+            {"name": "PipelineVersionAliases", "shape": "PipelineVersionAliasList", "type": "list"},
         ],
         "type": "structure",
     },
@@ -15527,8 +15697,18 @@ SHAPE_DAG = {
                 "shape": "ProductionVariantCapacityReservationConfig",
                 "type": "structure",
             },
+            {
+                "name": "AcceleratorPartitionLayouts",
+                "shape": "ProductionVariantAcceleratorPartitionLayoutsList",
+                "type": "list",
+            },
         ],
         "type": "structure",
+    },
+    "ProductionVariantAcceleratorPartitionLayoutsList": {
+        "member_shape": "AcceleratorPartitionLayout",
+        "member_type": "structure",
+        "type": "list",
     },
     "ProductionVariantCapacityReservationConfig": {
         "members": [
@@ -15694,6 +15874,11 @@ SHAPE_DAG = {
                 "name": "CapacityReservationConfig",
                 "shape": "ProductionVariantCapacityReservationSummary",
                 "type": "structure",
+            },
+            {
+                "name": "AcceleratorPartitionLayouts",
+                "shape": "AcceleratorPartitionLayouts",
+                "type": "list",
             },
         ],
         "type": "structure",
@@ -17121,6 +17306,8 @@ SHAPE_DAG = {
                 "shape": "MlflowExperimentEntityName",
                 "type": "string",
             },
+            {"name": "PipelineVersionAlias", "shape": "PipelineVersionAlias", "type": "string"},
+            {"name": "RoleArn", "shape": "RoleArn", "type": "string"},
         ],
         "type": "structure",
     },
@@ -18493,6 +18680,28 @@ SHAPE_DAG = {
         "members": [{"name": "ArtifactArn", "shape": "ArtifactArn", "type": "string"}],
         "type": "structure",
     },
+    "UpdateClusterExtensionRequest": {
+        "members": [
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "ExtensionArn", "shape": "ExtensionArn", "type": "string"},
+            {"name": "ExtensionVersion", "shape": "ExtensionVersion", "type": "string"},
+            {
+                "name": "ConfigurationValues",
+                "shape": "ExtensionConfigurationValues",
+                "type": "string",
+            },
+            {
+                "name": "ClientToken",
+                "shape": "UpdateClusterExtensionRequestClientTokenString",
+                "type": "string",
+            },
+        ],
+        "type": "structure",
+    },
+    "UpdateClusterExtensionResponse": {
+        "members": [{"name": "ExtensionArn", "shape": "ExtensionArn", "type": "string"}],
+        "type": "structure",
+    },
     "UpdateClusterRequest": {
         "members": [
             {"name": "ClusterName", "shape": "ClusterNameOrArn", "type": "string"},
@@ -19177,6 +19386,7 @@ SHAPE_DAG = {
                 "shape": "ParallelismConfiguration",
                 "type": "structure",
             },
+            {"name": "PipelineVersionAliases", "shape": "PipelineVersionAliasList", "type": "list"},
         ],
         "type": "structure",
     },
@@ -19200,6 +19410,11 @@ SHAPE_DAG = {
                 "name": "PipelineVersionDescription",
                 "shape": "PipelineVersionDescription",
                 "type": "string",
+            },
+            {
+                "name": "PipelineVersionAliasOperations",
+                "shape": "AliasOperations",
+                "type": "structure",
             },
         ],
         "type": "structure",

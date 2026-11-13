@@ -5248,6 +5248,308 @@ class Cluster(Base):
         return BatchDeleteClusterNodesResponse(**transformed_response)
 
 
+class ClusterExtension(Base):
+    """
+    Class representing resource ClusterExtension
+
+    Attributes:
+        extension_details: The details of the extension.
+        node_summary: A summary of how many nodes in your cluster the extension targets, and how many of them run the extension's current version and configuration.
+
+    """
+
+    extension_details: Optional[ExtensionDetails] = Unassigned()
+    node_summary: Optional[ExtensionNodeSummary] = Unassigned()
+
+    def get_name(self) -> str:
+        attributes = vars(self)
+        resource_name = "cluster_extension_name"
+        resource_name_split = resource_name.split("_")
+        attribute_name_candidates = []
+
+        l = len(resource_name_split)
+        for i in range(0, l):
+            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
+
+        for attribute, value in attributes.items():
+            if attribute == "name" or attribute in attribute_name_candidates:
+                return value
+        logger.error("Name attribute not found for object cluster_extension")
+        return None
+
+    @classmethod
+    @Base.add_validate_call
+    def create(
+        cls,
+        cluster_arn: StrPipeVar,
+        extension_name: StrPipeVar,
+        extension_version: Optional[StrPipeVar] = Unassigned(),
+        configuration_values: Optional[StrPipeVar] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["ClusterExtension"]:
+        """
+        Create a ClusterExtension resource
+
+        Parameters:
+            cluster_arn: The Amazon Resource Name (ARN) of the SageMaker HyperPod cluster on which to install the extension. The cluster must use Slurm as the orchestrator and have NodeProvisioningMode set to Continuous.
+            extension_name: The name of the extension to install, for example sagemaker-observability.
+            extension_version: The version of the extension to install, in MAJOR.MINOR.PATCH format, for example 1.0.0. If you don't specify a version, SageMaker HyperPod installs the latest available version of the extension.
+            configuration_values: The configuration settings for the extension, as a JSON object serialized as a string, for example {"metricsProvider":{"nodeMetrics":{"level":"ADVANCED"}}}. Each extension version defines which settings it accepts. SageMaker HyperPod validates the settings against that definition, and rejects the request if a setting is unknown or has an invalid value. Settings that you omit use the extension's default values. If you omit ConfigurationValues, all settings use their default values.
+            tags: Custom tags for managing the extension as an Amazon Web Services resource. You can add tags to your extension in the same way you add them in other Amazon Web Services services that support tagging. To learn more about tagging Amazon Web Services resources in general, see Tagging Amazon Web Services Resources User Guide. To use this operation to add tags when you create an extension, you must have the sagemaker:AddTags permission.
+            client_token: A unique, case-sensitive identifier that you provide so that the operation completes no more than one time. This token is valid for 8 hours. If you retry the request with the same client token and the same parameters within this time, the API returns the Amazon Resource Name (ARN) of the extension that the original request created, without creating a duplicate. If you use the same client token with different parameters, the request fails.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The ClusterExtension resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceInUse: Resource being accessed is in use.
+            ResourceNotFound: Resource being access is not found.
+            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
+            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
+            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
+        """
+
+        logger.info("Creating cluster_extension resource.")
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionName": extension_name,
+            "ExtensionVersion": extension_version,
+            "ConfigurationValues": configuration_values,
+            "Tags": tags,
+            "ClientToken": client_token,
+        }
+
+        operation_input_args = Base.populate_chained_attributes(
+            resource_name="ClusterExtension", operation_input_args=operation_input_args
+        )
+
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.create_cluster_extension(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        return cls.get(
+            cluster_arn=cluster_arn,
+            extension_arn=response["ExtensionArn"],
+            session=session,
+            region=region,
+        )
+
+    @classmethod
+    @Base.add_validate_call
+    def get(
+        cls,
+        cluster_arn: StrPipeVar,
+        extension_arn: StrPipeVar,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["ClusterExtension"]:
+        """
+        Get a ClusterExtension resource
+
+        Parameters:
+            cluster_arn: The Amazon Resource Name (ARN) of the SageMaker HyperPod cluster on which the extension is installed.
+            extension_arn: The Amazon Resource Name (ARN) of the extension to describe. CreateClusterExtension returns this ARN, and ListClusterExtensions lists it. If you delete an extension and create it again, the new extension has a new ARN.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The ClusterExtension resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionArn": extension_arn,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+        response = client.describe_cluster_extension(**operation_input_args)
+
+        logger.debug(response)
+
+        # deserialize the response
+        transformed_response = transform(response, "DescribeClusterExtensionResponse")
+        cluster_extension = cls(**transformed_response)
+        cluster_extension._set_client_context(session=session, region=region)
+        return cluster_extension
+
+    @Base.add_validate_call
+    def refresh(
+        self,
+        cluster_arn: StrPipeVar,
+        extension_arn: StrPipeVar,
+    ) -> Optional["ClusterExtension"]:
+        """
+        Refresh a ClusterExtension resource
+
+        Returns:
+            The ClusterExtension resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionArn": extension_arn,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = self._get_client()
+        response = client.describe_cluster_extension(**operation_input_args)
+
+        # deserialize response and update self
+        transform(response, "DescribeClusterExtensionResponse", self)
+        return self
+
+    @Base.add_validate_call
+    def update(
+        self,
+        cluster_arn: StrPipeVar,
+        extension_arn: StrPipeVar,
+        extension_version: Optional[StrPipeVar] = Unassigned(),
+        configuration_values: Optional[StrPipeVar] = Unassigned(),
+        client_token: Optional[StrPipeVar] = Unassigned(),
+    ) -> Optional["ClusterExtension"]:
+        """
+        Update a ClusterExtension resource
+
+        Parameters:
+            cluster_arn: The Amazon Resource Name (ARN) of the SageMaker HyperPod cluster on which the extension is installed.
+            extension_arn: The Amazon Resource Name (ARN) of the extension to update.
+            extension_version: The version to update the extension to, in MAJOR.MINOR.PATCH format. The version must be later than the extension's current version. If you omit this parameter, the extension keeps its current version.
+            configuration_values: The configuration changes to apply, as a JSON object serialized as a string. Settings that you include are changed, settings that you omit are unchanged, and a setting with the value null returns to its default value. The resulting configuration must be valid for the target extension version. If you omit ConfigurationValues, the configuration is unchanged.
+            client_token: A unique, case-sensitive identifier that you provide so that the request is idempotent. If you send the same update more than once, SageMaker HyperPod applies it once and doesn't return an error.
+
+        Returns:
+            The ClusterExtension resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        logger.info("Updating cluster_extension resource.")
+        client = self._get_client()
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionArn": extension_arn,
+            "ExtensionVersion": extension_version,
+            "ConfigurationValues": configuration_values,
+            "ClientToken": client_token,
+        }
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.update_cluster_extension(**operation_input_args)
+        logger.debug(f"Response: {response}")
+        self.refresh()
+
+        return self
+
+    @Base.add_validate_call
+    def delete(
+        self,
+        cluster_arn: StrPipeVar,
+        extension_arn: StrPipeVar,
+    ) -> None:
+        """
+        Delete a ClusterExtension resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceInUse: Resource being accessed is in use.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = self._get_client()
+
+        operation_input_args = {
+            "ClusterArn": cluster_arn,
+            "ExtensionArn": extension_arn,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.delete_cluster_extension(**operation_input_args)
+
+        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
+
+
 class ClusterHealthCheck(Base):
     """
     Class representing resource ClusterHealthCheck
@@ -13313,6 +13615,8 @@ class Hub(Base):
         hub_search_keywords: The searchable keywords for the hub.
         s3_storage_config: The Amazon S3 storage configuration for the hub.
         failure_reason: The failure reason if importing hub content failed.
+        created_by: Information about the user who created the hub.
+        last_modified_by: Information about the user who last modified the hub.
 
     """
 
@@ -13326,6 +13630,8 @@ class Hub(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
+    created_by: Optional[UserContext] = Unassigned()
+    last_modified_by: Optional[UserContext] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -13830,6 +14136,8 @@ class HubContent(Base):
         hub_content_dependencies: The location of any dependencies that the hub content has, such as scripts, model artifacts, datasets, or notebooks.
         failure_reason: The failure reason if importing hub content failed.
         last_modified_time: The last modified time of the hub content.
+        created_by: Information about the user who created the hub content.
+        last_modified_by: Information about the user who last modified the hub content.
 
     """
 
@@ -13853,6 +14161,8 @@ class HubContent(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
+    created_by: Optional[UserContext] = Unassigned()
+    last_modified_by: Optional[UserContext] = Unassigned()
     hub_name: Optional[str] = Unassigned()
 
     def get_name(self) -> str:
@@ -27362,6 +27672,7 @@ class Pipeline(Base):
         parallelism_configuration: Lists the parallelism configuration applied to the pipeline.
         pipeline_version_display_name: The display name of the pipeline version.
         pipeline_version_description: The description of the pipeline version.
+        pipeline_version_aliases: The aliases assigned to the pipeline version.
 
     """
 
@@ -27380,6 +27691,7 @@ class Pipeline(Base):
     parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned()
     pipeline_version_display_name: Optional[StrPipeVar] = Unassigned()
     pipeline_version_description: Optional[StrPipeVar] = Unassigned()
+    pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -27424,6 +27736,7 @@ class Pipeline(Base):
         pipeline_description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[shapes.Tag]] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
+        pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Pipeline"]:
@@ -27440,6 +27753,7 @@ class Pipeline(Base):
             pipeline_description: A description of the pipeline.
             tags: A list of tags to apply to the created pipeline.
             parallelism_configuration: This is the configuration that controls the parallelism of the pipeline. If specified, it applies to all runs of this pipeline by default.
+            pipeline_version_aliases: The aliases to assign to the first version of the pipeline. You can use an alias instead of a pipeline version ID to start an execution, describe the pipeline, or list its executions. Each alias can contain 1-128 letters, numbers, periods (.), hyphens (-), and underscores (_), and can't consist of numbers only. An alias must be unique within the pipeline, and a version can have up to 10 aliases.
             session: Boto3 session.
             region: Region name.
 
@@ -27479,6 +27793,7 @@ class Pipeline(Base):
             "RoleArn": role_arn,
             "Tags": tags,
             "ParallelismConfiguration": parallelism_configuration,
+            "PipelineVersionAliases": pipeline_version_aliases,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -27502,6 +27817,7 @@ class Pipeline(Base):
         cls,
         pipeline_name: StrPipeVar,
         pipeline_version_id: Optional[int] = Unassigned(),
+        pipeline_version_alias: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Pipeline"]:
@@ -27510,7 +27826,8 @@ class Pipeline(Base):
 
         Parameters:
             pipeline_name: The name or Amazon Resource Name (ARN) of the pipeline to describe.
-            pipeline_version_id: The ID of the pipeline version to describe.
+            pipeline_version_id: The ID of the pipeline version to describe. You can't specify this with PipelineVersionAlias.
+            pipeline_version_alias: The alias of the pipeline version to describe. You can't specify this with PipelineVersionId. If no version of the pipeline has this alias, the request fails with a ResourceNotFound error. If you specify neither, SageMaker describes the latest version of the pipeline.
             session: Boto3 session.
             region: Region name.
 
@@ -27533,6 +27850,7 @@ class Pipeline(Base):
         operation_input_args = {
             "PipelineName": pipeline_name,
             "PipelineVersionId": pipeline_version_id,
+            "PipelineVersionAlias": pipeline_version_alias,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -27555,6 +27873,7 @@ class Pipeline(Base):
     def refresh(
         self,
         pipeline_version_id: Optional[int] = Unassigned(),
+        pipeline_version_alias: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["Pipeline"]:
         """
         Refresh a Pipeline resource
@@ -27578,6 +27897,7 @@ class Pipeline(Base):
         operation_input_args = {
             "PipelineName": self.pipeline_name,
             "PipelineVersionId": pipeline_version_id,
+            "PipelineVersionAlias": pipeline_version_alias,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -27600,6 +27920,7 @@ class Pipeline(Base):
         pipeline_description: Optional[StrPipeVar] = Unassigned(),
         role_arn: Optional[StrPipeVar] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
+        pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned(),
     ) -> Optional["Pipeline"]:
         """
         Update a Pipeline resource
@@ -27635,6 +27956,7 @@ class Pipeline(Base):
             "PipelineDescription": pipeline_description,
             "RoleArn": role_arn,
             "ParallelismConfiguration": parallelism_configuration,
+            "PipelineVersionAliases": pipeline_version_aliases,
         }
         logger.debug(f"Input request: {operation_input_args}")
         # serialize the input request
@@ -27805,6 +28127,7 @@ class Pipeline(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
+        managed_by: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Pipeline"]:
@@ -27819,6 +28142,7 @@ class Pipeline(Base):
             sort_order: The sort order for results.
             next_token: If the result of the previous ListPipelines request was truncated, the response includes a NextToken. To retrieve the next set of pipelines, use the token in the next request.
             max_results: The maximum number of pipelines to return in the response.
+            managed_by: Filters the pipelines by who manages them. Specify AWS to return pipelines that Amazon Web Services manages, or CUSTOMER to return pipelines that you created. If you don't specify a value, the response includes both.
             session: Boto3 session.
             region: Region name.
 
@@ -27847,6 +28171,7 @@ class Pipeline(Base):
             "CreatedBefore": created_before,
             "SortBy": sort_by,
             "SortOrder": sort_order,
+            "ManagedBy": managed_by,
         }
 
         # serialize the input request
@@ -27885,6 +28210,8 @@ class PipelineExecution(Base):
         selective_execution_config: The selective execution configuration applied to the pipeline run.
         pipeline_version_id: The ID of the pipeline version.
         m_lflow_config:  The MLflow configuration of the pipeline execution.
+        pipeline_version_aliases: The aliases currently assigned to the pipeline version that the execution ran.
+        role_arn: The Amazon Resource Name (ARN) of the IAM role that the execution uses. SageMaker returns this value only for executions of pipelines that Amazon Web Services manages.
 
     """
 
@@ -27903,6 +28230,8 @@ class PipelineExecution(Base):
     selective_execution_config: Optional[SelectiveExecutionConfig] = Unassigned()
     pipeline_version_id: Optional[int] = Unassigned()
     m_lflow_config: Optional[MLflowConfiguration] = Unassigned()
+    pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -28064,6 +28393,7 @@ class PipelineExecution(Base):
         client_request_token: StrPipeVar,
         pipeline_parameters: Optional[List[Parameter]] = Unassigned(),
         mlflow_experiment_name: Optional[StrPipeVar] = Unassigned(),
+        pipeline_version_alias: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
@@ -28099,6 +28429,8 @@ class PipelineExecution(Base):
             "SelectiveExecutionConfig": self.selective_execution_config,
             "PipelineVersionId": self.pipeline_version_id,
             "MlflowExperimentName": mlflow_experiment_name,
+            "PipelineVersionAlias": pipeline_version_alias,
+            "RoleArn": self.role_arn,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -28214,6 +28546,7 @@ class PipelineExecution(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
+        pipeline_version_alias: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["PipelineExecution"]:
@@ -28228,6 +28561,7 @@ class PipelineExecution(Base):
             sort_order: The sort order for results.
             next_token: If the result of the previous ListPipelineExecutions request was truncated, the response includes a NextToken. To retrieve the next set of pipeline executions, use the token in the next request.
             max_results: The maximum number of pipeline executions to return in the response.
+            pipeline_version_alias: The alias of a pipeline version. The response includes only the executions of the version that has this alias when you make the request. If no version of the pipeline has this alias, the request fails with a ResourceNotFound error.
             session: Boto3 session.
             region: Region name.
 
@@ -28257,6 +28591,7 @@ class PipelineExecution(Base):
             "CreatedBefore": created_before,
             "SortBy": sort_by,
             "SortOrder": sort_order,
+            "PipelineVersionAlias": pipeline_version_alias,
         }
 
         # serialize the input request
