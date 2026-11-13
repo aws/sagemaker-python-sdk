@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from functools import wraps
 from typing import Any, Callable
 
@@ -21,15 +22,17 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
 
     Automatically:
     1. Sets rollout context (metadata + inference_params) for header injection
-    2. On success, calls CompleteTrajectory + UpdateReward if "reward" in result
+    2. On success, calls CompleteTrajectory + UpdateReward for valid rewards
     3. On error, calls report_error
     4. Clears context when done
 
-    Works with both sync and async functions.
+    Works with both sync and async functions accepting a ``payload`` dict.
+    Any additional positional and keyword arguments are forwarded unchanged
+    to the handler.
 
     Example::
 
-        from sagemaker.train.rft import rft_handler
+        from sagemaker.train.rft import sagemaker_rft_handler
         from sagemaker.train.rft.adapters.strands import wrap_model
         from strands import Agent
         from strands.models.openai import OpenAIModel
@@ -38,7 +41,7 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
         agent = Agent(model=model, tools=[...])
 
         @app.entrypoint
-        @rft_handler
+        @sagemaker_rft_handler
         async def invoke_agent(payload):
             result = await agent.invoke_async(payload["instance"]["prompt"])
             return {"reward": compute_reward(result)}
@@ -46,13 +49,13 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
     if asyncio.iscoroutinefunction(func):
 
         @wraps(func)
-        async def async_wrapper(payload: dict) -> Any:
+        async def async_wrapper(payload: dict, *args, **kwargs) -> Any:
             metadata = payload.get("metadata") or {}
             inference_params = payload.get("inferenceParams") or payload.get("inference_params")
             set_rollout_context(metadata, inference_params)
             feedback = RolloutFeedbackClient(metadata)
             try:
-                result = await func(payload)
+                result = await func(payload, *args, **kwargs)
             except Exception as e:
                 error_str = str(e)
                 if _is_trajectory_already_processed(error_str):
@@ -77,13 +80,13 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
     else:
 
         @wraps(func)
-        def sync_wrapper(payload: dict) -> Any:
+        def sync_wrapper(payload: dict, *args, **kwargs) -> Any:
             metadata = payload.get("metadata") or {}
             inference_params = payload.get("inferenceParams") or payload.get("inference_params")
             set_rollout_context(metadata, inference_params)
             feedback = RolloutFeedbackClient(metadata)
             try:
-                result = func(payload)
+                result = func(payload, *args, **kwargs)
             except Exception as e:
                 error_str = str(e)
                 if _is_trajectory_already_processed(error_str):
@@ -126,11 +129,19 @@ def _handle_result(feedback: RolloutFeedbackClient, result: Any) -> None:
         return
 
     reward = result.get("reward")
-    if reward is not None:
-        if isinstance(reward, list):
-            feedback.complete_rollout()
-            feedback.update_reward(reward)
-        else:
-            feedback.report_complete(reward)
-    else:
-        feedback.complete_rollout()
+    try:
+        rewards = [reward] if isinstance(reward, (int, float)) else list(reward)
+    except TypeError:
+        rewards = []
+
+    if not rewards or not all(
+        isinstance(value, int) or (isinstance(value, float) and math.isfinite(value))
+        for value in rewards
+    ):
+        feedback.report_error(
+            "Handler result must contain a finite numeric reward "
+            "or a non-empty iterable of finite numeric rewards"
+        )
+        return
+
+    feedback.report_complete(rewards)

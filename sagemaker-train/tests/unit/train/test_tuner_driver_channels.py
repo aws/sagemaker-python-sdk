@@ -89,6 +89,7 @@ def _mock_model_trainer(**overrides):
     trainer.tags = []
     trainer.source_code = None
     trainer.configure_mock(**{"networking": None})
+    trainer._resolve_staging_bucket.return_value = ("my-bucket", None)
     for k, v in overrides.items():
         setattr(trainer, k, v)
     return trainer
@@ -315,6 +316,33 @@ class TestBuildDriverAndCodeChannels:
         HyperparameterTuner._build_driver_and_code_channels(trainer)
 
         assert mock_s3_client.upload_file.call_args.kwargs["ExtraArgs"] is None
+
+    def test_uploads_sourcedir_to_resolved_staging_bucket(self, tmp_path):
+        """Source upload must follow the trainer's staging-bucket fallback (issue #6555)."""
+        trainer, mock_s3_client = self._upload_trainer(tmp_path, None)
+        trainer._resolve_staging_bucket.return_value = ("output-bucket", "jobs")
+
+        HyperparameterTuner._build_driver_and_code_channels(trainer)
+
+        trainer._resolve_staging_bucket.assert_called_once_with()
+        trainer.sagemaker_session.default_bucket.assert_not_called()
+        _, bucket, key = mock_s3_client.upload_file.call_args.args
+        assert bucket == "output-bucket"
+        assert key.startswith("jobs/test-tuning/")
+        assert key.endswith("/input/sourcedir/sourcedir.tar.gz")
+        assert trainer.hyperparameters["sagemaker_submit_directory"] == f"s3://output-bucket/{key}"
+
+    def test_uploads_sourcedir_with_default_bucket_prefix(self, tmp_path):
+        """Source upload must honor the session's default_bucket_prefix (issue #6555)."""
+        trainer, mock_s3_client = self._upload_trainer(tmp_path, None)
+        trainer.sagemaker_session.default_bucket_prefix = "team-prefix"
+
+        HyperparameterTuner._build_driver_and_code_channels(trainer)
+
+        _, bucket, key = mock_s3_client.upload_file.call_args.args
+        assert bucket == "my-bucket"
+        assert key.startswith("team-prefix/test-tuning/")
+        assert key.endswith("/sourcedir/sourcedir.tar.gz")
 
     @patch("tarfile.open")
     def test_ignores_file_in_sourcedir(self, mock_tarfile_open, tmp_path):

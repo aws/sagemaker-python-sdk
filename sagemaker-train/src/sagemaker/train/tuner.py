@@ -577,8 +577,16 @@ class HyperparameterTuner(object):
             import tempfile
 
             session = model_trainer.sagemaker_session
-            bucket = session.default_bucket()
-            s3_key = f"{key_prefix}/sourcedir/sourcedir.tar.gz"
+            # Resolve bucket and prefix the same way as create_input_data_channel, so the
+            # source lands next to sm_drivers and honors default_bucket_prefix and the
+            # output-path fallback when the role can't write the default bucket (#6555).
+            source_key_prefix = f"{key_prefix}/sourcedir"
+            if session.default_bucket_prefix:
+                source_key_prefix = f"{session.default_bucket_prefix}/{source_key_prefix}"
+            bucket, staging_prefix = model_trainer._resolve_staging_bucket()
+            if staging_prefix:
+                source_key_prefix = f"{staging_prefix}/{source_key_prefix}"
+            s3_key = f"{source_key_prefix}/sourcedir.tar.gz"
 
             with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
                 tar_path = tmp.name
