@@ -135,11 +135,13 @@ def align(
     """
     have_ids = id_field and all(id_field in r for r in preds) and all(id_field in r for r in gts)
     if have_ids:
-        by_id = {r[id_field]: r.get(gt_field) for r in gts}
+        # Ids are compared as text: a job writes every id as a string, while a seed read
+        # from JSON keeps numeric ids as numbers, and both name the same row.
+        by_id = {str(r[id_field]): r.get(gt_field) for r in gts}
         return [
-            (p.get(pred_field), by_id.get(p.get(id_field)))
+            (p.get(pred_field), by_id.get(str(p.get(id_field))))
             for p in preds
-            if p.get(id_field) in by_id
+            if str(p.get(id_field)) in by_id
         ]
     n = min(len(preds), len(gts))
     return [(preds[i].get(pred_field), gts[i].get(gt_field)) for i in range(n)]

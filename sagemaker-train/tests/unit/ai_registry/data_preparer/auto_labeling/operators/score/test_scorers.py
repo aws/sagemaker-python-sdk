@@ -36,6 +36,11 @@ class TestAlign:
         gts = [{"id": "a", "gt_label": "A"}, {"id": "b", "gt_label": "B"}]
         assert scoring.align(preds, gts, "id", "label", "gt_label") == [(1, "B"), (2, "A")]
 
+    def test_string_job_ids_match_numeric_seed_ids(self):
+        preds = [{"id": "1002", "label": "x"}, {"id": "1001", "label": "y"}]
+        gts = [{"id": 1001, "gt_label": "Y"}, {"id": 1002, "gt_label": "X"}]
+        assert scoring.align(preds, gts, "id", "label", "gt_label") == [("x", "X"), ("y", "Y")]
+
     def test_by_order_otherwise(self):
         preds = [{"label": 1}, {"label": 2}]
         gts = [{"id": "a", "gt_label": "A"}]
