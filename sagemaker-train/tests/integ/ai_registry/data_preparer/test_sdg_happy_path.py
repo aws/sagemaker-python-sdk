@@ -44,7 +44,7 @@ class TestSDGThenDQ:
                 "NumSamples": 5,
             },
             output_data_config={
-                "OutputS3Uri": (
+                "S3OutputPath": (
                     f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-output/"
                 ),
             },

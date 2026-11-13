@@ -276,7 +276,8 @@ class DatasetJobConfig(BaseModel):
         # schema property not set by the user from:
         #   1. Modules.DataPreparer.Job.<Category>.<path>
         #   2. Modules.DataPreparer.GlobalDefaults.<path>
-        #   3. _WELL_KNOWN_FALLBACKS (RoleArn, OutputDataConfig.OutputS3Uri)
+        #   3. _WELL_KNOWN_FALLBACKS (RoleArn, OutputDataConfig.S3OutputPath —
+        #      plus the legacy OutputDataConfig.OutputS3Uri spelling kept for DQ v1)
         #   4. Schema-declared default
         merged_payload = DataPreparerDefaults.resolve_into_payload(
             user_payload,

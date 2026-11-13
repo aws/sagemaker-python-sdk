@@ -80,7 +80,7 @@ class TestLabelingHappyPath:
                 confidence=Confidence(method="verbalized"),
             ),
             output_data_config={
-                "OutputS3Uri": f"s3://{integ_bucket}/data-preparer-integ-labeling-output/",
+                "S3OutputPath": f"s3://{integ_bucket}/data-preparer-integ-labeling-output/",
             },
         )
         # The typed options serialize to the wire shape the service reads.

@@ -399,7 +399,7 @@ class TestAgainstARealSchemaModel:
             "DatasetName": {"type": "string"},
             "OutputDataConfig": {
                 "type": "object",
-                "properties": {"OutputS3Uri": {"type": "string"}},
+                "properties": {"S3OutputPath": {"type": "string"}},
             },
             "GenerationConfig": {
                 "type": "object",

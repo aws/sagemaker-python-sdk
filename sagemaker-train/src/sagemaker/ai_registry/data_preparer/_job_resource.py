@@ -586,7 +586,7 @@ class Job:
         if out_url:
             out_link = (
                 f"[bright_blue underline][link={out_url}]"
-                f"🔗 OutputS3Uri[/link][/bright_blue underline]"
+                f"🔗 S3OutputPath[/link][/bright_blue underline]"
             )
             header_table.add_row("Links", f"{cw_link} | {out_link}")
         else:
@@ -1523,16 +1523,16 @@ class Job:
         The service writes an SDG job's output to its own folder, named from the
         job's name and its creation time without colons (``{createdAt}``):
 
-            {OutputS3Uri}/synthetic-data-generation/{JobName}/{createdAt}/job_metadata/verified_samples.jsonl
-            {OutputS3Uri}/synthetic-data-generation/{JobName}/{createdAt}/output/output_samples.jsonl
+            {S3OutputPath}/synthetic-data-generation/{JobName}/{createdAt}/job_metadata/verified_samples.jsonl
+            {S3OutputPath}/synthetic-data-generation/{JobName}/{createdAt}/output/output_samples.jsonl
 
         That folder is looked up first. Jobs that started before the service moved
         SDG output there wrote it under a non-deterministic subdirectory; in some
         flows the service inserted an intermediate tier such as ``refined/`` or
-        ``samples/`` between ``OutputS3Uri`` and the ``{JobName}-{ts}/`` dir:
+        ``samples/`` between ``S3OutputPath`` and the ``{JobName}-{ts}/`` dir:
 
-            {OutputS3Uri}/[{tier}/]{JobName}-{service-UTC-timestamp}/job_metadata/verified_samples.jsonl
-            {OutputS3Uri}/[{tier}/]{JobName}-{service-UTC-timestamp}/output/output_samples.jsonl
+            {S3OutputPath}/[{tier}/]{JobName}-{service-UTC-timestamp}/job_metadata/verified_samples.jsonl
+            {S3OutputPath}/[{tier}/]{JobName}-{service-UTC-timestamp}/output/output_samples.jsonl
 
         The paragraphs up to the S3 Select note describe how that earlier layout is matched.
 
@@ -1544,7 +1544,7 @@ class Job:
         ``{JobName}-`` prefix is unsafe because sibling jobs can share a
         string prefix (``my-sdg`` vs ``my-sdg-v2``). We enforce the
         structural requirement that the path component immediately after
-        ``OutputS3Uri`` is exactly ``{JobName}-{iso-ish-suffix}`` where the
+        ``S3OutputPath`` is exactly ``{JobName}-{iso-ish-suffix}`` where the
         suffix starts with a digit (service timestamps always begin with a
         year) and contains a ``T`` (the date/time separator in ISO format).
         Any match that fails this shape is rejected.
@@ -1572,8 +1572,8 @@ class Job:
         counter — not needed at current SDG output volumes.
 
         A DataQualityEvaluation job is looked up only by its own folder, from its
-        name and creation time: ``{OutputS3Uri}/data-quality-evaluation/{JobName}/{ts}/``
-        (3.x), then ``{OutputS3Uri}/{JobName}-{ts}/`` (2.x). An earlier job that reused
+        name and creation time: ``{S3OutputPath}/data-quality-evaluation/{JobName}/{ts}/``
+        (3.x), then ``{S3OutputPath}/{JobName}-{ts}/`` (2.x). An earlier job that reused
         the name is never matched.
 
         Returns ``None`` if progress tracking is not configured, the output

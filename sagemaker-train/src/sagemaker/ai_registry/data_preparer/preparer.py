@@ -527,7 +527,9 @@ class DataPreparer(BaseModel):
                 SyntheticDataGeneration this carries ``generation_config``
                 (including ``SpecS3Uri``, ``NumSamples``, and optional model and
                 sampling parameters) and ``output_data_config``
-                (``OutputS3Uri`` or ``S3OutputPath``).
+                (``S3OutputPath`` — the preferred field name after the Path A
+                amendment; see
+                ``.kiro/specs/sdg-schema-v3-s3outputpath-rename``).
             job_name (Optional[str]): Exact name for the job. Must be unique
                 within the account and region; jobs are immutable, so a failed
                 job cannot be retried under the same name. Mutually exclusive
@@ -944,7 +946,7 @@ class DataPreparer(BaseModel):
         logger.info("Submitting %s job: %s", category.value, resolved_name)
 
         # SDG progress-tracking plumbing: extract the expected sample count and
-        # the configured OutputS3Uri from the resolved payload. These are used
+        # the configured S3OutputPath from the resolved payload. These are used
         # by Job.wait() to render a "Samples: X/Y" progress line in the Rich
         # status panel by polling S3 Select on the service-written JSONL.
         # DQ jobs track records evaluated via evaluated_data.jsonl.
@@ -956,8 +958,8 @@ class DataPreparer(BaseModel):
             if isinstance(gen_cfg.get("NumSamples"), int):
                 expected_samples = gen_cfg["NumSamples"]
             output_cfg = validated.get("OutputDataConfig") or {}
-            if isinstance(output_cfg.get("OutputS3Uri"), str):
-                progress_output_s3_uri = output_cfg["OutputS3Uri"]
+            if isinstance(output_cfg.get("S3OutputPath"), str):
+                progress_output_s3_uri = output_cfg["S3OutputPath"]
         elif category == JobCategory.DATA_QUALITY_EVALUATION:
             validated = dataset._validated_payload or {}
             shape = DqShape.for_version(dataset.resolved_schema_version)

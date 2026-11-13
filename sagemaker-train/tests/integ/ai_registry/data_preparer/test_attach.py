@@ -59,7 +59,7 @@ class TestAttachSDG:
                 "NumSamples": 5,
             },
             output_data_config={
-                "OutputS3Uri": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach/",
+                "S3OutputPath": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach/",
             },
         )
 
@@ -104,7 +104,7 @@ class TestAttachSDG:
                 "NumSamples": 5,
             },
             output_data_config={
-                "OutputS3Uri": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-done/",
+                "S3OutputPath": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-done/",
             },
         )
 
@@ -163,7 +163,7 @@ class TestAttachDQ:
                 "NumSamples": 5,
             },
             output_data_config={
-                "OutputS3Uri": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-dq-src/",
+                "S3OutputPath": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-dq-src/",
             },
         )
         preparer = DataPreparer(sagemaker_session=sagemaker_session, role=test_role)

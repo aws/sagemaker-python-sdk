@@ -64,7 +64,7 @@ SIMPLE_SCHEMA = {
         "OutputDataConfig": {
             "type": "object",
             "properties": {
-                "OutputS3Uri": {"type": "string"},
+                "S3OutputPath": {"type": "string"},
                 "HubName": {"type": "string"},
             },
         },
@@ -74,10 +74,12 @@ SIMPLE_SCHEMA = {
 
 # Nested all-optional objects, shaped like DataQualityEvaluation's EvaluationConfig.
 # Deliberately NOT reusing SIMPLE_SCHEMA for the empty-object tests below:
-# `OutputDataConfig.OutputS3Uri` has a live well-known fallback, so that subtree is
-# always filled and can never exercise the empty-object path. No property here is
-# registered in _WELL_KNOWN_FALLBACKS (lookup is by exact path), so these objects stay
-# empty unless the config mock fills them — which is what makes the path reachable.
+# `OutputDataConfig.S3OutputPath` has a live well-known fallback (and so does its
+# legacy ``OutputDataConfig.OutputS3Uri`` spelling, see defaults.py), so that
+# subtree is always filled and can never exercise the empty-object path. No
+# property here is registered in _WELL_KNOWN_FALLBACKS (lookup is by exact path),
+# so these objects stay empty unless the config mock fills them — which is what
+# makes the path reachable.
 EVAL_CONFIG_SCHEMA = {
     "properties": {
         "EvaluationName": {"type": "string"},
@@ -258,7 +260,7 @@ class TestResolveIntoPayload:
 
     def test_nested_object_walk(self, mock_session, mock_config_mgr):
         def config_side_effect(config_path=None, sagemaker_session=None):
-            if "OutputS3Uri" in config_path:
+            if "S3OutputPath" in config_path:
                 return "s3://config/output/"
             return None
 
@@ -272,7 +274,7 @@ class TestResolveIntoPayload:
             sagemaker_session=mock_session,
             config_mgr=mock_config_mgr,
         )
-        assert result["OutputDataConfig"]["OutputS3Uri"] == "s3://config/output/"
+        assert result["OutputDataConfig"]["S3OutputPath"] == "s3://config/output/"
 
     def test_unfilled_scaffolding_is_still_pruned(self, mock_session, mock_config_mgr):
         """The walk creates a `{}` for every schema object as it descends. Ones nothing
@@ -333,7 +335,7 @@ class TestResolveIntoPayload:
         "sagemaker.ai_registry.data_preparer.defaults._WELL_KNOWN_FALLBACKS",
         {
             "RoleArn": MagicMock(return_value="arn:aws:iam::123:role/DefaultRole"),
-            "OutputDataConfig.OutputS3Uri": MagicMock(return_value=None),
+            "OutputDataConfig.S3OutputPath": MagicMock(return_value=None),
         },
     )
     def test_well_known_fallback_fires_for_role(self, mock_session, mock_config_mgr):
@@ -351,7 +353,7 @@ class TestResolveIntoPayload:
         "sagemaker.ai_registry.data_preparer.defaults._WELL_KNOWN_FALLBACKS",
         {
             "RoleArn": MagicMock(return_value="should-not-appear"),
-            "OutputDataConfig.OutputS3Uri": MagicMock(return_value=None),
+            "OutputDataConfig.S3OutputPath": MagicMock(return_value=None),
         },
     )
     def test_well_known_fallback_does_not_fire_for_other_paths(self, mock_session, mock_config_mgr):
@@ -367,9 +369,9 @@ class TestResolveIntoPayload:
         assert result["RoleArn"] == "user-role"
 
 
-# DataTransformation and DQ v2 spell the output location S3OutputPath, not
-# OutputS3Uri. Tier-3 lookup is exact-path match, so the registry needs both
-# spellings or those categories get no default at all.
+# DataTransformation, DQ v2, and (under Path A) SDG spell the output location
+# S3OutputPath, not OutputS3Uri. Tier-3 lookup is exact-path match, so the
+# registry needs both spellings or those categories get no default at all.
 DT_SCHEMA = {
     "properties": {
         "InputDataConfig": {"type": "array"},
@@ -469,7 +471,7 @@ class TestS3OutputPathFallback:
             config_mgr=mock_config_mgr,
         )
 
-        assert result["OutputDataConfig"]["OutputS3Uri"] == "s3://bucket/sdg/"
+        assert result["OutputDataConfig"]["S3OutputPath"] == "s3://bucket/sdg/"
 
 
 class TestFallbackRoleArnA1:

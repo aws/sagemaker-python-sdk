@@ -401,7 +401,7 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
     _set_telemetry_attribution()
     if session is None:
         session = _region_bound_session(region)
-    output_s3_uri = document["OutputDataConfig"]["OutputS3Uri"]
+    output_s3_uri = document["OutputDataConfig"]["S3OutputPath"]
     if resume_job and resume_job.get("job_name"):
         name = resume_job["job_name"]
         job = _describe_job(session, name)

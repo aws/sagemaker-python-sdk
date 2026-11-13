@@ -221,7 +221,7 @@ class TestHubNameInjection:
         """Scenario 1: Customer explicitly sets HubName — we respect it."""
         from sagemaker.ai_registry.data_preparer.configs import AIRHub
 
-        merged = {"OutputDataConfig": {"OutputS3Uri": "s3://b/o", "HubName": "my-hub"}}
+        merged = {"OutputDataConfig": {"S3OutputPath": "s3://b/o", "HubName": "my-hub"}}
 
         with patch.object(AIRHub, "get_hub_name", return_value="auto-hub"):
             # Simulate the injection logic from configs.py
@@ -241,7 +241,7 @@ class TestHubNameInjection:
         """Scenario 2: Hub exists in account — auto-inject the name."""
         from sagemaker.ai_registry.data_preparer.configs import AIRHub
 
-        merged = {"OutputDataConfig": {"OutputS3Uri": "s3://b/o"}}
+        merged = {"OutputDataConfig": {"S3OutputPath": "s3://b/o"}}
         mock_session.sagemaker_client.describe_hub.return_value = {"HubName": "auto-hub"}
 
         with patch.object(AIRHub, "get_hub_name", return_value="auto-hub"):
@@ -260,7 +260,7 @@ class TestHubNameInjection:
         """Scenario 3: Hub doesn't exist — omit HubName, let service auto-create."""
         from sagemaker.ai_registry.data_preparer.configs import AIRHub
 
-        merged = {"OutputDataConfig": {"OutputS3Uri": "s3://b/o"}}
+        merged = {"OutputDataConfig": {"S3OutputPath": "s3://b/o"}}
         mock_session.sagemaker_client.describe_hub.side_effect = Exception("ResourceNotFound")
 
         with patch.object(AIRHub, "get_hub_name", return_value="auto-hub"):

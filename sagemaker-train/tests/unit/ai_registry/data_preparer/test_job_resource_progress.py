@@ -250,7 +250,7 @@ def _wire_listing(s3_mock, keys):
 
 
 class TestSdgJobFolder:
-    """SDG output lives in {OutputS3Uri}/synthetic-data-generation/{JobName}/{createdAt}/."""
+    """SDG output lives in {S3OutputPath}/synthetic-data-generation/{JobName}/{createdAt}/."""
 
     JOB_NAME = "my-sdg-job-1794531357481"
     CREATED_AT = "2026-11-13T00:55:57.543Z"

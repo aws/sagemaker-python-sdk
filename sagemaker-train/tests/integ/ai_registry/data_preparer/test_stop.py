@@ -76,7 +76,7 @@ class TestStopSDG:
                 "NumSamples": 100,  # large enough to still be running when we stop
             },
             output_data_config={
-                "OutputS3Uri": (
+                "S3OutputPath": (
                     f"s3://{sagemaker_session.default_bucket()}" "/data-preparer-integ-stop/"
                 ),
             },
@@ -133,7 +133,7 @@ class TestStopSDG:
                 "NumSamples": 100,
             },
             output_data_config={
-                "OutputS3Uri": (
+                "S3OutputPath": (
                     f"s3://{sagemaker_session.default_bucket()}" "/data-preparer-integ-stop-wait/"
                 ),
             },
