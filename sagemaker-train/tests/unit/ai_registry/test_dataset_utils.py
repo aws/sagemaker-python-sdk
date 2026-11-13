@@ -14,7 +14,6 @@
 """Tests for dataset utilities."""
 
 import json
-import pytest
 
 from sagemaker.ai_registry.dataset_utils import (
     CustomizationTechnique,
@@ -109,18 +108,6 @@ class TestDataSetHubContentDocument:
 
         assert parsed == {}
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "The v2 output lost SpecificationArn in 75e13a8e. That commit renamed it to "
-            "SpecS3Uri on the new v5 branch and the rewritten v2 branch dropped it rather "
-            "than keeping it, so the legacy document no longer round-trips every field it "
-            "documents. Latent rather than live: DataSet.create is the only production "
-            "caller and never sets specification_arn on the v2 path. Recorded here instead "
-            "of narrowed away -- restoring the field makes this XPASS and fail strict, "
-            "which is the signal to delete this marker."
-        ),
-    )
     def test_to_json_full(self):
         """Legacy v2 document with every field set."""
         doc = DataSetHubContentDocument(

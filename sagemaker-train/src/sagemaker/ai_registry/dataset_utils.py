@@ -16,6 +16,12 @@ from typing import List, Optional, TYPE_CHECKING
 from enum import Enum
 from collections.abc import Sequence
 import json
+import warnings
+
+from sagemaker.ai_registry.air_constants import (
+    DATASET_DOCUMENT_SCHEMA_VERSION,
+    DATASET_SUPPORTED_SCHEMA_VERSIONS,
+)
 
 if TYPE_CHECKING:
     from sagemaker.ai_registry.dataset import DataSet
@@ -96,18 +102,44 @@ class DataSetHubContentDocument:
         self.dependencies = dependencies or []
         self.content_metadata = content_metadata
 
-    def to_json(self, schema_version: str = "5.0.0") -> str:
+    def to_json(self, schema_version: str = DATASET_DOCUMENT_SCHEMA_VERSION) -> str:
         """Convert to JSON string compatible with the given schema version.
 
         Args:
-            schema_version: The document schema version to target.
+            schema_version: The document schema version to target. Defaults to the
+                current version (:data:`DATASET_DOCUMENT_SCHEMA_VERSION`).
                 v5.0.0 produces a minimal document with DatasetFileFormat (required).
                 v2.0.0 produces the legacy document with all fields.
                 In every version, ``content_metadata`` (when set) is emitted as
                 ``ContentMetadata``; the v5.0.0 schema defines this object
                 (SourceFeatureGroups required; ExtractionMethod and
                 AthenaQueryExecutionId optional) for Feature Store lineage.
+
+                Any version older than the current one is out of date and emits a
+                ``DeprecationWarning``. The shapes differ materially rather than
+                cosmetically -- the legacy document carries ``DatasetRoleArn``,
+                ``DatasetContextS3Uri``, ``ConversationId``,
+                ``ConversationCheckpointId``, ``Dependencies`` and
+                ``SpecificationArn``, none of which the current schema accepts,
+                and it renames ``SpecificationArn`` to ``SpecS3Uri``. Pin an older
+                version only to talk to a Hub that has not moved.
         """
+        if schema_version != DATASET_DOCUMENT_SCHEMA_VERSION:
+            known = (
+                ""
+                if schema_version in DATASET_SUPPORTED_SCHEMA_VERSIONS
+                else f" It is also not one of the supported versions "
+                f"{DATASET_SUPPORTED_SCHEMA_VERSIONS}."
+            )
+            warnings.warn(
+                f"Dataset document schema version {schema_version!r} is out of date; "
+                f"the current version is {DATASET_DOCUMENT_SCHEMA_VERSION!r}. The "
+                f"documents differ in which fields they carry, not just in version "
+                f"number, so a consumer expecting the current shape will not find the "
+                f"legacy fields.{known}",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if schema_version >= "3.0.0":
             # v3+ / v5 schema: only allowed fields, DatasetFileFormat required
             content = {}
@@ -135,6 +167,11 @@ class DataSetHubContentDocument:
                 content["DatasetS3Prefix"] = self.dataset_s3_prefix
             if self.dataset_context_s3_uri:
                 content["DatasetContextS3Uri"] = self.dataset_context_s3_uri
+            if self.specification_arn:
+                # The legacy key. v3+ renamed this to SpecS3Uri above; the v2
+                # rewrite dropped it entirely, so a caller that set
+                # specification_arn and targeted v2 lost the field silently.
+                content["SpecificationArn"] = self.specification_arn
             if self.conversation_id:
                 content["ConversationId"] = self.conversation_id
             if self.conversation_checkpoint_id:
