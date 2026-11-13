@@ -238,6 +238,90 @@ class TestCountSamplesDisambiguation:
         assert job._count_samples() is None
 
 
+def _wire_listing(s3_mock, keys):
+    """A paginator that, like S3, returns only the keys under the requested Prefix."""
+    paginator = MagicMock()
+
+    def _paginate(*_args, Prefix="", **_kwargs):
+        return iter([{"Contents": [{"Key": k} for k in keys if k.startswith(Prefix)]}])
+
+    paginator.paginate.side_effect = _paginate
+    s3_mock.get_paginator.return_value = paginator
+
+
+class TestSdgJobFolder:
+    """SDG output lives in {OutputS3Uri}/synthetic-data-generation/{JobName}/{createdAt}/."""
+
+    JOB_NAME = "my-sdg-job-1794531357481"
+    CREATED_AT = "2026-11-13T00:55:57.543Z"
+    FOLDER = f"sdg-out/synthetic-data-generation/{JOB_NAME}/2026-11-13T005557.543Z/"
+
+    def _job(self, session):
+        return Job(
+            job_name=self.JOB_NAME,
+            job_category="SyntheticDataGeneration",
+            session=session,
+            created_at=self.CREATED_AT,
+            expected_samples=10,
+            progress_output_s3_uri="s3://my-bucket/sdg-out/",
+        )
+
+    def _s3(self, mock_boto_client, keys, count=0):
+        s3 = MagicMock()
+        s3.exceptions.NoSuchKey = type("NoSuchKey", (Exception,), {})
+        s3.get_object.return_value = _get_object_response(count)
+        mock_boto_client.return_value = s3
+        _wire_listing(s3, keys)
+        return s3
+
+    @patch("boto3.client")
+    def test_counts_verified_samples_in_the_job_folder(self, mock_boto_client, session_with_region):
+        verified = f"{self.FOLDER}job_metadata/verified_samples.jsonl"
+        validation = f"{self.FOLDER}output/data-validation/dqe-val-1/validation/record_level/"
+        s3 = self._s3(
+            mock_boto_client,
+            [
+                f"{self.FOLDER}generation_code/generation.py",
+                verified,
+                f"{self.FOLDER}output/output_samples.jsonl",
+                f"{validation}validation_failures.jsonl",
+            ],
+            count=7,
+        )
+        job = self._job(session_with_region)
+
+        assert job._count_samples() == 7
+        assert s3.get_object.call_args.kwargs["Key"] == verified
+        assert job._progress_target_key == verified
+
+    @patch("boto3.client")
+    def test_ignores_a_sibling_and_an_earlier_job_with_the_same_name(
+        self, mock_boto_client, session_with_region
+    ):
+        root = "sdg-out/synthetic-data-generation/"
+        s3 = self._s3(
+            mock_boto_client,
+            [
+                f"{root}{self.JOB_NAME}-v2/2026-11-13T005557.543Z/job_metadata/verified_samples.jsonl",
+                f"{root}{self.JOB_NAME}/2026-11-12T235501.120Z/job_metadata/verified_samples.jsonl",
+            ],
+        )
+        job = self._job(session_with_region)
+
+        assert job._count_samples() is None
+        s3.get_object.assert_not_called()
+        assert job._progress_target_key is None
+
+    @patch("boto3.client")
+    def test_finds_a_job_written_in_the_earlier_layout(self, mock_boto_client, session_with_region):
+        key = f"sdg-out/{self.JOB_NAME}-2026-11-13T005557.543Z/job_metadata/verified_samples.jsonl"
+        s3 = self._s3(mock_boto_client, [key], count=4)
+        job = self._job(session_with_region)
+
+        assert job._count_samples() == 4
+        assert s3.get_object.call_args.kwargs["Key"] == key
+
+
 class TestDQProgressTracking:
     """DQ-specific progress: discovers evaluated_data.jsonl and uses correct label."""
 

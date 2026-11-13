@@ -42,10 +42,11 @@ _TERMINAL_STATES = {"Completed", "Failed", "Stopped"}
 _LOG_GROUP_PREFIX = "/aws/sagemaker/Job"
 _DQ_OUTPUT_SEGMENT = "data-quality-evaluation"
 _DQ_RECORD_LEVEL_SUFFIX = "/record_level/evaluated_data.jsonl"
+_SDG_OUTPUT_SEGMENT = "synthetic-data-generation"
 
 
 def _output_folder_timestamp(created_at) -> Optional[str]:
-    """``created_at`` in UTC as ``YYYY-MM-DDTHHMMSS``, the start of a DQ output folder's timestamp."""
+    """``created_at`` in UTC as ``YYYY-MM-DDTHHMMSS``, the start of an output folder's timestamp."""
     if isinstance(created_at, str):
         text = re.sub(
             r"\.(\d+)",
@@ -1519,12 +1520,21 @@ class Job:
     def _count_samples(self) -> Optional[int]:
         """Count rows in the SDG output file via S3 GetObject + newline count.
 
-        The service writes samples under a non-deterministic subdirectory; in
-        some flows it inserts an intermediate tier such as ``refined/`` or
+        The service writes an SDG job's output to its own folder, named from the
+        job's name and its creation time without colons (``{createdAt}``):
+
+            {OutputS3Uri}/synthetic-data-generation/{JobName}/{createdAt}/job_metadata/verified_samples.jsonl
+            {OutputS3Uri}/synthetic-data-generation/{JobName}/{createdAt}/output/output_samples.jsonl
+
+        That folder is looked up first. Jobs that started before the service moved
+        SDG output there wrote it under a non-deterministic subdirectory; in some
+        flows the service inserted an intermediate tier such as ``refined/`` or
         ``samples/`` between ``OutputS3Uri`` and the ``{JobName}-{ts}/`` dir:
 
             {OutputS3Uri}/[{tier}/]{JobName}-{service-UTC-timestamp}/job_metadata/verified_samples.jsonl
             {OutputS3Uri}/[{tier}/]{JobName}-{service-UTC-timestamp}/output/output_samples.jsonl
+
+        The paragraphs up to the S3 Select note describe how that earlier layout is matched.
 
         For tabular SDG jobs, the output may be a ``.csv`` file. The
         newline-count approach works identically for CSV (one row per line).
@@ -1683,6 +1693,49 @@ class Job:
                     return get_line_count(target)
             return None
 
+        # Only match line-countable extensions (.jsonl, .csv) — binary
+        # formats like .parquet are not trackable via newline counting.
+        _COUNTABLE_EXTENSIONS = (".jsonl", ".csv")
+
+        def _is_countable(k: str) -> bool:
+            return any(k.endswith(ext) for ext in _COUNTABLE_EXTENSIONS)
+
+        def _pick_sample_file(keys: List[str]) -> Optional[str]:
+            # Priority: verified_samples > evaluated_data > output_samples.
+            for stem in ("verified_samples", "evaluated_data", "output_samples"):
+                found = next(
+                    (k for k in keys if stem in k.rsplit("/", 1)[-1] and _is_countable(k)),
+                    None,
+                )
+                if found is not None:
+                    return found
+            return None
+
+        def _lock_on(target: str) -> Optional[int]:
+            # Log on first discovery so operators can verify the match.
+            if self._progress_target_key != target:
+                logger.info(
+                    "Locked onto sample-progress file for job %s: s3://%s/%s",
+                    self.job_name,
+                    bucket,
+                    target,
+                )
+            self._progress_target_key = target
+            return get_line_count(target)
+
+        # The job's own folder. The job name is a whole path segment and the folder
+        # starts with the creation second, so neither a sibling whose name extends
+        # ours nor an earlier job that reused the name can match.
+        folder_ts = _output_folder_timestamp(self.created_at)
+        if folder_ts is not None:
+            job_folder = f"{prefix}{_SDG_OUTPUT_SEGMENT}/{self.job_name}/{folder_ts}"
+            target = _pick_sample_file(
+                [o["Key"] for o in _list_under(job_folder) or [] if o["Key"].startswith(job_folder)]
+            )
+            if target is not None:
+                return _lock_on(target)
+
+        # The earlier {JobName}-{ts}/ layout.
         narrow_prefix = f"{prefix}{self.job_name}-"
         objects = _list_under(narrow_prefix)
         if not objects:
@@ -1705,43 +1758,10 @@ class Job:
             return bool(segment_re.search(key))
 
         # Discover the streaming data file belonging to this job.
-        # Priority: verified_samples > evaluated_data > output_samples.
-        # Only match line-countable extensions (.jsonl, .csv) — binary
-        # formats like .parquet are not trackable via newline counting.
-        _COUNTABLE_EXTENSIONS = (".jsonl", ".csv")
-        keys = [o["Key"] for o in objects if is_ours(o["Key"])]
-
-        def _is_countable(k: str) -> bool:
-            return any(k.endswith(ext) for ext in _COUNTABLE_EXTENSIONS)
-
-        target = next(
-            (k for k in keys if "verified_samples" in k.rsplit("/", 1)[-1] and _is_countable(k)),
-            None,
-        )
-        if target is None:
-            target = next(
-                (k for k in keys if "evaluated_data" in k.rsplit("/", 1)[-1] and _is_countable(k)),
-                None,
-            )
-        if target is None:
-            target = next(
-                (k for k in keys if "output_samples" in k.rsplit("/", 1)[-1] and _is_countable(k)),
-                None,
-            )
+        target = _pick_sample_file([o["Key"] for o in objects if is_ours(o["Key"])])
         if target is None:
             return None
-
-        # Log on first discovery so operators can verify the match.
-        if self._progress_target_key != target:
-            logger.info(
-                "Locked onto sample-progress file for job %s: s3://%s/%s",
-                self.job_name,
-                bucket,
-                target,
-            )
-        self._progress_target_key = target
-
-        return get_line_count(target)
+        return _lock_on(target)
 
     def _apply_completion_fallback(self) -> None:
         """Snap sample count to expected on successful completion.
