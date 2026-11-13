@@ -27895,7 +27895,11 @@ class Pipeline(Base):
         """
 
         operation_input_args = {
-            "PipelineName": self.pipeline_name,
+            "PipelineName": (
+                self.pipeline_arn
+                if not isinstance(self.pipeline_arn, Unassigned)
+                else self.pipeline_name
+            ),
             "PipelineVersionId": pipeline_version_id,
             "PipelineVersionAlias": pipeline_version_alias,
         }
