@@ -37,6 +37,8 @@ from __future__ import absolute_import
 
 import logging
 import os
+import tarfile
+import tempfile
 from contextlib import contextmanager
 
 from sagemaker.core import shapes
@@ -253,3 +255,60 @@ class TestTuningJobSubmission:
                 definition.retry_strategy, shapes.RetryStrategy
             ), f"tuning job {arn} lost the retry strategy"
             assert definition.retry_strategy.maximum_retry_attempts == 2
+
+    def test_tuning_job_ignores_patterns_in_sourcedir(self, sagemaker_session, tmp_path):
+        """A tuning job must ignore specified files and directories in a local sourcedir
+
+        Test that the sourcedir.tar.gz object in S3 does not have any file/directory that
+        matches the default ignore_patterns argument.
+        Use a custom local source directory that has two files:
+        - train.py (this should be included in the tarfile)
+        - .git/description (this is in a directory that should be ignored)
+        """
+        src_dir = str(tmp_path)
+        git_subdir = src_dir + "/.git"
+        os.makedirs(git_subdir)
+        train_file = os.path.join(src_dir, "train.py")
+        with open(train_file, "w") as f:
+            f.write("print('hello')")
+        with open(os.path.join(git_subdir, "description"), "w") as f:
+            f.write("A repository with a .git directory to ignore")
+
+        name = unique_name("shallow-tuner-ig", max_length=MAX_TUNING_JOB_NAME)
+        model_trainer = _model_trainer(
+            sagemaker_session,
+            name,
+            source_code=SourceCode(source_dir=src_dir, entry_script="train.py"),
+        )
+        tuner = _tuner(model_trainer)
+
+        with _tuning(tuner, name):
+            arn = assert_submitted(
+                tuner.latest_tuning_job,
+                expected_name=name,
+                resource="hyper-parameter-tuning-job",
+            )
+
+            described = tuner.latest_tuning_job.refresh()
+            definition = getattr(described, "training_job_definition", None)
+            assert definition is not None, (
+                f"tuning job {arn} has no training_job_definition to inspect; "
+                "cannot inspect the sourcedir tar file"
+            )
+            assert isinstance(
+                definition.static_hyper_parameters, dict
+            ), f"tuning job {arn} does not have static_hyper_parameters"
+            sagemaker_submit_directory = definition.static_hyper_parameters.get(
+                "sagemaker_submit_directory", None
+            )
+            assert (
+                sagemaker_submit_directory is not None
+            ), f"tuning job {arn} has no sagemaker_submit_directory"
+            _, _, sourcedir_bucket, sourcedir_object = sagemaker_submit_directory.split("/", 3)
+            with tempfile.NamedTemporaryFile() as tmpfile:
+                sagemaker_session.s3_client.download_file(
+                    sourcedir_bucket, sourcedir_object, tmpfile.name
+                )
+                with tarfile.open(tmpfile.name) as tf:
+                    tarfile_contents = tf.getnames()
+            assert tarfile_contents == ["train.py"], ".git directory should not be in the tar file"
