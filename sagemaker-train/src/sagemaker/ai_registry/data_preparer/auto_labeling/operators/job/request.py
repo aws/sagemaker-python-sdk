@@ -356,6 +356,7 @@ def build_labeling_request(  # pylint: disable=too-many-statements,too-many-loca
     confidence_recalibration=None,
     optimizer=None,
     confidence_floor_bypass=False,
+    output_field_name: str = "OutputS3Uri",
 ):
     """The labeling ``CreateJob`` document, checked before anything is uploaded or spent.
 
@@ -453,7 +454,7 @@ def build_labeling_request(  # pylint: disable=too-many-statements,too-many-loca
     else:
         _check_dataset_arn(input_dataset_arn, "InputDatasetArn")
     _check_s3_uri(spec_s3_uri, "DatasetSpecification.SpecS3Uri")
-    _check_s3_uri(output_s3_uri, "OutputDataConfig.S3OutputPath")
+    _check_s3_uri(output_s3_uri, f"OutputDataConfig.{output_field_name}")
     # The panel.
     if not isinstance(model_ids, (list, tuple)) or not model_ids:
         raise LabelingRequestError(
@@ -594,7 +595,7 @@ def build_labeling_request(  # pylint: disable=too-many-statements,too-many-loca
         generation_config["InputDataS3Uri"] = input_s3_uri
     else:
         generation_config["InputDatasetArn"] = input_dataset_arn
-    output_data_config = {"S3OutputPath": output_s3_uri}
+    output_data_config = {output_field_name: output_s3_uri}
     if hub_name:
         output_data_config["HubName"] = hub_name
     return {
@@ -634,7 +635,8 @@ def request_summary(document):
         "demos": (cfg.get("Demos") or {}).get("S3Uri"),
         "input": gc.get("InputDataS3Uri") or gc.get("InputDatasetArn"),
         "spec": gc["DatasetSpecification"]["SpecS3Uri"],
-        "output": document["OutputDataConfig"]["S3OutputPath"],
+        "output": document["OutputDataConfig"].get("S3OutputPath")
+        or document["OutputDataConfig"].get("OutputS3Uri"),
     }
     if "Confidence" in cfg:
         summary["confidence_method"] = cfg["Confidence"]["Method"]

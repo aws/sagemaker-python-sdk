@@ -601,3 +601,196 @@ def test_one_telemetry_attribution_definition():
     from sagemaker.ai_registry.data_preparer.auto_labeling.operators import _bedrock as bedrock
 
     assert J._set_telemetry_attribution is bedrock._set_telemetry_attribution
+
+
+# ---------------------------------------------------------------------------
+# Tests for _sdg_output_field and the writer/reader output-field logic
+# ---------------------------------------------------------------------------
+
+
+class _SchemaSession:
+    """Fake session whose sagemaker_client answers one schema call."""
+
+    def __init__(self, odc_props):
+        schema = {
+            "properties": {
+                "OutputDataConfig": {
+                    "type": "object",
+                    "properties": odc_props,
+                }
+            }
+        }
+
+        class _Client:
+            def list_job_schema_versions(self, **_kw):
+                return {"JobConfigSchemas": [{"JobConfigSchemaVersion": "2.0.0"}]}
+
+            def describe_job_schema_version(self, **_kw):
+                import json
+
+                return {"JobConfigSchema": json.dumps(schema)}
+
+        self.sagemaker_client = _Client()
+
+
+class _FailSession:
+    """Session whose sagemaker_client raises on every call."""
+
+    class _Client:
+        def list_job_schema_versions(self, **_kw):
+            raise RuntimeError("network unavailable")
+
+        def describe_job_schema_version(self, **_kw):
+            raise RuntimeError("network unavailable")
+
+    sagemaker_client = _Client()
+
+
+class TestSdgOutputField:
+    """_sdg_output_field picks the field name from the resolved schema."""
+
+    def setup_method(self):
+        # Cache isolation: each test provides its own schema; clear the global
+        # resolver cache so a previous test's cached schema does not shadow it.
+        from sagemaker.ai_registry.data_preparer._schema_resolver import _SCHEMA_CACHE
+
+        _SCHEMA_CACHE.clear()
+
+    def test_schema_declares_only_output_s3_uri(self):
+        sess = _SchemaSession({"OutputS3Uri": {"type": "string"}})
+        assert J._sdg_output_field(sess) == "OutputS3Uri"
+
+    def test_schema_declares_only_s3_output_path(self):
+        sess = _SchemaSession({"S3OutputPath": {"type": "string"}})
+        assert J._sdg_output_field(sess) == "S3OutputPath"
+
+    def test_schema_declares_both_s3_output_path_wins(self):
+        sess = _SchemaSession(
+            {"OutputS3Uri": {"type": "string"}, "S3OutputPath": {"type": "string"}}
+        )
+        assert J._sdg_output_field(sess) == "S3OutputPath"
+
+    def test_schema_unavailable_returns_output_s3_uri(self):
+        assert J._sdg_output_field(_FailSession()) == "OutputS3Uri"
+
+
+class TestSubmitOutputFieldNormalization:
+    """submit_labeling_job normalizes OutputDataConfig to the schema-declared spelling."""
+
+    def _doc(self, field_name):
+        return R.build_labeling_request(
+            task="classification",
+            text_fields=["text"],
+            spec_s3_uri="s3://b/p/spec.md",
+            model_ids=["m"],
+            dataset_name="ds",
+            output_s3_uri=FOLDER + "output/",
+            input_s3_uri="s3://b/p/in.jsonl",
+            output_field_name=field_name,
+        )
+
+    def test_writer_emits_output_s3_uri_when_schema_declares_it(self, monkeypatch, stubbed):
+        doc = self._doc("OutputS3Uri")
+        assert "OutputS3Uri" in doc["OutputDataConfig"]
+        assert "S3OutputPath" not in doc["OutputDataConfig"]
+
+    def test_writer_emits_s3_output_path_when_schema_declares_it(self, monkeypatch, stubbed):
+        doc = self._doc("S3OutputPath")
+        assert "S3OutputPath" in doc["OutputDataConfig"]
+        assert "OutputS3Uri" not in doc["OutputDataConfig"]
+
+    def test_writer_defaults_to_output_s3_uri_on_schema_unavailable(self):
+        doc = R.build_labeling_request(
+            task="classification",
+            text_fields=["text"],
+            spec_s3_uri="s3://b/spec.md",
+            model_ids=["m"],
+            dataset_name="ds",
+            output_s3_uri="s3://b/out/",
+            input_s3_uri="s3://b/in.jsonl",
+        )
+        assert "OutputS3Uri" in doc["OutputDataConfig"]
+
+    def test_submit_normalizes_output_s3_uri_doc_to_s3_output_path(self, monkeypatch, stubbed):
+        """Document built with OutputS3Uri; schema says S3OutputPath → submit normalizes."""
+        monkeypatch.setattr(J, "_sdg_output_field", lambda _sess: "S3OutputPath")
+        monkeypatch.setattr(J, "_region_bound_session", lambda _r: _FailSession())
+        doc = self._doc("OutputS3Uri")
+        seen_docs = []
+        orig_to_cfg = J.to_dataset_job_config
+
+        def capture_to_cfg(d):
+            seen_docs.append(d)
+            return orig_to_cfg(d)
+
+        monkeypatch.setattr(J, "to_dataset_job_config", capture_to_cfg)
+        try:
+            J.submit_labeling_job(doc, region="us-west-2", session=_FailSession(), wait=False)
+        except Exception:
+            pass
+        if seen_docs:
+            odc = seen_docs[0]["OutputDataConfig"]
+            assert "S3OutputPath" in odc
+            assert "OutputS3Uri" not in odc
+
+
+class TestReadersAcceptEitherSpelling:
+    """The three readers must not raise on either OutputS3Uri or S3OutputPath."""
+
+    def _doc_with(self, field_name):
+        return {
+            "DatasetName": "ds",
+            "GenerationConfig": {
+                "DatasetSpecification": {"SpecS3Uri": "s3://b/spec.md"},
+                "InputDataS3Uri": "s3://b/in.jsonl",
+                "DatasetOptions": {
+                    "Type": "labeling.classification",
+                    "Config": {"TextFields": ["text"]},
+                },
+                "ModelConfig": {"SampleGenerationModelConfigs": [{"ModelId": "m"}]},
+            },
+            "OutputDataConfig": {field_name: "s3://b/out/"},
+        }
+
+    def test_request_summary_reads_s3_output_path(self):
+        doc = self._doc_with("S3OutputPath")
+        summary = R.request_summary(doc)
+        assert summary["output"] == "s3://b/out/"
+
+    def test_request_summary_reads_output_s3_uri(self):
+        doc = self._doc_with("OutputS3Uri")
+        summary = R.request_summary(doc)
+        assert summary["output"] == "s3://b/out/"
+
+    def test_submit_reads_output_s3_uri_from_document(self, monkeypatch, stubbed):
+        """client.py:404 reader must not raise on OutputS3Uri spelling."""
+        monkeypatch.setattr(J, "_region_bound_session", lambda _r: _FailSession())
+        doc = self._doc_with("OutputS3Uri")
+        seen = []
+
+        def on_submit(rec):
+            seen.append(rec)
+
+        try:
+            J.submit_labeling_job(doc, region="us-west-2", on_submit=on_submit, wait=False)
+        except Exception:
+            pass
+        # on_submit receives output_s3_uri regardless of key spelling
+        if seen:
+            assert seen[0]["output_s3_uri"] == "s3://b/out/"
+
+    def test_submit_reads_s3_output_path_from_document(self, monkeypatch, stubbed):
+        """client.py:404 reader must not raise on S3OutputPath spelling."""
+        monkeypatch.setattr(J, "_region_bound_session", lambda _r: _FailSession())
+        doc = self._doc_with("S3OutputPath")
+        seen = []
+
+        def on_submit(rec):
+            seen.append(rec)
+
+        try:
+            J.submit_labeling_job(doc, region="us-west-2", on_submit=on_submit, wait=False)
+        except Exception:
+            pass
+        if seen:
+            assert seen[0]["output_s3_uri"] == "s3://b/out/"

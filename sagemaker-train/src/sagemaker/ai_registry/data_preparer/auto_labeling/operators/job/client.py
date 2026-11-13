@@ -48,11 +48,42 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators._bedrock import
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.request import (
     INDEX_ARTIFACTS,
     INDEX_FILENAME,
+    LABELING_SCHEMA_VERSION,
     LabelingRequestError,
     to_dataset_job_config,
 )
+from sagemaker.ai_registry.data_preparer._schema_resolver import _SchemaResolver
+from sagemaker.ai_registry.data_preparer.constants import JobCategory
 
 _log = logging.getLogger(__name__)
+
+
+def _sdg_output_field(sagemaker_session):
+    """The OutputDataConfig field name the deployed SDG schema declares.
+
+    Reads the resolved v2 schema; prefers S3OutputPath when both spellings are
+    present (service has not yet flipped, so only OutputS3Uri appears today).
+    Falls back to OutputS3Uri on any error so a schema fetch failure does not
+    break job submission.
+    """
+    try:
+        _, schema = _SchemaResolver.get_schema(
+            JobCategory.SYNTHETIC_DATA_GENERATION,
+            version=LABELING_SCHEMA_VERSION,
+            sagemaker_session=sagemaker_session,
+        )
+        props = schema.get("properties", {}).get("OutputDataConfig", {}).get("properties", {})
+        if "S3OutputPath" in props:
+            return "S3OutputPath"
+        if "OutputS3Uri" in props:
+            return "OutputS3Uri"
+    except Exception:  # pylint: disable=broad-except
+        _log.debug(
+            "Could not read SDG schema to detect output field name; using OutputS3Uri",
+            exc_info=True,
+        )
+    return "OutputS3Uri"  # deployed spelling today
+
 
 # The three errors below are also ``RuntimeError``s, as the command line's were, so a caller
 # that catches ``RuntimeError`` (the skill's ``except RuntimeError``) still catches them.
@@ -401,7 +432,27 @@ def submit_labeling_job(  # pylint: disable=too-many-locals,too-many-branches,to
     _set_telemetry_attribution()
     if session is None:
         session = _region_bound_session(region)
-    output_s3_uri = document["OutputDataConfig"]["S3OutputPath"]
+    # Accept either field spelling; normalize to what the deployed schema declares.
+    # The service has not yet renamed the field; _sdg_output_field flips automatically
+    # on the day it does, with no SDK release.
+    output_cfg = document["OutputDataConfig"]
+    # A document missing both spellings is a programming error — fail clearly rather
+    # than submitting an empty output location.
+    output_s3_uri = output_cfg.get("S3OutputPath") or output_cfg.get("OutputS3Uri")
+    if not output_s3_uri:
+        raise LabelingRequestError(
+            "OutputDataConfig carries neither S3OutputPath nor OutputS3Uri; "
+            "cannot determine the output location for the labeling job"
+        )
+    # Always rebuild OutputDataConfig with exactly the declared field so the service
+    # never sees both spellings in the same request (additionalProperties=False rejects
+    # any extra key).
+    output_field = _sdg_output_field(session)
+    new_odc = {output_field: output_s3_uri}
+    new_odc.update(
+        {k: v for k, v in output_cfg.items() if k not in ("S3OutputPath", "OutputS3Uri")}
+    )
+    document = {**document, "OutputDataConfig": new_odc}
     if resume_job and resume_job.get("job_name"):
         name = resume_job["job_name"]
         job = _describe_job(session, name)

@@ -41,6 +41,9 @@ from sagemaker.ai_registry import (
     JobCategory,
     LabelingSummary,
 )
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.client import (
+    _sdg_output_field,
+)
 
 pytestmark = pytest.mark.gpu_intensive
 
@@ -80,7 +83,9 @@ class TestLabelingHappyPath:
                 confidence=Confidence(method="verbalized"),
             ),
             output_data_config={
-                "S3OutputPath": f"s3://{integ_bucket}/data-preparer-integ-labeling-output/",
+                _sdg_output_field(
+                    sagemaker_session
+                ): f"s3://{integ_bucket}/data-preparer-integ-labeling-output/",
             },
         )
         # The typed options serialize to the wire shape the service reads.

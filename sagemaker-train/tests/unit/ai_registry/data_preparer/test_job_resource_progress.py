@@ -250,7 +250,11 @@ def _wire_listing(s3_mock, keys):
 
 
 class TestSdgJobFolder:
-    """SDG output lives in {S3OutputPath}/synthetic-data-generation/{JobName}/{createdAt}/."""
+    """SDG output lives in {output field}/synthetic-data-generation/{JobName}/{createdAt}/.
+
+    The output field is whichever spelling the deployed schema declares:
+    OutputS3Uri (today) or S3OutputPath (after the service renames it).
+    """
 
     JOB_NAME = "my-sdg-job-1794531357481"
     CREATED_AT = "2026-11-13T00:55:57.543Z"
@@ -580,3 +584,56 @@ class TestParquetExclusion:
         count = job._count_samples()
         assert count is None
         s3.get_object.assert_not_called()
+
+
+class TestSdgProgressReaderSpellings:
+    """preparer.py's SDG progress extraction accepts either output field spelling."""
+
+    def _make_dataset(self, field_name, output_uri="s3://b/out/"):
+        import json
+
+        from sagemaker.ai_registry.data_preparer.configs import DatasetJobConfig
+        from sagemaker.ai_registry.data_preparer.constants import JobCategory
+
+        cfg = DatasetJobConfig(job_category=JobCategory.SYNTHETIC_DATA_GENERATION)
+        cfg._resolved_schema_version = "2.0.0"
+        cfg._resolved_schema = {}
+        cfg._dynamic_model = MagicMock()
+        cfg._validated_payload = {
+            "GenerationConfig": {"NumSamples": 5},
+            "OutputDataConfig": {field_name: output_uri},
+        }
+        cfg._serialized_document = json.dumps(cfg._validated_payload)
+        return cfg
+
+    @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
+    def test_reads_progress_from_s3_output_path(self, mock_get_job, session_with_region):
+        from sagemaker.ai_registry.data_preparer.constants import JobCategory
+        from sagemaker.ai_registry.data_preparer.preparer import DataPreparer
+
+        mock_job_cls = MagicMock()
+        mock_get_job.return_value = mock_job_cls
+        mock_job_cls.create.return_value = MagicMock()
+        dc = DataPreparer(sagemaker_session=session_with_region, role="arn:role")
+        ds = self._make_dataset("S3OutputPath", "s3://b/s3path/")
+
+        dc._create_job(ds, JobCategory.SYNTHETIC_DATA_GENERATION)
+
+        kw = mock_job_cls.create.call_args[1]
+        assert kw.get("progress_output_s3_uri") == "s3://b/s3path/"
+
+    @patch("sagemaker.ai_registry.data_preparer.preparer._get_job_resource")
+    def test_reads_progress_from_output_s3_uri(self, mock_get_job, session_with_region):
+        from sagemaker.ai_registry.data_preparer.constants import JobCategory
+        from sagemaker.ai_registry.data_preparer.preparer import DataPreparer
+
+        mock_job_cls = MagicMock()
+        mock_get_job.return_value = mock_job_cls
+        mock_job_cls.create.return_value = MagicMock()
+        dc = DataPreparer(sagemaker_session=session_with_region, role="arn:role")
+        ds = self._make_dataset("OutputS3Uri", "s3://b/outputs3uri/")
+
+        dc._create_job(ds, JobCategory.SYNTHETIC_DATA_GENERATION)
+
+        kw = mock_job_cls.create.call_args[1]
+        assert kw.get("progress_output_s3_uri") == "s3://b/outputs3uri/"

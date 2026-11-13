@@ -83,8 +83,8 @@ def _fallback_default_s3_uri(
     calls it ``OutputDataConfig.OutputS3Uri``; SDG, DataTransformation, and
     DataQualityEvaluation v2 call it ``OutputDataConfig.S3OutputPath``. The
     resolved value is identical either way — only the schema field name differs.
-    SDG moved to the ``S3OutputPath`` spelling under the Path A amendment
-    (see ``.kiro/specs/sdg-schema-v3-s3outputpath-rename``).
+    The service accepts ``OutputS3Uri`` today and is migrating to the SageMaker-wide
+    ``S3OutputPath`` spelling; the SDK sends whichever the resolved schema declares.
     """
     from sagemaker.train.utils import _default_s3_uri
 
@@ -99,8 +99,9 @@ def _fallback_hub_name(
 
     NOTE: Removed from _WELL_KNOWN_FALLBACKS per Req 4.4 (SHALL NOT apply well-known
     fallbacks for any path other than RoleArn and OutputDataConfig.OutputS3Uri).
-    Under the Path A amendment, SDG now sends S3OutputPath by preference; both
-    spellings remain registered because DQ v1 still uses OutputS3Uri.
+    Both output-location spellings (OutputS3Uri and S3OutputPath) are registered in
+    _WELL_KNOWN_FALLBACKS because DataQualityEvaluation v1 uses OutputS3Uri while other
+    categories use S3OutputPath.
     Kept as a private helper in case the hardcoded fallback SDG schema needs it for
     bootstrap before Hub publication; callers must invoke it explicitly.
     """
@@ -118,8 +119,8 @@ def _fallback_hub_name(
 # exact-path match (see _walk_and_fill), meaning the OutputS3Uri entry alone
 # silently gives those categories no default and forces every caller to pass an
 # output path by hand. This widens the spelling, not the set of defaulted concepts.
-# Under the Path A amendment, SDG now sends S3OutputPath by preference; both
-# spellings remain registered because DQ v1 still uses OutputS3Uri.
+# Both spellings remain registered: DataQualityEvaluation v1 uses OutputS3Uri while
+# other categories use S3OutputPath.
 _WELL_KNOWN_FALLBACKS: Dict[str, Callable] = {
     "RoleArn": _fallback_role_arn,
     "OutputDataConfig.OutputS3Uri": _fallback_default_s3_uri,

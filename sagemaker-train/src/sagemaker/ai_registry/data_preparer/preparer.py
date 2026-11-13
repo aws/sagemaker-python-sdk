@@ -526,10 +526,11 @@ class DataPreparer(BaseModel):
             dataset (DatasetJobConfig): Job configuration. For
                 SyntheticDataGeneration this carries ``generation_config``
                 (including ``SpecS3Uri``, ``NumSamples``, and optional model and
-                sampling parameters) and ``output_data_config``
-                (``S3OutputPath`` — the preferred field name after the Path A
-                amendment; see
-                ``.kiro/specs/sdg-schema-v3-s3outputpath-rename``).
+                sampling parameters) and ``output_data_config`` (the output
+                location). The service currently declares ``OutputS3Uri`` in its
+                deployed schema and is migrating to the SageMaker-wide
+                ``S3OutputPath`` spelling; both are accepted and the SDK sends
+                whichever the resolved schema declares.
             job_name (Optional[str]): Exact name for the job. Must be unique
                 within the account and region; jobs are immutable, so a failed
                 job cannot be retried under the same name. Mutually exclusive
@@ -958,8 +959,9 @@ class DataPreparer(BaseModel):
             if isinstance(gen_cfg.get("NumSamples"), int):
                 expected_samples = gen_cfg["NumSamples"]
             output_cfg = validated.get("OutputDataConfig") or {}
-            if isinstance(output_cfg.get("S3OutputPath"), str):
-                progress_output_s3_uri = output_cfg["S3OutputPath"]
+            output_location = output_cfg.get("S3OutputPath") or output_cfg.get("OutputS3Uri")
+            if isinstance(output_location, str):
+                progress_output_s3_uri = output_location
         elif category == JobCategory.DATA_QUALITY_EVALUATION:
             validated = dataset._validated_payload or {}
             shape = DqShape.for_version(dataset.resolved_schema_version)

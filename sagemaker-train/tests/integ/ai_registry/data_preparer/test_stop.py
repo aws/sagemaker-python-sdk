@@ -30,6 +30,9 @@ import time
 import pytest
 
 from sagemaker.ai_registry import DataPreparer, DatasetJobConfig, JobCategory
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.client import (
+    _sdg_output_field,
+)
 from sagemaker.ai_registry.data_preparer.exceptions import DataPreparerJobStoppedError
 
 _TERMINAL_STATES = frozenset({"Completed", "Failed", "Stopped"})
@@ -76,7 +79,7 @@ class TestStopSDG:
                 "NumSamples": 100,  # large enough to still be running when we stop
             },
             output_data_config={
-                "S3OutputPath": (
+                _sdg_output_field(sagemaker_session): (
                     f"s3://{sagemaker_session.default_bucket()}" "/data-preparer-integ-stop/"
                 ),
             },
@@ -133,7 +136,7 @@ class TestStopSDG:
                 "NumSamples": 100,
             },
             output_data_config={
-                "S3OutputPath": (
+                _sdg_output_field(sagemaker_session): (
                     f"s3://{sagemaker_session.default_bucket()}" "/data-preparer-integ-stop-wait/"
                 ),
             },

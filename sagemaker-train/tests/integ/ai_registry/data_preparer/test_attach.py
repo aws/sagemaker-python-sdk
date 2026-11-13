@@ -24,6 +24,9 @@ import boto3
 import pytest
 
 from sagemaker.ai_registry import DataPreparer, DatasetJobConfig, JobCategory
+from sagemaker.ai_registry.data_preparer.auto_labeling.operators.job.client import (
+    _sdg_output_field,
+)
 
 # Submits real jobs and waits for them: scheduled CI only, not PR checks
 # (see the gpu_intensive marker in sagemaker-train/pyproject.toml).
@@ -59,7 +62,9 @@ class TestAttachSDG:
                 "NumSamples": 5,
             },
             output_data_config={
-                "S3OutputPath": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach/",
+                _sdg_output_field(
+                    sagemaker_session
+                ): f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach/",
             },
         )
 
@@ -104,7 +109,9 @@ class TestAttachSDG:
                 "NumSamples": 5,
             },
             output_data_config={
-                "S3OutputPath": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-done/",
+                _sdg_output_field(
+                    sagemaker_session
+                ): f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-done/",
             },
         )
 

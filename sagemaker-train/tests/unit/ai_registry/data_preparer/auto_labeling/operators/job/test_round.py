@@ -169,7 +169,8 @@ class _Fake:
             kw["on_submit"](
                 {
                     "job_name": name,
-                    "output_s3_uri": document["OutputDataConfig"]["S3OutputPath"],
+                    "output_s3_uri": document["OutputDataConfig"].get("S3OutputPath")
+                    or document["OutputDataConfig"].get("OutputS3Uri"),
                     "dataset_name": document["DatasetName"],
                 }
             )
@@ -182,7 +183,8 @@ class _Fake:
             "job_status": self.job_status,
             "dataset_arn": _arn(document["DatasetName"]),
             "review_dataset_arn": _arn(routing["ReviewDatasetName"]) if routing else None,
-            "output_s3_uri": document["OutputDataConfig"]["S3OutputPath"],
+            "output_s3_uri": document["OutputDataConfig"].get("S3OutputPath")
+            or document["OutputDataConfig"].get("OutputS3Uri"),
             "reattached": bool(resume),
             "failure_reason": "boom" if self.job_status != "Completed" else None,
         }
