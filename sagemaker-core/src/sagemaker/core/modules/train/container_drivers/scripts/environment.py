@@ -19,6 +19,7 @@ import multiprocessing
 import subprocess
 import json
 import os
+import re
 import shlex
 import sys
 from pathlib import Path
@@ -240,7 +241,11 @@ def set_env(
     with open(output_file, "w") as f:
         for key, value in env_vars.items():
             # The file is consumed with `source`, so the value must be shell-quoted.
-            f.write(f"export {key}={shlex.quote(safe_serialize(value))}\n")
+            # The file is sourced by a bash script running with 'set -e', so names must be
+            # valid shell identifiers: channel names and hyperparameter keys may contain
+            # '-' or '.' (e.g. SM_CHANNEL_TRAIN-DATA), which 'export' rejects.
+            name = re.sub(r"[^A-Za-z0-9_]", "_", key)
+            f.write(f"export {name}={shlex.quote(safe_serialize(value))}\n")
 
     logger.info("Environment Variables:")
     log_env_variables(env_vars_dict=env_vars)
