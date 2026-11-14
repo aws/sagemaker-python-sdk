@@ -384,6 +384,14 @@ def _stage_s3_test_fixtures():
 
     yield
 
+    # Every xdist worker runs its own session, so all of them stage and would all
+    # tear down these fixed keys — the first to finish deletes the objects the
+    # others are still reading. Under xdist the staged fixtures are left in place:
+    # the content is deterministic and the keys are hard-coded, so leaving them
+    # costs nothing and keeps the suite runnable in parallel.
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        return
+
     for key in fixtures:
         try:
             s3.delete_object(Bucket=bucket, Key=key)
