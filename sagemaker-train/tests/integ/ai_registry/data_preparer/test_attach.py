@@ -170,7 +170,9 @@ class TestAttachDQ:
                 "NumSamples": 5,
             },
             output_data_config={
-                "S3OutputPath": f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-dq-src/",
+                _sdg_output_field(
+                    sagemaker_session
+                ): f"s3://{sagemaker_session.default_bucket()}/data-preparer-integ-attach-dq-src/",
             },
         )
         preparer = DataPreparer(sagemaker_session=sagemaker_session, role=test_role)
