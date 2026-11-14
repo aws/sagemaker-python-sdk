@@ -389,7 +389,7 @@ class TestDataSet:
         assert dataset.name == "test-dataset"
         assert dataset.method == DataSetMethod.UPLOADED
         mock_air_hub.upload_to_s3.assert_called_once()
-        mock_validate_format.assert_called_once_with("/local/path/file.jsonl", "Custom")
+        mock_validate_format.assert_called_once_with("/local/path/file.jsonl", None)
         mock_validate_file.assert_called_once_with("/local/path/file.jsonl")
 
     @pytest.mark.parametrize("document_schema_version", ["3.0.0", "4.0.0", "5.0.0"])

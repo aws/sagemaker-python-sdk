@@ -364,9 +364,11 @@ class DataSet(AIRHubEntity):
                 "HF_Prompt_Completion", "HF_Preference", "Verl", "Nova_PPO",
                 "Nova_CPT", "OpenAI_Messages", "SageMaker_Eval", "Nova_RLVR",
                 "Custom"). Defaults to "Custom" when not provided. A known format
-                is validated against its schema on ingest; "Custom" is registered
-                without format validation, since DataTransformation supports
-                arbitrary input and output formats.
+                is validated against its schema on ingest; an explicit "Custom" is
+                registered without format validation, since DataTransformation
+                supports arbitrary input and output formats. Omitting the argument
+                still runs the local format check, so a malformed file is rejected
+                before upload — pass "Custom" explicitly to opt out of that too.
             document_schema_version: Optional schema version for the hub content document.
                 Defaults to "5.0.0". Valid values: "2.0.0", "3.0.0", "4.0.0", "5.0.0".
             sagemaker_session: Optional SageMaker session. If not provided, uses default session.
@@ -422,6 +424,11 @@ class DataSet(AIRHubEntity):
 
         # Validate and resolve dataset_file_format
         valid_formats = [fmt.value for fmt in DatasetFileFormat]
+        # Whether the caller named a format at all. An explicit "Custom" opts out of
+        # the client-side format check; saying nothing does not. Without this
+        # distinction the None -> "Custom" default below would silently stop
+        # rejecting malformed files, which DataSet.create has always done.
+        format_declared_by_caller = dataset_file_format is not None
         if dataset_file_format is None:
             dataset_file_format = DatasetFileFormat.CUSTOM.value
         elif dataset_file_format not in valid_formats:
@@ -495,7 +502,9 @@ class DataSet(AIRHubEntity):
 
             try:
                 AIRHub.download_from_s3(source, local_path)
-                cls._validate_dataset_format(local_path, dataset_file_format)
+                cls._validate_dataset_format(
+                    local_path, dataset_file_format if format_declared_by_caller else None
+                )
             finally:
                 if os.path.exists(local_path):
                     os.remove(local_path)
@@ -505,7 +514,9 @@ class DataSet(AIRHubEntity):
             s3_prefix = _get_default_s3_prefix(name)
             method = DataSetMethod.UPLOADED
 
-            cls._validate_dataset_format(source, dataset_file_format)
+            cls._validate_dataset_format(
+                source, dataset_file_format if format_declared_by_caller else None
+            )
             AIRHub.upload_to_s3(bucket_name, s3_prefix, source)
 
         # Build hub content document based on schema version
