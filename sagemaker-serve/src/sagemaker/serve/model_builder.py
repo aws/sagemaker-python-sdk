@@ -5337,8 +5337,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 configuration chain. (Default: None).
             region (str, optional): The AWS region for the optimization job. If specified and
                 different from the current region, a new session will be created. (Default: None).
-            model_name (str, optional): The name for the optimized SageMaker model. If not
-                specified, a unique name will be generated. (Default: None).
+            model_name (str, optional): The name for the optimized SageMaker model. Pass
+                ``None`` to have a unique name generated. (Default: "optimize_model").
             tags (Tags, optional): Tags for labeling the model optimization job. (Default: None).
             job_name (str, optional): The name of the model optimization job. If not specified,
                 a unique name will be generated. (Default: None).
