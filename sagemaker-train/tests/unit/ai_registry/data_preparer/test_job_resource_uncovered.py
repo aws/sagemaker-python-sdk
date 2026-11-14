@@ -30,6 +30,7 @@ import types
 from datetime import datetime, timedelta, timezone
 from io import StringIO
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
 
 from botocore.exceptions import ClientError
 from rich.console import Console
@@ -587,7 +588,9 @@ class TestOutputS3UrlAdditional:
         url = job._output_s3_url()
         assert url is not None
         assert "my-bucket" in url
-        assert "s3.console.aws.amazon.com" in url
+        # Assert the host exactly rather than as a substring: a substring check
+        # reads as a (bypassable) URL validation, which CodeQL flags.
+        assert urlparse(url).netloc == "s3.console.aws.amazon.com"
 
     def test_region_exception_produces_url_with_empty_region(self):
         """When boto_region_name raises, region falls back to '' in the URL."""

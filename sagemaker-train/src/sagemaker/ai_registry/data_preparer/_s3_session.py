@@ -29,7 +29,9 @@ _STREAM_CHUNK_BYTES = 1024 * 1024
 
 
 def _s3_owner_kwargs(session, bucket: str) -> dict:
-    """Return ``{"ExpectedBucketOwner": account}`` when ``bucket`` is the session's
+    """Return the ``ExpectedBucketOwner`` kwarg for a session's default bucket.
+
+    Yields ``{"ExpectedBucketOwner": account}`` when ``bucket`` is the session's
     SDK-generated default bucket, else ``{}``.
 
     Matches the settled pattern in session_helper.py:605-611 and common_utils.py:436,641,798.

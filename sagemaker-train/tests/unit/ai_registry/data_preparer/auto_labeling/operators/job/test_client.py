@@ -333,15 +333,17 @@ class TestSubmit:
                 "Additional properties are not allowed ('DatasetOptions' was unexpected) not allowed by the schema"
             )
         ]
+        endpoint = "https://beta.example"
         with pytest.raises(J.LabelingBackendUnavailable) as e:
             J.submit_labeling_job(
-                doc, region="us-west-2", session=_FakeSession(), endpoint="https://beta.example"
+                doc, region="us-west-2", session=_FakeSession(), endpoint=endpoint
             )
-        assert (
-            "HALT" in str(e.value)
-            and "https://beta.example" in str(e.value)
-            and "same --run-id" in str(e.value)
-        )
+        # The message is an error string, not a URL being validated; assert the
+        # pieces separately so a failure says which one is missing.
+        message = str(e.value)
+        assert "HALT" in message
+        assert endpoint in message
+        assert "same --run-id" in message
 
     def test_reattach_completed_running_and_failed(self, doc, stubbed, monkeypatch):
         sess = _FakeSession(

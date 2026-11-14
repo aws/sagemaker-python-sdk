@@ -61,11 +61,11 @@ _UNSAFE_CHARS = re.compile(
 
 
 def _safe_prompt_text(text):
-    """Untrusted row text, made safe to interpolate into one prompt line.
+    r"""Untrusted row text, made safe to interpolate into one prompt line.
 
     Folds newlines to spaces AND drops the invisible characters that could
     restructure the prompt. Both halves are here on purpose: _UNSAFE_CHARS
-    deliberately keeps \\n, so stripping without folding still leaves a
+    deliberately keeps \n, so stripping without folding still leaves a
     break-out from the surrounding line.
     """
     return _UNSAFE_CHARS.sub("", text.replace("\n", " ")).strip()
