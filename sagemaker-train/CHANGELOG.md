@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+- fix: Update DataSet.create() default document_schema_version from "2.0.0" to "5.0.0" to enable lineage tracking, UI display, and Data Quality evaluation
+- fix: Produce v5-compatible hub content document (DatasetFileFormat, DatasetType: BYOD) instead of legacy v2 fields rejected by the v5 schema
+
+### New Features
+
+- feat: Add `dataset_file_format` parameter to DataSet.create() — allows specifying the dataset format (e.g. "HF_Prompt_Completion", "Bedrock_Converse", "Verl"). Defaults to "Custom"
+- feat: Add `document_schema_version` parameter to DataSet.create() — allows overriding the schema version (valid: "2.0.0", "3.0.0", "4.0.0", "5.0.0"). Defaults to "5.0.0"
+
+
 ## v1.29.0 (2026-11-04)
 
 ### Bug Fixes

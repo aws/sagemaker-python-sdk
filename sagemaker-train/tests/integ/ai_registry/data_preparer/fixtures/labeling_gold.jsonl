@@ -1,0 +1,10 @@
+{"id": 622, "text": "I ordered my card but it hasn't been delivered yet", "gt_label": "card_arrival"}
+{"id": 623, "text": "Is there a tracking number for the card you sent me?", "gt_label": "card_arrival"}
+{"id": 628, "text": "How come my card doesn't work anymore?", "gt_label": "card_not_working"}
+{"id": 629, "text": "I can't seem to use my card. Can you help?", "gt_label": "card_not_working"}
+{"id": 690, "text": "My card payment has been declined", "gt_label": "declined_card_payment"}
+{"id": 691, "text": "The payment for the card did not go through", "gt_label": "declined_card_payment"}
+{"id": 724, "text": "Can you tell me the status of my new card?", "gt_label": "lost_or_stolen_card"}
+{"id": 725, "text": "What can I do if I lost my card?", "gt_label": "lost_or_stolen_card"}
+{"id": 728, "text": "I don't think that my top-up worked.", "gt_label": "top_up_failed"}
+{"id": 729, "text": "How can correct Top up with the app to work correctly?", "gt_label": "top_up_failed"}

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Optional
 from urllib.parse import urlparse
 from sagemaker.ai_registry.utils import base32_encode
@@ -27,6 +28,8 @@ from sagemaker.ai_registry.air_constants import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+
+logger = logging.getLogger(__name__)
 
 
 class AIRHub:
@@ -53,6 +56,27 @@ class AIRHub:
             cls._s3_client = boto3.client("s3")
         return cls._s3_client
 
+    @staticmethod
+    def hub_name_for(region: str, account_id: str) -> str:
+        """The derived AI Registry hub name of an account in a region.
+
+        base32hex of ``SHA-256("AiRegistry-<region>-<account>")``, unpadded. Pure: no
+        session, no client, so a caller bound to another region can derive it too.
+
+        Args:
+            region: AWS region name
+            account_id: AWS account ID
+        """
+        hash_bytes = hashlib.sha256(
+            AIRHub.hub_display_name_for(region, account_id).encode()
+        ).digest()
+        return base32_encode(hash_bytes).strip("=")
+
+    @staticmethod
+    def hub_display_name_for(region: str, account_id: str) -> str:
+        """The derived AI Registry hub's display name: ``AiRegistry-<region>-<account>``."""
+        return f"AiRegistry-{region}-{account_id}"
+
     @classmethod
     def _generate_hub_names(cls, region: str, account_id: str) -> None:
         """Generate hub name and display name based on region and account ID.
@@ -61,11 +85,8 @@ class AIRHub:
             region: AWS region name
             account_id: AWS account ID
         """
-        hub_name_base = f"AiRegistry-{region}-{account_id}"
-        hash_bytes = hashlib.sha256(hub_name_base.encode()).digest()
-
-        cls.hubName = base32_encode(hash_bytes).strip("=")
-        cls.hubDisplayName = hub_name_base
+        cls.hubName = cls.hub_name_for(region, account_id)
+        cls.hubDisplayName = cls.hub_display_name_for(region, account_id)
 
     @classmethod
     def _ensure_hub_name_initialized(cls) -> None:
@@ -88,16 +109,54 @@ class AIRHub:
         return cls.hubName
 
     @classmethod
-    def _create_airegistry_hub_if_not_exists(cls, client=None) -> None:
-        """Create AI Registry hub if it doesn't exist."""
-        cls._ensure_hub_name_initialized()
+    def _create_airegistry_hub_if_not_exists(
+        cls, client=None, hub_name: Optional[str] = None
+    ) -> None:
+        """Ensure the target hub exists, creating it on demand if missing.
 
+        For the derived AI Registry hub (``hub_name`` omitted), the hub is created
+        on demand if missing, using the derived display name. For a caller-supplied
+        ``hub_name``, the hub is likewise created on demand if missing, using the
+        supplied name as both the hub name and display name. In either case, if the
+        hub already exists it is left untouched.
+        """
         if client is None:
             client = cls._get_sagemaker_client()
+
+        # Caller-supplied hub: create on demand if missing, using the supplied
+        # name for both HubName and HubDisplayName.
+        if hub_name is not None:
+            try:
+                client.describe_hub(HubName=hub_name)
+            except client.exceptions.ResourceNotFound:
+                try:
+                    logger.info("Hub '%s' does not exist; creating it on demand.", hub_name)
+                    client.create_hub(
+                        HubName=hub_name, HubDisplayName=hub_name, HubDescription="AI Registry Hub"
+                    )
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to create hub '{hub_name}'. Ensure you have the "
+                        f"necessary IAM permissions (sagemaker:CreateHub, sagemaker:DescribeHub). "
+                        f"Error: {str(e)}"
+                    ) from e
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to look up hub '{hub_name}'. Ensure you have the "
+                    f"necessary IAM permissions (sagemaker:DescribeHub). Error: {str(e)}"
+                ) from e
+            return
+
+        # Derived AI Registry hub: create on demand if missing.
+        cls._ensure_hub_name_initialized()
 
         try:
             client.describe_hub(HubName=cls.hubName)
         except client.exceptions.ResourceNotFound:
+            logger.info(
+                "AI Registry hub '%s' does not exist; creating it on demand.",
+                cls.hubName,
+            )
             client.create_hub(
                 HubName=cls.hubName,
                 HubDisplayName=cls.hubDisplayName,
@@ -121,6 +180,7 @@ class AIRHub:
         hub_content_version: str = AIR_HUB_CONTENT_DEFAULT_VERSION,
         tags: Optional[tuple] = None,
         session: Optional[Session] = None,
+        hub_name: Optional[str] = None,
     ):
         """Import hub content into the AI Registry hub.
 
@@ -129,18 +189,28 @@ class AIRHub:
             hub_content_name: Name of the hub content
             document_schema_version: Schema version of the document
             hub_content_document: JSON document content
-            tags: Optional tuple of tags
+            tags: Optional tuple of (key, value) tags. Each tag is applied both
+                as a HubContentSearchKeywords entry ("key:value") and as an
+                ImportHubContent Tags entry ({"Key": key, "Value": value}).
             session: Boto3 session
+            hub_name: Hub to import into. Defaults to the derived AI Registry hub.
+                A caller-supplied hub is created on demand if it does not exist.
 
         Returns:
             Response from import_hub_content API call
         """
         client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
-        cls._create_airegistry_hub_if_not_exists(client)
+        if hub_name is None:
+            cls._ensure_hub_name_initialized()
+            hub_name = cls.hubName
+
+        cls._create_airegistry_hub_if_not_exists(
+            client, hub_name=hub_name if hub_name != cls.hubName else None
+        )
 
         request = {
-            "HubName": cls.hubName,
+            "HubName": hub_name,
             "HubContentType": hub_content_type,
             "HubContentName": hub_content_name,
             "HubContentVersion": hub_content_version,
@@ -149,6 +219,7 @@ class AIRHub:
         }
         if tags:
             request["HubContentSearchKeywords"] = [f"{tag[0]}:{tag[1]}" for tag in tags]
+            request["Tags"] = [{"Key": tag[0], "Value": tag[1]} for tag in tags]
         return client.import_hub_content(**request)
 
     @classmethod
@@ -207,6 +278,7 @@ class AIRHub:
         hub_content_name: str,
         hub_content_version: Optional[str] = None,
         session: Optional[Session] = None,
+        hub_name: Optional[str] = None,
     ):
         """Describe hub content details.
 
@@ -215,16 +287,22 @@ class AIRHub:
             hub_content_name: Name of the hub content
             hub_content_version: Optional version of the hub content
             session: Boto3 session
+            hub_name: Hub to look in. Defaults to the derived AI Registry hub.
+                Pass this whenever the content's hub is already known — e.g.
+                parsed off a hub-content ARN — since content published to any
+                other hub is not resolvable from the derived one.
 
         Returns:
             Hub content description response
         """
-        cls._ensure_hub_name_initialized()
+        if hub_name is None:
+            cls._ensure_hub_name_initialized()
+            hub_name = cls.hubName
 
         client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
         request = {
-            "HubName": cls.hubName,
+            "HubName": hub_name,
             "HubContentType": hub_content_type,
             "HubContentName": hub_content_name,
         }

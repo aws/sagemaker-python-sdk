@@ -1,0 +1,6 @@
+{"prompt": "Classify the sentiment of this review: the stand wobbles on any surface that is not perfectly flat", "completion": "negative"}
+{"prompt": "Classify the sentiment of this review: sound quality is clear at every volume I have tried so far", "completion": "positive"}
+{"text": "the stand wobbles on any surface that is not perfectly flat and the sentiment here is negative"}
+{"prompt": "Classify the sentiment of this review: it does the job and nothing about it stands out either way", "completion": "neutral"}
+{"messages": [{"role": "user", "content": "Classify the sentiment of this review: the hinge snapped off on day three"}, {"role": "assistant", "content": "negative"}]}
+{"prompt": "Classify the sentiment of this review: shipping was quick and the item matched the listing photos exactly", "completion": "positive"}

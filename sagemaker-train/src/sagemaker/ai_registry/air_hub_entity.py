@@ -18,6 +18,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from botocore.exceptions import ClientError
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
@@ -206,8 +207,21 @@ class AIRHubEntity(ABC):
             transient=True,
         ):
             while True:
-                self.refresh()
-                current_status = self.status
+                try:
+                    self.refresh()
+                    current_status = self.status
+                except ClientError as e:
+                    # Right after ImportHubContent, DescribeHubContent can briefly
+                    # return ResourceNotFound before the create->describe consistency
+                    # window closes. Treat that as "not ready yet" (non-terminal) and
+                    # fall through to the shared timeout/sleep below; other errors
+                    # propagate.
+                    if e.response.get("Error", {}).get("Code", "") not in (
+                        "ResourceNotFound",
+                        "ResourceNotFoundException",
+                    ):
+                        raise
+                    current_status = None
                 status.update(f"Current status: [bold]{current_status}")
 
                 if current_status in terminal_states:

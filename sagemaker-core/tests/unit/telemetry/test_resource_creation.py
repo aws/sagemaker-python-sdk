@@ -59,6 +59,49 @@ def test_get_resource_arn_with_none_arn(class_name, arn_attr, arn_value):
     assert get_resource_arn(mock_resource) is None
 
 
+class TestGetResourceArnFromSequence:
+    """Multi-output verbs return a list; the ARN must still be emitted.
+
+    ``DataPreparer.transform()`` returns ``List[DataSet]`` because DT operators
+    such as Split produce several output datasets. Without unwrapping, the type
+    lookup sees ``list`` and the success path emits no ``x-resourceArn``.
+    """
+
+    def _dataset(self, arn):
+        mock_resource = MagicMock()
+        mock_resource.__class__.__name__ = "DataSet"
+        # Read the attribute name off the mapping rather than hardcoding it: on a
+        # MagicMock every attribute exists, so a name that drifts from the mapping
+        # silently returns a mock instead of failing the assertion.
+        setattr(mock_resource, _RESOURCE_ARN_ATTRIBUTES["DataSet"], arn)
+        return mock_resource
+
+    def test_single_element_list(self):
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:job/dt/my-job"
+        assert get_resource_arn([self._dataset(arn)]) == arn
+
+    def test_multi_element_list_uses_first(self):
+        """Split's outputs all carry the same job ARN, so the first is correct."""
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:job/dt/split-job"
+        assert get_resource_arn([self._dataset(arn), self._dataset(arn)]) == arn
+
+    def test_tuple_is_unwrapped_too(self):
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:job/dt/my-job"
+        assert get_resource_arn((self._dataset(arn),)) == arn
+
+    def test_empty_list(self):
+        assert get_resource_arn([]) is None
+
+    def test_list_of_none(self):
+        assert get_resource_arn([None]) is None
+
+    def test_list_of_unknown_type(self):
+        assert get_resource_arn(["some string"]) is None
+
+    def test_list_element_with_unassigned_arn(self):
+        assert get_resource_arn([self._dataset(Unassigned())]) is None
+
+
 # Verify string keys in _RESOURCE_ARN_ATTRIBUTES match actual class names
 @pytest.mark.parametrize("class_name,arn_attr,arn_value", _RESOURCE_TEST_CASES)
 def test_resource_class_name_matches_dict_key(class_name, arn_attr, arn_value):

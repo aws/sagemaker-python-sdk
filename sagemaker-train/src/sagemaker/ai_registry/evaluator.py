@@ -33,6 +33,7 @@ from sagemaker.ai_registry.air_constants import (
     HubContentStatus,
     EVALUATOR_DEFAULT_S3_PREFIX,
     EVALUATOR_DEFAULT_RUNTIME,
+    EVALUATOR_DEFAULT_TIMEOUT_SECONDS,
     EVALUATOR_DOCUMENT_SCHEMA_VERSION,
     EVALUATOR_DEFAULT_METHOD,
     EVALUATOR_BYOCODE,
@@ -435,6 +436,7 @@ class Evaluator(AIRHubEntity):
             lambda_response = lambda_client.create_function(
                 FunctionName=function_name,
                 Runtime=EVALUATOR_DEFAULT_RUNTIME,
+                Timeout=EVALUATOR_DEFAULT_TIMEOUT_SECONDS,
                 Role=role,
                 Handler=handler_name,
                 Code={"ZipFile": zip_buffer.read()},
