@@ -64,6 +64,7 @@ test = [
     "scipy",
     "omegaconf",
     "graphene",
+    "hypothesis",
     "IPython",
     "transformers",
 ]

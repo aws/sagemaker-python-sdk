@@ -162,6 +162,8 @@ class _DualCallable:
                 job_name=None,
                 wait=True,
                 logs=False,
+                tags=None,
+                timeout=None,
             ):
                 tmp = owner(
                     sagemaker_session=sagemaker_session,
@@ -175,6 +177,8 @@ class _DualCallable:
                     base_job_name=None,  # already pinned on the instance
                     wait=wait,
                     logs=logs,
+                    tags=tags,
+                    timeout=timeout,
                 )
 
             return classmethod_shortcut
@@ -383,6 +387,18 @@ class DataPreparer(BaseModel):
                 job_name=job_name,
                 category=JobCategory(job_category),
             )
+        # The wait returned but the job is in none of the three terminal states,
+        # so there is no DataSet to rehydrate. Say so rather than returning None
+        # against a documented DataSet / List[DataSet] / Job return type.
+        raise DataPreparerJobError(
+            message=(
+                f"Job '{job_name}' is in unexpected state '{status}' after waiting for it to "
+                f"reach a terminal state. Expected one of Completed, Failed or Stopped."
+            ),
+            job_arn=job_arn,
+            job_name=job_name,
+            category=JobCategory(job_category),
+        )
 
     @classmethod
     def stop(

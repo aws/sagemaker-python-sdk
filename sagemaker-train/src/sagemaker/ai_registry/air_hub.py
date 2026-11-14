@@ -139,12 +139,12 @@ class AIRHub:
                         f"Failed to create hub '{hub_name}'. Ensure you have the "
                         f"necessary IAM permissions (sagemaker:CreateHub, sagemaker:DescribeHub). "
                         f"Error: {str(e)}"
-                    )
+                    ) from e
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to look up hub '{hub_name}'. Ensure you have the "
                     f"necessary IAM permissions (sagemaker:DescribeHub). Error: {str(e)}"
-                )
+                ) from e
             return
 
         # Derived AI Registry hub: create on demand if missing.

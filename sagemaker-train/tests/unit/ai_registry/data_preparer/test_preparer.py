@@ -142,6 +142,35 @@ class TestDualCallable:
         assert captured["kwargs"]["job_name"] == "explicit-job"
         assert captured["kwargs"]["base_job_name"] is None
 
+    def test_classmethod_call_forwards_tags_and_timeout(self, resolved_dataset):
+        """The class and instance call styles must accept the same per-call kwargs.
+
+        ``classmethod_shortcut`` previously omitted ``tags`` and ``timeout``, so the
+        documented ``DataPreparer.generate(dataset, tags=[...], timeout=600)`` raised
+        TypeError. ``functools.wraps`` made that hard to spot: it copies
+        ``__wrapped__``, so ``inspect.signature`` reported both kwargs as accepted.
+        """
+        from sagemaker.core.shapes import Tag
+
+        tags = [Tag(key="team", value="data-prep")]
+
+        for verb, category in (
+            ("generate", JobCategory.SYNTHETIC_DATA_GENERATION),
+            ("evaluate", JobCategory.DATA_QUALITY_EVALUATION),
+            ("transform", JobCategory.DATA_TRANSFORMATION),
+        ):
+            captured = {}
+
+            def recording_run(self, dataset, category, **kwargs):
+                captured["kwargs"] = kwargs
+                return MagicMock()
+
+            with patch.object(DataPreparer, "_run", recording_run):
+                getattr(DataPreparer, verb)(resolved_dataset, tags=tags, timeout=600)
+
+            assert captured["kwargs"]["tags"] == tags, verb
+            assert captured["kwargs"]["timeout"] == 600, verb
+
     def test_classmethod_with_no_args_uses_intelligent_defaults(self, resolved_dataset):
         """DataPreparer.generate(dataset) — no constructor kwargs, no per-call
         kwargs beyond the dataset. Intelligent defaults flow through _run at
