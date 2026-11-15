@@ -80,7 +80,7 @@ def _safe_spec_text(text):
     return _UNSAFE_CHARS.sub("", text)
 
 
-DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-6"
 Invoke = Callable[[str, str, Optional[str]], str]
 
 

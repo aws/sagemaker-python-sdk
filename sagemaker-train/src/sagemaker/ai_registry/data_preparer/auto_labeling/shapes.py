@@ -51,7 +51,7 @@ Example::
             # Routing this task votes a jury, which needs two models — see below.
             "ModelConfig": {
                 "SampleGenerationModelConfigs": [
-                    {"ModelId": "us.anthropic.claude-sonnet-4-5-20250929-v1:0"},
+                    {"ModelId": "us.anthropic.claude-sonnet-4-6"},
                     {"ModelId": "openai.gpt-oss-120b-1:0"},
                 ]
             },
@@ -86,7 +86,7 @@ Summarization is the one task shaped differently — graders instead of gold::
 
     options = SummarizationLabelingOptions(
         text_fields=["article"],
-        graders=[Grader(model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0")],
+        graders=[Grader(model_id="us.anthropic.claude-sonnet-4-6")],
     )
 
 Classification alone takes three opt-in options, each off when unset:

@@ -717,7 +717,7 @@ def prepare_round(  # pylint: disable=too-many-arguments,too-many-locals,unused-
 
         plan = labeling_round.prepare_round(
             spec="proj/labeling_spec.md", input_data="proj/splits/dev.jsonl", out="proj/work/dev_pred.jsonl",
-            project_dir="proj", stage="dev", generation_model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            project_dir="proj", stage="dev", generation_model_id="us.anthropic.claude-sonnet-4-6",
             eval_data="proj/splits/dev.jsonl", s3_prefix="s3://bucket/prefix", region="us-west-2",
             role_arn="arn:aws:iam::123456789012:role/SDG",
         )
@@ -2190,7 +2190,7 @@ def _put_run_log(out, run_log_entry, run_log_error):
 # select_labeling_spec (Steps 5-6, which spec ships) is spec/select.py's.
 # ---------------------------------------------------------------------------
 
-DEFAULT_LABELING_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+DEFAULT_LABELING_MODEL = "us.anthropic.claude-sonnet-4-6"
 KEEP_RUN_SCOPES = 10
 # refinement-routing.md: the gate by task (the val accuracy that accepts a spec) and the
 # val-size floor under which no refinement is attempted.

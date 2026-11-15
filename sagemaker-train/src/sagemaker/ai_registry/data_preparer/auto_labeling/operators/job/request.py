@@ -411,7 +411,7 @@ def build_labeling_request(  # pylint: disable=too-many-statements,too-many-loca
             "task": "classification",
             "text_fields": ["text"],
             "spec_s3_uri": "s3://b/spec.md",
-            "model_ids": ["us.anthropic.claude-sonnet-4-5-20250929-v1:0"],
+            "model_ids": ["us.anthropic.claude-sonnet-4-6"],
             "dataset_name": "tickets-dev-r1",
             "output_s3_uri": "s3://b/out/",
             "input_s3_uri": "s3://b/dev.jsonl",

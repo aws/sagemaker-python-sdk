@@ -25,7 +25,7 @@ from sagemaker.ai_registry.data_preparer.exceptions import DataPreparerOperatorE
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.review import decisions as D
 from sagemaker.ai_registry.data_preparer.auto_labeling.operators.review import request as R
 
-MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+MODEL = "us.anthropic.claude-sonnet-4-6"
 
 
 def _rows(prefix, n, **extra):
