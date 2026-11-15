@@ -21,6 +21,7 @@ import warnings
 from sagemaker.ai_registry.air_constants import (
     DATASET_DOCUMENT_SCHEMA_VERSION,
     DATASET_SUPPORTED_SCHEMA_VERSIONS,
+    _major,
 )
 
 if TYPE_CHECKING:
@@ -140,7 +141,7 @@ class DataSetHubContentDocument:
                 DeprecationWarning,
                 stacklevel=2,
             )
-        if schema_version >= "3.0.0":
+        if _major(schema_version) >= 3:
             # v3+ / v5 schema: only allowed fields, DatasetFileFormat required
             content = {}
             if self.dataset_file_format:

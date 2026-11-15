@@ -180,7 +180,60 @@ class TestExtractV3:
         assert shape.extract_output_s3_uri(doc) == "s3://bucket/out/"
 
 
-class TestForVersionDispatchA7:
+class TestNoDeadVersionConstants:
+    """Regression: _V2_DQ_SCHEMA_VERSIONS and _V3_DQ_SCHEMA_VERSIONS were removed
+    because they had zero callers and their presence invited future misuse as
+    membership-test sets.  Using exact-string membership tests would re-introduce
+    the two-part vs. three-part version-string fragility that major-version dispatch
+    was written to avoid.
+
+    These tests ensure the constants are gone AND that for_version routing is
+    unaffected by their removal.
+    """
+
+    def test_v2_schema_versions_constant_removed(self):
+        import sagemaker.ai_registry.data_preparer._api_shape as m
+
+        assert not hasattr(
+            m, "_V2_DQ_SCHEMA_VERSIONS"
+        ), "_V2_DQ_SCHEMA_VERSIONS still present; it was dead and must be removed"
+
+    def test_v3_schema_versions_constant_removed(self):
+        import sagemaker.ai_registry.data_preparer._api_shape as m
+
+        assert not hasattr(
+            m, "_V3_DQ_SCHEMA_VERSIONS"
+        ), "_V3_DQ_SCHEMA_VERSIONS still present; it was dead and must be removed"
+
+    @pytest.mark.parametrize(
+        "version, expected_shape_cls",
+        [
+            # v2 routing (all three canonical strings)
+            ("0.2.0", V2DqShape),
+            ("2", V2DqShape),
+            ("2.0", V2DqShape),
+            ("2.0.0", V2DqShape),
+            # v3 routing
+            ("3", V3DqShape),
+            ("3.0", V3DqShape),
+            ("3.0.0", V3DqShape),
+            # v1 / fallback
+            (None, V1DqShape),
+            ("", V1DqShape),
+            ("1.0.0", V1DqShape),
+            ("garbage", V1DqShape),
+        ],
+    )
+    def test_for_version_routing_unchanged_after_constant_removal(
+        self, version, expected_shape_cls
+    ):
+        """Removing the dead constants must not change for_version routing."""
+        shape = DqShape.for_version(version)
+        assert isinstance(shape, expected_shape_cls), (
+            f"for_version({version!r}) returned {type(shape).__name__}, "
+            f"expected {expected_shape_cls.__name__}"
+        )
+
     """A7 (P1): for_version must normalize partial semver strings and dispatch on major.
 
     The service has returned both two-part ("2.0") and three-part ("2.0.0") version

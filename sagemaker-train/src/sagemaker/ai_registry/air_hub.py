@@ -201,8 +201,10 @@ class AIRHub:
         """
         client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
+        # Always initialize before reading cls.hubName: the comparison below
+        # reads it on both the supplied-name and default-name paths.
+        cls._ensure_hub_name_initialized()
         if hub_name is None:
-            cls._ensure_hub_name_initialized()
             hub_name = cls.hubName
 
         cls._create_airegistry_hub_if_not_exists(

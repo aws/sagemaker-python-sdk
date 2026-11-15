@@ -33,6 +33,7 @@ from sagemaker.ai_registry.data_preparer.constants import (
 from sagemaker.ai_registry.data_preparer.exceptions import (
     DataPreparerSchemaNotFoundError,
 )
+from sagemaker.ai_registry.air_constants import _major
 from sagemaker.core.helper.session_helper import Session
 
 logger = logging.getLogger(__name__)
@@ -63,14 +64,6 @@ def _pascal_to_snake(name: str) -> str:
     if result in _PYDANTIC_RESERVED:
         result = result + "_field"
     return result
-
-
-def _major(version: str) -> int:
-    """Extract major version number."""
-    try:
-        return int(version.split(".")[0])
-    except (ValueError, IndexError):
-        return 0
 
 
 def _semver_key(version: str) -> Tuple:

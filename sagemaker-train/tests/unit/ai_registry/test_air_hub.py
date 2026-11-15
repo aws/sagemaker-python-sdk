@@ -414,3 +414,98 @@ class TestAIRHub:
         assert (
             AIRHub.hubName.isalnum()
         ), f"Hub name should only contain alphanumeric characters: {AIRHub.hubName}"
+
+
+class TestImportHubContentHubNameNotInitialized:
+    """Regression: import_hub_content must not raise AttributeError when called
+    with an explicit hub_name on a process that has not yet initialized hubName.
+
+    Root cause: the original code guarded _ensure_hub_name_initialized() inside
+    'if hub_name is None:', leaving the comparison 'hub_name != cls.hubName' to
+    read cls.hubName without any guard when a name was supplied.
+    hubName is assigned lazily by _generate_hub_names; on a fresh process it
+    does not exist as a class attribute, so the read raised AttributeError.
+    """
+
+    @patch("sagemaker.ai_registry.air_hub.boto3")
+    def test_explicit_hub_name_before_hub_name_initialized(self, mock_boto3, monkeypatch):
+        """import_hub_content with an explicit hub_name must succeed even when
+        hubName has never been initialized (simulating a fresh process)."""
+        # Reproduce fresh-process condition: drop the class-level hubName / hubDisplayName.
+        monkeypatch.delattr(AIRHub, "hubName", raising=False)
+        monkeypatch.delattr(AIRHub, "hubDisplayName", raising=False)
+
+        mock_client = MagicMock()
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _client_factory(svc):
+            return mock_sts if svc == "sts" else mock_client
+
+        mock_boto3.client.side_effect = _client_factory
+        mock_boto3.session.Session.return_value.region_name = "us-west-2"
+
+        mock_client.describe_hub.return_value = {}
+        mock_client.import_hub_content.return_value = {"HubContentArn": "arn:test"}
+
+        # Use the already-constructed client so _get_sagemaker_client() returns it
+        # without calling boto3.client("sagemaker") again.
+        monkeypatch.setattr(AIRHub, "_sagemaker_client", mock_client, raising=False)
+
+        # Must not raise AttributeError: type object 'AIRHub' has no attribute 'hubName'
+        result = AIRHub.import_hub_content(
+            hub_content_type="DataSet",
+            hub_content_name="test-dataset",
+            document_schema_version="1.0.0",
+            hub_content_document='{"test": "document"}',
+            hub_name="CustomHub",
+        )
+
+        assert result["HubContentArn"] == "arn:test"
+        # _ensure_hub_name_initialized must have been called, so hubName is now set.
+        assert hasattr(AIRHub, "hubName")
+
+
+class TestDescribeHubContentExplicitHubName:
+    """Regression: describe_hub_content must not call STS when an explicit
+    hub_name is supplied, even if hubName has never been initialized.
+
+    Pins Defect 1: hoisting _ensure_hub_name_initialized() outside the
+    'if hub_name is None:' guard in describe_hub_content forces a live STS
+    GetCallerIdentity call on every describe request that already knows its
+    hub, including cross-account ARN resolution paths.
+    """
+
+    @patch("sagemaker.ai_registry.air_hub.boto3")
+    def test_describe_hub_content_explicit_hub_no_sts(self, mock_boto3, monkeypatch):
+        """describe_hub_content with an explicit hub_name must issue zero STS
+        GetCallerIdentity calls and must send HubName equal to the supplied name."""
+        monkeypatch.delattr(AIRHub, "hubName", raising=False)
+        monkeypatch.delattr(AIRHub, "hubDisplayName", raising=False)
+
+        mock_sts = MagicMock()
+        mock_client = MagicMock()
+        mock_client.describe_hub_content.return_value = {
+            "HubContentName": "my-dataset",
+            "HubName": "SomeHub",
+        }
+
+        def _client_factory(svc):
+            return mock_sts if svc == "sts" else mock_client
+
+        mock_boto3.client.side_effect = _client_factory
+        monkeypatch.setattr(AIRHub, "_sagemaker_client", mock_client, raising=False)
+
+        result = AIRHub.describe_hub_content(
+            hub_content_type="DataSet",
+            hub_content_name="my-dataset",
+            hub_name="SomeHub",
+        )
+
+        assert result["HubContentName"] == "my-dataset"
+        mock_client.describe_hub_content.assert_called_once_with(
+            HubName="SomeHub",
+            HubContentType="DataSet",
+            HubContentName="my-dataset",
+        )
+        mock_sts.get_caller_identity.assert_not_called()

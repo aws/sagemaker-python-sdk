@@ -125,3 +125,22 @@ class HubContentStatus(Enum):
     DELETING = "Deleting"
     IMPORT_FAILED = "ImportFailed"
     DELETE_FAILED = "DeleteFailed"
+
+
+def _major(version: str) -> int:
+    """Parse the major-version component of a semver-style string.
+
+    Returns 0 for missing, empty, or non-numeric first components so
+    callers can do plain integer comparisons without special-casing
+    those inputs.
+
+    Args:
+        version: Version string such as ``"3.0.0"``, ``"10"``, or ``"3.0"``.
+
+    Returns:
+        Integer major version, or 0 if the string is unparseable.
+    """
+    try:
+        return int(version.split(".")[0])
+    except (ValueError, IndexError):
+        return 0

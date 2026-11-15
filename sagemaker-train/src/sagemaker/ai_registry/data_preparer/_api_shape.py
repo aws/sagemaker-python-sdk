@@ -41,17 +41,6 @@ from __future__ import absolute_import
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-# Version strings that select the v2 DQ shape. "0.2.0" is the preview number,
-# kept below "1.0.0" per semver so ``ListJobSchemaVersions`` "latest" callers
-# stay on v1 until they explicitly opt in. The service plans to rename the
-# schema file to 2.0.0 "without other changes" when v2 becomes the default —
-# accept both now so that rename does not silently re-route v2 jobs to the
-# v1 parser.
-_V2_DQ_SCHEMA_VERSIONS = ("0.2.0", "2.0.0")
-
-# Version strings that select the v3 DQ shape.
-_V3_DQ_SCHEMA_VERSIONS = ("3.0.0",)
-
 
 class DqShape(ABC):
     """Version-specific extraction for DQ ``JobConfigDocument`` shapes.
@@ -76,7 +65,12 @@ class DqShape(ABC):
         exact-string membership tests to silently fall back to the v1
         parser. Major-version dispatch avoids that fragility.
         """
-        # Special-case the pre-1.0 preview alias before parsing.
+        # "0.2.0" is the preview number, kept below "1.0.0" per semver so
+        # ListJobSchemaVersions "latest" callers stay on v1 until they
+        # explicitly opt in. The service plans to rename the schema file to
+        # 2.0.0 "without other changes" when v2 becomes the default - accept
+        # both now so that rename does not silently re-route v2 jobs to the
+        # v1 parser.
         if schema_version == "0.2.0":
             return _V2_DQ_SHAPE
 
