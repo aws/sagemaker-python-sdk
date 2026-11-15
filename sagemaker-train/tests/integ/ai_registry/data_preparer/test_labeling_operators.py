@@ -58,6 +58,11 @@ from sagemaker.ai_registry.data_preparer.auto_labeling.operators.seed.split impo
 
 REGION_ENV = "AWS_REGION"
 LABELING_MODEL = "openai.gpt-oss-120b-1:0"
+# Spec induction goes through Bedrock Converse. Pinned to a model whose lifecycle
+# status is ACTIVE, because the module default is LEGACY: Bedrock serves a legacy
+# model only to accounts that have called it within 30 days, so it answers a
+# developer who runs this often and refuses a CI account that does not.
+SPEC_MODEL = "us.anthropic.claude-sonnet-4-6"
 # A classification job that routes its low-confidence tail to review votes a jury,
 # so the corpus job needs at least two models.
 JURY_MODELS = "openai.gpt-oss-120b-1:0,qwen.qwen3-235b-a22b-2507-v1:0"
@@ -171,7 +176,10 @@ class TestClientOperators:
         project = str(tmp_path / "draft")
         prepare_labeling_seed(project, data)
         draft = draft_labeling_spec(
-            project, data, task_hint="Which banking intent does the message express?"
+            project,
+            data,
+            task_hint="Which banking intent does the message express?",
+            model_id=SPEC_MODEL,
         )
 
         assert os.path.isfile(draft.path)
