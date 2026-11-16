@@ -52,11 +52,7 @@ logger = logging.getLogger(__name__)
 
 PREFIX = "do-not-delete"
 DEFAULT_REGION = "us-west-2"
-# Version of the evaluator JsonDocs (rlvr-test-rf, rlaif-test-prompt, eval-lambda-test) in the
-# fixture hubs. Tests used to pin 0.0.1 in a shared "sdktest" hub; each account's own fixture hub
-# publishes them at 0.0.2 instead (the rlaif prompt's reference moved under the fixtures dataset
-# prefix). The number is only a label, and no test asserts on it. Change it together with the
-# evaluators in the fixture hubs.
+# Version the fixture hubs publish the evaluator JsonDocs at; change it together with the hubs.
 EVALUATOR_VERSION = "0.0.2"
 
 
