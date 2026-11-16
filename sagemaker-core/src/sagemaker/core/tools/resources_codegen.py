@@ -107,6 +107,14 @@ REFRESH_IDENTIFIER_FALLBACKS = {
     "ModelPackage": {"ModelPackageName": "model_package_arn"},
 }
 
+# Some resources must be described by ARN whenever the ARN is known, because the name
+# alone resolves in the caller's account. A managed pipeline is owned by AWS (its ARN has
+# the account "aws"), so DescribePipeline with only its name fails. refresh() uses the ARN
+# attribute when it is assigned and falls back to the name otherwise.
+REFRESH_IDENTIFIER_PREFERRED = {
+    "Pipeline": {"PipelineName": "pipeline_arn"},
+}
+
 
 class ResourcesCodeGen:
     """A class for generating resources based on a service JSON file.
@@ -785,6 +793,7 @@ class ResourcesCodeGen:
         resource_operation: dict,
         resource_attributes: list,
         identifier_fallbacks: dict = None,
+        identifier_preferred: dict = None,
     ) -> str:
         """Generate the operation input arguments string.
 
@@ -797,6 +806,9 @@ class ResourcesCodeGen:
             identifier_fallbacks (dict, optional): Maps an input member name to a resource
                 attribute to fall back to when the member's own attribute is Unassigned
                 (e.g. {"ModelPackageName": "model_package_arn"}). See issue #5606.
+            identifier_preferred (dict, optional): Maps an input member name to a resource
+                attribute to use instead of the member's own attribute whenever it is
+                assigned (e.g. {"PipelineName": "pipeline_arn"}).
 
         Returns:
             str: The formatted operation input arguments string.
@@ -805,11 +817,19 @@ class ResourcesCodeGen:
         input_shape_members = list(self.shapes[input_shape_name]["members"].keys())
 
         identifier_fallbacks = identifier_fallbacks or {}
+        identifier_preferred = identifier_preferred or {}
         args = list()
         for member in input_shape_members:
             snake_member = convert_to_snake_case(member)
             if snake_member in resource_attributes:
-                if member in identifier_fallbacks:
+                if member in identifier_preferred:
+                    preferred_attr = identifier_preferred[member]
+                    args.append(
+                        f"'{member}': self.{preferred_attr} "
+                        f"if not isinstance(self.{preferred_attr}, Unassigned) "
+                        f"else self.{snake_member}"
+                    )
+                elif member in identifier_fallbacks:
                     fallback_attr = identifier_fallbacks[member]
                     args.append(
                         f"'{member}': self.{snake_member} "
@@ -1339,6 +1359,7 @@ class ResourcesCodeGen:
             operation_metadata,
             kwargs["resource_attributes"],
             identifier_fallbacks=REFRESH_IDENTIFIER_FALLBACKS.get(resource_name),
+            identifier_preferred=REFRESH_IDENTIFIER_PREFERRED.get(resource_name),
         )
 
         operation = convert_to_snake_case(operation_name)

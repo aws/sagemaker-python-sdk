@@ -495,6 +495,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         telemetry_params=[
             ("selective_execution_config", TelemetryParamType.KWARG_EXISTS),
             ("parallelism_config", TelemetryParamType.KWARG_EXISTS),
+            ("role_arn", TelemetryParamType.KWARG_EXISTS),
         ],
     )
     def start(
@@ -507,6 +508,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         mlflow_experiment_name: str = None,
         pipeline_version_id: int = None,
         pipeline_version_alias: str = None,
+        role_arn: str = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -528,6 +530,11 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 specified, uses the latest version ID.
             pipeline_version_alias (Optional[str]): alias of the pipeline version to start the
                 execution from. Cannot be specified together with pipeline_version_id.
+            role_arn (Optional[str]): The IAM role the execution assumes. Required when starting a
+                managed pipeline (an AWS-managed pipeline whose ARN has the account ``aws``),
+                and rejected by the service for customer-owned pipelines. The caller needs
+                ``iam:PassRole`` on this role. Schedules created with ``put_triggers`` cannot
+                pass a role, so they cannot start managed pipelines.
 
         Returns:
             A `PipelineExecution` instance, if successful.
@@ -554,17 +561,23 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             MlflowExperimentName=mlflow_experiment_name,
             PipelineVersionId=pipeline_version_id,
             PipelineVersionAlias=pipeline_version_alias,
+            RoleArn=role_arn,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
             return self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
         update_args(kwargs, PipelineParameters=format_start_parameters(parameters))
 
-        # retry on AccessDeniedException to cover case of tag propagation delay
-        response = retry_with_backoff(
-            lambda: self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs),
-            botocore_client_error_code="AccessDeniedException",
-        )
+        if role_arn:
+            # role_arn is only valid for managed pipelines, which the caller never just created, so
+            # AccessDeniedException is not a tag-propagation delay and should surface immediately.
+            response = self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
+        else:
+            # retry on AccessDeniedException to cover case of tag propagation delay
+            response = retry_with_backoff(
+                lambda: self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs),
+                botocore_client_error_code="AccessDeniedException",
+            )
         return PipelineExecution(
             arn=response["PipelineExecutionArn"],
             sagemaker_session=self.sagemaker_session,
