@@ -5255,11 +5255,13 @@ class ClusterExtension(Base):
     Attributes:
         extension_details: The details of the extension.
         node_summary: A summary of how many nodes in your cluster the extension targets, and how many of them run the extension's current version and configuration.
+        health: The problems that affect the extension on the cluster's nodes, grouped by cause, with the number of nodes that each problem affects. Use it to find out why ActiveCount is lower than TotalCount, or why the status is Degraded, CreateFailed, or UpdateFailed. SageMaker HyperPod omits Health when no node has a problem. Nodes where SageMaker HyperPod hasn't finished installing or updating the extension aren't counted in any issue, unless an earlier attempt failed on them.
 
     """
 
     extension_details: Optional[ExtensionDetails] = Unassigned()
     node_summary: Optional[ExtensionNodeSummary] = Unassigned()
+    health: Optional[ExtensionHealth] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)

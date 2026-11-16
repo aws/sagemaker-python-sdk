@@ -2202,6 +2202,12 @@ SHAPE_DAG = {
             {"name": "PatchingStrategy", "shape": "ClusterPatchingStrategy", "type": "string"},
             {"name": "PatchSchedule", "shape": "ClusterPatchSchedule", "type": "structure"},
             {"name": "DeploymentConfig", "shape": "DeploymentConfiguration", "type": "structure"},
+            {
+                "name": "IdleWaitWindowInSeconds",
+                "shape": "IdleWaitWindowInSecondsValue",
+                "type": "integer",
+            },
+            {"name": "DrainPolicy", "shape": "ClusterDrainPolicy", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -2219,6 +2225,12 @@ SHAPE_DAG = {
                 "type": "structure",
             },
             {"name": "DeploymentConfig", "shape": "DeploymentConfiguration", "type": "structure"},
+            {
+                "name": "IdleWaitWindowInSeconds",
+                "shape": "IdleWaitWindowInSecondsValue",
+                "type": "integer",
+            },
+            {"name": "DrainPolicy", "shape": "ClusterDrainPolicy", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -2250,6 +2262,17 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ClusterDrainPolicy": {
+        "members": [
+            {
+                "name": "DrainTimeoutInSeconds",
+                "shape": "DrainTimeoutInSecondsValue",
+                "type": "integer",
+            },
+            {"name": "OnDrainTimeout", "shape": "ClusterOnDrainTimeout", "type": "string"},
+        ],
+        "type": "structure",
+    },
     "ClusterEbsVolumeConfig": {
         "members": [
             {"name": "VolumeSizeInGB", "shape": "ClusterEbsVolumeSizeInGB", "type": "integer"},
@@ -2270,6 +2293,7 @@ SHAPE_DAG = {
             {"name": "EventDetails", "shape": "EventDetails", "type": "structure"},
             {"name": "Description", "shape": "String", "type": "string"},
             {"name": "EventLevel", "shape": "ClusterEventLevel", "type": "string"},
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
         ],
         "type": "structure",
     },
@@ -2289,6 +2313,7 @@ SHAPE_DAG = {
             {"name": "EventTime", "shape": "Timestamp", "type": "timestamp"},
             {"name": "Description", "shape": "String", "type": "string"},
             {"name": "EventLevel", "shape": "ClusterEventLevel", "type": "string"},
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
         ],
         "type": "structure",
     },
@@ -2657,6 +2682,51 @@ SHAPE_DAG = {
         "type": "structure",
     },
     "ClusterOnDemandOptions": {"members": [], "type": "structure"},
+    "ClusterOperationScalingConfiguration": {
+        "members": [
+            {"name": "CurrentCount", "shape": "ClusterOperationCount", "type": "integer"},
+            {"name": "TargetCount", "shape": "ClusterOperationCount", "type": "integer"},
+            {"name": "MinCount", "shape": "ClusterOperationCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ClusterOperationScalingDetails": {
+        "members": [
+            {"name": "InstanceGroupName", "shape": "String", "type": "string"},
+            {"name": "Status", "shape": "ClusterOperationStatus", "type": "string"},
+            {
+                "name": "Original",
+                "shape": "ClusterOperationScalingConfiguration",
+                "type": "structure",
+            },
+            {
+                "name": "Desired",
+                "shape": "ClusterOperationScalingConfiguration",
+                "type": "structure",
+            },
+        ],
+        "type": "structure",
+    },
+    "ClusterOperationScalingDetailsList": {
+        "member_shape": "ClusterOperationScalingDetails",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ClusterOperationSummaries": {
+        "member_shape": "ClusterOperationSummary",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ClusterOperationSummary": {
+        "members": [
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "Type", "shape": "ClusterOperationType", "type": "string"},
+            {"name": "Status", "shape": "ClusterOperationStatus", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+        ],
+        "type": "structure",
+    },
     "ClusterOrchestrator": {
         "members": [
             {"name": "Eks", "shape": "ClusterOrchestratorEksConfig", "type": "structure"},
@@ -6144,6 +6214,7 @@ SHAPE_DAG = {
         "members": [
             {"name": "ExtensionDetails", "shape": "ExtensionDetails", "type": "structure"},
             {"name": "NodeSummary", "shape": "ExtensionNodeSummary", "type": "structure"},
+            {"name": "Health", "shape": "ExtensionHealth", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -6157,6 +6228,33 @@ SHAPE_DAG = {
     },
     "DescribeClusterNodeResponse": {
         "members": [{"name": "NodeDetails", "shape": "ClusterNodeDetails", "type": "structure"}],
+        "type": "structure",
+    },
+    "DescribeClusterOperationRequest": {
+        "members": [
+            {"name": "ClusterName", "shape": "ClusterNameOrArn", "type": "string"},
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "DescribeClusterOperationResponse": {
+        "members": [
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "Type", "shape": "ClusterOperationType", "type": "string"},
+            {"name": "Status", "shape": "ClusterOperationStatus", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+            {
+                "name": "ScalingDetails",
+                "shape": "ClusterOperationScalingDetailsList",
+                "type": "list",
+            },
+            {
+                "name": "DeepHealthCheckDetails",
+                "shape": "DeepHealthCheckConfigurations",
+                "type": "list",
+            },
+        ],
         "type": "structure",
     },
     "DescribeClusterRequest": {
@@ -8985,6 +9083,23 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ExtensionHealth": {
+        "members": [{"name": "Issues", "shape": "ExtensionHealthIssues", "type": "list"}],
+        "type": "structure",
+    },
+    "ExtensionHealthIssue": {
+        "members": [
+            {"name": "Code", "shape": "ExtensionHealthIssueCode", "type": "string"},
+            {"name": "Message", "shape": "ExtensionHealthIssueMessage", "type": "string"},
+            {"name": "NodeCount", "shape": "ExtensionNodeCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ExtensionHealthIssues": {
+        "member_shape": "ExtensionHealthIssue",
+        "member_type": "structure",
+        "type": "list",
+    },
     "ExtensionNodeSummary": {
         "members": [
             {"name": "TotalCount", "shape": "ExtensionNodeCount", "type": "integer"},
@@ -9005,6 +9120,15 @@ SHAPE_DAG = {
             {"name": "Status", "shape": "ExtensionStatus", "type": "string"},
             {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
         ],
+        "type": "structure",
+    },
+    "ExtensionVersionSummaries": {
+        "member_shape": "ExtensionVersionSummary",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ExtensionVersionSummary": {
+        "members": [{"name": "ExtensionVersion", "shape": "ExtensionVersion", "type": "string"}],
         "type": "structure",
     },
     "FSxLustreConfig": {
@@ -11427,6 +11551,7 @@ SHAPE_DAG = {
             {"name": "SortBy", "shape": "EventSortBy", "type": "string"},
             {"name": "SortOrder", "shape": "SortOrder", "type": "string"},
             {"name": "ResourceType", "shape": "ClusterEventResourceType", "type": "string"},
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
             {"name": "MaxResults", "shape": "ClusterEventMaxResults", "type": "integer"},
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
         ],
@@ -11436,6 +11561,21 @@ SHAPE_DAG = {
         "members": [
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
             {"name": "Events", "shape": "ClusterEventSummaries", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterExtensionVersionsRequest": {
+        "members": [
+            {"name": "ExtensionName", "shape": "ExtensionName", "type": "string"},
+            {"name": "MaxResults", "shape": "MaxResults", "type": "integer"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterExtensionVersionsResponse": {
+        "members": [
+            {"name": "ExtensionVersions", "shape": "ExtensionVersionSummaries", "type": "list"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
         ],
         "type": "structure",
     },
@@ -11482,6 +11622,31 @@ SHAPE_DAG = {
         "members": [
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
             {"name": "ClusterNodeSummaries", "shape": "ClusterNodeSummaries", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterOperationsRequest": {
+        "members": [
+            {"name": "ClusterName", "shape": "ClusterNameOrArn", "type": "string"},
+            {"name": "Status", "shape": "ClusterOperationStatus", "type": "string"},
+            {"name": "Type", "shape": "ClusterOperationType", "type": "string"},
+            {"name": "CreationTimeAfter", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "CreationTimeBefore", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "SortBy", "shape": "ClusterOperationSortBy", "type": "string"},
+            {"name": "SortOrder", "shape": "SortOrder", "type": "string"},
+            {"name": "MaxResults", "shape": "ClusterOperationMaxResults", "type": "integer"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterOperationsResponse": {
+        "members": [
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+            {
+                "name": "ClusterOperationSummaries",
+                "shape": "ClusterOperationSummaries",
+                "type": "list",
+            },
         ],
         "type": "structure",
     },
