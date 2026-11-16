@@ -44,6 +44,7 @@ from .harness import (
     submitted,
     unique_name,
 )
+from ... import integ_resources
 
 # Small, publicly available instruct model. Kept small deliberately: these tests
 # never train, so model size only affects how long recipe/artifact resolution
@@ -65,7 +66,7 @@ MODEL_ID = "meta-textgeneration-llama-3-2-1b-instruct"
 #
 # so a name is what lets one constant serve both regions, and it keeps the tests
 # runnable in any account that has provisioned the group.
-MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
+MODEL_PACKAGE_GROUP = integ_resources.output_model_package_group()
 
 # An accelerator type is required for the serverful recipe path: these recipes do
 # not resolve onto a CPU instance, so unlike the ModelTrainer suite we cannot use

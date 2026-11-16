@@ -27,6 +27,8 @@ import boto3
 from botocore.exceptions import ClientError
 from sagemaker.core.helper.session_helper import Session
 
+from .. import integ_resources
+
 DEFAULT_REGION = "us-west-2"
 
 # ---------------------------------------------------------------------------
@@ -161,7 +163,8 @@ def ensure_default_region():
 
 @pytest.fixture(autouse=True, scope="session")
 def use_private_hub():
-    os.environ["SAGEMAKER_HUB_NAME"] = "sdktest"
+    # The account's fixture hub, which holds the test base models and evaluators.
+    os.environ["SAGEMAKER_HUB_NAME"] = integ_resources.hub_name()
     yield
     del os.environ["SAGEMAKER_HUB_NAME"]
 

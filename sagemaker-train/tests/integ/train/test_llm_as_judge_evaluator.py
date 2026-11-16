@@ -22,6 +22,7 @@ from sagemaker.train.evaluate import (
     LLMAsJudgeEvaluator,
     EvaluationPipelineExecution,
 )
+from .. import integ_resources
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
@@ -70,15 +71,13 @@ CUSTOM_METRIC_DICT = {
 # }
 
 TEST_CONFIG = {
-    "model_package_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
+    "model_package_arn": integ_resources.fixture_model_package_arn(),
     "evaluator_model": "anthropic.claude-haiku-4-5-20251001-v1:0",
-    "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/gen_qa.jsonl",
+    "dataset_s3_uri": integ_resources.dataset_uri(integ_resources.EVAL_GEN_QA_DATASET),
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
-    "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
-    # "model_package_group_arn":
-    # "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+    "s3_output_path": integ_resources.output_uri("model-customization-eval"),
+    "mlflow_tracking_server_arn": integ_resources.mlflow_app_arn(),
     "evaluate_base_model": False,
     "region": "us-west-2",
 }

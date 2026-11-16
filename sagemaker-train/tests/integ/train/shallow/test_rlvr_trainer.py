@@ -26,12 +26,11 @@ from sagemaker.train.rlvr_trainer import RLVRTrainer
 
 from .harness import assert_submitted, submitted
 from .recipe_cases import RecipeTrainerCases
+from ... import integ_resources
 
 # Pre-provisioned reward function in the test account, same one the deep suite
 # uses (test_rlvr_trainer_integration.py).
-REWARD_FUNCTION_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1"
-)
+REWARD_FUNCTION_ARN = integ_resources.evaluator_arn("rlvr-test-rf")
 
 # The preset the deep suite pairs with an ordinary training dataset on this same
 # model (test_rlvr_trainer_lora_complete_workflow).

@@ -24,13 +24,14 @@ import pytest
 from sagemaker.ai_registry.evaluator import Evaluator
 from sagemaker.ai_registry.air_constants import REWARD_FUNCTION
 from sagemaker.train.common_utils.finetune_utils import _extract_evaluator_arn
+from .. import integ_resources
 
 logger = logging.getLogger(__name__)
 
 
 # Test resource names (ARNs are constructed dynamically from account/region)
 EVALUATOR_NAME = "rlvr-eval-lambda-arn-integ-test"
-LAMBDA_FUNCTION_NAME = "rlvr-oss-reward-function"
+LAMBDA_FUNCTION_NAME = integ_resources.rlvr_reward_function_name()
 
 
 @pytest.fixture(scope="module")
