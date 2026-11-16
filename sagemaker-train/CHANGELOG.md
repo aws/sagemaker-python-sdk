@@ -1,16 +1,25 @@
 # Changelog
 
-## Unreleased
-
-### Bug Fixes
-
-- fix: Update DataSet.create() default document_schema_version from "2.0.0" to "5.0.0" to enable lineage tracking, UI display, and Data Quality evaluation
-- fix: Produce v5-compatible hub content document (DatasetFileFormat, DatasetType: BYOD) instead of legacy v2 fields rejected by the v5 schema
+## v1.30.0 (2026-11-16)
 
 ### New Features
 
+- feature: add DataPreparer for data generation, quality evaluation, and transformation jobs (#6585)
 - feat: Add `dataset_file_format` parameter to DataSet.create() — allows specifying the dataset format (e.g. "HF_Prompt_Completion", "Bedrock_Converse", "Verl"). Defaults to "Custom"
 - feat: Add `document_schema_version` parameter to DataSet.create() — allows overriding the schema version (valid: "2.0.0", "3.0.0", "4.0.0", "5.0.0"). Defaults to "5.0.0"
+
+### Bug Fixes
+
+- fix: preserve AgentCore context in RFT handlers (#6571)
+- fix: validate RFT rewards before reporting rollout success (#6572)
+- fix: Python 3.14 tuner tags (#6554) and tuner source staging bucket (#6555) (#6578)
+- fix: apply ModelTrainer output KMS key to tuner source upload (#6555) (#6559)
+- fix: expose local training result from ModelTrainer.train (#6556) (#6560)
+- fix: create AI Registry boto3 clients lazily to avoid import-time region errors (#6558)
+- fix: training-sessions - drop the static model list (#6568)
+- fix: use the shifted input form in training session loss input examples (#6584)
+- fix: Update DataSet.create() default document_schema_version from "2.0.0" to "5.0.0" to enable lineage tracking, UI display, and Data Quality evaluation
+- fix: Produce v5-compatible hub content document (DatasetFileFormat, DatasetType: BYOD) instead of legacy v2 fields rejected by the v5 schema
 
 
 ## v1.29.0 (2026-11-04)
