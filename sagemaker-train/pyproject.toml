@@ -64,6 +64,7 @@ test = [
     "scipy",
     "omegaconf",
     "graphene",
+    "hypothesis",
     "IPython",
     "transformers",
 ]
@@ -96,6 +97,7 @@ markers = [
     # of warning.
     "gpu_intensive: marks a test that consumes real training capacity (scheduled CI, not PR checks); see tests/integ/train/shallow",
     "us_east_1: marks a test that must run in us-east-1 (Nova); runs in the us-east-1 integ job",
+    "integ: marks tests as integration tests (require AWS credentials for an enabled account)",
 ]
 
 [tool.black]
