@@ -701,6 +701,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
             TYPE: OBJECT,
             ADDITIONAL_PROPERTIES: False,
             PROPERTIES: {
+                "GlobalDefaults": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
                 PYTHON_SDK: {
                     TYPE: OBJECT,
                     ADDITIONAL_PROPERTIES: False,
@@ -734,6 +735,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     },
                                 },
                                 MODEL_TRAINER: {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
+                                # DataPreparer (data preparation) — allow any
+                                # sub-structure so new categories / properties
+                                # published in the Hub JobConfigSchema become
+                                # configurable without a config-schema code change.
+                                "DataPreparer": {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
                                 REMOTE_FUNCTION: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,
