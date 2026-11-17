@@ -52,6 +52,7 @@ from sagemaker.mlops.workflow.condition_step import ConditionStep
 from sagemaker.mlops.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.mlops.workflow.endpoint_step import EndpointConfigStep, EndpointStep
 from sagemaker.mlops.workflow.fail_step import FailStep
+from sagemaker.mlops.workflow.hub_content_step import HubContentStep
 from sagemaker.mlops.workflow.inference_component_step import InferenceComponentStep
 from sagemaker.mlops.workflow.for_each_step import (
     ForEachStep,
@@ -127,6 +128,7 @@ __all__ = [
     "EndpointConfigStep",
     "EndpointStep",
     "FailStep",
+    "HubContentStep",
     "InferenceComponentStep",
     "ForEachStep",
     "ForEachSelector",

@@ -1,0 +1,563 @@
+[
+ {
+  "expected": {
+   "Config": {
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.classification"
+  },
+  "inputs": {
+   "model_ids": [
+    "m1"
+   ],
+   "task": "classification",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Demos": {
+     "S3Uri": "s3://b/d.jsonl"
+    },
+    "EvaluationData": {
+     "LabelField": "gt",
+     "S3Uri": "s3://b/g.jsonl"
+    },
+    "TextFields": [
+     "t",
+     "u"
+    ]
+   },
+   "Type": "labeling.classification"
+  },
+  "inputs": {
+   "demos_s3_uri": "s3://b/d.jsonl",
+   "eval_s3_uri": "s3://b/g.jsonl",
+   "label_field": "gt",
+   "model_ids": [
+    "m1"
+   ],
+   "task": "classification",
+   "text_fields": [
+    "t",
+    "u"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "EvaluationData": {
+     "DatasetArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+     "LabelField": "gt"
+    },
+    "Routing": {
+     "ReviewDatasetName": "rv"
+    },
+    "Scoring": {
+     "Target": 0.9
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.classification"
+  },
+  "inputs": {
+   "eval_dataset_arn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+   "label_field": "gt",
+   "model_ids": [
+    "m1",
+    "m2",
+    "m3"
+   ],
+   "review_dataset_name": "rv",
+   "target": 0.9,
+   "task": "classification",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.ner"
+  },
+  "inputs": {
+   "model_ids": [
+    "m1"
+   ],
+   "task": "ner",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Demos": {
+     "S3Uri": "s3://b/d.jsonl"
+    },
+    "EvaluationData": {
+     "LabelField": "gt",
+     "S3Uri": "s3://b/g.jsonl"
+    },
+    "TextFields": [
+     "t",
+     "u"
+    ]
+   },
+   "Type": "labeling.ner"
+  },
+  "inputs": {
+   "demos_s3_uri": "s3://b/d.jsonl",
+   "eval_s3_uri": "s3://b/g.jsonl",
+   "label_field": "gt",
+   "model_ids": [
+    "m1"
+   ],
+   "task": "ner",
+   "text_fields": [
+    "t",
+    "u"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "EvaluationData": {
+     "DatasetArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+     "LabelField": "gt"
+    },
+    "Routing": {
+     "ReviewDatasetName": "rv"
+    },
+    "Scoring": {
+     "Target": 0.9
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.ner"
+  },
+  "inputs": {
+   "eval_dataset_arn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+   "label_field": "gt",
+   "model_ids": [
+    "m1",
+    "m2",
+    "m3"
+   ],
+   "review_dataset_name": "rv",
+   "target": 0.9,
+   "task": "ner",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.qa"
+  },
+  "inputs": {
+   "model_ids": [
+    "m1"
+   ],
+   "task": "qa",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Demos": {
+     "S3Uri": "s3://b/d.jsonl"
+    },
+    "EvaluationData": {
+     "LabelField": "gt",
+     "S3Uri": "s3://b/g.jsonl"
+    },
+    "TextFields": [
+     "t",
+     "u"
+    ]
+   },
+   "Type": "labeling.qa"
+  },
+  "inputs": {
+   "demos_s3_uri": "s3://b/d.jsonl",
+   "eval_s3_uri": "s3://b/g.jsonl",
+   "label_field": "gt",
+   "model_ids": [
+    "m1"
+   ],
+   "task": "qa",
+   "text_fields": [
+    "t",
+    "u"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "EvaluationData": {
+     "DatasetArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+     "LabelField": "gt"
+    },
+    "Routing": {
+     "ReviewDatasetName": "rv"
+    },
+    "Scoring": {
+     "Target": 0.9
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.qa"
+  },
+  "inputs": {
+   "eval_dataset_arn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+   "label_field": "gt",
+   "model_ids": [
+    "m1",
+    "m2",
+    "m3"
+   ],
+   "review_dataset_name": "rv",
+   "target": 0.9,
+   "task": "qa",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.ordinal"
+  },
+  "inputs": {
+   "model_ids": [
+    "m1"
+   ],
+   "task": "ordinal",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Demos": {
+     "S3Uri": "s3://b/d.jsonl"
+    },
+    "EvaluationData": {
+     "LabelField": "gt",
+     "S3Uri": "s3://b/g.jsonl"
+    },
+    "TextFields": [
+     "t",
+     "u"
+    ]
+   },
+   "Type": "labeling.ordinal"
+  },
+  "inputs": {
+   "demos_s3_uri": "s3://b/d.jsonl",
+   "eval_s3_uri": "s3://b/g.jsonl",
+   "label_field": "gt",
+   "model_ids": [
+    "m1"
+   ],
+   "task": "ordinal",
+   "text_fields": [
+    "t",
+    "u"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "EvaluationData": {
+     "DatasetArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+     "LabelField": "gt"
+    },
+    "Routing": {
+     "ReviewDatasetName": "rv"
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.ordinal"
+  },
+  "inputs": {
+   "eval_dataset_arn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+   "label_field": "gt",
+   "model_ids": [
+    "m1"
+   ],
+   "review_dataset_name": "rv",
+   "task": "ordinal",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.llm_judge"
+  },
+  "inputs": {
+   "model_ids": [
+    "m1"
+   ],
+   "task": "llm_judge",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Demos": {
+     "S3Uri": "s3://b/d.jsonl"
+    },
+    "EvaluationData": {
+     "LabelField": "gt",
+     "S3Uri": "s3://b/g.jsonl"
+    },
+    "TextFields": [
+     "t",
+     "u"
+    ]
+   },
+   "Type": "labeling.llm_judge"
+  },
+  "inputs": {
+   "demos_s3_uri": "s3://b/d.jsonl",
+   "eval_s3_uri": "s3://b/g.jsonl",
+   "label_field": "gt",
+   "model_ids": [
+    "m1"
+   ],
+   "task": "llm_judge",
+   "text_fields": [
+    "t",
+    "u"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "EvaluationData": {
+     "DatasetArn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+     "LabelField": "gt"
+    },
+    "Routing": {
+     "ReviewDatasetName": "rv"
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.llm_judge"
+  },
+  "inputs": {
+   "eval_dataset_arn": "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/gold/1.0.0",
+   "label_field": "gt",
+   "model_ids": [
+    "m1"
+   ],
+   "review_dataset_name": "rv",
+   "task": "llm_judge",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Scoring": {
+     "Graders": [
+      {
+       "ModelId": "g1"
+      },
+      {
+       "ModelId": "g2",
+       "ReasoningEffort": "low"
+      }
+     ]
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.summarization"
+  },
+  "inputs": {
+   "graders": [
+    "g1",
+    {
+     "ModelId": "g2",
+     "ReasoningEffort": "low"
+    }
+   ],
+   "model_ids": [
+    "m1"
+   ],
+   "task": "summarization",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Confidence": {
+     "Method": "stated"
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.classification"
+  },
+  "inputs": {
+   "confidence_method": "stated",
+   "model_ids": [
+    "m1"
+   ],
+   "task": "classification",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Confidence": {
+     "Estimator": "judge",
+     "FloorBypass": true,
+     "Method": "verbalized",
+     "Models": [
+      {
+       "ModelId": "j1"
+      }
+     ],
+     "Recalibration": "platt"
+    },
+    "EvaluationData": {
+     "LabelField": "gt",
+     "S3Uri": "s3://b/g.jsonl"
+    },
+    "Routing": {
+     "ReviewDatasetName": "rv"
+    },
+    "Scoring": {
+     "Target": 0.9
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.classification"
+  },
+  "inputs": {
+   "confidence_estimator": "judge",
+   "confidence_floor_bypass": true,
+   "confidence_method": "verbalized",
+   "confidence_recalibration": "platt",
+   "eval_s3_uri": "s3://b/g.jsonl",
+   "judge_models": [
+    "j1"
+   ],
+   "label_field": "gt",
+   "model_ids": [
+    "m1"
+   ],
+   "review_dataset_name": "rv",
+   "target": 0.9,
+   "task": "classification",
+   "text_fields": [
+    "t"
+   ]
+  }
+ },
+ {
+  "expected": {
+   "Config": {
+    "Optimizer": {
+     "Elicitation": "plain",
+     "Mode": "protegi",
+     "Parser": "salvage",
+     "Seed": 1,
+     "TeacherModel": {
+      "ModelId": "t"
+     }
+    },
+    "TextFields": [
+     "t"
+    ]
+   },
+   "Type": "labeling.classification"
+  },
+  "inputs": {
+   "model_ids": [
+    "m1"
+   ],
+   "optimizer": {
+    "Elicitation": "plain",
+    "Mode": "protegi",
+    "Parser": "salvage",
+    "Seed": 1,
+    "TeacherModel": {
+     "ModelId": "t"
+    }
+   },
+   "task": "classification",
+   "text_fields": [
+    "t"
+   ]
+  }
+ }
+]

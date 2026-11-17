@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.30.0 (2026-11-16)
+
+### Dependencies
+
+- Raise the sagemaker-core and sagemaker-train minimum versions to 2.30.0 and 1.30.0
+
+
 ## v1.29.0 (2026-11-04)
 
 ### New Features

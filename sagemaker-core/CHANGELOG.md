@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.30.0 (2026-11-16)
+
+### New Features
+
+- feat: update SDK to use latest LMI v30 image for sdk v3.x (#6483)
+- feat(workflow): Add IfExpression and Omit for step arguments (#6567)
+- feature: Add Session.import_hub_content (#6565)
+- change: update image_uri_configs 11-06-2026, 11-09-2026, 11-13-2026 and 11-16-2026
+- change: Daily Sync with Botocore v1.44.2 (#6583)
+
+### Bug Fixes
+
+- fix: Python 3.14 tuner tags (#6554) and tuner source staging bucket (#6555) (#6578)
+
+
 ## v2.29.0 (2026-11-04)
 
 ### New Features

@@ -51,6 +51,7 @@ EXPECTED_STEP_TYPES = {
     "LINEAGE": "Lineage",
     "JOB": "Job",
     "CLEANUP": "Cleanup",
+    "HUB_CONTENT": "HubContent",
     "FOR_EACH": "ForEach",
     "ATHENA": "Athena",
 }

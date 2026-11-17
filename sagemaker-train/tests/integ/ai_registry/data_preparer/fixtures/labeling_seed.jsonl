@@ -1,0 +1,30 @@
+{"id": 1001, "text": "My new card still has not shown up in the mail", "gt_label": "card_arrival"}
+{"id": 1002, "text": "When should I expect the replacement card to be delivered?", "gt_label": "card_arrival"}
+{"id": 1003, "text": "It has been two weeks since I ordered a card and nothing arrived", "gt_label": "card_arrival"}
+{"id": 1004, "text": "Can you tell me where my debit card is in the post?", "gt_label": "card_arrival"}
+{"id": 1005, "text": "How long does shipping take for a physical card?", "gt_label": "card_arrival"}
+{"id": 1006, "text": "Still waiting on my card, is there a way to track it?", "gt_label": "card_arrival"}
+{"id": 1007, "text": "My card stopped working this morning", "gt_label": "card_not_working"}
+{"id": 1008, "text": "The chip on my card seems broken, nothing happens", "gt_label": "card_not_working"}
+{"id": 1009, "text": "Why is my card not functioning at any terminal?", "gt_label": "card_not_working"}
+{"id": 1010, "text": "My card is dead, the machines will not read it", "gt_label": "card_not_working"}
+{"id": 1011, "text": "Card isn't working anymore, what should I do?", "gt_label": "card_not_working"}
+{"id": 1012, "text": "The card you gave me no longer works at all", "gt_label": "card_not_working"}
+{"id": 1013, "text": "My payment at the grocery store got declined", "gt_label": "declined_card_payment"}
+{"id": 1014, "text": "Why was my card purchase refused online yesterday?", "gt_label": "declined_card_payment"}
+{"id": 1015, "text": "The restaurant said my card transaction was rejected", "gt_label": "declined_card_payment"}
+{"id": 1016, "text": "A payment I tried to make keeps getting denied", "gt_label": "declined_card_payment"}
+{"id": 1017, "text": "Checkout failed because the card was declined twice", "gt_label": "declined_card_payment"}
+{"id": 1018, "text": "The shop could not take my card payment, it said declined", "gt_label": "declined_card_payment"}
+{"id": 1019, "text": "I think someone stole my wallet with my card in it", "gt_label": "lost_or_stolen_card"}
+{"id": 1020, "text": "I lost my card on the train, please block it", "gt_label": "lost_or_stolen_card"}
+{"id": 1021, "text": "My card went missing after the concert", "gt_label": "lost_or_stolen_card"}
+{"id": 1022, "text": "Please freeze my account, my card was taken", "gt_label": "lost_or_stolen_card"}
+{"id": 1023, "text": "I can't find my card anywhere and need to report it", "gt_label": "lost_or_stolen_card"}
+{"id": 1024, "text": "My purse was snatched and the card was inside", "gt_label": "lost_or_stolen_card"}
+{"id": 1025, "text": "I tried to top up my balance but it failed", "gt_label": "top_up_failed"}
+{"id": 1026, "text": "Adding money to my account did not go through", "gt_label": "top_up_failed"}
+{"id": 1027, "text": "My top-up from the bank transfer never completed", "gt_label": "top_up_failed"}
+{"id": 1028, "text": "Why did loading funds onto my account fail?", "gt_label": "top_up_failed"}
+{"id": 1029, "text": "The app shows my top up as unsuccessful", "gt_label": "top_up_failed"}
+{"id": 1030, "text": "I could not add cash to my balance, it errored", "gt_label": "top_up_failed"}
