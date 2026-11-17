@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
 
 import boto3
 import pytest
@@ -26,11 +25,14 @@ from sagemaker.core.resources import TrainingJob
 from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.sft_trainer import SFTTrainer
 
+from .. import integ_resources
+
 logger = logging.getLogger(__name__)
 
 REGION = "us-west-2"
-MTRL_JOB_NAME = "mock-oss-test-mtrl-20260729120959"
-SERVERFUL_JOB_NAME = "pytorch-training-260729-1927-002-95b83cb6"
+# Completed fixture jobs in the account running the tests (see integ_resources).
+MTRL_JOB_NAME = integ_resources.mtrl_job_name()
+SERVERFUL_JOB_NAME = integ_resources.pytorch_training_job_name()
 
 
 @pytest.fixture(scope="module")
@@ -60,9 +62,10 @@ class TestMTRLStreamLogs:
         """AgentRFTJob.stream_logs() respects start_time parameter."""
         job = AgentRFTJob.get(MTRL_JOB_NAME, session=sagemaker_session.boto_session)
 
-        # Use a timestamp from when the job was running (extracted from job name)
-
-        job_start = datetime(2026, 7, 29, 12, 9, 59, tzinfo=timezone.utc)
+        # A timestamp from when the job was running: its creation time.
+        job_start = sagemaker_session.boto_session.client("sagemaker").describe_job(
+            JobName=MTRL_JOB_NAME, JobCategory="AgentRFT"
+        )["CreationTime"]
         start_time_ms = int(job_start.timestamp() * 1000)
 
         start = time.time()

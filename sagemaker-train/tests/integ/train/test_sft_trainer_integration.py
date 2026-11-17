@@ -21,6 +21,7 @@ from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 
 from .nova_capacity import nova_capacity_slot, wait_for_nova_training_job
+from .. import integ_resources
 
 
 @pytest.mark.gpu_intensive
@@ -31,9 +32,9 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session, mlflow_resource_a
     sft_trainer = SFTTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        model_package_group=integ_resources.output_model_package_group_arn(),
+        training_dataset=integ_resources.dataset_uri(integ_resources.SFT_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         mlflow_resource_arn=mlflow_resource_arn,
         accept_eula=True,
         base_job_name=f"sft-lora-integ-{unique_id}",
@@ -78,9 +79,9 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
     sft_trainer = SFTTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-        validation_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+        model_package_group=integ_resources.output_model_package_group_arn(),
+        training_dataset=integ_resources.dataset_uri(integ_resources.SFT_DATASET),
+        validation_dataset=integ_resources.dataset_uri(integ_resources.SFT_DATASET),
         accept_eula=True,
         base_job_name=f"sft-val-integ-{unique_id}",
     )
@@ -177,9 +178,9 @@ def test_sft_trainer_lora_with_sequence_length(sagemaker_session):
     sft_trainer = SFTTrainer(
         model="huggingface-vlm-qwen3-5-9b",
         training_type=TrainingType.LORA,
-        model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        model_package_group=integ_resources.output_model_package_group_arn(),
+        training_dataset=integ_resources.dataset_uri(integ_resources.SFT_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         accept_eula=True,
         sequence_length="16K",
         base_job_name=f"sft-seqlen-integ-{unique_id}",

@@ -46,6 +46,7 @@ from pydantic import ValidationError
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.evaluate import LLMAsJudgeEvaluator
+from .. import integ_resources
 
 _LIFECYCLE_LOGGER = "sagemaker.train.evaluate.llm_as_judge_evaluator"
 
@@ -60,9 +61,9 @@ BASE_MODEL = "meta-textgeneration-llama-3-2-1b-instruct"
 
 # Format-only fields (not existence-checked at construction): a well-formed S3 URI
 # and a well-formed MLflow ARN are enough to construct the evaluator.
-DATASET_S3_URI = "s3://sagemaker-us-west-2-729646638167/model-customization/eval/gen_qa.jsonl"
-S3_OUTPUT_PATH = "s3://sagemaker-us-west-2-729646638167/model-customization/eval/"
-MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6"
+DATASET_S3_URI = integ_resources.dataset_uri(integ_resources.EVAL_GEN_QA_DATASET)
+S3_OUTPUT_PATH = integ_resources.output_uri("model-customization-eval")
+MLFLOW_ARN = integ_resources.mlflow_app_arn()
 
 # An in-service judge model in us-west-2 (present in the supported list AND ACTIVE
 # in Bedrock) — used for the positive path.

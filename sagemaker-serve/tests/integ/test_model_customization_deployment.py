@@ -41,6 +41,8 @@ from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 from sagemaker.serve.model_reuse import MODEL_SOURCE_TAG_KEY
 from sagemaker.train import SFTTrainer, DPOTrainer
 
+import integ_resources
+
 logger = logging.getLogger(__name__)
 
 # This test relies on resources in a specific region
@@ -57,26 +59,14 @@ def sagemaker_session():
 
 @pytest.fixture(scope="module")
 def training_job_name():
-    """Training job name for testing."""
-    return "meta-textgeneration-llama-3-2-1b-instruct-sft-20251201172445"
-
-
-@pytest.fixture(scope="module")
-def sft_training_job_name():
-    """SFT training job name for testing."""
-    return "meta-textgeneration-llama-3-2-1b-instruct-sft-20251201114921"
-
-
-@pytest.fixture(scope="module")
-def dpo_training_job_name():
-    """DPO training job name for testing."""
-    return "meta-textgeneration-llama-3-2-1b-instruct-sft-20251123162832"
+    """The account's completed LoRA SFT fixture job (llama-3.2-1b-instruct)."""
+    return integ_resources.sft_training_job_name()
 
 
 @pytest.fixture(scope="module")
 def model_package_arn():
-    """Model package ARN for testing."""
-    return "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1"
+    """The account's pinned fine-tuned model package fixture."""
+    return integ_resources.fixture_model_package_arn()
 
 
 @pytest.fixture

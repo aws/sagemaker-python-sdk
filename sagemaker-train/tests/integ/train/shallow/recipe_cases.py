@@ -44,6 +44,7 @@ from .harness import (
     submitted,
     unique_name,
 )
+from ... import integ_resources
 
 # Small, publicly available instruct model. Kept small deliberately: these tests
 # never train, so model size only affects how long recipe/artifact resolution
@@ -53,19 +54,19 @@ MODEL_ID = "meta-textgeneration-llama-3-2-1b-instruct"
 # The already-provisioned group the dry-run suite also uses, so both suites share
 # one group rather than each needing their own.
 #
-# A bare name rather than an ARN, deliberately, and it is the same constant for
-# every region. The SDK resolves a name against the *session's* region
-# (`_resolve_model_package_group_arn` -> `ModelPackageGroup.get`), whereas an ARN
-# pins both the region and the account. Pinning the region breaks the us-east-1
-# Nova path outright -- verified against AWS, passing a us-west-2 ARN to a
+# A bare name rather than an ARN, deliberately. The SDK resolves a name against the
+# *session's* region (`_resolve_model_package_group_arn` -> `ModelPackageGroup.get`),
+# whereas an ARN pins both the region and the account. Pinning the region breaks the
+# us-east-1 Nova path outright -- verified against AWS, passing a us-west-2 ARN to a
 # us-east-1 job is rejected with
 #
 #     Model package group ARN region 'us-west-2' does not match expected region
 #     'us-east-1'
-#
-# so a name is what lets one constant serve both regions, and it keeps the tests
-# runnable in any account that has provisioned the group.
-MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
+MODEL_PACKAGE_GROUP = integ_resources.output_model_package_group()
+
+# The Nova tests run in the separate us-east-1 account, which has no
+# do-not-delete-<account>-* fixtures yet, so they keep that account's existing group.
+NOVA_MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
 
 # An accelerator type is required for the serverful recipe path: these recipes do
 # not resolve onto a CPU instance, so unlike the ModelTrainer suite we cannot use

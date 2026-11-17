@@ -16,9 +16,7 @@ Tests the MTRL evaluation workflow by attaching to existing completed training
 jobs (discovered via DescribeJob API) and running evaluations in both
 fine-tuned and base model modes, waiting for successful completion.
 
-Accounts:
-  - PROD (729646638167): Main account
-  - PREPROD (391266019386): Staging account
+The job and resources are the account's integ fixtures (see integ_resources).
 """
 
 from __future__ import absolute_import
@@ -26,10 +24,9 @@ from __future__ import absolute_import
 import pytest
 import logging
 
-import boto3
-
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.evaluate import MultiTurnRLEvaluator
+from .. import integ_resources
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -39,70 +36,22 @@ _REGION = "us-west-2"
 EVAL_TIMEOUT = 14400  # 4 hours
 
 
-def _get_account_id():
-    """Get current AWS account ID via STS."""
-    boto_session = boto3.Session(region_name=_REGION)
-    return boto_session.client("sts").get_caller_identity()["Account"]
-
-
-# ============================================================
-# Per-account resource configuration
-# ============================================================
-
-ACCOUNT_CONFIGS = {
-    # PROD — Main account (729646638167)
-    "729646638167": {
-        "env_name": "PROD",
-        # Fixture job; its output package (mock-oss-test-mtrl-mpg/219) is pinned via the
-        # `pysdk-ci-protected=true` tag so the CI resource cleaner keeps it.
-        # Keep in sync with test_mtrl_evaluator_3p_agent.py.
-        "existing_job_name": "mock-oss-test-mtrl-20260929124814",
-        "base_model": "mock-oss-test",
-        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/"
-        "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
-        "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
-        "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
-        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
-        "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/mock-oss-test-mtrl-mpg",
-    },
-    # PREPROD — Staging account (391266019386)
-    "391266019386": {
-        "env_name": "PREPROD",
-        "existing_job_name": "mtrl-integ-gpt-oss-agentcore-1779143704358",
-        "base_model": "mock-oss-test",
-        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:391266019386:runtime/"
-        "mtrl_integ_gsm8k_streaming-bIz4H5Echk",
-        "dataset": "s3://sagemaker-rft-beta-391266019386/prompts/gsm8k_small/prompts.parquet",
-        "s3_output_path": "s3://sagemaker-us-west-2-391266019386/mtrl-integ/eval-output/",
-        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:391266019386:mlflow-app/app-P3FRQFRQTNGI",
-        "model_package_group": "arn:aws:sagemaker:us-west-2:391266019386:model-package-group/"
-        "mtrl-integ-gpt-oss-agentcore",
-    },
-    # BETA — Dev/test account (742774200982)
-    "742774200982": {
-        "env_name": "BETA",
-        "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260601114439",
-        "base_model": "mock-oss-test",
-        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:742774200982:runtime/"
-        "sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq",
-        "dataset": "s3://sagemaker-rft-beta-742774200982/prompts/gsm8k_small/prompts.parquet",
-        "s3_output_path": "s3://sagemaker-us-west-2-742774200982/mtrl-integ/eval-output/",
-        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:742774200982:mlflow-app/app-6ZU5TXXH2GUX",
-        "model_package_group": "arn:aws:sagemaker:us-west-2:742774200982:model-package-group/"
-        "openai-reasoning-gpt-oss-20b-mtrl-mpg",
-    },
-}
-
-
 def _get_config():
-    """Get config for the current account."""
-    account_id = _get_account_id()
-    if account_id not in ACCOUNT_CONFIGS:
-        pytest.skip(
-            f"Account {account_id} not configured for MTRL integ tests. "
-            f"Supported accounts: {list(ACCOUNT_CONFIGS.keys())}"
-        )
-    return ACCOUNT_CONFIGS[account_id]
+    """Configuration for the account running the tests, from its integ fixtures."""
+    return {
+        "env_name": integ_resources.account_id(),
+        # Completed MTRL fixture job; its output package lives in a fixture group the CI
+        # resource cleaner keeps. Shared with test_mtrl_evaluator_3p_agent.py.
+        "existing_job_name": integ_resources.mtrl_job_name(),
+        "base_model": "mock-oss-test",
+        "agent_core_arn": integ_resources.agent_runtime_arn(),
+        "dataset": integ_resources.dataset_uri(integ_resources.MTRL_PROMPTS),
+        "s3_output_path": integ_resources.output_uri("mtrl-integ/eval-output"),
+        "mlflow_resource_arn": integ_resources.mlflow_app_arn(),
+        "model_package_group": integ_resources.arn(
+            "sagemaker", f"model-package-group/{integ_resources.mtrl_model_package_group()}"
+        ),
+    }
 
 
 @pytest.fixture(scope="module")
