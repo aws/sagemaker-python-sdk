@@ -1,5 +1,35 @@
 # Changelog
 
+## v3.30.0 (2026-11-16)
+
+### New Features
+
+- feature: add DataPreparer for data generation, quality evaluation, and transformation jobs (#6585)
+- feat: support managed pipelines in Pipeline.start and Pipeline.get_all (#6581)
+- feat(workflow): Add IfExpression and Omit for step arguments (#6567)
+- feature: Add pipeline version alias support to Pipeline (#6574)
+- feature: Add HubContentStep and Session.import_hub_content (#6565)
+- feat: update SDK to use latest LMI v30 image for sdk v3.x (#6483)
+- feat: Add `dataset_file_format` parameter to DataSet.create() — allows specifying the dataset format (e.g. "HF_Prompt_Completion", "Bedrock_Converse", "Verl"). Defaults to "Custom"
+- feat: Add `document_schema_version` parameter to DataSet.create() — allows overriding the schema version (valid: "2.0.0", "3.0.0", "4.0.0", "5.0.0"). Defaults to "5.0.0"
+- change: update image_uri_configs 11-06-2026, 11-09-2026, 11-13-2026 and 11-16-2026
+- change: Daily Sync with Botocore v1.44.2 (#6583)
+
+### Bug Fixes
+
+- fix: preserve AgentCore context in RFT handlers (#6571)
+- fix: validate RFT rewards before reporting rollout success (#6572)
+- fix: Python 3.14 tuner tags (#6554) and tuner source staging bucket (#6555) (#6578)
+- fix: apply ModelTrainer output KMS key to tuner source upload (#6555) (#6559)
+- fix: expose local training result from ModelTrainer.train (#6556) (#6560)
+- fix: create AI Registry boto3 clients lazily to avoid import-time region errors (#6558)
+- fix: training-sessions - drop the static model list (#6568)
+- fix: use the shifted input form in training session loss input examples (#6584)
+- fix: use a distinct source URI for the FP pipeline version context (#6540)
+- fix: Update DataSet.create() default document_schema_version from "2.0.0" to "5.0.0" to enable lineage tracking, UI display, and Data Quality evaluation
+- fix: Produce v5-compatible hub content document (DatasetFileFormat, DatasetType: BYOD) instead of legacy v2 fields rejected by the v5 schema
+
+
 ## v3.29.0 (2026-11-04)
 
 ### New Features
