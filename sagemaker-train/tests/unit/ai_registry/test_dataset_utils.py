@@ -14,6 +14,7 @@
 """Tests for dataset utilities."""
 
 import json
+import pytest
 
 from sagemaker.ai_registry.dataset_utils import (
     CustomizationTechnique,
@@ -45,10 +46,15 @@ class TestDataSetMethod:
 
 class TestDataSetHubContentDocument:
     def test_create_minimal_document(self):
-        """Test creating document with minimal parameters."""
+        """Test creating document with minimal parameters.
+
+        `dataset_type` carries no default since 75e13a8e moved the document schema
+        default from 2.0.0 to 5.0.0. The v2 serializer supplies "CUSTOMER_PROVIDED"
+        as its own fallback, so the constructor no longer needs one.
+        """
         doc = DataSetHubContentDocument()
 
-        assert doc.dataset_type == "AGENT_GENERATED"
+        assert doc.dataset_type is None
         assert doc.dataset_role_arn is None
         assert doc.dependencies == []
 
@@ -78,18 +84,33 @@ class TestDataSetHubContentDocument:
         assert doc.conversation_checkpoint_id == "checkpoint-456"
         assert doc.dependencies == ["dep1", "dep2"]
 
-    def test_to_json_minimal(self):
-        """Test JSON serialization with minimal parameters."""
-        doc = DataSetHubContentDocument()
-        json_str = doc.to_json()
-        parsed = json.loads(json_str)
+    def test_to_json_minimal_v2(self):
+        """Legacy v2 document from minimal parameters.
 
-        assert parsed["DatasetType"] == "AGENT_GENERATED"
+        `to_json` defaults to schema 5.0.0, so the legacy shape must be asked for by
+        name. DatasetType falls back to "CUSTOMER_PROVIDED" in the serializer rather
+        than to the constructor default it used to carry.
+        """
+        doc = DataSetHubContentDocument()
+        parsed = json.loads(doc.to_json(schema_version="2.0.0"))
+
+        assert parsed["DatasetType"] == "CUSTOMER_PROVIDED"
         assert parsed["Dependencies"] == []
         assert "DatasetRoleArn" not in parsed
 
+    def test_to_json_minimal_v5_is_empty(self):
+        """v5 emits only the fields that are set, so a minimal document is empty.
+
+        v5 does not accept the legacy fields at all, and DatasetFileFormat -- which it
+        requires -- has no default. The emptiness is the contract, not an omission:
+        a caller targeting v5 must supply DatasetFileFormat.
+        """
+        parsed = json.loads(DataSetHubContentDocument().to_json())
+
+        assert parsed == {}
+
     def test_to_json_full(self):
-        """Test JSON serialization with all parameters."""
+        """Legacy v2 document with every field set."""
         doc = DataSetHubContentDocument(
             dataset_type="CUSTOMER_PROVIDED",
             dataset_role_arn="arn:aws:iam::123456789012:role/TestRole",
@@ -102,8 +123,7 @@ class TestDataSetHubContentDocument:
             dependencies=["dep1", "dep2"],
         )
 
-        json_str = doc.to_json()
-        parsed = json.loads(json_str)
+        parsed = json.loads(doc.to_json(schema_version="2.0.0"))
 
         expected_keys = {
             "DatasetType",
@@ -132,13 +152,12 @@ class TestDataSetHubContentDocument:
         assert parsed["Dependencies"] == ["dep1", "dep2"]
 
     def test_to_json_partial(self):
-        """Test JSON serialization with some parameters."""
+        """Legacy v2 document with some parameters."""
         doc = DataSetHubContentDocument(
             dataset_type="CUSTOMER_PROVIDED", dataset_s3_bucket="test-bucket", dependencies=["dep1"]
         )
 
-        json_str = doc.to_json()
-        parsed = json.loads(json_str)
+        parsed = json.loads(doc.to_json(schema_version="2.0.0"))
 
         assert parsed["DatasetType"] == "CUSTOMER_PROVIDED"
         assert parsed["DatasetS3Bucket"] == "test-bucket"
@@ -158,18 +177,16 @@ class TestDataSetHubContentDocument:
             assert key not in parsed
 
     def test_to_json_empty_dependencies(self):
-        """Test JSON serialization with empty dependencies list."""
+        """Legacy v2 document with an empty dependencies list."""
         doc = DataSetHubContentDocument(dependencies=[])
-        json_str = doc.to_json()
-        parsed = json.loads(json_str)
+        parsed = json.loads(doc.to_json(schema_version="2.0.0"))
 
         assert parsed["Dependencies"] == []
 
     def test_to_json_none_dependencies(self):
-        """Test JSON serialization with None dependencies (should default to empty list)."""
+        """Legacy v2 document with None dependencies (should default to empty list)."""
         doc = DataSetHubContentDocument(dependencies=None)
-        json_str = doc.to_json()
-        parsed = json.loads(json_str)
+        parsed = json.loads(doc.to_json(schema_version="2.0.0"))
 
         assert parsed["Dependencies"] == []
 
@@ -205,3 +222,81 @@ class TestDataSetHubContentDocument:
         parsed = json.loads(json_str)
 
         assert "ContentMetadata" not in parsed
+
+
+class TestToJsonMajorVersionComparison:
+    """Regression: to_json used a lexicographic string comparison to select
+    the v3+/v5 schema branch.  "10.0.0" < "3.0.0" lexicographically, so a
+    future two-digit major version would silently take the v2 legacy branch
+    and emit the wrong document shape.
+
+    The fix compares the parsed major-version integer instead.
+    """
+
+    # Fields that identify the v3+/v5 branch.
+    _V3_KEYS = {"DatasetFileFormat", "DatasetS3Bucket", "SpecS3Uri"}
+    # Fields that identify the v2 legacy branch.
+    _V2_LEGACY_KEYS = {"DatasetRoleArn", "ConversationId", "Dependencies"}
+
+    @pytest.mark.parametrize(
+        "version",
+        ["2.0.0", "3.0.0", "4.0.0", "5.0.0"],
+    )
+    def test_supported_version_branch_unchanged(self, version):
+        """All four currently-supported schema versions must still route to the
+        same branch after the string-comparison fix."""
+        import warnings
+
+        doc = DataSetHubContentDocument(
+            dataset_s3_bucket="b",
+            dataset_file_format="Custom",
+            dataset_role_arn="arn:aws:iam::123:role/r",
+            conversation_id="cid",
+            dependencies=["d"],
+            specification_arn="s3://bucket/spec",
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            parsed = json.loads(doc.to_json(schema_version=version))
+
+        major = int(version.split(".")[0])
+        if major >= 3:
+            # v3+/v5 branch: DatasetS3Bucket present, legacy fields absent.
+            assert "DatasetS3Bucket" in parsed, f"{version}: expected v3+ branch"
+            assert "ConversationId" not in parsed, f"{version}: found legacy field in v3+ branch"
+            assert "DatasetRoleArn" not in parsed, f"{version}: found legacy field in v3+ branch"
+            assert "Dependencies" not in parsed, f"{version}: found legacy field in v3+ branch"
+        else:
+            # v2 legacy branch: Dependencies present, DatasetFileFormat absent.
+            assert "Dependencies" in parsed, f"{version}: expected v2 legacy branch"
+            assert (
+                "DatasetFileFormat" not in parsed
+            ), f"{version}: found v3+ field in v2 legacy branch"
+
+    def test_two_digit_major_version_takes_v3_branch(self):
+        """'10.0.0' must take the v3+/v5 branch.
+
+        With the old lexicographic comparison 'schema_version >= "3.0.0"',
+        "10.0.0" < "3.0.0" (because "1" < "3"), so it silently fell into the
+        v2 legacy branch.  The fixed major-integer comparison (10 >= 3 = True)
+        routes it correctly to v3+/v5.
+        """
+        import warnings
+
+        doc = DataSetHubContentDocument(
+            dataset_s3_bucket="b",
+            dataset_file_format="Custom",
+            dataset_role_arn="arn:aws:iam::123:role/r",
+            conversation_id="cid",
+            dependencies=["d"],
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            parsed = json.loads(doc.to_json(schema_version="10.0.0"))
+
+        # Must be in the v3+/v5 branch: DatasetFileFormat present, legacy absent.
+        assert "DatasetFileFormat" in parsed, "10.0.0 fell into v2 legacy branch (string cmp bug)"
+        assert "DatasetS3Bucket" in parsed, "10.0.0 missing DatasetS3Bucket"
+        assert "Dependencies" not in parsed, "10.0.0 emitted legacy Dependencies field"
+        assert "DatasetRoleArn" not in parsed, "10.0.0 emitted legacy DatasetRoleArn field"
+        assert "ConversationId" not in parsed, "10.0.0 emitted legacy ConversationId field"

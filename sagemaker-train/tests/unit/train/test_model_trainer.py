@@ -2795,10 +2795,9 @@ def test_boto3_request_uses_boto_style_tag_keys(model_trainer):
 def test_interactive_request_keeps_tags_training_job_create_accepts(model_trainer):
     """The interactive request carries dicts, not Tag models.
 
-    ``TrainingJob.create`` annotates ``tags`` with ``sagemaker.core.resources.Tag``,
-    which shadows the shape of the same name, so a ``sagemaker.core.shapes.Tag``
-    instance fails its validation. The dicts are revalidated into that model instead,
-    and come out boto-style on the wire.
+    ``TrainingJob.create`` validates ``tags`` as ``sagemaker.core.shapes.Tag`` (it used
+    to resolve to the shadowing ``sagemaker.core.resources.Tag``, see issue #6554). The
+    dicts are revalidated into that model and come out boto-style on the wire.
     """
     model_trainer.tags = [TAG]
 

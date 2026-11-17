@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.30.0 (2026-11-16)
+
+### New Features
+
+- feat: support managed pipelines in Pipeline.start and Pipeline.get_all (#6581)
+- feat(workflow): Add IfExpression and Omit for step arguments (#6567)
+- feature: Add pipeline version alias support to Pipeline (#6574)
+- feature: Add HubContentStep and Session.import_hub_content (#6565)
+
+### Bug Fixes
+
+- fix: use a distinct source URI for the FP pipeline version context (#6540)
+
+
 ## v1.29.0 (2026-11-04)
 
 ### Tests

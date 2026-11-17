@@ -1200,8 +1200,9 @@ def _validate_datum_lengths(datums: list[dict[str, Any]]) -> None:
                 f"datum[{index}]: lossFnInputs[{key!r}] has {actual} values but "
                 f"modelInput has {expected} tokens. Every per-token entry must "
                 f"be the same length as modelInput, covering the prompt as well "
-                f"as the response, e.g. weights=[0.0] * prompt_len + [1.0] * "
-                f"response_len for a {expected}-token input. Response-only "
+                f"as the response, e.g. model_input=tokens[:-1], "
+                f"target_tokens=tokens[1:], weights=[0.0] * (prompt_len - 1) + "
+                f"[1.0] * response_len for a {expected}-token modelInput. Response-only "
                 f"values are the usual cause of this mismatch."
             )
 

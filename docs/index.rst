@@ -20,6 +20,7 @@ SageMaker Python SDK V3
    
    model_customization/index
    training/index
+   data_preparation/index
    inference/index
    ml_ops/index
    sagemaker_core/index

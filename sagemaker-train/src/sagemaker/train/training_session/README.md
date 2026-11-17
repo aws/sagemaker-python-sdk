@@ -71,15 +71,15 @@ tc = svc.create_lora_training_client(
 
 for tokens in your_token_id_batches:
     # Every datum carries the loss inputs its loss function needs, one value per
-    # token; see Loss function inputs below.
+    # model_input token; see Loss function inputs below.
     batch = [
         Datum(
-            model_input=ModelInput.from_ints(tokens),
+            model_input=ModelInput.from_ints(tokens[:-1]),
             loss_fn_inputs={
                 "target_tokens": TensorData(
-                    data=tokens[1:] + [0], dtype=TensorDtype.INT64
+                    data=tokens[1:], dtype=TensorDtype.INT64
                 ),
-                "weights": TensorData(data=[1.0] * len(tokens)),
+                "weights": TensorData(data=[1.0] * (len(tokens) - 1)),
             },
         )
     ]
@@ -545,10 +545,10 @@ Every datum needs loss inputs, and which keys are required depends on the loss:
 | `cross_entropy` | `target_tokens`, `weights` |
 | `ppo` / `importance_sampling` / `cispo` | `target_tokens`, `weights`, `logprobs`, `advantages` |
 
-Each is **full-sequence**: one value per token of the datum, prompt included.
-`weights` is what selects the tokens the loss applies to: `0.0` over the prompt,
-`1.0` over the response. Pass them as `TensorData` (which also accepts a torch
-tensor or numpy array) so they carry a dtype.
+Each is **per-token**: one value per `model_input` token, prompt included.
+`weights` is what selects the tokens the loss applies to: `0.0` where the target
+is a prompt token, `1.0` where it is a response token. Pass them as `TensorData`
+(which also accepts a torch tensor or numpy array) so they carry a dtype.
 
 For reinforcement learning, build them per datum: `advantages` differ from one
 datum to the next, so each `Datum` carries its own. This is the form a training
@@ -558,14 +558,14 @@ loop usually yields.
 from sagemaker.train.training_session import Datum, ModelInput, TensorData
 
 def make_datum(tokens, prompt_len, logprobs, advantages):
-    """One datum whose loss inputs are full-sequence."""
+    """One datum: tokens[:-1] predicts tokens[1:]."""
     return Datum(
-        model_input=ModelInput.from_ints(tokens),
+        model_input=ModelInput.from_ints(tokens[:-1]),
         loss_fn_inputs={
-            "target_tokens": TensorData(data=tokens[1:] + [0], dtype="int64"),
-            "weights": TensorData(data=[0.0] * prompt_len + [1.0] * (len(tokens) - prompt_len)),
-            "logprobs": TensorData(data=logprobs),      # from sampling, one per token
-            "advantages": TensorData(data=advantages),  # one per token
+            "target_tokens": TensorData(data=tokens[1:], dtype="int64"),
+            "weights": TensorData(data=[0.0] * (prompt_len - 1) + [1.0] * (len(tokens) - prompt_len)),
+            "logprobs": TensorData(data=logprobs),      # from sampling, one per target token
+            "advantages": TensorData(data=advantages),  # one per target token
         },
     )
 
@@ -580,11 +580,11 @@ only for datums that do not already carry their own, so the two forms mix freely
 tokens, prompt_len = [1, 2, 3, 4, 5, 6], 3
 
 result = tc.forward_backward(
-    batch=[tokens],
+    batch=[tokens[:-1]],
     loss_fn="cross_entropy",
     loss_fn_inputs={
-        "target_tokens": TensorData(data=tokens[1:] + [0], dtype="int64"),
-        "weights": TensorData(data=[0.0] * prompt_len + [1.0] * (len(tokens) - prompt_len)),
+        "target_tokens": TensorData(data=tokens[1:], dtype="int64"),
+        "weights": TensorData(data=[0.0] * (prompt_len - 1) + [1.0] * (len(tokens) - prompt_len)),
     },
 ).result()
 ```
@@ -592,8 +592,8 @@ result = tc.forward_backward(
 Every datum must end up with the inputs its loss function requires, and two
 mistakes are caught before the request leaves. A datum missing any of them
 raises, naming the datum, the loss function and the keys it needs. Giving
-response-length values instead of full-sequence ones raises too, naming the
-datum and the key.
+response-length values instead of one per `model_input` token raises too,
+naming the datum and the key.
 
 #### forward_backward
 
@@ -607,13 +607,13 @@ tokens, prompt_len = [1, 2, 3, 4, 5, 6], 3
 response_len = len(tokens) - prompt_len
 
 result = tc.forward_backward(
-    batch=[tokens],
+    batch=[tokens[:-1]],
     loss_fn="importance_sampling",   # or "ppo", "cispo", "cross_entropy"
     loss_fn_inputs={
-        "target_tokens": TensorData(data=tokens[1:] + [0], dtype=TensorDtype.INT64),
-        "weights": TensorData(data=[0.0] * prompt_len + [1.0] * response_len),
+        "target_tokens": TensorData(data=tokens[1:], dtype=TensorDtype.INT64),
+        "weights": TensorData(data=[0.0] * (prompt_len - 1) + [1.0] * response_len),
         "logprobs": TensorData(data=sampled_logprobs),    # from the sampling step
-        "advantages": TensorData(data=[reward] * len(tokens)),
+        "advantages": TensorData(data=[reward] * (len(tokens) - 1)),
     },
 ).result()
 print(result.metrics)          # {"actor/pg_loss": ..., "global_token_num": ...}
@@ -631,11 +631,11 @@ arguments as `forward_backward`.
 
 ```python
 result = tc.forward(
-    batch=[tokens],
+    batch=[tokens[:-1]],
     loss_fn="cross_entropy",
     loss_fn_inputs={
-        "target_tokens": TensorData(data=tokens[1:] + [0], dtype="int64"),
-        "weights": TensorData(data=[0.0] * prompt_len + [1.0] * (len(tokens) - prompt_len)),
+        "target_tokens": TensorData(data=tokens[1:], dtype="int64"),
+        "weights": TensorData(data=[0.0] * (prompt_len - 1) + [1.0] * (len(tokens) - prompt_len)),
     },
 ).result()
 for datum_outputs in result.loss_fn_outputs:

@@ -96,6 +96,7 @@ FEATURE_TO_CODE = {
     str(Feature.MODEL_CUSTOMIZATION_NOVA): 19,
     str(Feature.MODEL_CUSTOMIZATION_OSS): 20,
     str(Feature.INFERENCE_RECOMMENDER): 21,
+    str(Feature.DATA_PREPARATION): 22,
 }
 
 STATUS_TO_CODE = {
@@ -407,6 +408,9 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                     elapsed = stop_timer - start_timer
                     extra += f"&x-latency={round(elapsed, 2)}"
                     extra += f"&x-errorCategory={_classify_error(e)}"
+                    resource_arn = getattr(e, "job_arn", None)
+                    if resource_arn:
+                        extra += f"&x-resourceArn={resource_arn}"
                     if not telemetry_opt_out_flag:
                         _send_telemetry_request(
                             STATUS_TO_CODE[str(Status.FAILURE)],

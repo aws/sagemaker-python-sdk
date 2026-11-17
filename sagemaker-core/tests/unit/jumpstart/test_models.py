@@ -83,3 +83,40 @@ def test_hosting_components_model_tolerates_unknown_capability():
     component = HostingComponentsModel(Capabilities=["CUSTOMIZATION", "SOME_FUTURE_CAPABILITY"])
     assert CapabilityEnum.CUSTOMIZATION in component.Capabilities
     assert "SOME_FUTURE_CAPABILITY" in component.Capabilities
+
+
+class TestInferenceAmiVersionEnum:
+    """Regression: InferenceAmiVersionEnum was missing three API enum values, causing
+    ValidationError when a HubContentDocument carried any of the missing AMI versions.
+
+    CI failure: test_all_hub_content_documents raised
+        ValidationError: InferenceAmiVersion Input should be
+        'al2-ami-sagemaker-inference-gpu-2' or 'al2-ami-sagemaker-inference-gpu-3-1'
+        [input_value='al2023-ami-sagemaker-inference-gpu-4-1']
+    """
+
+    import pytest
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "al2-ami-sagemaker-inference-gpu-2",
+            "al2-ami-sagemaker-inference-gpu-2-1",
+            "al2-ami-sagemaker-inference-gpu-3-1",
+            "al2-ami-sagemaker-inference-neuron-2",
+            "al2023-ami-sagemaker-inference-gpu-4-1",
+        ],
+    )
+    def test_all_five_api_values_are_accepted(self, value):
+        """Every value present in the API model must be a valid enum member."""
+        from sagemaker.core.jumpstart.models import InferenceAmiVersionEnum
+
+        member = InferenceAmiVersionEnum(value)
+        assert str(member) == value
+
+    def test_pydantic_field_validates_al2023_value(self):
+        """The InferenceAmiVersion pydantic field on HostingComponentsModel must
+        accept 'al2023-ami-sagemaker-inference-gpu-4-1' without raising a
+        ValidationError.  This was the value that failed the CI integ test."""
+        model = HostingComponentsModel(InferenceAmiVersion="al2023-ami-sagemaker-inference-gpu-4-1")
+        assert str(model.InferenceAmiVersion) == "al2023-ami-sagemaker-inference-gpu-4-1"
