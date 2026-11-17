@@ -29,6 +29,7 @@ import logging
 import os
 
 import pytest
+from ... import integ_resources
 
 logger = logging.getLogger(__name__)
 
@@ -250,7 +251,7 @@ def reward_scored_data_uri():
     reuses the same dataset the deep RLVR suite uses rather than this suite's
     generic chat-format fixture.
     """
-    return "s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl"
+    return integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET)
 
 
 @pytest.fixture(scope="module")

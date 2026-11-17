@@ -26,6 +26,7 @@ import boto3
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.evaluate import MultiTurnRLEvaluator
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+from .. import integ_resources
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -47,11 +48,10 @@ def _get_test_config():
     role_arn = TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
     return {
         "base_model": "mock-oss-test",
-        "agent_arn": f"arn:aws:bedrock-agentcore:{_REGION}:{account_id}:runtime/"
-        f"sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
-        "dataset": f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",
+        "agent_arn": integ_resources.agent_runtime_arn(),
+        "dataset": integ_resources.dataset_uri(integ_resources.MTRL_PROMPTS),
         "s3_output_path": f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/output-artifacts/",
-        "mlflow_resource_arn": f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
+        "mlflow_resource_arn": integ_resources.mlflow_app_arn(),
         "model_package_group": f"arn:aws:sagemaker:{_REGION}:{account_id}:model-package-group/"
         f"openai-reasoning-gpt-oss-20b-mtrl-mpg",
         "role": role_arn,
@@ -149,9 +149,8 @@ def mtrl_trainer(sagemaker_session_mtrl, test_config):
 
     trainer = object.__new__(MultiTurnRLTrainer)
     trainer._model_name = test_config["base_model"]
-    trainer._model_arn = (
-        f"arn:aws:sagemaker:{_REGION}:{test_config['account_id']}:hub-content/sdktest/Model/"
-        f"{test_config['base_model']}/0.0.1"
+    trainer._model_arn = integ_resources.hub_content_arn(
+        "Model", test_config["base_model"], "0.0.1"
     )
     trainer.agent_env = test_config["agent_arn"]
     trainer.bedrock_agentcore_qualifier = "DEFAULT"
@@ -286,7 +285,7 @@ class TestMTRLEvaluatorIntegration:
 
     Note: Pipeline submission tests (evaluate(), pipeline_reuse) require the
     ``Job`` step type to be enabled in the account. These are tested separately
-    in accounts with the feature flag enabled (e.g., 742774200982).
+    in accounts with the feature flag enabled.
     """
 
     def test_evaluator_construction_with_trainer(self, mtrl_trainer, test_config):

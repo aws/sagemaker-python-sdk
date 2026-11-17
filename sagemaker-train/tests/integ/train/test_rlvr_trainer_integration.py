@@ -27,6 +27,7 @@ from sagemaker.ai_registry.evaluator import Evaluator
 from sagemaker.ai_registry.air_constants import REWARD_FUNCTION
 
 from .nova_capacity import nova_capacity_slot, wait_for_nova_training_job
+from .. import integ_resources
 
 logger = logging.getLogger(__name__)
 
@@ -80,11 +81,11 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
+        model_package_group=integ_resources.output_model_package_group(),
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         accept_eula=True,
         base_job_name=f"rlvr-lora-integ-{unique_id}",
     )
@@ -123,13 +124,12 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
+        model_package_group=integ_resources.output_model_package_group(),
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
-        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/"
-        "sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
+        custom_reward_function=integ_resources.evaluator_arn("rlvr-test-rf"),
         accept_eula=True,
         base_job_name=f"rlvr-rf-integ-{unique_id}",
     )
@@ -211,11 +211,11 @@ def test_rlvr_trainer_with_lambda_arn_auto_creates_evaluator(sagemaker_session, 
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
+        model_package_group=integ_resources.output_model_package_group(),
         mlflow_experiment_name="test-rlvr-lambda-evaluator-exp",
         mlflow_run_name="test-rlvr-lambda-evaluator-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         custom_reward_function=lambda_arn,
         accept_eula=True,
         base_job_name=f"rlvr-rf-integ-{unique_id}",
@@ -252,11 +252,11 @@ def test_rlvr_trainer_with_evaluator_object(sagemaker_session, evaluator):
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
+        model_package_group=integ_resources.output_model_package_group(),
         mlflow_experiment_name="test-rlvr-evaluator-obj-exp",
         mlflow_run_name="test-rlvr-evaluator-obj-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         custom_reward_function=evaluator,
         accept_eula=True,
         base_job_name=f"rlvr-rf-integ-{unique_id}",
@@ -300,12 +300,11 @@ def test_rlvr_trainer_nemotron_with_kl_and_recipe(sagemaker_session):
 
     rlvr_trainer = RLVRTrainer(
         model="huggingface-reasoning-nvidia-nemotron-3-nano-30b-a3b-bf16",
-        model_package_group="sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        model_package_group=integ_resources.output_model_package_group(),
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         sagemaker_session=sagemaker_session,
-        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/"
-        "sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+        custom_reward_function=integ_resources.evaluator_arn("rlvr-test-rf"),
         accept_eula=True,
         base_job_name=f"rlvr-nemotron-kl-integ-{unique_id}",
         overrides={
@@ -353,13 +352,12 @@ def test_rlvr_trainer_lora_with_sequence_length(sagemaker_session):
     rlvr_trainer = RLVRTrainer(
         model="huggingface-vlm-qwen3-5-9b",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
+        model_package_group=integ_resources.output_model_package_group(),
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
-        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/"
-        "sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
+        custom_reward_function=integ_resources.evaluator_arn("rlvr-test-rf"),
         accept_eula=True,
         sequence_length="8K",
         base_job_name=f"rlvr-seqlen-integ-{unique_id}",

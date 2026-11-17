@@ -22,6 +22,7 @@ from sagemaker.train.evaluate import (
     get_builtin_metrics,
     EvaluationPipelineExecution,
 )
+from .. import integ_resources
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
@@ -46,12 +47,12 @@ EVALUATION_TIMEOUT_SECONDS = 14400  # 4 hours
 # }
 
 TEST_CONFIG = {
-    "evaluator_arn": "arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/eval-lambda-test/0.0.1",
-    "model_package_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
-    "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
-    "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
-    "model_package_group_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+    "evaluator_arn": integ_resources.evaluator_arn("eval-lambda-test"),
+    "model_package_arn": integ_resources.fixture_model_package_arn(),
+    "dataset_s3_uri": integ_resources.dataset_uri(integ_resources.EVAL_ZC_DATASET),
+    "s3_output_path": integ_resources.output_uri("model-customization-eval"),
+    "mlflow_tracking_server_arn": integ_resources.mlflow_app_arn(),
+    "model_package_group_arn": integ_resources.output_model_package_group_arn(),
     "evaluate_base_model": False,
     "region": "us-west-2",
 }
@@ -59,10 +60,10 @@ TEST_CONFIG = {
 # Base model only evaluation configuration (uses JumpStart model ID directly, no model package)
 BASE_MODEL_ONLY_CONFIG = {
     "base_model_id": "meta-textgeneration-llama-3-2-1b-instruct",
-    "evaluator_arn": "arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/eval-lambda-test/0.0.1",
-    "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
-    "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
+    "evaluator_arn": integ_resources.evaluator_arn("eval-lambda-test"),
+    "dataset_s3_uri": integ_resources.dataset_uri(integ_resources.EVAL_ZC_DATASET),
+    "s3_output_path": integ_resources.output_uri("model-customization-eval"),
+    "mlflow_tracking_server_arn": integ_resources.mlflow_app_arn(),
     "region": "us-west-2",
 }
 

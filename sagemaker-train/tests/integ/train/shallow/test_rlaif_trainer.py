@@ -21,6 +21,7 @@ from sagemaker.train.rlaif_trainer import RLAIFTrainer
 
 from .harness import assert_submitted, submitted
 from .recipe_cases import RecipeTrainerCases
+from ... import integ_resources
 
 # Values match the existing test_rlaif_trainer_integration.py so both suites
 # exercise the same already-entitled reward model.
@@ -29,15 +30,11 @@ REWARD_PROMPT = "Builtin.Summarize"
 
 # Hub-content prompt ARN, the alternative to a Builtin.* prompt name. Same one
 # the deep suite uses.
-REWARD_PROMPT_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlaif-test-prompt/0.0.1"
-)
+REWARD_PROMPT_ARN = integ_resources.evaluator_arn("rlaif-test-prompt")
 
 # An existing fine-tuned model package, used to prove continued fine-tuning
 # (model= a model-package ARN rather than a hub model id) still submits.
-FINETUNED_MODEL_PACKAGE = (
-    "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1"
-)
+FINETUNED_MODEL_PACKAGE = integ_resources.fixture_model_package_arn()
 
 
 class TestRLAIFTrainerSubmission(RecipeTrainerCases):

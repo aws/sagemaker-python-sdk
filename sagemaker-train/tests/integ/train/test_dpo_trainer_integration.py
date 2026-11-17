@@ -19,6 +19,7 @@ import random
 from sagemaker.train.dpo_trainer import DPOTrainer
 from sagemaker.train.common import TrainingType
 import pytest
+from .. import integ_resources
 
 
 @pytest.mark.gpu_intensive
@@ -29,9 +30,9 @@ def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     trainer = DPOTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        model_package_group=integ_resources.output_model_package_group(),
+        training_dataset=integ_resources.dataset_uri(integ_resources.DPO_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         accept_eula=True,
         base_job_name=f"dpo-lora-integ-{unique_id}",
     )
@@ -70,10 +71,10 @@ def test_dpo_trainer_with_validation_dataset(sagemaker_session):
     dpo_trainer = DPOTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
-        validation_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        model_package_group=integ_resources.output_model_package_group(),
+        training_dataset=integ_resources.dataset_uri(integ_resources.DPO_DATASET),
+        validation_dataset=integ_resources.dataset_uri(integ_resources.DPO_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         accept_eula=True,
         base_job_name=f"dpo-val-integ-{unique_id}",
     )
