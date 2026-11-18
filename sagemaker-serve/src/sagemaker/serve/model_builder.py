@@ -50,6 +50,7 @@ from sagemaker.core.shapes import (
     InferenceComponentContainerSpecification,
     InferenceComponentRuntimeConfig,
     ProductionVariant,
+    ProductionVariantManagedInstanceScaling,
 )
 from sagemaker.core.resources import (
     ModelPackage,
@@ -6443,6 +6444,33 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         raise ValueError("Deployment Options not supported")
 
+    @staticmethod
+    def _model_customization_managed_instance_scaling(
+        managed_instance_scaling: Dict[str, int], initial_instance_count: int
+    ) -> ProductionVariantManagedInstanceScaling:
+        """Build the managed instance scaling of a model customization endpoint configuration.
+
+        Takes the same ``{"MinInstanceCount": ..., "MaxInstanceCount": ...}`` dict as
+        ``deploy(managed_instance_scaling=...)`` on the other deploy paths; ``MinInstanceCount``
+        defaults to the initial instance count.
+
+        Raises:
+            ValueError: If ``MinInstanceCount`` is 0. The endpoint configuration is created
+                through a ``sagemaker.core`` shape, and shape serialization drops a field whose
+                value is 0, so SageMaker would reject the request without saying why.
+        """
+        min_count = managed_instance_scaling.get("MinInstanceCount", initial_instance_count)
+        if min_count == 0:
+            raise ValueError(
+                "managed_instance_scaling MinInstanceCount 0 is not supported for model "
+                "customization deployments yet; use a MinInstanceCount of 1 or more."
+            )
+        return ProductionVariantManagedInstanceScaling(
+            status="ENABLED",
+            min_instance_count=min_count,
+            max_instance_count=managed_instance_scaling.get("MaxInstanceCount"),
+        )
+
     def _deploy_model_customization(
         self,
         endpoint_name: str,
@@ -6586,7 +6614,24 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Check if endpoint exists
         is_existing_endpoint = self._does_endpoint_exist(endpoint_name)
 
+        # Managed instance scaling lets SageMaker add and remove instances as the
+        # inference component copies change, as on the non-customization deploy path.
+        managed_instance_scaling = kwargs.get("managed_instance_scaling")
+        if managed_instance_scaling and is_existing_endpoint:
+            logger.warning(
+                "managed_instance_scaling applies only to a new endpoint's configuration; "
+                "endpoint '%s' already exists, so its instance scaling stays as it is.",
+                endpoint_name,
+            )
+
         if not is_existing_endpoint:
+            variant_kwargs = {}
+            if managed_instance_scaling:
+                variant_kwargs["managed_instance_scaling"] = (
+                    self._model_customization_managed_instance_scaling(
+                        managed_instance_scaling, initial_instance_count or 1
+                    )
+                )
             EndpointConfig.create(
                 endpoint_config_name=endpoint_name,
                 production_variants=[
@@ -6594,6 +6639,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         variant_name=endpoint_name,
                         instance_type=self.instance_type,
                         initial_instance_count=initial_instance_count or 1,
+                        **variant_kwargs,
                     )
                 ],
                 execution_role_arn=self.role_arn,
