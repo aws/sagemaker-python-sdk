@@ -376,6 +376,8 @@ def enable_autoscaling(
         ]
     elif policies is not None and (target_value is not None or metric is not None):
         raise ValueError("Pass target_value and metric, or policies, not both.")
+    elif policies is None and metric is not None:
+        raise ValueError("metric needs a target_value (or pass policies).")
     policies = list(policies or [])
     scheduled_actions = list(scheduled_actions or [])
     if not policies and not scheduled_actions and not scale_to_zero:
@@ -971,21 +973,34 @@ def _is_ours(clients, scalable_target) -> bool:
     return tags.get(OWNER_TAG_KEY) == OWNER_TAG_VALUE
 
 
+def _all_pages(client, operation, key, **kwargs) -> List[Dict[str, Any]]:
+    """Every item an Application Auto Scaling describe call returns, across pages."""
+    items = []
+    for page in client.get_paginator(operation).paginate(**kwargs):
+        items.extend(page[key])
+    return items
+
+
 def _read(clients, target) -> Dict[str, Any]:
     aas = clients.autoscaling
-    targets = aas.describe_scalable_targets(
+    targets = _all_pages(
+        aas,
+        "describe_scalable_targets",
+        "ScalableTargets",
         ServiceNamespace=SERVICE_NAMESPACE,
         ResourceIds=[target.resource_id],
         ScalableDimension=target.scalable_dimension,
-    )["ScalableTargets"]
+    )
     return {
         "resource_id": target.resource_id,
         "scalable_dimension": target.scalable_dimension,
         "scalable_target": targets[0] if targets else None,
-        "policies": aas.describe_scaling_policies(**target.target_kwargs())["ScalingPolicies"],
-        "scheduled_actions": aas.describe_scheduled_actions(**target.target_kwargs())[
-            "ScheduledActions"
-        ],
+        "policies": _all_pages(
+            aas, "describe_scaling_policies", "ScalingPolicies", **target.target_kwargs()
+        ),
+        "scheduled_actions": _all_pages(
+            aas, "describe_scheduled_actions", "ScheduledActions", **target.target_kwargs()
+        ),
     }
 
 

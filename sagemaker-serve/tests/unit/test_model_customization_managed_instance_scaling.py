@@ -178,7 +178,6 @@ class TestModelCustomizationManagedInstanceScaling(unittest.TestCase):
         assert any("restricted model package" in c.args[1] for c in logger.warning.call_args_list)
 
     @_patches
-    @_patches
     def test_a_nova_model_on_the_variant_warns_that_it_is_ignored(self, *mocks):
         mocks[0].return_value = True  # _is_nova_model
         with patch.object(ModelBuilder, "_deploy_nova_model") as deploy_nova, patch(

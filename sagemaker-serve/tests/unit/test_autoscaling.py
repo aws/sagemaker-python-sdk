@@ -74,8 +74,10 @@ class FakeAWS:
         policies=(),
         scheduled_actions=(),
         alarms=None,
+        page_size=None,
     ):
         self.calls = []
+        self.page_size = page_size
         self.status = status
         self.variants = variants
         self.model_name = model_name
@@ -135,6 +137,7 @@ class FakeAWS:
             "delete_scheduled_action",
         ):
             self._record(aas, name, getattr(self, "_aas_" + name))
+        aas.get_paginator.side_effect = self._aas_paginator
         for name in (
             "describe_alarms",
             "put_metric_alarm",
@@ -178,6 +181,21 @@ class FakeAWS:
         }
 
     # Application Auto Scaling
+    def _aas_paginator(self, operation):
+        # Pages over the recorded describe call, so a test that replaces it still takes effect.
+        key = {
+            "describe_scalable_targets": "ScalableTargets",
+            "describe_scaling_policies": "ScalingPolicies",
+            "describe_scheduled_actions": "ScheduledActions",
+        }[operation]
+
+        def paginate(**kwargs):
+            items = getattr(self.autoscaling, operation)(**kwargs)[key]
+            size = self.page_size or max(len(items), 1)
+            return [{key: items[i : i + size]} for i in range(0, max(len(items), 1), size)]
+
+        return Mock(paginate=Mock(side_effect=paginate))
+
     def _aas_describe_scalable_targets(self, **kwargs):
         if not self.target:
             return {"ScalableTargets": []}
@@ -699,6 +717,31 @@ class TestDeclarativeChanges:
         assert {p["PolicyName"] for p in result["policies"]} == {TRACKING, "theirs"}
         assert {a["ScheduledActionName"] for a in result["scheduled_actions"]} == {"their-schedule"}
 
+    def test_entries_on_later_pages_are_seen(self, run):
+        # Many policies and schedules from elsewhere push the SDK's onto later pages.
+        others = tuple(f"theirs-{i}" for i in range(3))
+        aws = FakeAWS(
+            registered=(1, 4),
+            policies=others + ("sagemaker-sdk-step-scaling-old",),
+            scheduled_actions=("their-schedule", "sagemaker-sdk-old"),
+            page_size=1,
+        )
+        result, _ = run(
+            aws,
+            enable_autoscaling,
+            endpoint_name=ENDPOINT,
+            min_capacity=1,
+            max_capacity=4,
+            target_value=4,
+        )
+        assert [d["PolicyName"] for d in aws.called("delete_scaling_policy")] == [
+            "sagemaker-sdk-step-scaling-old"
+        ]
+        assert [d["ScheduledActionName"] for d in aws.called("delete_scheduled_action")] == [
+            "sagemaker-sdk-old"
+        ]
+        assert {p["PolicyName"] for p in result["policies"]} == set(others) | {TRACKING}
+
     def test_an_alarm_it_did_not_create_is_left_alone(self, run):
         name = f"sagemaker-sdk-step-scaling-cpu-{ENDPOINT}-AllTraffic"
         aws = FakeAWS(
@@ -926,6 +969,10 @@ class TestRefusesBeforeWriting:
                 "real-time production variant",
             ),
             (dict(min_capacity=1, max_capacity=2), "Pass target_value"),
+            (
+                dict(min_capacity=1, max_capacity=2, metric="invocations"),
+                "metric needs a target_value",
+            ),
             (
                 dict(
                     min_capacity=1,

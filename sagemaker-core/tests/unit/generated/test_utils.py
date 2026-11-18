@@ -414,9 +414,8 @@ def test_serialize_preserves_falsy_shape_fields():
         "MinInstanceCount": 0,
         "MaxInstanceCount": 2,
     }
-    assert serialize(
-        AdditionalS3DataSource(s3_data_type="filestring", s3_uri="")
-    ) == {  # noqa: F405
+    empty_uri = AdditionalS3DataSource(s3_data_type="filestring", s3_uri="")
+    assert serialize(empty_uri) == {  # noqa: F405
         "S3DataType": "filestring",
         "S3Uri": "",
     }
