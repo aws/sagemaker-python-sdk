@@ -13,6 +13,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import signal
+
 import pandas as pd
 import numpy as np
 import pytest
@@ -53,6 +55,18 @@ from tests.unit import SAGEMAKER_CONFIG_FEATURE_GROUP
 class PicklableMock(Mock):
     def __reduce__(self):
         return (Mock, ())
+
+
+def _successful_process_worker(_):
+    return []
+
+
+def _failed_process_worker(_):
+    return [1, 1]
+
+
+def _profile_failure_process_worker(_):
+    raise ProfileNotFound(profile="non_exist")
 
 
 @pytest.fixture
@@ -1105,8 +1119,8 @@ def test_ingestion_manager__run_multi_process_success():
 
 
 @patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._run_multi_threaded",
-    PicklableMock(return_value=[]),
+    "sagemaker.feature_store.feature_group._run_multi_threaded_worker",
+    _successful_process_worker,
 )
 def test_ingestion_manager_run_multi_process_with_multi_thread_success(
     fs_runtime_client_config_mock,
@@ -1124,8 +1138,8 @@ def test_ingestion_manager_run_multi_process_with_multi_thread_success(
 
 
 @patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
-    MagicMock(return_value=[1]),
+    "sagemaker.feature_store.feature_group._run_multi_threaded_worker",
+    _failed_process_worker,
 )
 def test_ingestion_manager_run_failure():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
@@ -1493,8 +1507,8 @@ def test_ingestion_manager_run_collection_type(
 
 
 @patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
-    MagicMock(side_effect=ProfileNotFound(profile="non_exist")),
+    "sagemaker.feature_store.feature_group._run_multi_threaded_worker",
+    _profile_failure_process_worker,
 )
 def test_ingestion_manager_with_profile_name_run_failure():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
@@ -1514,8 +1528,8 @@ def test_ingestion_manager_with_profile_name_run_failure():
 
 
 @patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
-    PicklableMock(return_value=[1]),
+    "sagemaker.feature_store.feature_group._run_multi_threaded_worker",
+    _failed_process_worker,
 )
 def test_ingestion_manager_run_multi_process_failure():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
@@ -1681,3 +1695,62 @@ def test_athena_query_as_dataframe_cleanup_failure_does_not_raise(
             df = query.as_dataframe()
 
     assert len(df) == 3
+
+
+@patch("sagemaker.feature_store.feature_group.multiprocess.get_context")
+@patch("sagemaker.feature_store.feature_group.ProcessingPool")
+def test_ingestion_manager_uses_pathos_spawn_context(
+    processing_pool_cls, get_context, fs_runtime_client_config_mock
+):
+    spawn_context = Mock()
+    processing_pool = Mock()
+    async_result = Mock()
+    get_context.return_value = spawn_context
+    processing_pool_cls.return_value = processing_pool
+    processing_pool.amap.return_value = async_result
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        feature_definitions={"id": {"FeatureType": "String"}},
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+        max_workers=1,
+        max_processes=2,
+    )
+    data_frame = pd.DataFrame({"id": ["1", "2"]})
+
+    manager._run_multi_process(data_frame=data_frame, wait=False)
+
+    get_context.assert_called_once_with("spawn")
+    processing_pool_cls.assert_called_once()
+    pool_args = processing_pool_cls.call_args
+    assert pool_args.args == (2,)
+    assert pool_args.kwargs["context"] is spawn_context
+    assert pool_args.kwargs["initializer"].__module__ == "sagemaker.feature_store.feature_group"
+    assert pool_args.kwargs["initializer"].__qualname__ == "_initialize_worker"
+    with patch("sagemaker.feature_store.feature_group.signal.signal") as mock_signal:
+        pool_args.kwargs["initializer"]()
+    mock_signal.assert_called_once_with(signal.SIGINT, signal.SIG_IGN)
+    processing_pool.restart.assert_called_once_with(force=True)
+    processing_pool.amap.assert_called_once()
+    worker = processing_pool.amap.call_args.args[0]
+    assert worker.__module__ == "sagemaker.feature_store.feature_group"
+    assert worker.__qualname__ == "_run_multi_threaded_worker"
+    assert manager._async_result is async_result
+
+
+def test_ingestion_manager_wait_preserves_pathos_lifecycle():
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        feature_definitions={"id": {"FeatureType": "String"}},
+        max_workers=1,
+        max_processes=2,
+    )
+    manager._async_result = Mock()
+    manager._async_result.get.return_value = [[], []]
+    manager._processing_pool = Mock()
+
+    manager.wait(timeout=5)
+
+    manager._async_result.get.assert_called_once_with(timeout=5)
+    manager._processing_pool.close.assert_called_once_with()
+    manager._processing_pool.clear.assert_called_once_with()
+    assert manager.failed_rows == []
