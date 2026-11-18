@@ -6453,14 +6453,34 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         Takes the same ``{"MinInstanceCount": ..., "MaxInstanceCount": ...}`` dict as
         ``deploy(managed_instance_scaling=...)`` on the other deploy paths; ``MinInstanceCount``
         defaults to the initial instance count.
+
+        Raises:
+            ValueError: If ``MaxInstanceCount`` is missing, or below ``MinInstanceCount`` or 1.
         """
+        min_count = managed_instance_scaling.get("MinInstanceCount", initial_instance_count)
+        max_count = managed_instance_scaling.get("MaxInstanceCount")
+        if (
+            not isinstance(max_count, int)
+            or isinstance(max_count, bool)
+            or max_count < max(min_count, 1)
+        ):
+            raise ValueError(
+                "managed_instance_scaling needs a MaxInstanceCount of at least 1 and at least "
+                f"MinInstanceCount ({min_count}), got {max_count!r}."
+            )
         return ProductionVariantManagedInstanceScaling(
-            status="ENABLED",
-            min_instance_count=managed_instance_scaling.get(
-                "MinInstanceCount", initial_instance_count
-            ),
-            max_instance_count=managed_instance_scaling.get("MaxInstanceCount"),
+            status="ENABLED", min_instance_count=min_count, max_instance_count=max_count
         )
+
+    @staticmethod
+    def _warn_managed_instance_scaling_ignored(kwargs: Dict[str, Any], reason: str) -> None:
+        """Say that managed_instance_scaling does not apply to a deployment, instead of dropping it."""
+        if kwargs.get("managed_instance_scaling"):
+            logger.warning(
+                "managed_instance_scaling applies to endpoints that host inference components; "
+                "it is ignored for %s.",
+                reason,
+            )
 
     def _deploy_model_customization(
         self,
@@ -6502,6 +6522,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # image, escrow artifacts, and env.
         is_nova = self._is_nova_model()
         if is_nova and not is_ic_deploy:
+            self._warn_managed_instance_scaling_ignored(
+                kwargs, "a Nova model deployed on the endpoint's variant"
+            )
             return self._deploy_nova_model(
                 endpoint_name=endpoint_name,
                 initial_instance_count=initial_instance_count,
@@ -6518,6 +6541,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
 
         if not is_ic_deploy and is_restricted_model_package(model_package):
+            self._warn_managed_instance_scaling_ignored(
+                kwargs, "a restricted model package deployed on the endpoint's variant"
+            )
             if not endpoint_name:
                 endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
             EndpointConfig.create(

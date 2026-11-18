@@ -47,7 +47,7 @@ class TestModelCustomizationManagedInstanceScaling(unittest.TestCase):
         self.session.boto_session = Mock(region_name="us-west-2")
         self.session.boto_session.get_credentials.return_value = credentials
 
-    def _deploy(self, mocks, endpoint_exists=False, **deploy_kwargs):
+    def _deploy(self, mocks, endpoint_exists=False, inference_component=True, **deploy_kwargs):
         # patch() decorators applied first come first: see _patches.
         (
             is_nova,
@@ -97,11 +97,11 @@ class TestModelCustomizationManagedInstanceScaling(unittest.TestCase):
             image_uri="123456789012.dkr.ecr.us-west-2.amazonaws.com/test:latest",
         )
         builder.built_model = Mock(model_name="test-model")
-        builder._deploy_model_customization(
-            endpoint_name="test-endpoint",
-            inference_config=ResourceRequirements(requests={"num_cpus": 4, "memory": 8192}),
-            **deploy_kwargs,
-        )
+        if inference_component:
+            deploy_kwargs["inference_config"] = ResourceRequirements(
+                requests={"num_cpus": 4, "memory": 8192}
+            )
+        builder._deploy_model_customization(endpoint_name="test-endpoint", **deploy_kwargs)
 
     @staticmethod
     def _variant(config_create):
@@ -151,6 +151,66 @@ class TestModelCustomizationManagedInstanceScaling(unittest.TestCase):
             "MinInstanceCount": 0,
             "MaxInstanceCount": 2,
         }
+
+    @_patches
+    def test_a_missing_maximum_is_refused_before_anything_is_created(self, *mocks):
+        with self.assertRaisesRegex(ValueError, "MaxInstanceCount"):
+            self._deploy(mocks, managed_instance_scaling={"MinInstanceCount": 1})
+        assert not mocks[CONFIG_CREATE].called
+        with self.assertRaisesRegex(ValueError, "MaxInstanceCount"):
+            self._deploy(
+                mocks, managed_instance_scaling={"MinInstanceCount": 3, "MaxInstanceCount": 2}
+            )
+
+    @_patches
+    def test_a_restricted_package_on_the_variant_warns_that_it_is_ignored(self, *mocks):
+        with patch(
+            "sagemaker.serve.utils.model_package_utils.is_restricted_model_package",
+            return_value=True,
+        ), patch("sagemaker.serve.model_builder.logger") as logger:
+            self._deploy(
+                mocks,
+                inference_component=False,
+                managed_instance_scaling={"MinInstanceCount": 1, "MaxInstanceCount": 2},
+            )
+        (variant,) = mocks[CONFIG_CREATE].call_args[1]["production_variants"]
+        assert isinstance(variant.managed_instance_scaling, Unassigned)
+        assert any("restricted model package" in c.args[1] for c in logger.warning.call_args_list)
+
+    @_patches
+    @_patches
+    def test_a_nova_model_on_the_variant_warns_that_it_is_ignored(self, *mocks):
+        mocks[0].return_value = True  # _is_nova_model
+        with patch.object(ModelBuilder, "_deploy_nova_model") as deploy_nova, patch(
+            "sagemaker.serve.model_builder.logger"
+        ) as logger:
+            self._deploy_nova(mocks)
+        assert deploy_nova.called
+        assert any("Nova model" in c.args[1] for c in logger.warning.call_args_list)
+
+    def _deploy_nova(self, mocks):
+        builder = ModelBuilder(
+            model="huggingface-llm-mistral-7b",
+            model_metadata={
+                "CUSTOM_MODEL_ID": "huggingface-llm-mistral-7b",
+                "CUSTOM_MODEL_VERSION": "1.0.0",
+            },
+            instance_type="ml.g5.12xlarge",
+            mode=Mode.SAGEMAKER_ENDPOINT,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.session,
+            image_uri="123456789012.dkr.ecr.us-west-2.amazonaws.com/test:latest",
+        )
+        builder.built_model = Mock(model_name="test-model")
+        builder._deploy_model_customization(
+            endpoint_name="test-endpoint",
+            managed_instance_scaling={"MinInstanceCount": 1, "MaxInstanceCount": 2},
+        )
+
+    def test_nothing_is_said_when_managed_instance_scaling_is_not_requested(self):
+        with patch("sagemaker.serve.model_builder.logger") as logger:
+            ModelBuilder._warn_managed_instance_scaling_ignored({}, "x")
+        assert not logger.warning.called
 
 
 if __name__ == "__main__":
