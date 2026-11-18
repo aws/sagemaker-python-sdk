@@ -140,6 +140,7 @@ class TestModelCustomizationFromTrainingJob:
                     endpoint = first_builder.deploy(
                         endpoint_name=endpoint_name,
                         inference_component_name=(adapter_ic_name if peft_type == "LORA" else None),
+                        managed_instance_scaling={"MinInstanceCount": 1, "MaxInstanceCount": 2},
                     )
                 except (FailedStatusError, ClientError) as error:
                     message = str(error)
@@ -153,6 +154,17 @@ class TestModelCustomizationFromTrainingJob:
             assert model.model_name == model_name
             assert endpoint.endpoint_name == endpoint_name
             assert endpoint.endpoint_status == "InService"
+            # The model customization path sets managed instance scaling on the new endpoint
+            # configuration, so its inference components can add instances.
+            (variant,) = EndpointConfig.get(
+                endpoint_config_name=endpoint.endpoint_config_name, region=AWS_REGION
+            ).production_variants
+            scaling = variant.managed_instance_scaling
+            assert (scaling.status, scaling.min_instance_count, scaling.max_instance_count) == (
+                "ENABLED",
+                1,
+                2,
+            )
 
             sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
             model_tags = sm_client.list_tags(ResourceArn=model.model_arn).get("Tags", [])

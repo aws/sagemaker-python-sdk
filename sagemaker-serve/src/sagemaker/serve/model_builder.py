@@ -6453,21 +6453,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         Takes the same ``{"MinInstanceCount": ..., "MaxInstanceCount": ...}`` dict as
         ``deploy(managed_instance_scaling=...)`` on the other deploy paths; ``MinInstanceCount``
         defaults to the initial instance count.
-
-        Raises:
-            ValueError: If ``MinInstanceCount`` is 0. The endpoint configuration is created
-                through a ``sagemaker.core`` shape, and shape serialization drops a field whose
-                value is 0, so SageMaker would reject the request without saying why.
         """
-        min_count = managed_instance_scaling.get("MinInstanceCount", initial_instance_count)
-        if min_count == 0:
-            raise ValueError(
-                "managed_instance_scaling MinInstanceCount 0 is not supported for model "
-                "customization deployments yet; use a MinInstanceCount of 1 or more."
-            )
         return ProductionVariantManagedInstanceScaling(
             status="ENABLED",
-            min_instance_count=min_count,
+            min_instance_count=managed_instance_scaling.get(
+                "MinInstanceCount", initial_instance_count
+            ),
             max_instance_count=managed_instance_scaling.get("MaxInstanceCount"),
         )
 

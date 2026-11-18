@@ -3,10 +3,8 @@
 import unittest
 from unittest.mock import Mock, patch
 
-import pytest
-
 from sagemaker.core.compute_resource_requirements.resource_requirements import ResourceRequirements
-from sagemaker.core.utils.utils import Unassigned
+from sagemaker.core.utils.utils import Unassigned, serialize
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.model_builder import ModelBuilder
 
@@ -144,13 +142,15 @@ class TestModelCustomizationManagedInstanceScaling(unittest.TestCase):
         assert any("already exists" in c.args[0] for c in logger.warning.call_args_list)
 
     @_patches
-    def test_a_minimum_of_zero_is_refused_before_anything_is_created(self, *mocks):
-        with pytest.raises(ValueError, match="MinInstanceCount 0"):
-            self._deploy(
-                mocks, managed_instance_scaling={"MinInstanceCount": 0, "MaxInstanceCount": 2}
-            )
-        assert not mocks[CONFIG_CREATE].called
-        assert not mocks[ENDPOINT_CREATE].called
+    def test_a_minimum_of_zero_reaches_the_request(self, *mocks):
+        # Scale to zero: sagemaker-core keeps a 0 when it serializes the shape.
+        self._deploy(mocks, managed_instance_scaling={"MinInstanceCount": 0, "MaxInstanceCount": 2})
+        scaling = self._variant(mocks[CONFIG_CREATE]).managed_instance_scaling
+        assert serialize(scaling) == {
+            "Status": "ENABLED",
+            "MinInstanceCount": 0,
+            "MaxInstanceCount": 2,
+        }
 
 
 if __name__ == "__main__":
