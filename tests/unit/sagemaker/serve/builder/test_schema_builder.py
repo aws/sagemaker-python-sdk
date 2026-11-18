@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
+
 import pytest
 
 from io import BytesIO
@@ -178,3 +180,33 @@ def test_schema_builder_with_payload_converter_invalid_payload(custom_translator
             input_translator=custom_translator,
             output_translator=custom_translator,
         )
+
+
+def test_numpy_input_deserializer_honors_json_content_type():
+    schema_builder = SchemaBuilder(np.array([[0]]), np.array([[0]]))
+    stream = BytesIO(json.dumps([[1, 2], [3, 4]]).encode("utf-8"))
+
+    result = schema_builder.input_deserializer.deserialize(stream, content_type="application/json")
+
+    np.testing.assert_array_equal(result, np.array([[1, 2], [3, 4]]))
+
+
+def test_numpy_input_deserializer_honors_csv_content_type():
+    schema_builder = SchemaBuilder(np.array([[0]]), np.array([[0]]))
+    stream = BytesIO(b"1,2\n3,4\n")
+
+    result = schema_builder.input_deserializer.deserialize(stream, content_type="text/csv")
+
+    np.testing.assert_array_equal(result, np.array([[1, 2], [3, 4]]))
+
+
+def test_numpy_output_deserializer_preserves_expected_accept_type():
+    expected = np.array([[0.1, 0.9]])
+    schema_builder = SchemaBuilder(np.array([[0]]), expected)
+    stream = BytesIO()
+    np.save(stream, expected)
+    stream.seek(0)
+
+    result = schema_builder.output_deserializer.deserialize(stream, content_type="text/html")
+
+    np.testing.assert_array_equal(result, expected)
