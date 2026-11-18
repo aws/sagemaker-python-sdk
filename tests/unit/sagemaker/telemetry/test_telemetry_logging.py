@@ -228,7 +228,7 @@ class TestTelemetryLogging(unittest.TestCase):
 
         response = _requests_helper(url, timeout)
 
-        mock_requests_get.assert_called_once_with(url, timeout)
+        mock_requests_get.assert_called_once_with(url, timeout=timeout)
         self.assertEqual(response, mock_response)
 
     @patch("sagemaker.telemetry.telemetry_logging.requests.get")
@@ -240,7 +240,7 @@ class TestTelemetryLogging(unittest.TestCase):
 
         response = _requests_helper(url, timeout)
 
-        mock_requests_get.assert_called_once_with(url, timeout)
+        mock_requests_get.assert_called_once_with(url, timeout=timeout)
         self.assertIsNone(response)
 
     def test_get_accountId_success(self):
@@ -336,3 +336,81 @@ class TestTelemetryLogging(unittest.TestCase):
             _send_telemetry_request(1, [1, 2], mock_session)
             # Assert telemetry request was not sent
             mock_requests_helper.assert_not_called()
+
+
+V2_DEPRECATION_MODULE = "sagemaker.telemetry.telemetry_logging"
+
+
+def test_v2_deprecation_warning_feature_code_is_registered():
+    from sagemaker.telemetry.telemetry_logging import FEATURE_TO_CODE
+
+    assert Feature.V2_DEPRECATION_WARNING.value == 25
+    assert FEATURE_TO_CODE[str(Feature.V2_DEPRECATION_WARNING)] == 25
+    # Codes are a stable contract shared with SDK v3 and HyperPod: no two features may share one.
+    assert len(set(FEATURE_TO_CODE.values())) == len(FEATURE_TO_CODE)
+
+
+@patch(f"{V2_DEPRECATION_MODULE}.process_studio_metadata_file", return_value="Studio")
+@patch(f"{V2_DEPRECATION_MODULE}._v2_deprecation_telemetry_opted_out", return_value=False)
+@patch(f"{V2_DEPRECATION_MODULE}._send_telemetry_request")
+@patch(f"{V2_DEPRECATION_MODULE}.boto3.Session")
+def test_send_v2_deprecation_telemetry(mock_boto_session, mock_send, *_):
+    from sagemaker.telemetry.telemetry_logging import _send_v2_deprecation_telemetry
+
+    mock_boto_session.return_value.region_name = "eu-west-1"
+    _send_v2_deprecation_telemetry("The MLflow integration", True)
+
+    status, features, session, reason, failure_type, extra = mock_send.call_args.args
+    assert (status, features, reason, failure_type) == (1, [25], None, None)
+    mock_boto_session.assert_called_with(region_name="eu-west-1")
+    assert session.boto_session is mock_boto_session.return_value
+    assert extra == (
+        "v2_deprecation_warning.The%20MLflow%20integration"
+        "&x-suppressed=1"
+        f"&x-sdkVersion={SDK_VERSION}"
+        f"&x-env={PYTHON_VERSION}"
+        f"&x-sys={OS_NAME_VERSION}"
+        "&x-platform=Studio"
+    )
+
+
+@patch(f"{V2_DEPRECATION_MODULE}._v2_deprecation_telemetry_opted_out", return_value=False)
+@patch(f"{V2_DEPRECATION_MODULE}._send_telemetry_request")
+@patch(f"{V2_DEPRECATION_MODULE}.boto3.Session")
+def test_send_v2_deprecation_telemetry_defaults_region(mock_boto_session, mock_send, _):
+    from sagemaker.telemetry.telemetry_logging import _send_v2_deprecation_telemetry
+
+    mock_boto_session.return_value.region_name = None
+    _send_v2_deprecation_telemetry("package", False)
+
+    mock_boto_session.assert_called_with(region_name="us-west-2")
+    assert mock_send.call_args.args[5].startswith("v2_deprecation_warning.package&x-suppressed=0")
+
+
+@patch(f"{V2_DEPRECATION_MODULE}._v2_deprecation_telemetry_opted_out", return_value=True)
+@patch(f"{V2_DEPRECATION_MODULE}._send_telemetry_request")
+def test_send_v2_deprecation_telemetry_respects_opt_out(mock_send, _):
+    from sagemaker.telemetry.telemetry_logging import _send_v2_deprecation_telemetry
+
+    _send_v2_deprecation_telemetry("Estimator", False)
+    mock_send.assert_not_called()
+
+
+@patch(f"{V2_DEPRECATION_MODULE}._v2_deprecation_telemetry_opted_out", side_effect=ValueError)
+def test_send_v2_deprecation_telemetry_never_raises(_):
+    from sagemaker.telemetry.telemetry_logging import _send_v2_deprecation_telemetry
+
+    _send_v2_deprecation_telemetry("Estimator", False)
+
+
+@patch(f"{V2_DEPRECATION_MODULE}.load_sagemaker_config")
+def test_v2_deprecation_telemetry_opt_out_reads_sdk_defaults(mock_load_config):
+    from sagemaker.telemetry.telemetry_logging import _v2_deprecation_telemetry_opted_out
+
+    mock_load_config.return_value = {
+        "SchemaVersion": "1.0",
+        "SageMaker": {"PythonSDK": {"Modules": {"TelemetryOptOut": True}}},
+    }
+    assert _v2_deprecation_telemetry_opted_out() is True
+    mock_load_config.return_value = {"SchemaVersion": "1.0"}
+    assert _v2_deprecation_telemetry_opted_out() is False

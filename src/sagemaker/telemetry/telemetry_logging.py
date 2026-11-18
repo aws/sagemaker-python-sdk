@@ -17,12 +17,14 @@ import platform
 import sys
 from time import perf_counter
 from typing import List
+from urllib.parse import quote
 import functools
 import requests
 
 import boto3
 from sagemaker.session import Session
 from sagemaker.utils import resolve_value_from_config
+from sagemaker.config.config import load_sagemaker_config
 from sagemaker.config.config_schema import TELEMETRY_OPT_OUT_PATH
 from sagemaker.telemetry.constants import (
     Feature,
@@ -59,6 +61,7 @@ FEATURE_TO_CODE = {
     str(Feature.JUMPSTART_V2): 8,
     str(Feature.MLOPS_V2): 9,
     str(Feature.FEATURE_STORE_V2): 10,
+    str(Feature.V2_DEPRECATION_WARNING): 25,
 }
 
 STATUS_TO_CODE = {
@@ -254,7 +257,7 @@ def _requests_helper(url, timeout):
 
     response = None
     try:
-        response = requests.get(url, timeout)
+        response = requests.get(url, timeout=timeout)
     except requests.exceptions.RequestException as e:
         logger.exception("Request exception: %s", str(e))
     return response
@@ -286,3 +289,56 @@ def _get_default_sagemaker_session():
     sagemaker_session = Session(boto_session=boto_session)
 
     return sagemaker_session
+
+
+class _TelemetrySession:  # pylint: disable=too-few-public-methods
+    """The part of a ``Session`` that ``_send_telemetry_request`` uses: a boto session."""
+
+    def __init__(self, boto_session):
+        self.boto_session = boto_session
+
+
+def _v2_deprecation_telemetry_opted_out() -> bool:
+    """Return the TelemetryOptOut flag from the SDK defaults config (no Session needed)."""
+    return bool(
+        resolve_value_from_config(
+            direct_input=None,
+            config_path=TELEMETRY_OPT_OUT_PATH,
+            default_value=False,
+            sagemaker_config=load_sagemaker_config(),
+        )
+    )
+
+
+def _send_v2_deprecation_telemetry(interface: str, suppressed: bool) -> None:
+    """Send one V2_DEPRECATION_WARNING event. Never raises.
+
+    Args:
+        interface (str): The v2 interface the warning was raised for, or ``"package"``
+            for the package-level warning on ``import sagemaker``.
+        suppressed (bool): Whether ``SAGEMAKER_SUPPRESS_V2_WARNING`` hid the warning.
+    """
+    try:
+        if _v2_deprecation_telemetry_opted_out():
+            logger.debug("TelemetryOptOut is set; v2 deprecation telemetry not emitted.")
+            return
+        region = boto3.Session().region_name or DEFAULT_AWS_REGION
+        session = _TelemetrySession(boto3.Session(region_name=region))
+        extra = (
+            f"v2_deprecation_warning.{quote(interface, safe='')}"
+            f"&x-suppressed={int(suppressed)}"
+            f"&x-sdkVersion={SDK_VERSION}"
+            f"&x-env={PYTHON_VERSION}"
+            f"&x-sys={OS_NAME_VERSION}"
+            f"&x-platform={process_studio_metadata_file()}"
+        )
+        _send_telemetry_request(
+            STATUS_TO_CODE[str(Status.SUCCESS)],
+            [FEATURE_TO_CODE[str(Feature.V2_DEPRECATION_WARNING)]],
+            session,
+            None,
+            None,
+            extra,
+        )
+    except Exception:  # pylint: disable=W0703
+        logger.debug("SageMaker Python SDK v2 deprecation telemetry not emitted!")

@@ -17,11 +17,24 @@ import pytest
 
 import sagemaker
 
+import mock
 from mock import Mock, PropertyMock
 
 _ROLE = "DummyRole"
 _REGION = "us-west-2"
 _DEFAULT_BUCKET = "my-bucket"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def no_v2_deprecation_telemetry():
+    """Keep unit tests from sending v2 -> v3 warning telemetry over the network.
+
+    Constructing an Estimator, Model, Predictor and so on raises the warning, which
+    sends one telemetry event per interface. ``tests/unit/test_deprecations.py`` covers
+    that path with its own stubs.
+    """
+    with mock.patch("sagemaker.deprecations._send_v2_deprecation_telemetry"):
+        yield
 
 
 @pytest.fixture(scope="session")

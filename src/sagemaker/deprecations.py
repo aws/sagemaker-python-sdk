@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 import logging
 import os
+import sys
+import threading
 import warnings
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,14 @@ SUPPRESS_V2_WARNING_ENV_VAR = "SAGEMAKER_SUPPRESS_V2_WARNING"
 # created. Keyed by feature name (None for the package-level nudge).
 _v2_deprecation_warned = set()
 
+# Tracks the v2 -> v3 warnings already reported to telemetry in this process, so each
+# distinct feature sends at most one event. Kept apart from ``_v2_deprecation_warned``
+# because telemetry is also sent when the warning itself is suppressed.
+_v2_deprecation_telemetry_sent = set()
+
+# Interface name reported to telemetry for the package-level warning.
+_V2_PACKAGE_TELEMETRY_NAME = "package"
+
 
 class SageMakerV2DeprecationWarning(FutureWarning):
     """Warning for the SageMaker Python SDK v2 -> v3 migration.
@@ -49,6 +59,68 @@ class SageMakerV2DeprecationWarning(FutureWarning):
 def _v2_suppressed():
     """Return True if the v2 -> v3 migration warnings are suppressed via env var."""
     return bool(os.environ.get(SUPPRESS_V2_WARNING_ENV_VAR))
+
+
+def _v2_telemetry_interface_name(feature, caller_frame):
+    """Return the interface name to report to telemetry for a v2 -> v3 warning.
+
+    Constructor call sites pass ``feature=type(self).__name__``. When ``self`` is an
+    instance of a customer-defined subclass, its class name is customer code, so the name
+    of the nearest SageMaker SDK class in its MRO is reported instead.
+
+    Args:
+        feature (str): The ``feature`` passed to ``warn_v2_deprecation``.
+        caller_frame (frame): The frame that called ``warn_v2_deprecation``, or ``None``.
+    """
+    if feature is None:
+        return _V2_PACKAGE_TELEMETRY_NAME
+    instance = caller_frame.f_locals.get("self") if caller_frame is not None else None
+    if instance is not None and type(instance).__name__ == feature:
+        for cls in type(instance).__mro__:
+            if cls.__module__.split(".")[0] == "sagemaker":
+                return cls.__name__
+    return feature
+
+
+def _send_v2_deprecation_telemetry(interface, suppressed):
+    """Thread target: import the telemetry module lazily and send one event.
+
+    ``sagemaker.telemetry.telemetry_logging`` imports ``sagemaker.session``, which in
+    turn imports this module, so it is imported here on the background thread rather
+    than at module load or on the caller's thread during ``import sagemaker``.
+    """
+    try:
+        from sagemaker.telemetry.telemetry_logging import (  # pylint: disable=C0415
+            _send_v2_deprecation_telemetry as send,
+        )
+
+        send(interface, suppressed)
+    except Exception:  # pylint: disable=W0703
+        logger.debug("SageMaker Python SDK v2 deprecation telemetry not emitted!")
+
+
+def _emit_v2_deprecation_telemetry(feature, suppressed, caller_frame):
+    """Report a v2 -> v3 warning to telemetry once per feature per process. Never raises.
+
+    The send (an STS call and an HTTP GET with a 2 second timeout) runs on a daemon
+    thread, so it never delays ``import sagemaker``, a constructor, or interpreter exit.
+    It honours the ``TelemetryOptOut`` SDK defaults setting.
+    """
+    try:
+        interface = _v2_telemetry_interface_name(feature, caller_frame)
+        # Dedupe on the reported name: a customer subclass and its SDK base both report
+        # the SDK base, and must count once.
+        if interface in _v2_deprecation_telemetry_sent:
+            return
+        _v2_deprecation_telemetry_sent.add(interface)
+        threading.Thread(
+            target=_send_v2_deprecation_telemetry,
+            args=(interface, suppressed),
+            name="sagemaker-v2-deprecation-telemetry",
+            daemon=True,
+        ).start()
+    except Exception:  # pylint: disable=W0703
+        logger.debug("SageMaker Python SDK v2 deprecation telemetry not emitted!")
 
 
 def warn_v2_deprecation(feature=None, v3_replacement=None, v3_import=None, stacklevel=2):
@@ -69,9 +141,14 @@ def warn_v2_deprecation(feature=None, v3_replacement=None, v3_import=None, stack
 
     Notes:
         The warning fires at most once per distinct ``feature`` per process and
-        is a no-op when ``SAGEMAKER_SUPPRESS_V2_WARNING`` is set.
+        is a no-op when ``SAGEMAKER_SUPPRESS_V2_WARNING`` is set. Each distinct
+        ``feature`` is also reported once per process to SDK telemetry (feature
+        ``V2_DEPRECATION_WARNING``), including when the warning is suppressed;
+        ``TelemetryOptOut`` in the SDK defaults config turns that off.
     """
-    if _v2_suppressed():
+    suppressed = _v2_suppressed()
+    _emit_v2_deprecation_telemetry(feature, suppressed, sys._getframe(1))
+    if suppressed:
         return
     if feature in _v2_deprecation_warned:
         return
