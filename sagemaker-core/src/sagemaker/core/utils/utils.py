@@ -729,9 +729,12 @@ def _serialize_shape(value: Any) -> dict:
         dict: The dict of serialized shape
     """
     serialized_dict = {}
-    # Drop only Unassigned/None; preserve valid falsy values like False, 0, "".
+    # Keep falsy scalars such as False, 0 and "" (a MinInstanceCount of 0 is a real value).
+    # Drop Unassigned/None, and empty dicts and lists, so a nested shape with nothing set is
+    # still omitted from the request.
     for k, v in vars(value).items():
-        if (serialize_result := serialize(v)) is not None:
+        serialize_result = serialize(v)
+        if serialize_result is not None and serialize_result != {} and serialize_result != []:
             key = snake_to_pascal(k) if is_snake_case(k) else k
             serialized_dict.update({key[0].upper() + key[1:]: serialize_result})
     return serialized_dict

@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch, call
 from sagemaker.core.resources import TrainingJob, DataQualityJobDefinition
 from sagemaker.core.shapes import (
     AdditionalS3DataSource,
+    ProductionVariant,
     ProductionVariantManagedInstanceScaling,
     TrialComponent,
     TrialComponentParameterValue,
@@ -418,6 +419,19 @@ def test_serialize_preserves_falsy_shape_fields():
     ) == {  # noqa: F405
         "S3DataType": "filestring",
         "S3Uri": "",
+    }
+
+
+def test_serialize_still_omits_empty_nested_shapes_and_lists():
+    # A nested shape with nothing set (e.g. an empty StoppingCondition) stays out of the request.
+    assert serialize(  # noqa: F405
+        ProductionVariant(
+            variant_name="AllTraffic",
+            managed_instance_scaling=ProductionVariantManagedInstanceScaling(),
+        )
+    ) == {"VariantName": "AllTraffic"}
+    assert serialize(TrialComponent(trial_component_name="t", parameters={})) == {  # noqa: F405
+        "TrialComponentName": "t"
     }
 
 
