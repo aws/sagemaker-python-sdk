@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from unittest.mock import Mock
+
 import pytest
 
 import sagemaker.deprecations as deprecations
@@ -32,13 +34,32 @@ from sagemaker.deprecations import (
 )
 
 
+class _SyncThread:
+    """Stand-in for ``threading.Thread`` that runs its target on ``start()``."""
+
+    def __init__(self, target, args=(), name=None, daemon=None):
+        self._target, self._args = target, args
+        self.daemon = daemon
+
+    def start(self):
+        self._target(*self._args)
+
+
 @pytest.fixture(autouse=True)
 def reset_v2_warning_state(monkeypatch):
-    """Reset the once-per-process dedup set and env var around each test."""
+    """Reset the once-per-process dedup sets and env var around each test.
+
+    Also stubs the telemetry send so no test makes a network call, and runs the
+    telemetry thread synchronously so tests can assert on what was sent.
+    """
     monkeypatch.delenv(SUPPRESS_V2_WARNING_ENV_VAR, raising=False)
+    monkeypatch.setattr(deprecations.threading, "Thread", _SyncThread)
+    monkeypatch.setattr(deprecations, "_send_v2_deprecation_telemetry", Mock())
     deprecations._v2_deprecation_warned.clear()
+    deprecations._v2_deprecation_telemetry_sent.clear()
     yield
     deprecations._v2_deprecation_warned.clear()
+    deprecations._v2_deprecation_telemetry_sent.clear()
 
 
 def test_renamed_kwargs():
@@ -319,3 +340,125 @@ def test_warn_v2_deprecation_without_import_still_names_symbol():
     msg = str(w[-1].message)
     assert "sagemaker.core.shapes.TransformJob" in msg
     assert "import" not in msg.split("\n")[0]  # no import parenthetical on the first line
+
+
+def _sent():
+    """(interface, suppressed) pairs sent to telemetry so far."""
+    return [c.args for c in deprecations._send_v2_deprecation_telemetry.call_args_list]
+
+
+def test_warn_v2_deprecation_sends_telemetry_for_package_level():
+    with pytest.warns(SageMakerV2DeprecationWarning):
+        warn_v2_deprecation()
+    assert _sent() == [("package", False)]
+
+
+def test_warn_v2_deprecation_sends_telemetry_once_per_feature():
+    with pytest.warns(SageMakerV2DeprecationWarning):
+        warn_v2_deprecation(feature="Transformer")
+        warn_v2_deprecation(feature="Transformer")
+        warn_v2_deprecation(feature="Model")
+    assert _sent() == [("Transformer", False), ("Model", False)]
+
+
+def test_warn_v2_deprecation_sends_telemetry_when_suppressed(monkeypatch):
+    import warnings
+
+    monkeypatch.setenv(SUPPRESS_V2_WARNING_ENV_VAR, "1")
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        warn_v2_deprecation(feature="Estimator")
+    assert len(w) == 0
+    assert _sent() == [("Estimator", True)]
+
+
+def test_warn_v2_deprecation_telemetry_uses_daemon_thread(monkeypatch):
+    started = []
+
+    class RecordingThread(_SyncThread):
+        def start(self):
+            started.append(self.daemon)
+
+    monkeypatch.setattr(deprecations.threading, "Thread", RecordingThread)
+    with pytest.warns(SageMakerV2DeprecationWarning):
+        warn_v2_deprecation(feature="Predictor")
+    assert started == [True]
+
+
+def test_warn_v2_deprecation_still_warns_when_telemetry_fails(monkeypatch):
+    def broken_thread(*args, **kwargs):
+        raise RuntimeError("can't start new thread")
+
+    monkeypatch.setattr(deprecations.threading, "Thread", broken_thread)
+    with pytest.warns(SageMakerV2DeprecationWarning):
+        warn_v2_deprecation(feature="Processor")
+
+
+def test_warn_v2_deprecation_telemetry_reports_sdk_subclass_name():
+    # An SDK class (here PyTorch, standing in for any SDK subclass) reports its own name.
+    from sagemaker.transformer import Transformer
+
+    class SdkLike(Transformer):
+        pass
+
+    SdkLike.__module__ = "sagemaker.pytorch.estimator"
+    SdkLike.__name__ = "PyTorch"
+    instance = SdkLike.__new__(SdkLike)
+    assert deprecations._v2_telemetry_interface_name("PyTorch", _frame_with_self(instance)) == (
+        "PyTorch"
+    )
+
+
+def test_warn_v2_deprecation_telemetry_hides_customer_subclass_name():
+    # A customer subclass name is customer code: report the nearest SDK base instead.
+    from sagemaker.transformer import Transformer
+
+    class MyCompanyTransformer(Transformer):
+        pass
+
+    instance = MyCompanyTransformer.__new__(MyCompanyTransformer)
+    assert deprecations._v2_telemetry_interface_name(
+        "MyCompanyTransformer", _frame_with_self(instance)
+    ) == ("Transformer")
+
+
+def test_warn_v2_deprecation_telemetry_reads_self_from_caller_frame():
+    from sagemaker.transformer import Transformer
+
+    class MyCompanyTransformer(Transformer):
+        def __init__(self):  # pylint: disable=super-init-not-called
+            warn_v2_deprecation(feature=type(self).__name__, v3_replacement="TransformJob")
+
+    with pytest.warns(SageMakerV2DeprecationWarning) as w:
+        MyCompanyTransformer()
+    assert "MyCompanyTransformer" in str(w[-1].message)
+    assert _sent() == [("Transformer", False)]
+
+
+def test_warn_v2_deprecation_telemetry_counts_subclass_and_base_once():
+    from sagemaker.transformer import Transformer
+
+    class MyCompanyTransformer(Transformer):
+        def __init__(self):  # pylint: disable=super-init-not-called
+            warn_v2_deprecation(feature=type(self).__name__, v3_replacement="TransformJob")
+
+    with pytest.warns(SageMakerV2DeprecationWarning):
+        MyCompanyTransformer()
+        warn_v2_deprecation(feature="Transformer", v3_replacement="TransformJob")
+    assert _sent() == [("Transformer", False)]
+
+
+def test_warn_v2_deprecation_telemetry_keeps_names_without_self():
+    assert deprecations._v2_telemetry_interface_name("The MLflow integration", None) == (
+        "The MLflow integration"
+    )
+
+
+def _frame_with_self(instance):
+    """Return a frame whose locals contain ``self``, like a constructor's frame."""
+    import sys
+
+    def constructor(self):  # pylint: disable=unused-argument
+        return sys._getframe(0)
+
+    return constructor(instance)

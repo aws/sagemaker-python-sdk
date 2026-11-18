@@ -31,6 +31,7 @@ class Feature(Enum):
     JUMPSTART_V2 = 8  # Added to support JumpStart telemetry
     MLOPS_V2 = 9  # Added to support MLOps telemetry
     FEATURE_STORE_V2 = 10
+    V2_DEPRECATION_WARNING = 25  # A v2 -> v3 migration warning was raised
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""
