@@ -778,13 +778,10 @@ def _create_or_update_code_dir(
     for dependency in dependencies:
         # Validate dependency path for security
         _validate_dependency_path(dependency)
-        lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
-            shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
+            shutil.copytree(dependency, os.path.join(code_dir, os.path.basename(dependency)))
         else:
-            if not os.path.exists(lib_dir):
-                os.mkdir(lib_dir)
-            shutil.copy2(dependency, lib_dir)
+            shutil.copy2(dependency, code_dir)
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):
