@@ -2,6 +2,8 @@
 # Licensed under the Apache License, Version 2.0
 """Unit tests for feature_utils.py"""
 
+from pathlib import Path
+
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
@@ -655,6 +657,112 @@ class TestPrepareFgFromDataframeOrFile:
                 dataframe_or_path=df,
                 feature_group_name="test-fg",
             )
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")
+    def test_s3_path_is_read_via_s3_downloader(self, mock_s3_downloader, mock_fg_class):
+        """An s3:// path is fetched with S3Downloader rather than handed to read_csv.
+
+        This is the behaviour that replaced the implicit s3fs/fsspec backend, so the
+        CSV bytes must round-trip into the DataFrame that feature definitions are
+        loaded from.
+        """
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        mock_session = MagicMock()
+        mock_s3_downloader.read_bytes.return_value = b"id,value\n1,1.1\n2,2.2\n"
+
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+
+        result = prepare_fg_from_dataframe_or_file(
+            dataframe_or_path="s3://my-bucket/prefix/data.csv",
+            feature_group_name="test-fg",
+            session=mock_session,
+            record_id="id",
+        )
+
+        assert result == mock_fg
+        mock_s3_downloader.read_bytes.assert_called_once()
+
+        # The caller's session must be threaded through, otherwise the read falls back
+        # to the default credential chain instead of the caller's credentials.
+        _, kwargs = mock_s3_downloader.read_bytes.call_args
+        assert kwargs["sagemaker_session"] is mock_session
+
+        # The downloaded bytes, not the URI, must be what got parsed.
+        loaded = mock_fg.load_feature_definitions.call_args.kwargs["data_frame"]
+        assert list(loaded["id"]) == [1, 2]
+        assert list(loaded["value"]) == [1.1, 2.2]
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")
+    def test_s3_path_threads_session_resolved_from_role_and_region(
+        self, mock_s3_downloader, mock_fg_class
+    ):
+        """A role+region caller gets that session on the S3 read, not the default chain."""
+        mock_fg_class.return_value = MagicMock()
+        mock_s3_downloader.read_bytes.return_value = b"id,value\n1,1.1\n"
+
+        from sagemaker.mlops.feature_store import feature_utils
+
+        role_session = MagicMock()
+        with patch.object(
+            feature_utils, "get_session_from_role", return_value=role_session
+        ) as mock_get_session:
+            feature_utils.prepare_fg_from_dataframe_or_file(
+                dataframe_or_path="s3://my-bucket/prefix/data.csv",
+                feature_group_name="test-fg",
+                role="arn:aws:iam::123:role/MyRole",
+                region="us-east-1",
+                record_id="id",
+            )
+
+        mock_get_session.assert_called_once_with(region="us-east-1")
+        _, kwargs = mock_s3_downloader.read_bytes.call_args
+        assert kwargs["sagemaker_session"] is role_session
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")
+    @patch("sagemaker.mlops.feature_store.feature_utils.read_csv")
+    def test_local_path_does_not_touch_s3_downloader(
+        self, mock_read_csv, mock_s3_downloader, mock_fg_class
+    ):
+        """A local path still goes straight to read_csv."""
+        mock_fg_class.return_value = MagicMock()
+        mock_read_csv.return_value = pd.DataFrame({"id": [1, 2], "value": [1.1, 2.2]})
+
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path="/path/to/file.csv",
+            feature_group_name="test-fg",
+            session=MagicMock(),
+            record_id="id",
+        )
+
+        mock_read_csv.assert_called_once_with(filepath_or_buffer="/path/to/file.csv")
+        mock_s3_downloader.read_bytes.assert_not_called()
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.read_csv")
+    def test_accepts_pathlib_path(self, mock_read_csv, mock_fg_class):
+        """pathlib.Path is in the signature's Union, so it must not be rejected."""
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        mock_read_csv.return_value = pd.DataFrame({"id": [1, 2], "value": [1.1, 2.2]})
+
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+
+        local_path = Path("/path/to/file.csv")
+        result = prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=local_path,
+            feature_group_name="test-fg",
+            session=MagicMock(),
+            record_id="id",
+        )
+
+        assert result == mock_fg
+        mock_read_csv.assert_called_once_with(filepath_or_buffer=local_path)
 
     @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
     def test_creates_record_id_from_index(self, mock_fg_class):

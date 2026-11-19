@@ -883,12 +883,24 @@ def prepare_fg_from_dataframe_or_file(
     if verbose:
         logger.setLevel(logging.INFO)
 
+    # Resolve the session before reading any data, so that an S3 read below uses the
+    # caller's credentials instead of falling back to the default credential chain.
+    if session is not None:
+        sagemaker_session = session
+    elif role is not None and region is not None:
+        sagemaker_session = get_session_from_role(region=region)
+    else:
+        exc = Exception("Argument Session or role and region must be specified.")
+        logger.exception(exc)
+        raise exc
+
     if isinstance(dataframe_or_path, DataFrame):
         data = dataframe_or_path
-    elif isinstance(dataframe_or_path, str):
+    elif isinstance(dataframe_or_path, (str, Path)):
         kwargs.pop("filepath_or_buffer", None)
-        if dataframe_or_path.startswith("s3://"):
-            s3_bytes = S3Downloader.read_bytes(dataframe_or_path)
+        path = str(dataframe_or_path)
+        if path.startswith("s3://"):
+            s3_bytes = S3Downloader.read_bytes(path, sagemaker_session=sagemaker_session)
             data = read_csv(filepath_or_buffer=io.BytesIO(s3_bytes), **kwargs)
         else:
             data = read_csv(filepath_or_buffer=dataframe_or_path, **kwargs)
@@ -897,7 +909,7 @@ def prepare_fg_from_dataframe_or_file(
             str(
                 f"Invalid type {type(dataframe_or_path)} for "
                 "argument dataframe_or_path. \nParameter must be"
-                " of type pandas.DataFrame or string"
+                " of type pandas.DataFrame, str or pathlib.Path"
             )
         )
         logger.exception(exc)
@@ -927,15 +939,6 @@ def prepare_fg_from_dataframe_or_file(
     if event_id not in data.columns:
         current_time_sec = int(time.time() + 0.5)
         data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
-
-    if session is not None:
-        sagemaker_session = session
-    elif role is not None and region is not None:
-        sagemaker_session = get_session_from_role(region=region)
-    else:
-        exc = Exception("Argument Session or role and region must be specified.")
-        logger.exception(exc)
-        raise exc
 
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=sagemaker_session)
 
