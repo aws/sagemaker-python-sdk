@@ -788,17 +788,20 @@ def _is_sensitive_system_path(resolved_path):
     )
 
 
-def _validate_symlinks_within_root(path, description):
+def _validate_symlinks_within_root(path, description, allowed_roots=None):
     """Validate that symlinks nested under a directory resolve to locations inside it.
 
     Copying or archiving a directory follows nested symlinks, so a symlink that points
     outside the directory would pull in content from elsewhere on the file system.
-    Symlinks that resolve to a location inside the directory are allowed. A path that
-    is not a directory has no nested entries and is not checked here.
+    Symlinks that resolve to a location inside the directory, or inside one of
+    ``allowed_roots``, are allowed. A path that is not a directory has no nested entries
+    and is not checked here; see ``_validate_file_symlink_within_parent``.
 
     Args:
         path (str): The directory to check.
         description (str): Name of the input, used in the error message.
+        allowed_roots (list[str]): Optional additional directories that nested
+            symlinks may resolve into.
 
     Raises:
         ValueError: If a nested symlink resolves outside of ``path``.
@@ -807,13 +810,14 @@ def _validate_symlinks_within_root(path, description):
         return
 
     root = normpath(realpath(abspath(path)))
+    bases = [root] + [normpath(realpath(abspath(base))) for base in allowed_roots or []]
     for dirpath, dirnames, filenames in os.walk(path):
         for name in dirnames + filenames:
             entry = joinpath(dirpath, name)
             if not os.path.islink(entry):
                 continue
             target = normpath(realpath(entry))
-            if not _is_within_base(target, root):
+            if not any(_is_within_base(target, base) for base in bases):
                 raise ValueError(
                     f"{description} contains a symlink that resolves outside of {path}: "
                     f"{entry} -> {target}. Symlinks under {description} must point to files "
@@ -821,6 +825,61 @@ def _validate_symlinks_within_root(path, description):
                     f"target, or remove it from {path} (for example, move a virtual "
                     f"environment or other tooling directory out of {description})."
                 )
+
+
+def _validate_file_symlink_within_parent(path, description):
+    """Validate that a file input that is a symlink resolves inside its own directory.
+
+    Packaging a file input copies the file the symlink points to. A file symlink must
+    therefore resolve to a location inside the directory that contains the link, for
+    example ``inference.py -> src/inference.py``. Paths that are not symlinks, and
+    symlinks to directories, are not checked here.
+
+    Args:
+        path (str): The file path to check.
+        description (str): Name of the input, used in the error message.
+
+    Raises:
+        ValueError: If ``path`` is a symlink that resolves outside its directory.
+    """
+    if not path or not os.path.islink(path) or os.path.isdir(path):
+        return
+
+    parent = normpath(realpath(dirname(abspath(path))))
+    target = normpath(realpath(path))
+    if not _is_within_base(target, parent):
+        raise ValueError(
+            f"{description} is a symlink that resolves outside of its directory {parent}: "
+            f"{path} -> {target}. Replace the symlink with a copy of its target, or pass "
+            f"the target path as {description} directly."
+        )
+
+
+def _huggingface_cache_blobs_dirs(path):
+    """Return the Hugging Face cache ``blobs`` directory for a path inside a cache snapshot.
+
+    Hugging Face cache snapshots (``<repo>/snapshots/<revision>/...``) store files as
+    symlinks into the sibling ``<repo>/blobs`` directory. Returns that directory when
+    ``path`` is inside such a snapshot, so model uploads from the cache keep working.
+
+    Args:
+        path (str): The directory to inspect.
+
+    Returns:
+        list[str]: The ``blobs`` directory, or an empty list if ``path`` is not inside
+        a Hugging Face cache snapshot.
+    """
+    if not path:
+        return []
+    current = normpath(realpath(abspath(path)))
+    while True:
+        parent = dirname(current)
+        if parent == current:
+            return []
+        if os.path.basename(parent) == "snapshots":
+            blobs = joinpath(dirname(parent), "blobs")
+            return [blobs] if os.path.isdir(blobs) else []
+        current = parent
 
 
 def _create_or_update_code_dir(
@@ -851,6 +910,7 @@ def _create_or_update_code_dir(
         shutil.copytree(source_directory, code_dir)
     else:
         _validate_inference_script_path(inference_script)
+        _validate_file_symlink_within_parent(inference_script, "inference_script")
         if not os.path.exists(code_dir):
             os.mkdir(code_dir)
         try:
@@ -863,6 +923,7 @@ def _create_or_update_code_dir(
 
     for dependency in dependencies:
         _validate_dependency_path(dependency)
+        _validate_file_symlink_within_parent(dependency, "dependency")
         _validate_symlinks_within_root(dependency, "dependency")
         lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):

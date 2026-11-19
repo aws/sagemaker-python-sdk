@@ -220,6 +220,39 @@ class TestSageMakerTgiServing(unittest.TestCase):
         mock_uploader.upload.assert_called_once()
 
 
+class TestSageMakerTgiServingSymlinks(unittest.TestCase):
+    """Test that local model resources are validated before upload."""
+
+    @patch("sagemaker.serve.model_server.tgi.server.S3Uploader")
+    @patch("sagemaker.serve.model_server.tgi.server.determine_bucket_and_prefix")
+    @patch("sagemaker.serve.model_server.tgi.server.fw_utils")
+    def test_upload_tgi_artifacts_rejects_symlink_outside_code_dir(
+        self, mock_fw_utils, mock_determine, mock_uploader
+    ):
+        import os
+        import tempfile
+
+        from sagemaker.serve.model_server.tgi.server import SageMakerTgiServing
+
+        mock_determine.return_value = ("bucket", "code_prefix")
+        with tempfile.TemporaryDirectory() as tmp:
+            decoy = os.path.join(tmp, "credentials")
+            with open(decoy, "w") as f:
+                f.write("decoy-not-a-real-credential")
+            code_dir = os.path.join(tmp, "model", "code")
+            os.makedirs(code_dir)
+            os.symlink(decoy, os.path.join(code_dir, "config.ini"))
+
+            with self.assertRaisesRegex(ValueError, "model_path contains a symlink"):
+                SageMakerTgiServing()._upload_tgi_artifacts(
+                    model_path=os.path.join(tmp, "model"),
+                    sagemaker_session=Mock(),
+                    jumpstart=False,
+                    should_upload_artifacts=True,
+                )
+        mock_uploader.upload.assert_not_called()
+
+
 class TestUpdateEnvVars(unittest.TestCase):
     """Test _update_env_vars function."""
 

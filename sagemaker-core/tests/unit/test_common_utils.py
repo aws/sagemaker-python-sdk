@@ -3004,6 +3004,143 @@ class TestSensitiveSystemPathMatching:
         assert _is_sensitive_system_path("/") is False
 
 
+class TestValidateFileSymlinkWithinParent:
+    """Test _validate_file_symlink_within_parent function."""
+
+    def test_allows_regular_files_and_missing_paths(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_file_symlink_within_parent
+
+        script = tmp_path / "inference.py"
+        script.write_text("# inference")
+
+        _validate_file_symlink_within_parent(str(script), "entry_point")
+        _validate_file_symlink_within_parent(str(tmp_path / "missing.py"), "entry_point")
+        _validate_file_symlink_within_parent(None, "entry_point")
+
+    def test_allows_symlink_inside_directory(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_file_symlink_within_parent
+
+        source = _source_tree(tmp_path)
+        os.symlink("pkg/helper.py", source / "helper_link.py")
+
+        _validate_file_symlink_within_parent(str(source / "helper_link.py"), "entry_point")
+
+    def test_rejects_symlink_outside_directory(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_file_symlink_within_parent
+
+        _, decoy = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        os.symlink(decoy, source / "settings.cfg")
+
+        with pytest.raises(ValueError, match="entry_point is a symlink that resolves outside"):
+            _validate_file_symlink_within_parent(str(source / "settings.cfg"), "entry_point")
+
+    def test_rejects_relative_symlink_escaping_directory(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_file_symlink_within_parent
+
+        _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        os.symlink("../home/.aws/credentials", source / "settings.cfg")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_file_symlink_within_parent(str(source / "settings.cfg"), "dependency")
+
+    def test_rejects_dangling_symlink_outside_directory(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_file_symlink_within_parent
+
+        source = _source_tree(tmp_path)
+        os.symlink(tmp_path / "does-not-exist", source / "missing.py")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_file_symlink_within_parent(str(source / "missing.py"), "entry_point")
+
+    def test_rejects_proc_symlink(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_file_symlink_within_parent
+
+        source = _source_tree(tmp_path)
+        os.symlink("/proc/self/environ", source / "env.txt")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_file_symlink_within_parent(str(source / "env.txt"), "dependency")
+
+    def test_ignores_directory_symlinks(self, tmp_path):
+        """Directory inputs are covered by _validate_symlinks_within_root instead."""
+        from sagemaker.core.common_utils import _validate_file_symlink_within_parent
+
+        other = tmp_path / "other"
+        other.mkdir()
+        source = _source_tree(tmp_path)
+        os.symlink(other, source / "lib")
+
+        _validate_file_symlink_within_parent(str(source / "lib"), "dependency")
+
+
+class TestSymlinksWithinRootAllowedRoots:
+    """Test the allowed_roots option of _validate_symlinks_within_root."""
+
+    def test_allows_symlink_into_allowed_root(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        (allowed / "weights.bin").write_text("weights")
+        source = _source_tree(tmp_path)
+        os.symlink(allowed / "weights.bin", source / "weights.bin")
+
+        _validate_symlinks_within_root(str(source), "model_path", allowed_roots=[str(allowed)])
+
+    def test_still_rejects_symlink_outside_root_and_allowed_roots(self, tmp_path):
+        from sagemaker.core.common_utils import _validate_symlinks_within_root
+
+        allowed = tmp_path / "allowed"
+        allowed.mkdir()
+        _, decoy = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        os.symlink(decoy, source / "config.ini")
+
+        with pytest.raises(ValueError, match="symlink that resolves outside"):
+            _validate_symlinks_within_root(str(source), "model_path", allowed_roots=[str(allowed)])
+
+
+class TestHuggingfaceCacheBlobsDirs:
+    """Test _huggingface_cache_blobs_dirs function."""
+
+    @staticmethod
+    def _cache_repo(tmp_path):
+        repo = tmp_path / "hub" / "models--org--model"
+        (repo / "blobs").mkdir(parents=True)
+        snapshot = repo / "snapshots" / "abc123"
+        (snapshot / "sub").mkdir(parents=True)
+        return repo, snapshot
+
+    def test_returns_blobs_for_snapshot_and_subdirectory(self, tmp_path):
+        from sagemaker.core.common_utils import _huggingface_cache_blobs_dirs
+
+        repo, snapshot = self._cache_repo(tmp_path)
+        blobs = os.path.realpath(repo / "blobs")
+
+        assert [os.path.realpath(p) for p in _huggingface_cache_blobs_dirs(str(snapshot))] == [
+            blobs
+        ]
+        assert [
+            os.path.realpath(p) for p in _huggingface_cache_blobs_dirs(str(snapshot / "sub"))
+        ] == [blobs]
+
+    def test_returns_empty_outside_cache_snapshot(self, tmp_path):
+        from sagemaker.core.common_utils import _huggingface_cache_blobs_dirs
+
+        assert _huggingface_cache_blobs_dirs(str(_source_tree(tmp_path))) == []
+        assert _huggingface_cache_blobs_dirs(None) == []
+
+    def test_returns_empty_without_blobs_directory(self, tmp_path):
+        from sagemaker.core.common_utils import _huggingface_cache_blobs_dirs
+
+        snapshot = tmp_path / "snapshots" / "abc123"
+        snapshot.mkdir(parents=True)
+
+        assert _huggingface_cache_blobs_dirs(str(snapshot)) == []
+
+
 class TestCreateOrUpdateCodeDirSymlinks:
     """Test symlink handling in _create_or_update_code_dir."""
 
@@ -3096,6 +3233,53 @@ class TestCreateOrUpdateCodeDirSymlinks:
             _create_or_update_code_dir(
                 str(model_dir), "/proc/self/environ", None, [], None, str(tmp_path)
             )
+
+    def test_rejects_inference_script_symlink_outside_directory(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        _, decoy = _fake_home_with_decoy(tmp_path)
+        code = tmp_path / "code_src"
+        code.mkdir()
+        script_link = code / "inference.py"
+        os.symlink(decoy, script_link)
+        model_dir = self._model_dir(tmp_path)
+
+        with pytest.raises(ValueError, match="inference_script is a symlink that resolves"):
+            _create_or_update_code_dir(
+                str(model_dir), str(script_link), None, [], None, str(tmp_path)
+            )
+        assert not (model_dir / "code").exists()
+
+    def test_rejects_dependency_file_symlink_outside_directory(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        _, decoy = _fake_home_with_decoy(tmp_path)
+        source = _source_tree(tmp_path)
+        libs = tmp_path / "libs"
+        libs.mkdir()
+        dependency = libs / "settings.cfg"
+        os.symlink(decoy, dependency)
+        model_dir = self._model_dir(tmp_path)
+
+        with pytest.raises(ValueError, match="dependency is a symlink that resolves"):
+            _create_or_update_code_dir(
+                str(model_dir), "inference.py", str(source), [str(dependency)], None, str(tmp_path)
+            )
+        assert not (model_dir / "code" / "lib").exists()
+
+    def test_copies_file_symlinks_inside_directory(self, tmp_path):
+        from sagemaker.core.common_utils import _create_or_update_code_dir
+
+        code = tmp_path / "code_src"
+        (code / "src").mkdir(parents=True)
+        (code / "src" / "inference.py").write_text("# inference")
+        script_link = code / "inference.py"
+        os.symlink("src/inference.py", script_link)
+        model_dir = self._model_dir(tmp_path)
+
+        _create_or_update_code_dir(str(model_dir), str(script_link), None, [], None, str(tmp_path))
+
+        assert (model_dir / "code" / "inference.py").read_text() == "# inference"
 
     def test_copies_symlinks_inside_root(self, tmp_path):
         from sagemaker.core.common_utils import _create_or_update_code_dir
