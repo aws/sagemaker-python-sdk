@@ -211,10 +211,6 @@ class NotebookJobStep(ConfigurableRetryStep):
               uploaded to ``{s3_root_uri}/{pipeline_name}/{step_name}/input-{timestamp}``.
               If a path is pointing to a directory, the subfolders are uploaded recursively.
               Defaults to ``None``.
-            sagemaker_session (sagemaker.core.helper.session.Session): The underlying SageMaker session to
-              which SageMaker service calls are delegated. Default is ``None``. If not provided,
-              one is created using a default configuration chain.
-
             retry_policies (List[RetryPolicy]):  A list of retry policies for the notebook job step.
             depends_on (List[Union[Step, StepOutput]]): A list of `Step`/
                 `StepOutput` instances on which this `NotebookJobStep` depends.
