@@ -316,13 +316,8 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         ``get_info()``, and attribute-style read/write access with
         hub-sourced validation (type + range).
 
-        Parameter names and ranges come from the model's MTRL evaluation
-        recipe in the hub, so call ``get_info()`` to list them. Current
-        recipes expose ``eval_group_size``, ``pass_k_values``,
-        ``success_threshold``, ``temperature``, ``sampling_top_p``,
-        ``sampling_max_tokens``, ``rollout_max_concurrency``,
-        ``rollout_timeout`` and ``rollout_max_retries``. Every value that
-        differs from the recipe default is sent to the evaluation job.
+        Parameter names and ranges come from the hub recipe; call
+        ``get_info()`` to list them.
 
         Example:
 
@@ -376,29 +371,17 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             override_params, param_names=list(override_params.keys()), return_full_spec=True
         )
         self._hyperparameters = FineTuningOptions(spec)
-        # Snapshot hub defaults so only user-changed values are sent
-        # (mirrors MultiTurnRLTrainer._process_hyperparameters).
         self._hp_defaults = self._hyperparameters.to_dict().copy()
         return self._hyperparameters
 
     def _get_user_changed_hyperparameters(self) -> Dict[str, str]:
-        """Return the hyperparameters that differ from the hub recipe defaults.
-
-        Keys use the recipe's own parameter names (e.g. ``sampling_max_tokens``),
-        so every parameter the hub exposes can be configured. Values set via
-        ``evaluator.hyperparameters.<name>``, ``recipe`` or ``overrides`` are
-        all honored. Values equal to the hub default are omitted so the
-        service applies its own defaults, matching
-        ``MultiTurnRLTrainer._build_training_config``.
+        """Return hyperparameters that differ from the hub recipe defaults.
 
         Returns:
-            Dict[str, str]: Changed hyperparameters with string values.
+            Dict[str, str]: Changed values, keyed by recipe parameter name.
         """
         final = self.hyperparameters.to_dict()
-        # Layer recipe/overrides values on top (overrides > recipe > hub
-        # defaults). The resolved recipe is flattened, which drops list
-        # values, so list params such as pass_k_values keep their
-        # to_dict() form.
+        # The flattened recipe drops lists, so list values come from to_dict().
         for k, v in self._get_effective_hyperparameters().items():
             if v is not None:
                 final[k] = v if isinstance(v, str) else str(v)

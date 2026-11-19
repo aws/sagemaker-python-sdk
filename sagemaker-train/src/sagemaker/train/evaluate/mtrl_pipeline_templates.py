@@ -20,10 +20,8 @@ Contract summary
   side-by-side comparison.
 * ``VpcConfig`` is at the step ``Arguments`` level (not inside the
   ``JobConfigDocument``).
-* Hyperparameters are emitted as string values under
-  ``EvaluationConfig.HyperParameters``, keyed by the hub recipe's own
-  parameter names (e.g. ``sampling_max_tokens``). Only values that differ
-  from the recipe defaults are sent.
+* User-changed hyperparameters are emitted as strings under
+  ``EvaluationConfig.HyperParameters``, keyed by recipe parameter name.
 * Lineage DAG:
   ``CreateEvaluationAction → (Evaluate…) → AssociateLineage``;
   ``AssociateLineage`` reads ``ServiceOutput.MlflowDetails.*`` from the
