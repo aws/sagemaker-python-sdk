@@ -1539,6 +1539,32 @@ class TestProductionVariant:
         assert result["ServerlessConfig"] == serverless_config
         assert "InstanceType" not in result
 
+    def test_production_variant_with_capacity_reservation_config(self):
+        """Test production variant bound to a training plan."""
+        from sagemaker.core.helper.session_helper import production_variant
+        from sagemaker.core.shapes import ProductionVariantCapacityReservationConfig
+
+        plan_arn = "arn:aws:sagemaker:us-west-2:123456789012:training-plan/my-plan"
+        result = production_variant(
+            model_name="my-model",
+            instance_type="ml.p5.48xlarge",
+            capacity_reservation_config=ProductionVariantCapacityReservationConfig(
+                capacity_reservation_preference="capacity-reservations-only",
+                ml_reservation_arn=plan_arn,
+            ),
+        )
+        assert result["CapacityReservationConfig"] == {
+            "CapacityReservationPreference": "capacity-reservations-only",
+            "MlReservationArn": plan_arn,
+        }
+
+    def test_production_variant_without_capacity_reservation_config(self):
+        """Test production variant omits CapacityReservationConfig by default."""
+        from sagemaker.core.helper.session_helper import production_variant
+
+        result = production_variant(model_name="my-model", instance_type="ml.m5.xlarge")
+        assert "CapacityReservationConfig" not in result
+
     def test_production_variant_with_volume_size(self):
         """Test production variant with volume size."""
         from sagemaker.core.helper.session_helper import production_variant
