@@ -261,6 +261,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         network: Network configuration including VPC settings and network isolation.
         instance_type: EC2 instance type for deployment (e.g., 'ml.m5.large').
         mode: Deployment mode (SAGEMAKER_ENDPOINT, LOCAL_CONTAINER, or IN_PROCESS).
+        resource_requirements: Compute resources for an inference component. When provided with
+            a custom orchestrator, the orchestrator is built as an inference component.
+            (Default: None).
+        inference_component_name: Name for the inference component created from this
+            ModelBuilder, including a custom orchestrator inference component. (Default: None).
 
     Note:
         ModelBuilder returns sagemaker.core.resources.Model and sagemaker.core.resources.Endpoint
@@ -449,6 +454,22 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     image_config: Optional[Dict[str, StrPipeVar]] = field(
         default=None,
         metadata={"help": "DEPRECATED: Use configure_for_torchserve() instead"},
+    )
+
+    # Keep these fields trailing to preserve the positional order of existing constructor arguments.
+    resource_requirements: Optional[ResourceRequirements] = field(
+        default=None,
+        metadata={
+            "help": "Compute resources for an inference component. When provided with a custom "
+            "orchestrator, the orchestrator is built as an inference component."
+        },
+    )
+    inference_component_name: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Name for the inference component created from this ModelBuilder, including "
+            "a custom orchestrator inference component."
+        },
     )
 
     def _create_session_with_region(self):
@@ -1848,8 +1869,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.inference_ami_version = None
         if not hasattr(self, "model_version"):
             self.model_version = None
-        if not hasattr(self, "resource_requirements"):
-            self.resource_requirements = None
         if not hasattr(self, "model_kms_key"):
             self.model_kms_key = None
         if not hasattr(self, "hub_name"):
@@ -3967,12 +3986,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if "model_data_download_timeout" in kwargs:
             self.model_data_download_timeout = model_data_download_timeout
 
-        resources = kwargs.get("resources", getattr(self, "resource_requirements", None))
+        resources = kwargs.get("resources", self.resource_requirements)
         if "resources" in kwargs:
             self.resource_requirements = resources
 
         inference_component_name = kwargs.get(
-            "inference_component_name", getattr(self, "inference_component_name", None)
+            "inference_component_name", self.inference_component_name
         )
         if "inference_component_name" in kwargs:
             self.inference_component_name = inference_component_name
