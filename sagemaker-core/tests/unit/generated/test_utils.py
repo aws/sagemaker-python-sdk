@@ -5,6 +5,8 @@ from unittest.mock import Mock, patch, call
 from sagemaker.core.resources import TrainingJob, DataQualityJobDefinition
 from sagemaker.core.shapes import (
     AdditionalS3DataSource,
+    ProductionVariant,
+    ProductionVariantManagedInstanceScaling,
     TrialComponent,
     TrialComponentParameterValue,
 )
@@ -399,6 +401,43 @@ def test_serialize_preserves_falsy_dict_values():
 def test_serialize_preserves_falsy_list_values():
     assert serialize([False, 0, ""]) == [False, 0, ""]  # noqa: F405
     assert serialize([None, "x", Unassigned(), 1]) == ["x", 1]  # noqa: F405
+
+
+def test_serialize_preserves_falsy_shape_fields():
+    # Regression: a shape field set to 0 or False was dropped, so e.g. a managed instance
+    # scaling MinInstanceCount of 0 never reached the API.
+    scaling = ProductionVariantManagedInstanceScaling(
+        status="ENABLED", min_instance_count=0, max_instance_count=2
+    )
+    assert serialize(scaling) == {  # noqa: F405
+        "Status": "ENABLED",
+        "MinInstanceCount": 0,
+        "MaxInstanceCount": 2,
+    }
+    empty_uri = AdditionalS3DataSource(s3_data_type="filestring", s3_uri="")
+    assert serialize(empty_uri) == {  # noqa: F405
+        "S3DataType": "filestring",
+        "S3Uri": "",
+    }
+
+
+def test_serialize_still_omits_empty_nested_shapes_and_lists():
+    # A nested shape with nothing set (e.g. an empty StoppingCondition) stays out of the request.
+    assert serialize(  # noqa: F405
+        ProductionVariant(
+            variant_name="AllTraffic",
+            managed_instance_scaling=ProductionVariantManagedInstanceScaling(),
+        )
+    ) == {"VariantName": "AllTraffic"}
+    assert serialize(TrialComponent(trial_component_name="t", parameters={})) == {  # noqa: F405
+        "TrialComponentName": "t"
+    }
+
+
+def test_serialize_drops_unset_shape_fields():
+    assert "MaxInstanceCount" not in serialize(  # noqa: F405
+        ProductionVariantManagedInstanceScaling(status="ENABLED", min_instance_count=1)
+    )
 
 
 def test_serialize_method_nested_shape():

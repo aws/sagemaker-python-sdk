@@ -14,3 +14,11 @@ Model Deployment
    :show-inheritance:
 
 
+
+Autoscaling
+-----------
+
+.. automodule:: sagemaker.serve.autoscaling
+   :members: enable_autoscaling, disable_autoscaling, describe_autoscaling, suspend_autoscaling,
+             resume_autoscaling, TargetTrackingPolicy, StepScalingPolicy, StepAdjustment, Alarm,
+             ScheduledAction, CustomMetric, ScalingTarget

@@ -443,6 +443,7 @@ pipeline = Pipeline(
 | AsyncPredictor | ModelBuilder | Async inference |
 | JumpStartModel.benchmark_metrics / display_benchmark_metrics() / list_deployment_configs() | ModelBuilder.benchmark_metrics / display_benchmark_metrics() / list_deployment_configs() | Same names; usable on a pre-deploy JumpStart `ModelBuilder` |
 | snapshot_download + S3Uploader (hand-rolled) | `from sagemaker.serve import download_huggingface_model` | Downloads a Hub snapshot and optionally uploads it to S3 |
+| boto3 `register_scalable_target` + `put_scaling_policy` (hand-rolled) | `from sagemaker.serve.autoscaling import enable_autoscaling, disable_autoscaling, describe_autoscaling` | Target tracking (predefined, custom or metric-math metrics), step scaling and scheduled actions on a variant's instances, an inference component's copies or a serverless endpoint's provisioned concurrency; scale to zero for inference components and asynchronous endpoints; suspend and resume |
 
 ### Processing Features
 
@@ -504,7 +505,7 @@ pipeline = Pipeline(
 | Async inference | `AsyncPredictor(...)` | Via ModelBuilder.deploy | 🔄 REPLACED |
 | Multi-model endpoints | `MultiDataModel(...)` | Via ModelBuilder.deploy | 🔄 REPLACED |
 | A/B testing (multi-variant) | Production variants with traffic splitting | ProductionVariant + traffic routing | 🔄 REPLACED |
-| Endpoint auto-scaling | Via boto3 Application Auto Scaling | Via ModelBuilder.deploy | 🔄 REPLACED |
+| Endpoint auto-scaling | Via boto3 Application Auto Scaling | `sagemaker.serve.autoscaling.enable_autoscaling(...)` / `disable_autoscaling(...)`; `ModelBuilder.deploy(managed_instance_scaling=...)` sets an inference-component endpoint's instance bounds | 🔄 REPLACED |
 | Model compilation (Neo) | `Estimator.compile_model(...)` | `ModelBuilder.optimize()` | 🔄 REPLACED |
 
 ### MLOps and Workflows
