@@ -25,6 +25,7 @@ from .mtrl_pipeline_templates import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.train.common_utils.telemetry_params import BASE_EVALUATOR_TELEMETRY_PARAMS
+from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 from sagemaker.core.telemetry.constants import Feature
 
 if TYPE_CHECKING:
@@ -160,6 +161,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
     _agent_arn_resolved: Optional[str] = None
     _agent_kind: Optional[str] = None  # "bedrock" | "lambda"
     _hyperparameters: Optional[Any] = None
+    _hp_defaults: Optional[Dict[str, str]] = None
 
     # --- Validators ------------------------------------------------------
 
@@ -315,9 +317,14 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         ``get_info()``, and attribute-style read/write access with
         hub-sourced validation (type + range).
 
-        Supported parameters (sourced from the AgentRFT evaluation recipe):
-        ``eval_group_size``, ``sampling_temperature``, ``top_p``,
-        ``max_tokens``, ``pass_k_values``, ``success_threshold``.
+        Parameter names and ranges come from the hub recipe; call
+        ``get_info()`` to list them.
+
+        Example:
+
+            .. code:: python
+
+                evaluator.hyperparameters.sampling_max_tokens = 8192
 
         Raises:
             ValueError: If the base model name is not available or the hub
@@ -365,7 +372,31 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             override_params, param_names=list(override_params.keys()), return_full_spec=True
         )
         self._hyperparameters = FineTuningOptions(spec)
+        self._hp_defaults = self._hyperparameters.to_dict().copy()
         return self._hyperparameters
+
+    def _get_user_changed_hyperparameters(self) -> Dict[str, str]:
+        """Return hyperparameters that differ from the hub recipe defaults.
+
+        Returns:
+            Dict[str, str]: Changed values, keyed by recipe parameter name.
+        """
+        final = self.hyperparameters.to_dict()
+        try:
+            resolved = self.get_resolved_recipe()
+        except ValueError:  # no recipe, overrides or direct assignments
+            resolved = {}
+        values = flatten_resolved_recipe(resolved)
+        # flatten_resolved_recipe skips lists, so take them from the inference section.
+        values.update(
+            {k: v for k, v in resolved.get("inference", {}).items() if isinstance(v, list)}
+        )
+        for k, v in values.items():
+            if v is not None:
+                final[k] = v if isinstance(v, str) else str(v)
+
+        defaults = self._hp_defaults or {}
+        return {k: v for k, v in final.items() if v != defaults.get(k)}
 
     # --- Helpers ---------------------------------------------------------
 
@@ -428,14 +459,14 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         """Assemble the rendering context expected by the MTRL templates."""
         import json as _json
 
-        hparams: Dict[str, Any] = {}
+        hparams: Dict[str, str] = {}
         try:
-            hparams = self._get_effective_hyperparameters()
+            hparams = self._get_user_changed_hyperparameters()
         except Exception as e:  # hub fetch can fail in offline envs
-            _logger.info(f"Skipping hub-sourced hyperparameters: {e}")
-
-        def _str_or_none(v):
-            return str(v) if v is not None else None
+            _logger.warning(
+                f"Could not load MTRL evaluation hyperparameters ({e}); the "
+                f"evaluation job will use the service defaults."
+            )
 
         action_arn_prefix = (
             f"arn:aws:sagemaker:{aws_context['region']}:{aws_context['account_id']}:action"
@@ -492,20 +523,8 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 "BaseModelArn": base_model_arn,
                 "AcceptEula": True,
             }
-            hp: Dict[str, str] = {}
-            for k in (
-                "eval_group_size",
-                "sampling_temperature",
-                "top_p",
-                "max_tokens",
-                "pass_k_values",
-                "success_threshold",
-            ):
-                v = hparams.get(k)
-                if v is not None:
-                    hp[k] = str(v)
-            if hp:
-                eval_cfg["HyperParameters"] = hp
+            if hparams:
+                eval_cfg["HyperParameters"] = dict(hparams)
 
             doc: Dict[str, Any] = {
                 "AgentConfig": agent_cfg,
@@ -549,12 +568,6 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             "mlflow_resource_arn": self.mlflow_resource_arn,
             "mlflow_experiment_name": getattr(self, "mlflow_experiment_name", None)
             or aws_context.get("pipeline_name"),
-            "eval_group_size": _str_or_none(hparams.get("eval_group_size")),
-            "sampling_temperature": _str_or_none(hparams.get("sampling_temperature")),
-            "top_p": _str_or_none(hparams.get("top_p")),
-            "max_tokens": _str_or_none(hparams.get("max_tokens")),
-            "pass_k_values": _str_or_none(hparams.get("pass_k_values")),
-            "success_threshold": _str_or_none(hparams.get("success_threshold")),
             "stopping_condition": self.stopping_condition,
             "model_package_group_arn": model_package_group_arn,
             "source_model_package_arn": self._source_model_package_arn_cache,
