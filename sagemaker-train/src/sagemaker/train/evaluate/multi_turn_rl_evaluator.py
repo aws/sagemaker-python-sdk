@@ -25,6 +25,7 @@ from .mtrl_pipeline_templates import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.train.common_utils.telemetry_params import BASE_EVALUATOR_TELEMETRY_PARAMS
+from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 from sagemaker.core.telemetry.constants import Feature
 
 if TYPE_CHECKING:
@@ -381,8 +382,16 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             Dict[str, str]: Changed values, keyed by recipe parameter name.
         """
         final = self.hyperparameters.to_dict()
-        # The flattened recipe drops lists, so list values come from to_dict().
-        for k, v in self._get_effective_hyperparameters().items():
+        try:
+            resolved = self.get_resolved_recipe()
+        except ValueError:  # no recipe, overrides or direct assignments
+            resolved = {}
+        values = flatten_resolved_recipe(resolved)
+        # flatten_resolved_recipe skips lists, so take them from the inference section.
+        values.update(
+            {k: v for k, v in resolved.get("inference", {}).items() if isinstance(v, list)}
+        )
+        for k, v in values.items():
             if v is not None:
                 final[k] = v if isinstance(v, str) else str(v)
 

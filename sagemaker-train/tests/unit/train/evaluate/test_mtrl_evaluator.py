@@ -428,6 +428,22 @@ class TestHyperparameterForwarding:
         for sent in self._sent_hyperparameters(evaluator):
             assert sent == {"sampling_max_tokens": "6000", "eval_group_size": "4"}
 
+    def test_list_value_in_overrides_is_forwarded(self, mock_artifact, mock_resolve, _):
+        evaluator = self._create(
+            mock_artifact,
+            mock_resolve,
+            overrides={"inference": {"pass_k_values": [1, 4], "sampling_max_tokens": 6000}},
+        )
+        for sent in self._sent_hyperparameters(evaluator):
+            assert sent == {"pass_k_values": "[1, 4]", "sampling_max_tokens": "6000"}
+
+    def test_list_value_in_recipe_is_forwarded(self, mock_artifact, mock_resolve, _, tmp_path):
+        recipe = tmp_path / "recipe.yaml"
+        recipe.write_text("inference:\n  pass_k_values: [1, 2]\n  eval_group_size: 2\n")
+        evaluator = self._create(mock_artifact, mock_resolve, recipe=str(recipe))
+        for sent in self._sent_hyperparameters(evaluator):
+            assert sent == {"pass_k_values": "[1, 2]", "eval_group_size": "2"}
+
     def test_value_equal_to_default_is_not_sent(self, mock_artifact, mock_resolve, _):
         evaluator = self._create(mock_artifact, mock_resolve)
         evaluator.hyperparameters.sampling_max_tokens = 4096
