@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 """Utilities for working with FeatureGroups and FeatureStores."""
 
+import io
 import logging
 import os
 import time
@@ -886,7 +887,11 @@ def prepare_fg_from_dataframe_or_file(
         data = dataframe_or_path
     elif isinstance(dataframe_or_path, str):
         kwargs.pop("filepath_or_buffer", None)
-        data = read_csv(filepath_or_buffer=dataframe_or_path, **kwargs)
+        if dataframe_or_path.startswith("s3://"):
+            s3_bytes = S3Downloader.read_bytes(dataframe_or_path)
+            data = read_csv(filepath_or_buffer=io.BytesIO(s3_bytes), **kwargs)
+        else:
+            data = read_csv(filepath_or_buffer=dataframe_or_path, **kwargs)
     else:
         exc = Exception(
             str(
