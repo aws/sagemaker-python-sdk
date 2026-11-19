@@ -4473,6 +4473,21 @@ class DeploymentConfiguration(Base):
     auto_rollback_configuration: Optional[List[AlarmDetails]] = Unassigned()
 
 
+class ClusterDrainPolicy(Base):
+    """
+    ClusterDrainPolicy
+      Specifies how pods are evicted from an instance before it is patched with the DrainFirst strategy. By default, evictions respect Kubernetes Pod Disruption Budgets.
+
+    Attributes
+    ----------------------
+    drain_timeout_in_seconds: The maximum time, in seconds, to wait for the pods on an instance to drain. Valid values are from 0 to 5400 (90 minutes). The default is 3600 (1 hour).
+    on_drain_timeout: The action to take if the pods on an instance don't drain within DrainTimeoutInSeconds. The default is Skip.    Skip: Doesn't patch the instance. The instance is uncordoned and remains on the previous AMI version. This can leave the instance group partially patched. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    Force: Deletes the remaining pods without respecting Pod Disruption Budgets, and then patches the instance.
+    """
+
+    drain_timeout_in_seconds: Optional[int] = Unassigned()
+    on_drain_timeout: Optional[StrPipeVar] = Unassigned()
+
+
 class ClusterAutoPatchConfig(Base):
     """
     ClusterAutoPatchConfig
@@ -4480,14 +4495,18 @@ class ClusterAutoPatchConfig(Base):
 
     Attributes
     ----------------------
-    patching_strategy: The strategy for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.
+    patching_strategy: The strategy for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.    DrainFirst: Designed for workloads that never become idle, such as inference. Cordons instances, evicts the running pods, and then patches each instance in batches. Each instance is uncordoned after patching. Use DrainPolicy to control how long to wait for pods to drain and what happens if the drain times out. Requires MaximumBatchSize in DeploymentConfig. Available only for clusters that use Amazon EKS as the orchestrator.
     patch_schedule: The schedule for automatic patching, including the next patch date.
     deployment_config: The deployment configuration for rolling patch updates, including rollback settings and batch sizes. Only applicable when using a rolling patching strategy.
+    idle_wait_window_in_seconds: The maximum time, in seconds, that automatic patching waits for instances to become idle after a scheduled patch starts. Automatic patching uncordons instances that don't become idle within this window, and they remain on the previous AMI version. Valid values are from 3600 (1 hour) to 2160000 (25 days). The default is 86400 (24 hours). This setting applies only to the WhenIdle and WhenAllIdle strategies.
+    drain_policy: The policy that controls how pods are evicted from an instance before it is patched. Valid only when PatchingStrategy is DrainFirst.
     """
 
     patching_strategy: StrPipeVar
     patch_schedule: Optional[ClusterPatchSchedule] = Unassigned()
     deployment_config: Optional[DeploymentConfiguration] = Unassigned()
+    idle_wait_window_in_seconds: Optional[int] = Unassigned()
+    drain_policy: Optional[ClusterDrainPolicy] = Unassigned()
 
 
 class ClusterPatchScheduleDetails(Base):
@@ -4510,16 +4529,20 @@ class ClusterAutoPatchConfigDetails(Base):
 
     Attributes
     ----------------------
-    patching_strategy: The strategy used for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.
+    patching_strategy: The strategy used for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.    DrainFirst: Designed for workloads that never become idle, such as inference. Cordons instances, evicts the running pods, and then patches each instance in batches. Each instance is uncordoned after patching. Use DrainPolicy to control how long to wait for pods to drain and what happens if the drain times out. Requires MaximumBatchSize in DeploymentConfig. Available only for clusters that use Amazon EKS as the orchestrator.
     current_patch_schedule: The currently active patch schedule that the system will execute.
     desired_patch_schedule: The requested patch schedule. Differs from CurrentPatchSchedule when a reschedule request is pending.
     deployment_config: The deployment configuration for rolling patch updates.
+    idle_wait_window_in_seconds: The maximum time, in seconds, that automatic patching waits for instances to become idle after a scheduled patch starts. Automatic patching uncordons instances that don't become idle within this window, and they remain on the previous AMI version. The default is 86400 (24 hours).
+    drain_policy: The policy that controls how pods are evicted from an instance before it is patched. Applies only when PatchingStrategy is DrainFirst.
     """
 
     patching_strategy: Optional[StrPipeVar] = Unassigned()
     current_patch_schedule: Optional[ClusterPatchScheduleDetails] = Unassigned()
     desired_patch_schedule: Optional[ClusterPatchScheduleDetails] = Unassigned()
     deployment_config: Optional[DeploymentConfiguration] = Unassigned()
+    idle_wait_window_in_seconds: Optional[int] = Unassigned()
+    drain_policy: Optional[ClusterDrainPolicy] = Unassigned()
 
 
 class ClusterAutoScalingConfig(Base):
@@ -4796,6 +4819,7 @@ class ClusterEventDetail(Base):
     event_details: Additional details about the event, including event-specific metadata.
     description: A human-readable description of the event.
     event_level: The severity level of the event. Valid values are Info, Warn, and Error.
+    operation_id: The unique identifier (UUID) of the cluster operation that the event is associated with, such as a scaling operation. This field is not returned when the event is not associated with an operation.
     """
 
     event_id: StrPipeVar
@@ -4808,6 +4832,7 @@ class ClusterEventDetail(Base):
     event_details: Optional[EventDetails] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
     event_level: Optional[StrPipeVar] = Unassigned()
+    operation_id: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterEventSummary(Base):
@@ -4826,6 +4851,7 @@ class ClusterEventSummary(Base):
     event_time: The timestamp when the event occurred.
     description: A brief, human-readable description of the event.
     event_level: The severity level of the event. Valid values are Info, Warn, and Error.
+    operation_id: The unique identifier (UUID) of the cluster operation that the event is associated with, such as a scaling operation. This field is not returned when the event is not associated with an operation.
     """
 
     event_id: StrPipeVar
@@ -4837,6 +4863,7 @@ class ClusterEventSummary(Base):
     instance_id: Optional[StrPipeVar] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
     event_level: Optional[StrPipeVar] = Unassigned()
+    operation_id: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterFsxLustreConfig(Base):
@@ -5350,6 +5377,63 @@ class ClusterNodeSummary(Base):
     private_dns_hostname: Optional[StrPipeVar] = Unassigned()
     current_image_release_version: Optional[StrPipeVar] = Unassigned()
     image_version_status: Optional[StrPipeVar] = Unassigned()
+
+
+class ClusterOperationScalingConfiguration(Base):
+    """
+    ClusterOperationScalingConfiguration
+      A point-in-time snapshot of an instance group's scaling configuration. This structure represents both the original configuration before the operation and the desired configuration requested by the operation.
+
+    Attributes
+    ----------------------
+    current_count: The number of instances that were in the instance group at the time of the operation.
+    target_count: The target number of instances for the instance group.
+    min_count: The minimum number of instances that must be available in the instance group of a HyperPod cluster before it transitions to InService status.
+    """
+
+    current_count: Optional[int] = Unassigned()
+    target_count: Optional[int] = Unassigned()
+    min_count: Optional[int] = Unassigned()
+
+
+class ClusterOperationScalingDetails(Base):
+    """
+    ClusterOperationScalingDetails
+      The scaling details for a single instance group that is affected by a cluster operation.
+
+    Attributes
+    ----------------------
+    instance_group_name: The name of the instance group being scaled.
+    status: The status of the scaling operation for this instance group. Valid values are InProgress, Superseded, or Done.
+    original: The scaling configuration of the instance group before the scaling operation was applied, including its current, target, and minimum instance counts.
+    desired: The desired scaling configuration of the instance group for the scaling operation, including its target and minimum instance counts.
+    """
+
+    instance_group_name: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    original: Optional[ClusterOperationScalingConfiguration] = Unassigned()
+    desired: Optional[ClusterOperationScalingConfiguration] = Unassigned()
+
+
+class ClusterOperationSummary(Base):
+    """
+    ClusterOperationSummary
+      A summary of an operation performed on a HyperPod cluster.
+
+    Attributes
+    ----------------------
+    operation_id: The unique identifier (UUID) of the operation.
+    cluster_arn: The Amazon Resource Name (ARN) of the HyperPod cluster associated with the operation.
+    type: The type of the operation. Valid values are Scaling or DeepHealthCheck.
+    status: The current status of the operation. Valid values are InProgress, Superseded, or Done.
+    creation_time: The timestamp when the operation was created.
+    """
+
+    operation_id: Optional[StrPipeVar] = Unassigned()
+    cluster_arn: Optional[StrPipeVar] = Unassigned()
+    type: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
 
 
 class ClusterOrchestratorEksConfig(Base):
@@ -7251,7 +7335,7 @@ class ProductionVariantRoutingConfig(Base):
 
     Attributes
     ----------------------
-    routing_strategy: Sets how the endpoint routes incoming traffic:    LEAST_OUTSTANDING_REQUESTS: The endpoint routes requests to the specific instances that have more capacity to process them.    RANDOM: The endpoint routes each request to a randomly chosen instance.    PREFIX_AWARE: The endpoint routes requests that share the same prompt prefix to the same instance and, when that instance hosts more than one copy of the invoked inference component, to the same copy. When the number of in-flight requests on the selected instance or copy reaches the ConcurrencyThreshold value, the endpoint routes the request to another copy on that instance or to another instance. The endpoint applies prefix-aware routing only when two or more instances can serve the request.
+    routing_strategy: Sets how the endpoint routes incoming traffic:    LEAST_OUTSTANDING_REQUESTS: The endpoint routes requests to the specific instances that have more capacity to process them.    RANDOM: The endpoint routes each request to a randomly chosen instance.    PREFIX_AWARE: The endpoint routes requests that share the same prompt prefix to the same instance and, when that instance hosts more than one copy of the invoked inference component, to the same copy. When the number of in-flight requests on the selected instance or copy reaches the ConcurrencyThreshold value, the endpoint routes the request to another copy on that instance or to another instance. The endpoint applies prefix-aware routing only when two or more instances can serve the request.    KV_AWARE: The endpoint routes each request to an instance that already holds the start of the request's prompt in its key-value (KV) cache, and weighs the length of that match against how busy each instance is. On an endpoint with inference components, the endpoint chooses among the copies of the invoked inference component in the same way. When the endpoint can't find an instance or copy that holds the start of the prompt and isn't too busy, it chooses an instance as it does with LEAST_OUTSTANDING_REQUESTS. KV_AWARE works only with supported containers, such as the SageMaker AI vLLM Deep Learning Container.
     prefix_aware_routing_config: The configuration for prefix-aware routing. Specify this parameter only when you set RoutingStrategy to PREFIX_AWARE.
     """
 
@@ -7374,6 +7458,21 @@ class MetricsConfig(Base):
     enable_enhanced_metrics: Optional[bool] = Unassigned()
     enable_detailed_observability: Optional[bool] = Unassigned()
     metric_publish_frequency_in_seconds: Optional[int] = Unassigned()
+
+
+class CrossRegionTrafficConfig(Base):
+    """
+    CrossRegionTrafficConfig
+      The cross-Region traffic cap for an endpoint. The cap limits the requests per second that the endpoint accepts from inference routers in other Amazon Web Services Regions. The cap is MaxCrossRegionPercentPerEndpoint percent of MaxInvocationsPerSecondPerInstance multiplied by the number of InService instances, rounded up. All production variants and inference components of the endpoint share it. Requests that you send to the endpoint directly aren't counted. A request over the cap fails with a ThrottlingException.
+
+    Attributes
+    ----------------------
+    max_invocations_per_second_per_instance: The number of invocations per second that you expect one InService instance to serve. One value applies to every production variant, whatever its instance type.
+    max_cross_region_percent_per_endpoint: The percentage of the endpoint's capacity that requests from inference routers in other Amazon Web Services Regions can use.
+    """
+
+    max_invocations_per_second_per_instance: int
+    max_cross_region_percent_per_endpoint: int
 
 
 class RollingUpdatePolicy(Base):
@@ -8473,6 +8572,102 @@ class RecommendationJobOutputConfig(Base):
 
     kms_key_id: Optional[StrPipeVar] = Unassigned()
     compiled_output_config: Optional[RecommendationJobCompiledOutputConfig] = Unassigned()
+
+
+class Destination(Base):
+    """
+    Destination
+      An endpoint or inference component that serves a routing target.
+
+    Attributes
+    ----------------------
+    resource_arn: The Amazon Resource Name (ARN) of the endpoint or inference component. The destination can be in any account, and in any Amazon Web Services Region in the same partition as the inference router. To use a destination in another account, its owner must allow your account to invoke it through your router, in an endpoint policy.
+    routing_status: Whether the inference router can send requests to the destination, as checked when you called DescribeInferenceRouter. This value isn't the destination's own status. SageMaker AI ignores this field in CreateInferenceRouter and UpdateInferenceRouter requests.  Routable  The destination is serving and the router can send it requests. A routable destination can still be overloaded.  Unroutable  The destination can't serve requests. For example, it's being created or has failed, or it has no capacity and no way to get any. A destination in your account that doesn't exist is also Unroutable.  Unknown  SageMaker AI couldn't check the destination, for example because you aren't allowed to describe it or the check timed out. The destination might still be serving.
+    """
+
+    resource_arn: StrPipeVar
+    routing_status: Optional[StrPipeVar] = Unassigned()
+
+
+class RoutingTargetAsyncInferenceNotificationConfig(Base):
+    """
+    RoutingTargetAsyncInferenceNotificationConfig
+      The Amazon SNS topics that the inference router publishes to. The router publishes one notification for each request. The notification contains the location of the result, not the result itself. The destination endpoints also send their own notifications, if they're configured to.
+
+    Attributes
+    ----------------------
+    success_topic: The ARN of the Amazon SNS topic to publish to when a request completes. The topic must be a standard topic, and can be in any Amazon Web Services Region.
+    error_topic: The ARN of the Amazon SNS topic to publish to when a request fails, or when the router can't place it on any destination. The topic must be a standard topic, and can be in any Amazon Web Services Region.
+    """
+
+    success_topic: Optional[StrPipeVar] = Unassigned()
+    error_topic: Optional[StrPipeVar] = Unassigned()
+
+
+class RoutingTargetAsyncInferenceOutputConfig(Base):
+    """
+    RoutingTargetAsyncInferenceOutputConfig
+      The output settings for the asynchronous requests of a routing target. Every destination writes to the same locations. CreateInferenceRouter and UpdateInferenceRouter don't check who owns the buckets. If another account owns the output bucket, requests fail.
+
+    Attributes
+    ----------------------
+    s3_output_path: The Amazon S3 location for the results of successful requests. The bucket must be in the inference router's Amazon Web Services Region and owned by the router's account.
+    s3_failure_path: The Amazon S3 location for the failure details of failed requests. The bucket must be in the inference router's Amazon Web Services Region and owned by the router's account.
+    kms_key_id: The KMS key that encrypts the results in Amazon S3. You can specify a key ID, key ARN, alias name, or alias ARN. If any destination is in a different account or Amazon Web Services Region from the inference router, specify a key ARN or an alias ARN.
+    notification_config: The Amazon SNS topics that the inference router publishes to when a request completes or fails.
+    """
+
+    s3_output_path: StrPipeVar
+    s3_failure_path: StrPipeVar
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
+    notification_config: Optional[RoutingTargetAsyncInferenceNotificationConfig] = Unassigned()
+
+
+class RoutingTargetAsyncInferenceClientConfig(Base):
+    """
+    RoutingTargetAsyncInferenceClientConfig
+      How the inference router submits asynchronous requests to the destinations of a routing target.
+
+    Attributes
+    ----------------------
+    max_time_in_backlog_seconds: The maximum time, in seconds, that a request can wait at a destination before the inference router moves it to another destination. The default is 900 seconds.
+    """
+
+    max_time_in_backlog_seconds: Optional[int] = Unassigned()
+
+
+class RoutingTargetAsyncInferenceConfig(Base):
+    """
+    RoutingTargetAsyncInferenceConfig
+      The asynchronous inference settings of a routing target.
+
+    Attributes
+    ----------------------
+    output_config: The Amazon S3 locations for the results of asynchronous requests, and the notification settings.
+    client_config: How the inference router submits requests to destinations.
+    """
+
+    output_config: RoutingTargetAsyncInferenceOutputConfig
+    client_config: Optional[RoutingTargetAsyncInferenceClientConfig] = Unassigned()
+
+
+class RoutingTarget(Base):
+    """
+    RoutingTarget
+      A model that an inference router serves, and the destinations that can serve it. When you invoke the router, you name the routing target, and the router sends the request to one of its destinations. Every destination in a routing target must serve the same model, with the same request and response format.
+
+    Attributes
+    ----------------------
+    name: The name of the routing target. Callers specify this name in the RoutingTargetName parameter when they invoke the inference router. The name must be unique within the router.
+    destinations: The endpoints and inference components that serve the routing target. Each destination can appear only once in a routing target. In an asynchronous routing target, every destination must be an asynchronous inference endpoint. In a real-time routing target, no destination can be one. SageMaker AI checks an endpoint in another account with your credentials, so both your IAM policy and the endpoint policy must allow sagemaker:DescribeEndpoint. If an endpoint can't be checked, for example because it isn't found or can't be read in time, it's accepted, and requests to it fail if it's the wrong mode.
+    async_inference_config: The asynchronous inference settings of the routing target. Specify this setting to make the routing target asynchronous. If you omit it, the routing target serves real-time requests. Asynchronous routing targets aren't available in all Amazon Web Services Regions. For information about asynchronous routing targets and Region availability, see Send asynchronous requests through an inference router. Because UpdateInferenceRouter replaces all routing targets, include this setting in every update of an asynchronous routing target. For information about asynchronous routing targets, see Send asynchronous requests through an inference router.
+    routing_preference: How the inference router chooses among the routing target's destinations. The default is LocalRegionFirst.  LocalRegionFirst  The router uses destinations in its own Region first. When the request leaves the Region, the router spreads it across healthy destinations in other Regions.  InstancePoolOrder  The router prefers destinations by instance type first and by Region second. Every destination must be an endpoint that lists the same two or more instance types, each with a different priority, in the same priority order. This value is supported only for asynchronous routing targets.   With either value, the router uses destinations whose health or capacity is reduced after the others, but doesn't exclude them.
+    """
+
+    name: StrPipeVar
+    destinations: List[Destination]
+    async_inference_config: Optional[RoutingTargetAsyncInferenceConfig] = Unassigned()
+    routing_preference: Optional[StrPipeVar] = Unassigned()
 
 
 class LabelingJobS3DataSource(Base):
@@ -10781,11 +10976,58 @@ class ExtensionNodeSummary(Base):
     Attributes
     ----------------------
     total_count: The number of nodes in your cluster that the extension targets. SageMaker HyperPod targets every running node in your cluster, including nodes that you add after you create the extension.
-    active_count: The number of nodes that are running the extension's current version and configuration. While SageMaker HyperPod creates or updates the extension, ActiveCount is lower than TotalCount.
+    active_count: The number of nodes that are running the extension's current version and configuration. Nodes that report the extension as unhealthy aren't counted. While SageMaker HyperPod creates or updates the extension, ActiveCount is lower than TotalCount. To see why nodes aren't counted, see Health in DescribeClusterExtension.
     """
 
     total_count: int
     active_count: int
+
+
+class ExtensionHealthIssue(Base):
+    """
+    ExtensionHealthIssue
+      Information about a problem that affects an extension on one or more nodes of a SageMaker HyperPod cluster, including the number of nodes that it affects.
+
+    Attributes
+    ----------------------
+    code: A code that describes the type of issue.
+    message: A description of the problem, for example the setting or component to check. Every node with the same problem has the same message.
+    node_count: The number of nodes that have this problem.
+    """
+
+    code: StrPipeVar
+    message: StrPipeVar
+    node_count: int
+
+
+class ExtensionHealth(Base):
+    """
+    ExtensionHealth
+      Contains information about the problems that affect an extension on the nodes of a SageMaker HyperPod cluster, including how many nodes each problem affects. DescribeClusterExtension returns ExtensionHealth only when at least one node has a problem.
+
+    Attributes
+    ----------------------
+    issues: The problems that affect the extension, grouped by cause, from the problem that affects the most nodes to the one that affects the fewest. SageMaker HyperPod counts each node in at most one issue. The list contains at most 20 issues. If more than 20 different problems exist, the list shows the 19 that affect the most nodes, and the 20th issue has the code Other and counts the nodes that the remaining problems affect.
+    """
+
+    issues: List[ExtensionHealthIssue]
+
+
+class InstanceGroupHealthCheckConfiguration(Base):
+    """
+    InstanceGroupHealthCheckConfiguration
+      The configuration of deep health checks for an instance group.  Overlapping deep health check configurations will be merged into a single operation.
+
+    Attributes
+    ----------------------
+    instance_group_name: The name of the instance group.
+    instance_ids: A list of Amazon Elastic Compute Cloud (EC2) instance IDs on which to perform deep health checks.  Leave this field blank to perform deep health checks on the entire instance group.
+    deep_health_checks: A list of deep health checks to be performed.
+    """
+
+    instance_group_name: StrPipeVar
+    deep_health_checks: List[StrPipeVar]
+    instance_ids: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class ModelArtifacts(Base):
@@ -12932,6 +13174,19 @@ class ExtensionSummary(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
 
 
+class ExtensionVersionSummary(Base):
+    """
+    ExtensionVersionSummary
+      A version of an extension that you can install on a SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    extension_version: The version of the extension, in MAJOR.MINOR.PATCH format, for example 1.0.0.
+    """
+
+    extension_version: StrPipeVar
+
+
 class FailStepMetadata(Base):
     """
     FailStepMetadata
@@ -13671,21 +13926,23 @@ class InferenceRecommendationsJobStep(Base):
     inference_benchmark: Optional[RecommendationJobInferenceBenchmark] = Unassigned()
 
 
-class InstanceGroupHealthCheckConfiguration(Base):
+class InferenceRouterSummary(Base):
     """
-    InstanceGroupHealthCheckConfiguration
-      The configuration of deep health checks for an instance group.  Overlapping deep health check configurations will be merged into a single operation.
+    InferenceRouterSummary
+      A summary of an inference router.
 
     Attributes
     ----------------------
-    instance_group_name: The name of the instance group.
-    instance_ids: A list of Amazon Elastic Compute Cloud (EC2) instance IDs on which to perform deep health checks.  Leave this field blank to perform deep health checks on the entire instance group.
-    deep_health_checks: A list of deep health checks to be performed.
+    inference_router_name: The name of the inference router.
+    inference_router_arn: The Amazon Resource Name (ARN) of the inference router.
+    creation_time: The date and time that the inference router was created.
+    last_modified_time: The date and time that the inference router was last updated.
     """
 
-    instance_group_name: StrPipeVar
-    deep_health_checks: List[StrPipeVar]
-    instance_ids: Optional[List[StrPipeVar]] = Unassigned()
+    inference_router_name: Union[StrPipeVar, object]
+    inference_router_arn: StrPipeVar
+    creation_time: datetime.datetime
+    last_modified_time: datetime.datetime
 
 
 class IterationContext(Base):
@@ -15833,6 +16090,19 @@ class ReservedCapacityOffering(Base):
     end_time: Optional[datetime.datetime] = Unassigned()
     extension_start_time: Optional[datetime.datetime] = Unassigned()
     extension_end_time: Optional[datetime.datetime] = Unassigned()
+
+
+class ResourceAlreadyExists(Base):
+    """
+    ResourceAlreadyExists
+      The resource that you are trying to create already exists. Use a different resource name, or delete the existing resource before retrying.
+
+    Attributes
+    ----------------------
+    message
+    """
+
+    message: Optional[StrPipeVar] = Unassigned()
 
 
 class ResourceConfigForUpdate(Base):
