@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 """Unit tests for feature_utils.py"""
 
+import gzip
 from pathlib import Path
 
 import pytest
@@ -693,6 +694,55 @@ class TestPrepareFgFromDataframeOrFile:
         loaded = mock_fg.load_feature_definitions.call_args.kwargs["data_frame"]
         assert list(loaded["id"]) == [1, 2]
         assert list(loaded["value"]) == [1.1, 2.2]
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")
+    def test_s3_gzipped_object_is_decompressed(self, mock_s3_downloader, mock_fg_class):
+        """A gzipped S3 object still parses, as it did when s3fs served the path.
+
+        pandas infers compression from a file extension only when it receives a path.
+        Handing it a buffer loses that, so the extension must be inferred from the key
+        or ``s3://.../data.csv.gz`` silently breaks with a UnicodeDecodeError.
+        """
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        mock_s3_downloader.read_bytes.return_value = gzip.compress(b"id,value\n1,1.1\n2,2.2\n")
+
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path="s3://my-bucket/prefix/data.csv.gz",
+            feature_group_name="test-fg",
+            session=MagicMock(),
+            record_id="id",
+        )
+
+        loaded = mock_fg.load_feature_definitions.call_args.kwargs["data_frame"]
+        assert list(loaded["id"]) == [1, 2]
+        assert list(loaded["value"]) == [1.1, 2.2]
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")
+    def test_explicit_compression_kwarg_is_not_overridden(self, mock_s3_downloader, mock_fg_class):
+        """An explicit compression= from the caller wins over inference from the key."""
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        mock_s3_downloader.read_bytes.return_value = gzip.compress(b"id,value\n1,1.1\n")
+
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+
+        # Key has no .gz suffix, so inference would say "no compression"; the caller's
+        # explicit gzip must be honoured instead.
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path="s3://my-bucket/prefix/data-without-suffix",
+            feature_group_name="test-fg",
+            session=MagicMock(),
+            record_id="id",
+            compression="gzip",
+        )
+
+        loaded = mock_fg.load_feature_definitions.call_args.kwargs["data_frame"]
+        assert list(loaded["id"]) == [1]
 
     @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
     @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")

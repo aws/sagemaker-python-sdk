@@ -15,6 +15,7 @@ import boto3
 import pandas
 import pandas as pd
 from pandas import DataFrame, Series, read_csv
+from pandas.io.common import infer_compression
 from sagemaker.core.shapes import FeatureValue, TtlDuration
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
@@ -858,7 +859,8 @@ def prepare_fg_from_dataframe_or_file(
 
     Args:
         feature_group_name (str): feature group name
-        dataframe_or_path (str, Path, pandas.DataFrame) : pandas.DataFrame or path to the data
+        dataframe_or_path (str, Path, pandas.DataFrame) : pandas.DataFrame, or a local path
+                                    or ``s3://`` URI to the data
         verbose (bool)           : True for displaying messages, False for silent method.
         record_id (str, 'record_id'): (Optional) Feature identifier of the rows. If specified each
                                     value of that feature has to be unique. If not specified or
@@ -900,6 +902,11 @@ def prepare_fg_from_dataframe_or_file(
         kwargs.pop("filepath_or_buffer", None)
         path = str(dataframe_or_path)
         if path.startswith("s3://"):
+            # pandas infers compression from the file extension only when it is handed a
+            # path; it cannot infer from an in-memory buffer. Infer from the S3 key so
+            # that gzipped/bz2/zip/xz/zstd objects keep working as they did via s3fs.
+            if "compression" not in kwargs:
+                kwargs["compression"] = infer_compression(path, "infer")
             s3_bytes = S3Downloader.read_bytes(path, sagemaker_session=sagemaker_session)
             data = read_csv(filepath_or_buffer=io.BytesIO(s3_bytes), **kwargs)
         else:
