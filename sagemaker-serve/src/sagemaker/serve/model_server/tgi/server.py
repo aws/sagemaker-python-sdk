@@ -14,6 +14,7 @@ from sagemaker.core.s3.utils import determine_bucket_and_prefix, parse_s3_url, s
 from sagemaker.core.s3 import S3Uploader
 from sagemaker.core.local.local_session import get_docker_host
 from sagemaker.core.common_utils import _is_s3_uri
+from sagemaker.serve.utils.uploader import _validate_model_dir_symlinks
 
 MODE_DIR_BINDING = "/opt/ml/model/"
 _SHM_SIZE = "2G"
@@ -119,6 +120,7 @@ class SageMakerTgiServing:
             )
 
             code_dir = Path(model_path).joinpath("code")
+            _validate_model_dir_symlinks(str(code_dir))
 
             s3_location = s3_path_join("s3://", bucket, code_key_prefix, "code")
 

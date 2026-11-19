@@ -356,6 +356,90 @@ class TestTarAndUploadDir:
         assert result.s3_prefix == "s3://test-bucket/prefix/sourcedir.tar.gz"
         assert {"train.py", "helper_link.py", "pkg/helper.py"} <= captured["names"]
 
+    @staticmethod
+    def _upload_files(tmp_path, script, dependencies=None, on_upload=None):
+        """Call tar_and_upload_dir without a source directory."""
+        mock_session = Mock()
+        mock_session.region_name = "us-west-2"
+        upload_file = mock_session.resource.return_value.Object.return_value.upload_file
+        upload_file.side_effect = on_upload
+        return tar_and_upload_dir(
+            session=mock_session,
+            bucket="test-bucket",
+            s3_key_prefix="prefix",
+            script=str(script),
+            dependencies=dependencies,
+            settings=Mock(local_download_dir=str(tmp_path), encrypt_repacked_artifacts=False),
+        )
+
+    @patch("sagemaker.core.common_utils.create_tar_file")
+    def test_tar_and_upload_dir_rejects_entry_point_file_symlink_outside_directory(
+        self, mock_create_tar, tmp_path
+    ):
+        code = tmp_path / "code"
+        code.mkdir()
+        script = code / "inference.py"
+        os.symlink(self._decoy(tmp_path), script)
+
+        with pytest.raises(ValueError, match="entry_point is a symlink that resolves outside"):
+            self._upload_files(tmp_path, script)
+        mock_create_tar.assert_not_called()
+
+    @patch("sagemaker.core.common_utils.create_tar_file")
+    def test_tar_and_upload_dir_rejects_dependency_file_symlink_outside_directory(
+        self, mock_create_tar, tmp_path
+    ):
+        code = tmp_path / "code"
+        code.mkdir()
+        script = code / "inference.py"
+        script.write_text("# inference")
+        dependency = code / "settings.cfg"
+        os.symlink(self._decoy(tmp_path), dependency)
+
+        with pytest.raises(ValueError, match="dependency is a symlink that resolves outside"):
+            self._upload_files(tmp_path, script, dependencies=[str(dependency)])
+        mock_create_tar.assert_not_called()
+
+    @patch("sagemaker.core.common_utils.create_tar_file")
+    def test_tar_and_upload_dir_rejects_restricted_top_level_inputs(
+        self, mock_create_tar, tmp_path
+    ):
+        restricted = self._decoy(tmp_path).parent
+        source = self._source_dir(tmp_path)
+
+        with patch("sagemaker.core.common_utils._SENSITIVE_SYSTEM_PATHS", [str(restricted)]):
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                self._upload(tmp_path, restricted)
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                self._upload_files(tmp_path, restricted / "credentials")
+            with pytest.raises(ValueError, match="cannot access sensitive system paths"):
+                self._upload(tmp_path, source, dependencies=[str(restricted)])
+        mock_create_tar.assert_not_called()
+
+    def test_tar_and_upload_dir_packages_file_symlinks_inside_directory(self, tmp_path):
+        code = tmp_path / "code"
+        (code / "src").mkdir(parents=True)
+        (code / "src" / "inference.py").write_text("# inference")
+        (code / "src" / "helper.py").write_text("# helper")
+        script = code / "inference.py"
+        os.symlink("src/inference.py", script)
+        dependency = code / "helper.py"
+        os.symlink("src/helper.py", dependency)
+        captured = {}
+
+        def _capture(tar_file, ExtraArgs=None):
+            with tarfile.open(tar_file, "r:gz") as tar:
+                captured["files"] = {
+                    m.name: tar.extractfile(m).read() for m in tar.getmembers() if m.isfile()
+                }
+
+        result = self._upload_files(
+            tmp_path, script, dependencies=[str(dependency)], on_upload=_capture
+        )
+
+        assert result.script_name == "inference.py"
+        assert captured["files"] == {"inference.py": b"# inference", "helper.py": b"# helper"}
+
 
 class TestFrameworkNameFromImage:
     """Test framework_name_from_image function."""
