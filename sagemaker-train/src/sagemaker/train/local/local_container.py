@@ -20,7 +20,7 @@ import os
 import re
 import shutil
 import subprocess
-from tempfile import TemporaryDirectory
+from tempfile import mkdtemp
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 
@@ -594,7 +594,8 @@ class _LocalContainer(BaseModel):
         if data_source.s3_data_source != Unassigned():
             uri = data_source.s3_data_source.s3_uri
             parsed_uri = urlparse(uri)
-            local_dir = TemporaryDirectory(prefix=os.path.join(self.container_root + "/")).name
+            os.makedirs(self.container_root, exist_ok=True)
+            local_dir = mkdtemp(dir=self.container_root)
             self._temporary_folders.append(local_dir)
             download_folder(parsed_uri.netloc, parsed_uri.path, local_dir, self.sagemaker_session)
             return local_dir

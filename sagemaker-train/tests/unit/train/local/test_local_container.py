@@ -223,3 +223,58 @@ class TestGetComposeCmdPrefix:
         mock_which.return_value = "/usr/local/bin/docker-compose"
         result = container._get_compose_cmd_prefix()
         assert result == ["docker-compose"]
+
+
+class TestGetDataSourceLocalPathS3:
+    """Regression tests for #5033: channel temp dirs must survive until download_folder runs."""
+
+    @patch("sagemaker.train.local.local_container.download_folder")
+    def test_get_data_source_local_path_s3_single_file_dir_exists(
+        self, mock_download, tmp_path, _basic_channel
+    ):
+        """The channel directory must exist when download_folder is called.
+
+        On unfixed code the TemporaryDirectory object is garbage-collected
+        immediately, deleting the directory before download_folder runs.
+        """
+        import os
+
+        data_source = DataSource(
+            s3_data_source=S3DataSource(
+                s3_uri="s3://bucket/data/train.csv",
+                s3_data_type="S3Prefix",
+                s3_data_distribution_type="FullyReplicated",
+            )
+        )
+        channel = Channel(channel_name="training", data_source=data_source)
+
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image=IMAGE,
+            container_root=str(tmp_path),
+            input_data_config=[channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=None,
+        )
+
+        def download_side_effect(bucket, prefix, target, session):
+            # The target directory MUST exist at this point
+            assert os.path.isdir(target), f"Target directory {target} does not exist"
+            # Simulate downloading a file into the target
+            filepath = os.path.join(target, os.path.basename(prefix))
+            with open(filepath, "w") as f:
+                f.write("data")
+
+        mock_download.side_effect = download_side_effect
+
+        result = container._get_data_source_local_path(data_source)
+
+        assert os.path.isdir(result)
+        assert str(tmp_path) == str(os.path.dirname(result))
+        assert os.path.isfile(os.path.join(result, "train.csv"))
+        assert result in container._temporary_folders

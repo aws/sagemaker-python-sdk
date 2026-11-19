@@ -961,6 +961,35 @@ class TestDownloadFolder:
             with pytest.raises(ValueError):
                 download_folder("bucket", "/../prefix/", tmpdir, mock_session)
 
+    def test_download_folder_single_file_creates_missing_target(self):
+        """Regression test for #5033: download_folder must create the target dir.
+
+        When downloading a single S3 object, the target directory may not
+        exist yet (e.g. because the TemporaryDirectory that held it was
+        garbage-collected). download_folder should create it.
+        """
+        from sagemaker.core.common_utils import download_folder
+
+        mock_session = Mock()
+        mock_s3 = Mock()
+        mock_obj = Mock()
+        mock_session.s3_resource = mock_s3
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = os.path.join(tmpdir, "missing", "dir")
+
+            def fake_download(dest, ExtraArgs=None):
+                # Simulate what boto3 does: write to the given path
+                with open(dest, "w") as f:
+                    f.write("data")
+
+            mock_obj.download_file.side_effect = fake_download
+
+            download_folder("bucket", "data/train.csv", target, mock_session)
+
+            assert os.path.isfile(os.path.join(target, "train.csv"))
+
 
 class TestDownloadFilesUnderPrefixPathTraversal:
     """Test _download_files_under_prefix blocks path traversal attacks."""
