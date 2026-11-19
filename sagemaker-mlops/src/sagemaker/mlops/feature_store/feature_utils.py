@@ -16,6 +16,7 @@ import pandas
 import pandas as pd
 from pandas import DataFrame, Series, read_csv
 from pandas.io.common import infer_compression
+from sagemaker.core.common_utils import pop_out_unused_kwarg
 from sagemaker.core.shapes import FeatureValue, TtlDuration
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
@@ -902,6 +903,10 @@ def prepare_fg_from_dataframe_or_file(
         kwargs.pop("filepath_or_buffer", None)
         path = str(dataframe_or_path)
         if path.startswith("s3://"):
+            # storage_options configures the fsspec filesystem pandas would have opened
+            # the URI with. The object is fetched here instead, so pandas receives a
+            # buffer and would reject the argument outright; warn and drop it.
+            pop_out_unused_kwarg("storage_options", kwargs)
             # pandas infers compression from the file extension only when it is handed a
             # path; it cannot infer from an in-memory buffer. Infer from the S3 key so
             # that gzipped/bz2/zip/xz/zstd objects keep working as they did via s3fs.

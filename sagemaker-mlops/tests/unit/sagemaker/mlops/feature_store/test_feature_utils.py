@@ -3,6 +3,7 @@
 """Unit tests for feature_utils.py"""
 
 import gzip
+import logging
 from pathlib import Path
 
 import pytest
@@ -720,6 +721,63 @@ class TestPrepareFgFromDataframeOrFile:
         loaded = mock_fg.load_feature_definitions.call_args.kwargs["data_frame"]
         assert list(loaded["id"]) == [1, 2]
         assert list(loaded["value"]) == [1.1, 2.2]
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")
+    def test_storage_options_is_dropped_with_a_warning(
+        self, mock_s3_downloader, mock_fg_class, caplog
+    ):
+        """storage_options is an fsspec concept and no longer applies.
+
+        It configured the filesystem pandas would have opened the URI with. The object
+        is now fetched before parsing, so pandas receives a buffer and rejects the
+        argument with "storage_options passed with file object or non-fsspec file path".
+        Rather than surface that, drop it and warn, so the read still succeeds.
+        """
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        mock_s3_downloader.read_bytes.return_value = b"id,value\n1,1.1\n2,2.2\n"
+
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+
+        with caplog.at_level(logging.WARNING):
+            prepare_fg_from_dataframe_or_file(
+                dataframe_or_path="s3://my-bucket/prefix/data.csv",
+                feature_group_name="test-fg",
+                session=MagicMock(),
+                record_id="id",
+                storage_options={"anon": True},
+            )
+
+        assert "storage_options" in caplog.text
+        assert "will be ignored" in caplog.text
+
+        # The read still succeeds rather than raising the pandas ValueError.
+        loaded = mock_fg.load_feature_definitions.call_args.kwargs["data_frame"]
+        assert list(loaded["id"]) == [1, 2]
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")
+    def test_storage_options_still_reaches_read_csv_for_local_paths(
+        self, mock_s3_downloader, mock_fg_class
+    ):
+        """Only the s3:// branch drops it; a local path is pandas' business, not ours."""
+        mock_fg_class.return_value = MagicMock()
+
+        from sagemaker.mlops.feature_store import feature_utils
+
+        with patch.object(feature_utils, "read_csv") as mock_read_csv:
+            mock_read_csv.return_value = pd.DataFrame({"id": [1, 2], "value": [1.1, 2.2]})
+            feature_utils.prepare_fg_from_dataframe_or_file(
+                dataframe_or_path="/path/to/file.csv",
+                feature_group_name="test-fg",
+                session=MagicMock(),
+                record_id="id",
+                storage_options={"anon": True},
+            )
+
+        assert mock_read_csv.call_args.kwargs["storage_options"] == {"anon": True}
+        mock_s3_downloader.read_bytes.assert_not_called()
 
     @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
     @patch("sagemaker.mlops.feature_store.feature_utils.S3Downloader")
