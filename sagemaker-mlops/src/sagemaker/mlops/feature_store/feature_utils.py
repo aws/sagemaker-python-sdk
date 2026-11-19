@@ -29,6 +29,10 @@ from sagemaker.mlops.feature_store.feature_definition import (
 )
 from sagemaker.mlops.feature_store.ingestion_manager_pandas import IngestionManagerPandas
 from sagemaker.mlops.feature_store.inputs import TargetStoreEnum
+from sagemaker.mlops.feature_store.write_audit import (
+    WriteAuditConfig,
+    _write_audit_enabled_from_env,
+)
 
 from sagemaker.core.utils import unique_name_from_base
 
@@ -508,6 +512,7 @@ def ingest_dataframe(
     timeout: Union[int, float] = None,
     use_batch_write_record: bool = False,
     region: str = None,
+    enable_write_audit: Optional[bool] = None,
 ):
     """Ingest a pandas DataFrame to a FeatureGroup.
 
@@ -526,6 +531,15 @@ def ingest_dataframe(
             describe the FeatureGroup and to write the records. If not specified, the
             region is resolved by boto3 from the environment (``AWS_DEFAULT_REGION``,
             ``AWS_REGION``, or the active profile in ``~/.aws/config``). Default: None.
+        enable_write_audit: If True, log one JSON line per record per PutRecord or
+            BatchWriteRecord attempt on the ``sagemaker.mlops.feature_store.write_audit``
+            logger at INFO level, with the record identifier, event time, AWS request ID,
+            status and timestamps, so a record can be traced to the request that wrote it.
+            Only the record identifier and event time are logged, no other feature values;
+            record identifiers can be sensitive, so treat these logs accordingly. If None, the
+            ``SAGEMAKER_FEATURE_STORE_WRITE_AUDIT`` environment variable decides
+            (``true``/``1``/``yes``/``on`` enables it). Default: None (disabled unless the
+            environment variable is set).
 
     Returns:
         IngestionManagerPandas instance.
@@ -560,6 +574,17 @@ def ingest_dataframe(
             "CollectionType": collection_type,
         }
 
+    if enable_write_audit is None:
+        enable_write_audit = _write_audit_enabled_from_env()
+    write_audit_config = (
+        WriteAuditConfig(
+            record_identifier_feature_name=fg.record_identifier_feature_name,
+            event_time_feature_name=fg.event_time_feature_name,
+        )
+        if enable_write_audit
+        else None
+    )
+
     manager = IngestionManagerPandas(
         feature_group_name=feature_group_name,
         feature_definitions=feature_definitions,
@@ -567,6 +592,7 @@ def ingest_dataframe(
         max_processes=max_processes,
         use_batch_write_record=use_batch_write_record,
         region=region,
+        write_audit_config=write_audit_config,
     )
     manager.run(data_frame=data_frame, wait=wait, timeout=timeout)
     return manager

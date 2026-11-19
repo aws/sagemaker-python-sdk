@@ -502,5 +502,189 @@ class TestIngestionManagerRegion:
         starmap_args = mock_pool.starmap_async.call_args[0][1]
         assert len(starmap_args) == 2
         for process_args in starmap_args:
-            # region is the last positional argument passed to _run_multi_threaded
-            assert process_args[-1] == "eu-west-1"
+            # positional order must match _run_multi_threaded's signature
+            assert process_args[8] == "eu-west-1"  # region
+            assert process_args[9] is None  # write_audit_config
+
+
+class TestIngestionManagerWriteAudit:
+    """``write_audit_config`` is wired through every ingestion path."""
+
+    @pytest.fixture
+    def feature_definitions(self):
+        return {"id": {"FeatureName": "id", "FeatureType": "Integral"}}
+
+    @pytest.fixture
+    def sample_dataframe(self):
+        return pd.DataFrame({"id": [1, 2, 3]})
+
+    @pytest.fixture
+    def config(self):
+        from sagemaker.mlops.feature_store.write_audit import WriteAuditConfig
+
+        return WriteAuditConfig(record_identifier_feature_name="id", event_time_feature_name="ts")
+
+    def test_defaults_to_none(self, feature_definitions):
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg", feature_definitions=feature_definitions
+        )
+        assert manager.write_audit_config is None
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas._write_audit")
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
+    def test_single_thread_run_wraps_ingestion(
+        self, mock_fg_class, mock_write_audit, feature_definitions, sample_dataframe, config
+    ):
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            region="eu-west-1",
+            write_audit_config=config,
+        )
+        manager.run(data_frame=sample_dataframe)
+
+        mock_write_audit.assert_called_once_with("test-fg", config, "eu-west-1")
+        mock_write_audit.return_value.__enter__.assert_called_once()
+        mock_write_audit.return_value.__exit__.assert_called_once()
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas._write_audit")
+    @patch.object(IngestionManagerPandas, "_ingest_single_batch", return_value=[])
+    def test_multi_threaded_sets_up_audit_in_worker(
+        self, mock_ingest, mock_write_audit, feature_definitions, sample_dataframe, config
+    ):
+        IngestionManagerPandas._run_multi_threaded(
+            max_workers=2,
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            data_frame=sample_dataframe,
+            region="eu-west-1",
+            write_audit_config=config,
+        )
+
+        mock_write_audit.assert_called_once_with("test-fg", config, "eu-west-1")
+        assert mock_ingest.call_count == 2
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas._write_audit")
+    @patch.object(IngestionManagerPandas, "_ingest_batch_write", return_value=[2])
+    def test_multi_threaded_batch_write_sets_up_audit_in_worker(
+        self, mock_batch, mock_write_audit, feature_definitions, sample_dataframe, config
+    ):
+        failed = IngestionManagerPandas._run_multi_threaded(
+            max_workers=1,
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            data_frame=sample_dataframe,
+            use_batch_write_record=True,
+            region="eu-west-1",
+            write_audit_config=config,
+        )
+
+        mock_write_audit.assert_called_once_with("test-fg", config, "eu-west-1")
+        assert mock_batch.call_args[1]["region"] == "eu-west-1"
+        assert failed == [2]
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.Pool")
+    def test_multi_process_args_include_write_audit_config(
+        self, mock_pool_class, feature_definitions, sample_dataframe, config
+    ):
+        mock_pool = MagicMock()
+        mock_pool_class.return_value = mock_pool
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            max_processes=2,
+            write_audit_config=config,
+        )
+        manager.run(data_frame=sample_dataframe, wait=False)
+
+        for process_args in mock_pool.starmap_async.call_args[0][1]:
+            assert process_args[-1] is config
+
+    @pytest.mark.parametrize("enabled, expected", [(True, "true"), (False, "false")])
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    @patch("sagemaker.core.telemetry.telemetry_logging._get_default_sagemaker_session")
+    @patch.object(IngestionManagerPandas, "_run_single_process_single_thread")
+    def test_run_telemetry_reports_whether_audit_is_configured(
+        self,
+        mock_run,
+        mock_default_session,
+        mock_resolve_config,
+        mock_send_telemetry,
+        feature_definitions,
+        sample_dataframe,
+        config,
+        enabled,
+        expected,
+    ):
+        mock_resolve_config.return_value = False
+        mock_default_session.return_value = MagicMock(sagemaker_config=None, local_mode=False)
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            write_audit_config=config if enabled else None,
+        )
+        manager.run(data_frame=sample_dataframe)
+
+        extra = mock_send_telemetry.call_args.args[5]
+        assert f"x-hasWriteAuditConfig={expected}" in extra
+
+
+class TestIngestionErrorLogsIncludeRequestId:
+    @pytest.fixture
+    def feature_definitions(self):
+        return {"id": {"FeatureName": "id", "FeatureType": "Integral"}}
+
+    @staticmethod
+    def client_error(request_id):
+        error = Exception("ValidationError: bad")
+        error.response = {"ResponseMetadata": {"RequestId": request_id}}
+        return error
+
+    def test_put_record_failure_logs_request_id(self, feature_definitions, caplog):
+        df = pd.DataFrame({"id": [7]})
+        mock_fg = Mock()
+        mock_fg.put_record.side_effect = self.client_error("req-123")
+        failed_rows = []
+
+        IngestionManagerPandas._ingest_row(
+            data_frame=df,
+            row=next(df.itertuples()),
+            feature_group=mock_fg,
+            feature_definitions=feature_definitions,
+            failed_rows=failed_rows,
+        )
+
+        assert failed_rows == [0]
+        assert "Failed to ingest row 0 (request ID: req-123): ValidationError: bad" in caplog.text
+
+    def test_put_record_failure_without_request_id_is_unchanged(self, feature_definitions, caplog):
+        df = pd.DataFrame({"id": [7]})
+        mock_fg = Mock()
+        mock_fg.put_record.side_effect = ValueError("not an AWS error")
+
+        IngestionManagerPandas._ingest_row(
+            data_frame=df,
+            row=next(df.itertuples()),
+            feature_group=mock_fg,
+            feature_definitions=feature_definitions,
+            failed_rows=[],
+        )
+
+        assert "Failed to ingest row 0: not an AWS error" in caplog.text
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
+    def test_batch_write_failure_logs_request_id(self, mock_fg_class, feature_definitions, caplog):
+        mock_fg_class.return_value.batch_write_record.side_effect = self.client_error("req-456")
+        df = pd.DataFrame({"id": [1, 2]})
+
+        failed = IngestionManagerPandas._ingest_batch_write(
+            data_frame=df,
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            start_index=0,
+            end_index=2,
+        )
+
+        assert failed == [0, 1]
+        assert "batch starting at row 0 (request ID: req-456)" in caplog.text

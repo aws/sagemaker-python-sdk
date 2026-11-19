@@ -282,14 +282,13 @@ class TestIngestDataframeRegion:
         assert kwargs["use_batch_write_record"] is True
 
     def test_region_is_keyword_only_in_practice_and_does_not_shift_positionals(self):
-        """``region`` is appended last, so existing positional calls keep working."""
+        """New parameters are only ever appended, so existing positional calls keep working."""
         import inspect
 
         from sagemaker.mlops.feature_store.feature_utils import ingest_dataframe as fn
 
         params = list(inspect.signature(fn).parameters)
-        assert params[-1] == "region"
-        assert params[:7] == [
+        assert params == [
             "feature_group_name",
             "data_frame",
             "max_workers",
@@ -297,6 +296,8 @@ class TestIngestDataframeRegion:
             "wait",
             "timeout",
             "use_batch_write_record",
+            "region",
+            "enable_write_audit",
         ]
 
 
@@ -981,3 +982,63 @@ class TestUpdateRecord:
             ttl_duration=ttl,
         )
         assert mock_fg.update_record.call_args.kwargs["ttl_duration"] is ttl
+
+
+class TestIngestDataframeWriteAudit:
+    """``enable_write_audit`` builds a WriteAuditConfig from the described Feature Group."""
+
+    @pytest.fixture
+    def mock_feature_group(self):
+        mock_fg = MagicMock()
+        mock_fg.feature_definitions = [MagicMock(feature_name="id", feature_type="Integral")]
+        mock_fg.record_identifier_feature_name = "id"
+        mock_fg.event_time_feature_name = "event_time"
+        return mock_fg
+
+    @pytest.fixture(autouse=True)
+    def no_env_var(self, monkeypatch):
+        monkeypatch.delenv("SAGEMAKER_FEATURE_STORE_WRITE_AUDIT", raising=False)
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.IngestionManagerPandas")
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_enabled_uses_feature_group_names(
+        self, mock_fg_class, mock_manager_class, mock_feature_group
+    ):
+        from sagemaker.mlops.feature_store.write_audit import WriteAuditConfig
+
+        mock_fg_class.get.return_value = mock_feature_group
+        ingest_dataframe("my-fg", pd.DataFrame({"id": [1]}), enable_write_audit=True)
+
+        assert mock_manager_class.call_args[1]["write_audit_config"] == WriteAuditConfig(
+            record_identifier_feature_name="id", event_time_feature_name="event_time"
+        )
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.IngestionManagerPandas")
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_disabled_by_default(self, mock_fg_class, mock_manager_class, mock_feature_group):
+        mock_fg_class.get.return_value = mock_feature_group
+        ingest_dataframe("my-fg", pd.DataFrame({"id": [1]}))
+
+        assert mock_manager_class.call_args[1]["write_audit_config"] is None
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.IngestionManagerPandas")
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_env_var_enables_when_argument_not_given(
+        self, mock_fg_class, mock_manager_class, mock_feature_group, monkeypatch
+    ):
+        monkeypatch.setenv("SAGEMAKER_FEATURE_STORE_WRITE_AUDIT", "true")
+        mock_fg_class.get.return_value = mock_feature_group
+        ingest_dataframe("my-fg", pd.DataFrame({"id": [1]}))
+
+        assert mock_manager_class.call_args[1]["write_audit_config"] is not None
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.IngestionManagerPandas")
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_explicit_false_overrides_env_var(
+        self, mock_fg_class, mock_manager_class, mock_feature_group, monkeypatch
+    ):
+        monkeypatch.setenv("SAGEMAKER_FEATURE_STORE_WRITE_AUDIT", "true")
+        mock_fg_class.get.return_value = mock_feature_group
+        ingest_dataframe("my-fg", pd.DataFrame({"id": [1]}), enable_write_audit=False)
+
+        assert mock_manager_class.call_args[1]["write_audit_config"] is None
