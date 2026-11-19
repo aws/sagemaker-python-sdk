@@ -53,8 +53,8 @@ You can install from source by cloning this repository and running a pip install
 
 ::
 
-    git clone https://github.com/aws/sagemaker-python-sdk-staging.git
-    cd sagemaker-python-sdk-staging/sagemaker_train
+    git clone https://github.com/aws/sagemaker-python-sdk.git
+    cd sagemaker-python-sdk/sagemaker-train
     pip install .
 
 Supported Operating Systems
