@@ -89,7 +89,8 @@ def main():
         mpi_command = get_mpirun_command(
             host_count=host_count,
             host_list=host_list,
-            num_processes=process_count,
+            # -np is the total number of ranks: process_count per host on every host.
+            num_processes=process_count * host_count,
             additional_options=distributed_config["mpi_additional_options"] or [],
             entry_script_path=entry_script,
         )
