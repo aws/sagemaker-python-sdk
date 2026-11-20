@@ -201,7 +201,6 @@ class LocalContainerMode(
         time.sleep(10)
 
         log_generator = self.container.logs(follow=True, stream=True)
-        container_timeout_seconds = 1200
         time_limit = datetime.now() + timedelta(seconds=container_timeout_seconds)
         healthy = False
         while True:
