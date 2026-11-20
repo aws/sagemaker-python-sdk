@@ -450,6 +450,42 @@ class TestLocalContainer:
 
         assert result is True
 
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.Popen")
+    @patch("sagemaker.core.modules.local_core.local_container._check_output")
+    def test_ecr_login_removes_only_aws_prefix_from_token(
+        self, mock_check_output, mock_popen, mock_session, basic_channel
+    ):
+        """Test only the 'AWS:' prefix is removed, not trailing A/W/S/: characters"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+        mock_check_output.return_value = ""
+        ecr_client = Mock()
+        ecr_client.get_authorization_token.return_value = {
+            "authorizationData": [
+                {
+                    # base64 encoded "AWS:abcWAS": the password ends in characters of "AWS:"
+                    "authorizationToken": "QVdTOmFiY1dBUw==",
+                    "proxyEndpoint": "https://123456789012.dkr.ecr.us-west-2.amazonaws.com",
+                }
+            ]
+        }
+        mock_session.boto_session.client.return_value = ecr_client
+
+        container._ecr_login_if_needed()
+
+        mock_popen.return_value.communicate.assert_called_once_with(input=b"abcWAS")
+
     @patch("sagemaker.core.modules.local_core.local_container._check_output")
     def test_ecr_login_if_needed_with_local_image(
         self, mock_check_output, mock_session, basic_channel

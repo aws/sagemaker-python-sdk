@@ -1214,7 +1214,7 @@ def _ecr_login_if_needed(boto_session, image):
     authorization_data = auth["authorizationData"][0]
 
     raw_token = base64.b64decode(authorization_data["authorizationToken"])
-    token = raw_token.decode("utf-8").strip("AWS:")
+    token = raw_token.decode("utf-8").split(":", 1)[1]
     ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
     # Log in to ecr, but use communicate to not print creds to the console
