@@ -1136,6 +1136,7 @@ class FeatureGroupManager(FeatureGroup):
                 logger.error(
                     f"Feature group '{self.feature_group_name}' was not updated successfully: {e}"
                 )
+                raise
 
         # Update Iceberg properties if requested
         if iceberg_properties is not None and iceberg_properties.properties:
