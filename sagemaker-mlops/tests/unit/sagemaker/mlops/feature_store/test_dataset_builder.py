@@ -7,6 +7,8 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
 
+from sagemaker.core.shapes import DataCatalogConfig, OfflineStoreConfig, S3StorageConfig
+
 from sagemaker.mlops.feature_store import FeatureGroup
 from sagemaker.mlops.feature_store.dataset_builder import (
     DatasetBuilder,
@@ -102,8 +104,14 @@ class TestFeatureGroupToBeMerged:
 
 
 class TestConstructFeatureGroupToBeMerged:
+    @pytest.mark.parametrize(
+        "disable_glue_table_creation, expected_catalog",
+        [(False, "AwsDataCatalog"), (True, "MyCatalog")],
+    )
     @patch("sagemaker.mlops.feature_store.dataset_builder.FeatureGroup")
-    def test_constructs_from_feature_group(self, mock_fg_class):
+    def test_constructs_from_feature_group(
+        self, mock_fg_class, disable_glue_table_creation, expected_catalog
+    ):
         mock_fg = MagicMock()
         mock_fg.feature_group_name = "test-fg"
         mock_fg.record_identifier_feature_name = "id"
@@ -113,10 +121,13 @@ class TestConstructFeatureGroupToBeMerged:
             MagicMock(feature_name="value", feature_type="Fractional"),
             MagicMock(feature_name="event_time", feature_type="String"),
         ]
-        mock_fg.offline_store_config.data_catalog_config.catalog = "MyCatalog"
-        mock_fg.offline_store_config.data_catalog_config.database = "MyDatabase"
-        mock_fg.offline_store_config.data_catalog_config.table_name = "MyTable"
-        mock_fg.offline_store_config.data_catalog_config.disable_glue_table_creation = False
+        mock_fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/offline"),
+            disable_glue_table_creation=disable_glue_table_creation,
+            data_catalog_config=DataCatalogConfig(
+                catalog="MyCatalog", database="MyDatabase", table_name="MyTable"
+            ),
+        )
         mock_fg_class.get.return_value = mock_fg
 
         target_fg = MagicMock()
@@ -127,6 +138,7 @@ class TestConstructFeatureGroupToBeMerged:
             included_feature_names=["id", "value"],
         )
 
+        assert result.catalog == expected_catalog
         assert result.table_name == "MyTable"
         assert result.database == "MyDatabase"
         assert result.record_identifier_feature_name == "id"
