@@ -685,3 +685,27 @@ class TestTransformerTransformWithTags:
         call_kwargs = mock_transform_job_class.call_args[1]
         assert "tags" not in call_kwargs
         assert call_kwargs["transform_job_name"] == "test-job"
+
+
+@patch("sagemaker.core.transformer._flush_log_streams")
+@patch("sagemaker.core.transformer._logs_init")
+def test_logs_for_transform_job_describes_with_session_client(
+    mock_logs_init, mock_flush, mock_session
+):
+    """logs_for_transform_job describes the job through the session's region-aware client.
+
+    TransformJob.get() expects a boto3 Session (passing the SageMaker Session fails
+    validation), and _logs_init/_check_job_status read PascalCase describe keys.
+    """
+    from sagemaker.core.transformer import logs_for_transform_job
+
+    description = {"TransformJobName": "test-job", "TransformJobStatus": "Completed"}
+    mock_session.sagemaker_client.describe_transform_job.return_value = description
+    mock_logs_init.return_value = (1, [], {}, Mock(), "/aws/sagemaker/TransformJobs", False, Mock())
+
+    logs_for_transform_job(mock_session, "test-job", wait=True, poll=0)
+
+    mock_session.sagemaker_client.describe_transform_job.assert_called_with(
+        TransformJobName="test-job"
+    )
+    assert mock_logs_init.call_args[0][1] == description
