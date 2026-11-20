@@ -2202,6 +2202,12 @@ SHAPE_DAG = {
             {"name": "PatchingStrategy", "shape": "ClusterPatchingStrategy", "type": "string"},
             {"name": "PatchSchedule", "shape": "ClusterPatchSchedule", "type": "structure"},
             {"name": "DeploymentConfig", "shape": "DeploymentConfiguration", "type": "structure"},
+            {
+                "name": "IdleWaitWindowInSeconds",
+                "shape": "IdleWaitWindowInSecondsValue",
+                "type": "integer",
+            },
+            {"name": "DrainPolicy", "shape": "ClusterDrainPolicy", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -2219,6 +2225,12 @@ SHAPE_DAG = {
                 "type": "structure",
             },
             {"name": "DeploymentConfig", "shape": "DeploymentConfiguration", "type": "structure"},
+            {
+                "name": "IdleWaitWindowInSeconds",
+                "shape": "IdleWaitWindowInSecondsValue",
+                "type": "integer",
+            },
+            {"name": "DrainPolicy", "shape": "ClusterDrainPolicy", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -2250,6 +2262,17 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ClusterDrainPolicy": {
+        "members": [
+            {
+                "name": "DrainTimeoutInSeconds",
+                "shape": "DrainTimeoutInSecondsValue",
+                "type": "integer",
+            },
+            {"name": "OnDrainTimeout", "shape": "ClusterOnDrainTimeout", "type": "string"},
+        ],
+        "type": "structure",
+    },
     "ClusterEbsVolumeConfig": {
         "members": [
             {"name": "VolumeSizeInGB", "shape": "ClusterEbsVolumeSizeInGB", "type": "integer"},
@@ -2270,6 +2293,7 @@ SHAPE_DAG = {
             {"name": "EventDetails", "shape": "EventDetails", "type": "structure"},
             {"name": "Description", "shape": "String", "type": "string"},
             {"name": "EventLevel", "shape": "ClusterEventLevel", "type": "string"},
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
         ],
         "type": "structure",
     },
@@ -2289,6 +2313,7 @@ SHAPE_DAG = {
             {"name": "EventTime", "shape": "Timestamp", "type": "timestamp"},
             {"name": "Description", "shape": "String", "type": "string"},
             {"name": "EventLevel", "shape": "ClusterEventLevel", "type": "string"},
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
         ],
         "type": "structure",
     },
@@ -2657,6 +2682,51 @@ SHAPE_DAG = {
         "type": "structure",
     },
     "ClusterOnDemandOptions": {"members": [], "type": "structure"},
+    "ClusterOperationScalingConfiguration": {
+        "members": [
+            {"name": "CurrentCount", "shape": "ClusterOperationCount", "type": "integer"},
+            {"name": "TargetCount", "shape": "ClusterOperationCount", "type": "integer"},
+            {"name": "MinCount", "shape": "ClusterOperationCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ClusterOperationScalingDetails": {
+        "members": [
+            {"name": "InstanceGroupName", "shape": "String", "type": "string"},
+            {"name": "Status", "shape": "ClusterOperationStatus", "type": "string"},
+            {
+                "name": "Original",
+                "shape": "ClusterOperationScalingConfiguration",
+                "type": "structure",
+            },
+            {
+                "name": "Desired",
+                "shape": "ClusterOperationScalingConfiguration",
+                "type": "structure",
+            },
+        ],
+        "type": "structure",
+    },
+    "ClusterOperationScalingDetailsList": {
+        "member_shape": "ClusterOperationScalingDetails",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ClusterOperationSummaries": {
+        "member_shape": "ClusterOperationSummary",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ClusterOperationSummary": {
+        "members": [
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "Type", "shape": "ClusterOperationType", "type": "string"},
+            {"name": "Status", "shape": "ClusterOperationStatus", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+        ],
+        "type": "structure",
+    },
     "ClusterOrchestrator": {
         "members": [
             {"name": "Eks", "shape": "ClusterOrchestratorEksConfig", "type": "structure"},
@@ -3707,6 +3777,11 @@ SHAPE_DAG = {
             {"name": "VpcConfig", "shape": "VpcConfig", "type": "structure"},
             {"name": "EnableNetworkIsolation", "shape": "Boolean", "type": "boolean"},
             {"name": "MetricsConfig", "shape": "MetricsConfig", "type": "structure"},
+            {
+                "name": "CrossRegionTrafficConfig",
+                "shape": "CrossRegionTrafficConfig",
+                "type": "structure",
+            },
         ],
         "type": "structure",
     },
@@ -4001,6 +4076,21 @@ SHAPE_DAG = {
     },
     "CreateInferenceRecommendationsJobResponse": {
         "members": [{"name": "JobArn", "shape": "RecommendationJobArn", "type": "string"}],
+        "type": "structure",
+    },
+    "CreateInferenceRouterInput": {
+        "members": [
+            {"name": "InferenceRouterName", "shape": "InferenceRouterName", "type": "string"},
+            {"name": "RoutingTargets", "shape": "RoutingTargetList", "type": "list"},
+            {"name": "ClientToken", "shape": "InferenceRouterClientToken", "type": "string"},
+            {"name": "Tags", "shape": "TagList", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "CreateInferenceRouterOutput": {
+        "members": [
+            {"name": "InferenceRouterArn", "shape": "InferenceRouterArn", "type": "string"}
+        ],
         "type": "structure",
     },
     "CreateJobRequest": {
@@ -4918,6 +5008,21 @@ SHAPE_DAG = {
         "members": [{"name": "WorkteamArn", "shape": "WorkteamArn", "type": "string"}],
         "type": "structure",
     },
+    "CrossRegionTrafficConfig": {
+        "members": [
+            {
+                "name": "MaxInvocationsPerSecondPerInstance",
+                "shape": "CrossRegionMaxInvocationsPerSecondPerInstance",
+                "type": "integer",
+            },
+            {
+                "name": "MaxCrossRegionPercentPerEndpoint",
+                "shape": "CrossRegionPercentPerEndpoint",
+                "type": "integer",
+            },
+        ],
+        "type": "structure",
+    },
     "CsvContentTypes": {"member_shape": "CsvContentType", "member_type": "string", "type": "list"},
     "CustomFileSystem": {
         "members": [
@@ -5401,6 +5506,11 @@ SHAPE_DAG = {
         "members": [{"name": "EndpointName", "shape": "EndpointName", "type": "string"}],
         "type": "structure",
     },
+    "DeleteEndpointPolicyRequest": {
+        "members": [{"name": "EndpointName", "shape": "EndpointName", "type": "string"}],
+        "type": "structure",
+    },
+    "DeleteEndpointPolicyResponse": {"members": [], "type": "structure"},
     "DeleteExperimentRequest": {
         "members": [{"name": "ExperimentName", "shape": "ExperimentEntityName", "type": "string"}],
         "type": "structure",
@@ -5483,6 +5593,12 @@ SHAPE_DAG = {
     "DeleteInferenceExperimentResponse": {
         "members": [
             {"name": "InferenceExperimentArn", "shape": "InferenceExperimentArn", "type": "string"}
+        ],
+        "type": "structure",
+    },
+    "DeleteInferenceRouterInput": {
+        "members": [
+            {"name": "InferenceRouterName", "shape": "InferenceRouterName", "type": "string"}
         ],
         "type": "structure",
     },
@@ -6144,6 +6260,7 @@ SHAPE_DAG = {
         "members": [
             {"name": "ExtensionDetails", "shape": "ExtensionDetails", "type": "structure"},
             {"name": "NodeSummary", "shape": "ExtensionNodeSummary", "type": "structure"},
+            {"name": "Health", "shape": "ExtensionHealth", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -6157,6 +6274,33 @@ SHAPE_DAG = {
     },
     "DescribeClusterNodeResponse": {
         "members": [{"name": "NodeDetails", "shape": "ClusterNodeDetails", "type": "structure"}],
+        "type": "structure",
+    },
+    "DescribeClusterOperationRequest": {
+        "members": [
+            {"name": "ClusterName", "shape": "ClusterNameOrArn", "type": "string"},
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "DescribeClusterOperationResponse": {
+        "members": [
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
+            {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
+            {"name": "Type", "shape": "ClusterOperationType", "type": "string"},
+            {"name": "Status", "shape": "ClusterOperationStatus", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+            {
+                "name": "ScalingDetails",
+                "shape": "ClusterOperationScalingDetailsList",
+                "type": "list",
+            },
+            {
+                "name": "DeepHealthCheckDetails",
+                "shape": "DeepHealthCheckConfigurations",
+                "type": "list",
+            },
+        ],
         "type": "structure",
     },
     "DescribeClusterRequest": {
@@ -6530,6 +6674,11 @@ SHAPE_DAG = {
             {"name": "VpcConfig", "shape": "VpcConfig", "type": "structure"},
             {"name": "EnableNetworkIsolation", "shape": "Boolean", "type": "boolean"},
             {"name": "MetricsConfig", "shape": "MetricsConfig", "type": "structure"},
+            {
+                "name": "CrossRegionTrafficConfig",
+                "shape": "CrossRegionTrafficConfig",
+                "type": "structure",
+            },
         ],
         "type": "structure",
     },
@@ -6562,6 +6711,11 @@ SHAPE_DAG = {
                 "type": "list",
             },
             {"name": "MetricsConfig", "shape": "MetricsConfig", "type": "structure"},
+            {
+                "name": "CrossRegionTrafficConfig",
+                "shape": "CrossRegionTrafficConfig",
+                "type": "structure",
+            },
         ],
         "type": "structure",
     },
@@ -6982,6 +7136,24 @@ SHAPE_DAG = {
                 "type": "list",
             },
             {"name": "EndpointPerformances", "shape": "EndpointPerformances", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "DescribeInferenceRouterInput": {
+        "members": [
+            {"name": "InferenceRouterName", "shape": "InferenceRouterName", "type": "string"}
+        ],
+        "type": "structure",
+    },
+    "DescribeInferenceRouterOutput": {
+        "members": [
+            {"name": "InferenceRouterName", "shape": "InferenceRouterName", "type": "string"},
+            {"name": "InferenceRouterArn", "shape": "InferenceRouterArn", "type": "string"},
+            {"name": "RoutingTargets", "shape": "RoutingTargetList", "type": "list"},
+            {"name": "Status", "shape": "InferenceRouterStatus", "type": "string"},
+            {"name": "StatusReason", "shape": "InferenceRouterStatusReason", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "LastModifiedTime", "shape": "Timestamp", "type": "timestamp"},
         ],
         "type": "structure",
     },
@@ -8207,6 +8379,14 @@ SHAPE_DAG = {
         "member_type": "structure",
         "type": "list",
     },
+    "Destination": {
+        "members": [
+            {"name": "ResourceArn", "shape": "DestinationResourceArn", "type": "string"},
+            {"name": "RoutingStatus", "shape": "RoutingStatus", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "DestinationList": {"member_shape": "Destination", "member_type": "structure", "type": "list"},
     "DetachClusterNodeVolumeRequest": {
         "members": [
             {"name": "ClusterArn", "shape": "ClusterArn", "type": "string"},
@@ -8985,6 +9165,23 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ExtensionHealth": {
+        "members": [{"name": "Issues", "shape": "ExtensionHealthIssues", "type": "list"}],
+        "type": "structure",
+    },
+    "ExtensionHealthIssue": {
+        "members": [
+            {"name": "Code", "shape": "ExtensionHealthIssueCode", "type": "string"},
+            {"name": "Message", "shape": "ExtensionHealthIssueMessage", "type": "string"},
+            {"name": "NodeCount", "shape": "ExtensionNodeCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ExtensionHealthIssues": {
+        "member_shape": "ExtensionHealthIssue",
+        "member_type": "structure",
+        "type": "list",
+    },
     "ExtensionNodeSummary": {
         "members": [
             {"name": "TotalCount", "shape": "ExtensionNodeCount", "type": "integer"},
@@ -9005,6 +9202,15 @@ SHAPE_DAG = {
             {"name": "Status", "shape": "ExtensionStatus", "type": "string"},
             {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
         ],
+        "type": "structure",
+    },
+    "ExtensionVersionSummaries": {
+        "member_shape": "ExtensionVersionSummary",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ExtensionVersionSummary": {
+        "members": [{"name": "ExtensionVersion", "shape": "ExtensionVersion", "type": "string"}],
         "type": "structure",
     },
     "FSxLustreConfig": {
@@ -9271,6 +9477,18 @@ SHAPE_DAG = {
             {"name": "DeviceStats", "shape": "DeviceStats", "type": "structure"},
             {"name": "AgentVersions", "shape": "AgentVersions", "type": "list"},
             {"name": "ModelStats", "shape": "EdgeModelStats", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "GetEndpointPolicyRequest": {
+        "members": [{"name": "EndpointName", "shape": "EndpointName", "type": "string"}],
+        "type": "structure",
+    },
+    "GetEndpointPolicyResponse": {
+        "members": [
+            {"name": "EndpointName", "shape": "EndpointName", "type": "string"},
+            {"name": "EndpointArn", "shape": "EndpointArn", "type": "string"},
+            {"name": "ResourcePolicy", "shape": "EndpointPolicyDocument", "type": "string"},
         ],
         "type": "structure",
     },
@@ -10542,6 +10760,20 @@ SHAPE_DAG = {
         "member_type": "structure",
         "type": "list",
     },
+    "InferenceRouterSummary": {
+        "members": [
+            {"name": "InferenceRouterName", "shape": "InferenceRouterName", "type": "string"},
+            {"name": "InferenceRouterArn", "shape": "InferenceRouterArn", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "LastModifiedTime", "shape": "Timestamp", "type": "timestamp"},
+        ],
+        "type": "structure",
+    },
+    "InferenceRouterSummaryList": {
+        "member_shape": "InferenceRouterSummary",
+        "member_type": "structure",
+        "type": "list",
+    },
     "InferenceSpecification": {
         "members": [
             {"name": "Containers", "shape": "ModelPackageContainerDefinitionList", "type": "list"},
@@ -11427,6 +11659,7 @@ SHAPE_DAG = {
             {"name": "SortBy", "shape": "EventSortBy", "type": "string"},
             {"name": "SortOrder", "shape": "SortOrder", "type": "string"},
             {"name": "ResourceType", "shape": "ClusterEventResourceType", "type": "string"},
+            {"name": "OperationId", "shape": "ClusterOperationId", "type": "string"},
             {"name": "MaxResults", "shape": "ClusterEventMaxResults", "type": "integer"},
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
         ],
@@ -11436,6 +11669,21 @@ SHAPE_DAG = {
         "members": [
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
             {"name": "Events", "shape": "ClusterEventSummaries", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterExtensionVersionsRequest": {
+        "members": [
+            {"name": "ExtensionName", "shape": "ExtensionName", "type": "string"},
+            {"name": "MaxResults", "shape": "MaxResults", "type": "integer"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterExtensionVersionsResponse": {
+        "members": [
+            {"name": "ExtensionVersions", "shape": "ExtensionVersionSummaries", "type": "list"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
         ],
         "type": "structure",
     },
@@ -11482,6 +11730,31 @@ SHAPE_DAG = {
         "members": [
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
             {"name": "ClusterNodeSummaries", "shape": "ClusterNodeSummaries", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterOperationsRequest": {
+        "members": [
+            {"name": "ClusterName", "shape": "ClusterNameOrArn", "type": "string"},
+            {"name": "Status", "shape": "ClusterOperationStatus", "type": "string"},
+            {"name": "Type", "shape": "ClusterOperationType", "type": "string"},
+            {"name": "CreationTimeAfter", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "CreationTimeBefore", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "SortBy", "shape": "ClusterOperationSortBy", "type": "string"},
+            {"name": "SortOrder", "shape": "SortOrder", "type": "string"},
+            {"name": "MaxResults", "shape": "ClusterOperationMaxResults", "type": "integer"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "ListClusterOperationsResponse": {
+        "members": [
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+            {
+                "name": "ClusterOperationSummaries",
+                "shape": "ClusterOperationSummaries",
+                "type": "list",
+            },
         ],
         "type": "structure",
     },
@@ -12091,6 +12364,20 @@ SHAPE_DAG = {
                 "shape": "InferenceRecommendationsJobs",
                 "type": "list",
             },
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "ListInferenceRoutersInput": {
+        "members": [
+            {"name": "MaxResults", "shape": "MaxResults", "type": "integer"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "ListInferenceRoutersOutput": {
+        "members": [
+            {"name": "InferenceRouters", "shape": "InferenceRouterSummaryList", "type": "list"},
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
         ],
         "type": "structure",
@@ -16028,6 +16315,17 @@ SHAPE_DAG = {
         "members": [{"name": "AmountInUsd", "shape": "USD", "type": "structure"}],
         "type": "structure",
     },
+    "PutEndpointPolicyRequest": {
+        "members": [
+            {"name": "EndpointName", "shape": "EndpointName", "type": "string"},
+            {"name": "ResourcePolicy", "shape": "EndpointPolicyDocument", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "PutEndpointPolicyResponse": {
+        "members": [{"name": "EndpointArn", "shape": "EndpointArn", "type": "string"}],
+        "type": "structure",
+    },
     "PutModelPackageGroupPolicyInput": {
         "members": [
             {"name": "ModelPackageGroupName", "shape": "EntityName", "type": "string"},
@@ -16506,6 +16804,10 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ResourceAlreadyExists": {
+        "members": [{"name": "Message", "shape": "FailureReason", "type": "string"}],
+        "type": "structure",
+    },
     "ResourceCatalog": {
         "members": [
             {"name": "ResourceCatalogArn", "shape": "ResourceCatalogArn", "type": "string"},
@@ -16693,6 +16995,73 @@ SHAPE_DAG = {
             {"name": "RollbackMaximumBatchSize", "shape": "CapacitySize", "type": "structure"},
         ],
         "type": "structure",
+    },
+    "RoutingTarget": {
+        "members": [
+            {"name": "Name", "shape": "RoutingTargetName", "type": "string"},
+            {"name": "Destinations", "shape": "DestinationList", "type": "list"},
+            {
+                "name": "AsyncInferenceConfig",
+                "shape": "RoutingTargetAsyncInferenceConfig",
+                "type": "structure",
+            },
+            {
+                "name": "RoutingPreference",
+                "shape": "InferenceRouterRoutingPreference",
+                "type": "string",
+            },
+        ],
+        "type": "structure",
+    },
+    "RoutingTargetAsyncInferenceClientConfig": {
+        "members": [
+            {
+                "name": "MaxTimeInBacklogSeconds",
+                "shape": "InferenceRouterMaxTimeInBacklogSeconds",
+                "type": "integer",
+            }
+        ],
+        "type": "structure",
+    },
+    "RoutingTargetAsyncInferenceConfig": {
+        "members": [
+            {
+                "name": "OutputConfig",
+                "shape": "RoutingTargetAsyncInferenceOutputConfig",
+                "type": "structure",
+            },
+            {
+                "name": "ClientConfig",
+                "shape": "RoutingTargetAsyncInferenceClientConfig",
+                "type": "structure",
+            },
+        ],
+        "type": "structure",
+    },
+    "RoutingTargetAsyncInferenceNotificationConfig": {
+        "members": [
+            {"name": "SuccessTopic", "shape": "InferenceRouterSnsTopicArn", "type": "string"},
+            {"name": "ErrorTopic", "shape": "InferenceRouterSnsTopicArn", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "RoutingTargetAsyncInferenceOutputConfig": {
+        "members": [
+            {"name": "S3OutputPath", "shape": "InferenceRouterS3Uri", "type": "string"},
+            {"name": "S3FailurePath", "shape": "InferenceRouterS3Uri", "type": "string"},
+            {"name": "KmsKeyId", "shape": "KmsKeyId", "type": "string"},
+            {
+                "name": "NotificationConfig",
+                "shape": "RoutingTargetAsyncInferenceNotificationConfig",
+                "type": "structure",
+            },
+        ],
+        "type": "structure",
+    },
+    "RoutingTargetList": {
+        "member_shape": "RoutingTarget",
+        "member_type": "structure",
+        "type": "list",
     },
     "RuleParameters": {
         "key_shape": "ConfigKey",
@@ -19118,6 +19487,19 @@ SHAPE_DAG = {
     "UpdateInferenceExperimentResponse": {
         "members": [
             {"name": "InferenceExperimentArn", "shape": "InferenceExperimentArn", "type": "string"}
+        ],
+        "type": "structure",
+    },
+    "UpdateInferenceRouterInput": {
+        "members": [
+            {"name": "InferenceRouterName", "shape": "InferenceRouterName", "type": "string"},
+            {"name": "RoutingTargets", "shape": "RoutingTargetList", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "UpdateInferenceRouterOutput": {
+        "members": [
+            {"name": "InferenceRouterArn", "shape": "InferenceRouterArn", "type": "string"}
         ],
         "type": "structure",
     },

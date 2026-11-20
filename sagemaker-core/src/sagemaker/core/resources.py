@@ -5255,11 +5255,13 @@ class ClusterExtension(Base):
     Attributes:
         extension_details: The details of the extension.
         node_summary: A summary of how many nodes in your cluster the extension targets, and how many of them run the extension's current version and configuration.
+        health: The problems that affect the extension on the cluster's nodes, grouped by cause, with the number of nodes that each problem affects. Use it to find out why ActiveCount is lower than TotalCount, or why the status is Degraded, CreateFailed, or UpdateFailed. SageMaker HyperPod omits Health when no node has a problem. Nodes where SageMaker HyperPod hasn't finished installing or updating the extension aren't counted in any issue, unless an earlier attempt failed on them.
 
     """
 
     extension_details: Optional[ExtensionDetails] = Unassigned()
     node_summary: Optional[ExtensionNodeSummary] = Unassigned()
+    health: Optional[ExtensionHealth] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -10494,6 +10496,7 @@ class Endpoint(Base):
         explainer_config: The configuration parameters for an explainer.
         shadow_production_variants: An array of ProductionVariantSummary objects, one for each model that you want to host at this endpoint in shadow mode with production traffic replicated from the model specified on ProductionVariants.
         metrics_config: The configuration parameters for utilization metrics.
+        cross_region_traffic_config: The cross-Region traffic cap, if the endpoint configuration sets one.
 
     """
 
@@ -10512,6 +10515,7 @@ class Endpoint(Base):
     explainer_config: Optional[ExplainerConfig] = Unassigned()
     shadow_production_variants: Optional[List[ProductionVariantSummary]] = Unassigned()
     metrics_config: Optional[MetricsConfig] = Unassigned()
+    cross_region_traffic_config: Optional[CrossRegionTrafficConfig] = Unassigned()
     serializer: Optional[BaseSerializer] = None
     deserializer: Optional[BaseDeserializer] = None
 
@@ -11327,6 +11331,7 @@ class EndpointConfig(Base):
         vpc_config:
         enable_network_isolation: Indicates whether all model containers deployed to the endpoint are isolated. If they are, no inbound or outbound network calls can be made to or from the model containers.
         metrics_config: The configuration parameters for utilization metrics.
+        cross_region_traffic_config: The cross-Region traffic cap, if the endpoint configuration sets one.
 
     """
 
@@ -11343,6 +11348,7 @@ class EndpointConfig(Base):
     vpc_config: Optional[VpcConfig] = Unassigned()
     enable_network_isolation: Optional[bool] = Unassigned()
     metrics_config: Optional[MetricsConfig] = Unassigned()
+    cross_region_traffic_config: Optional[CrossRegionTrafficConfig] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -11408,6 +11414,7 @@ class EndpointConfig(Base):
         vpc_config: Optional[VpcConfig] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
         metrics_config: Optional[MetricsConfig] = Unassigned(),
+        cross_region_traffic_config: Optional[CrossRegionTrafficConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EndpointConfig"]:
@@ -11427,6 +11434,7 @@ class EndpointConfig(Base):
             vpc_config:
             enable_network_isolation: Sets whether all model containers deployed to the endpoint are isolated. If they are, no inbound or outbound network calls can be made to or from the model containers.
             metrics_config: The configuration parameters for utilization metrics.
+            cross_region_traffic_config: The cross-Region traffic cap for the endpoint. The cap limits the requests per second that the endpoint accepts from inference routers in other Amazon Web Services Regions. If you don't specify it, these requests aren't limited. You can't specify it with serverless variants or with AsyncInferenceConfig. For information about the cross-Region traffic cap, see Limit requests from other Regions.
             session: Boto3 session.
             region: Region name.
 
@@ -11467,6 +11475,7 @@ class EndpointConfig(Base):
             "VpcConfig": vpc_config,
             "EnableNetworkIsolation": enable_network_isolation,
             "MetricsConfig": metrics_config,
+            "CrossRegionTrafficConfig": cross_region_traffic_config,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -18600,6 +18609,437 @@ class InferenceRecommendationsJob(Base):
             summary_name="InferenceRecommendationsJobStep",
             resource_cls=InferenceRecommendationsJobStep,
             list_method_kwargs=operation_input_args,
+        )
+
+
+class InferenceRouter(Base):
+    """
+    Class representing resource InferenceRouter
+
+    Attributes:
+        inference_router_name: The name of the inference router.
+        inference_router_arn: The Amazon Resource Name (ARN) of the inference router.
+        routing_targets: The routing targets of the inference router. Each destination includes its RoutingStatus. You can send these routing targets back in an UpdateInferenceRouter request without changes.
+        status: The status of the inference router.
+        creation_time: The date and time that the inference router was created.
+        last_modified_time: The date and time that the inference router was last updated.
+        status_reason: If the status is Failed, the reason that the inference router failed.
+
+    """
+
+    inference_router_name: StrPipeVar
+    inference_router_arn: Optional[StrPipeVar] = Unassigned()
+    routing_targets: Optional[List[RoutingTarget]] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    status_reason: Optional[StrPipeVar] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
+    last_modified_time: Optional[datetime.datetime] = Unassigned()
+
+    def get_name(self) -> str:
+        attributes = vars(self)
+        resource_name = "inference_router_name"
+        resource_name_split = resource_name.split("_")
+        attribute_name_candidates = []
+
+        l = len(resource_name_split)
+        for i in range(0, l):
+            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
+
+        for attribute, value in attributes.items():
+            if attribute == "name" or attribute in attribute_name_candidates:
+                return value
+        logger.error("Name attribute not found for object inference_router")
+        return None
+
+    @classmethod
+    @Base.add_validate_call
+    def create(
+        cls,
+        inference_router_name: StrPipeVar,
+        routing_targets: List[RoutingTarget],
+        client_token: Optional[StrPipeVar] = Unassigned(),
+        tags: Optional[List[shapes.Tag]] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["InferenceRouter"]:
+        """
+        Create a InferenceRouter resource
+
+        Parameters:
+            inference_router_name: The name of the inference router. The name must be unique within your account in the current Amazon Web Services Region. The name is case sensitive.
+            routing_targets: The routing targets of the inference router. Each routing target is a model that callers name when they invoke the router, and the destinations that serve it.
+            client_token: A unique, case-sensitive identifier that you provide to ensure the idempotency of the request. If you reuse a client token, use the same request parameters. Otherwise, the request fails.
+            tags: A list of key-value pairs to apply to the inference router. For information about tagging, see Tagging Amazon Web Services resources in the Amazon Web Services General Reference.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The InferenceRouter resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceAlreadyExists: The resource that you are trying to create already exists. Use a different resource name, or delete the existing resource before retrying.
+            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
+            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
+            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
+            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
+        """
+
+        logger.info("Creating inference_router resource.")
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "InferenceRouterName": inference_router_name,
+            "RoutingTargets": routing_targets,
+            "ClientToken": client_token,
+            "Tags": tags,
+        }
+
+        operation_input_args = Base.populate_chained_attributes(
+            resource_name="InferenceRouter", operation_input_args=operation_input_args
+        )
+
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.create_inference_router(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        return cls.get(inference_router_name=inference_router_name, session=session, region=region)
+
+    @classmethod
+    @Base.add_validate_call
+    def get(
+        cls,
+        inference_router_name: StrPipeVar,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["InferenceRouter"]:
+        """
+        Get a InferenceRouter resource
+
+        Parameters:
+            inference_router_name: The name of the inference router to describe.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The InferenceRouter resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "InferenceRouterName": inference_router_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+        response = client.describe_inference_router(**operation_input_args)
+
+        logger.debug(response)
+
+        # deserialize the response
+        transformed_response = transform(response, "DescribeInferenceRouterOutput")
+        inference_router = cls(**transformed_response)
+        inference_router._set_client_context(session=session, region=region)
+        return inference_router
+
+    @Base.add_validate_call
+    def refresh(
+        self,
+    ) -> Optional["InferenceRouter"]:
+        """
+        Refresh a InferenceRouter resource
+
+        Returns:
+            The InferenceRouter resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "InferenceRouterName": self.inference_router_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = self._get_client()
+        response = client.describe_inference_router(**operation_input_args)
+
+        # deserialize response and update self
+        transform(response, "DescribeInferenceRouterOutput", self)
+        return self
+
+    @Base.add_validate_call
+    def update(
+        self,
+        routing_targets: List[RoutingTarget],
+    ) -> Optional["InferenceRouter"]:
+        """
+        Update a InferenceRouter resource
+
+        Returns:
+            The InferenceRouter resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        logger.info("Updating inference_router resource.")
+        client = self._get_client()
+
+        operation_input_args = {
+            "InferenceRouterName": self.inference_router_name,
+            "RoutingTargets": routing_targets,
+        }
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.update_inference_router(**operation_input_args)
+        logger.debug(f"Response: {response}")
+        self.refresh()
+
+        return self
+
+    @Base.add_validate_call
+    def delete(
+        self,
+    ) -> None:
+        """
+        Delete a InferenceRouter resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = self._get_client()
+
+        operation_input_args = {
+            "InferenceRouterName": self.inference_router_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.delete_inference_router(**operation_input_args)
+
+        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def wait_for_status(
+        self,
+        target_status: Literal["InService", "Creating", "Updating", "Failed", "Deleting"],
+        poll: int = 5,
+        timeout: Optional[int] = None,
+    ) -> None:
+        """
+        Wait for a InferenceRouter resource to reach certain status.
+
+        Parameters:
+            target_status: The status to wait for.
+            poll: The number of seconds to wait between each poll.
+            timeout: The maximum number of seconds to wait before timing out.
+
+        Raises:
+            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
+            FailedStatusError:   If the resource reaches a failed state.
+            WaiterError: Raised when an error occurs while waiting.
+        """
+        start_time = time.time()
+
+        progress = Progress(
+            SpinnerColumn("bouncingBar"),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+        )
+        progress.add_task(f"Waiting for InferenceRouter to reach [bold]{target_status} status...")
+        status = Status("Current status:")
+
+        with Live(
+            Panel(
+                Group(progress, status),
+                title="Wait Log Panel",
+                border_style=Style(color=Color.BLUE.value),
+            ),
+            transient=True,
+        ):
+            while True:
+                self.refresh()
+                current_status = self.status
+                status.update(f"Current status: [bold]{current_status}")
+
+                if target_status == current_status:
+                    logger.info(f"Final Resource Status: [bold]{current_status}")
+                    return
+
+                if "failed" in current_status.lower():
+                    raise FailedStatusError(
+                        resource_type="InferenceRouter", status=current_status, reason="(Unknown)"
+                    )
+
+                if timeout is not None and time.time() - start_time >= timeout:
+                    raise TimeoutExceededError(
+                        resource_type="InferenceRouter", status=current_status
+                    )
+                time.sleep(poll)
+
+    @Base.add_validate_call
+    def wait_for_delete(
+        self,
+        poll: int = 5,
+        timeout: Optional[int] = None,
+    ) -> None:
+        """
+        Wait for a InferenceRouter resource to be deleted.
+
+        Parameters:
+            poll: The number of seconds to wait between each poll.
+            timeout: The maximum number of seconds to wait before timing out.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
+            DeleteFailedStatusError:   If the resource reaches a failed state.
+            WaiterError: Raised when an error occurs while waiting.
+        """
+        start_time = time.time()
+
+        progress = Progress(
+            SpinnerColumn("bouncingBar"),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+        )
+        progress.add_task("Waiting for InferenceRouter to be deleted...")
+        status = Status("Current status:")
+
+        with Live(
+            Panel(
+                Group(progress, status),
+                title="Wait Log Panel",
+                border_style=Style(color=Color.BLUE.value),
+            )
+        ):
+            while True:
+                try:
+                    self.refresh()
+                    current_status = self.status
+                    status.update(f"Current status: [bold]{current_status}")
+
+                    if timeout is not None and time.time() - start_time >= timeout:
+                        raise TimeoutExceededError(
+                            resource_type="InferenceRouter", status=current_status
+                        )
+                except botocore.exceptions.ClientError as e:
+                    error_code = e.response["Error"]["Code"]
+
+                    if "ResourceNotFound" in error_code or "ValidationException" in error_code:
+                        logger.info("Resource was not found. It may have been deleted.")
+                        return
+                    raise e
+                time.sleep(poll)
+
+    @classmethod
+    @Base.add_validate_call
+    def get_all(
+        cls,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> ResourceIterator["InferenceRouter"]:
+        """
+        Get all InferenceRouter resources.
+
+        Parameters:
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            Iterator for listed InferenceRouter resources.
+
+        """
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        return ResourceIterator(
+            client=client,
+            session=session,
+            region=region,
+            list_method="list_inference_routers",
+            summaries_key="InferenceRouters",
+            summary_name="InferenceRouterSummary",
+            resource_cls=InferenceRouter,
         )
 
 
