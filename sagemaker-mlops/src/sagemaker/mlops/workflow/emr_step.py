@@ -61,6 +61,8 @@ class EMRStepConfig:
 
         self.output_args_index = {}
         if output_args:
+            # Copy so the caller's list is not mutated (and may be omitted).
+            self.args = list(args) if args is not None else []
             for output_arg_name, output_arg_value in output_args.items():
                 self.args.extend([f"--{output_arg_name}", output_arg_value])
                 self.output_args_index[output_arg_name] = len(self.args) - 1
