@@ -4473,6 +4473,21 @@ class DeploymentConfiguration(Base):
     auto_rollback_configuration: Optional[List[AlarmDetails]] = Unassigned()
 
 
+class ClusterDrainPolicy(Base):
+    """
+    ClusterDrainPolicy
+      Specifies how pods are evicted from an instance before it is patched with the DrainFirst strategy. By default, evictions respect Kubernetes Pod Disruption Budgets.
+
+    Attributes
+    ----------------------
+    drain_timeout_in_seconds: The maximum time, in seconds, to wait for the pods on an instance to drain. Valid values are from 0 to 5400 (90 minutes). The default is 3600 (1 hour).
+    on_drain_timeout: The action to take if the pods on an instance don't drain within DrainTimeoutInSeconds. The default is Skip.    Skip: Doesn't patch the instance. The instance is uncordoned and remains on the previous AMI version. This can leave the instance group partially patched. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    Force: Deletes the remaining pods without respecting Pod Disruption Budgets, and then patches the instance.
+    """
+
+    drain_timeout_in_seconds: Optional[int] = Unassigned()
+    on_drain_timeout: Optional[StrPipeVar] = Unassigned()
+
+
 class ClusterAutoPatchConfig(Base):
     """
     ClusterAutoPatchConfig
@@ -4480,14 +4495,18 @@ class ClusterAutoPatchConfig(Base):
 
     Attributes
     ----------------------
-    patching_strategy: The strategy for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.
+    patching_strategy: The strategy for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.    DrainFirst: Designed for workloads that never become idle, such as inference. Cordons instances, evicts the running pods, and then patches each instance in batches. Each instance is uncordoned after patching. Use DrainPolicy to control how long to wait for pods to drain and what happens if the drain times out. Requires MaximumBatchSize in DeploymentConfig. Available only for clusters that use Amazon EKS as the orchestrator.
     patch_schedule: The schedule for automatic patching, including the next patch date.
     deployment_config: The deployment configuration for rolling patch updates, including rollback settings and batch sizes. Only applicable when using a rolling patching strategy.
+    idle_wait_window_in_seconds: The maximum time, in seconds, that automatic patching waits for instances to become idle after a scheduled patch starts. Automatic patching uncordons instances that don't become idle within this window, and they remain on the previous AMI version. Valid values are from 3600 (1 hour) to 2160000 (25 days). The default is 86400 (24 hours). This setting applies only to the WhenIdle and WhenAllIdle strategies.
+    drain_policy: The policy that controls how pods are evicted from an instance before it is patched. Valid only when PatchingStrategy is DrainFirst.
     """
 
     patching_strategy: StrPipeVar
     patch_schedule: Optional[ClusterPatchSchedule] = Unassigned()
     deployment_config: Optional[DeploymentConfiguration] = Unassigned()
+    idle_wait_window_in_seconds: Optional[int] = Unassigned()
+    drain_policy: Optional[ClusterDrainPolicy] = Unassigned()
 
 
 class ClusterPatchScheduleDetails(Base):
@@ -4510,16 +4529,20 @@ class ClusterAutoPatchConfigDetails(Base):
 
     Attributes
     ----------------------
-    patching_strategy: The strategy used for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.
+    patching_strategy: The strategy used for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.    DrainFirst: Designed for workloads that never become idle, such as inference. Cordons instances, evicts the running pods, and then patches each instance in batches. Each instance is uncordoned after patching. Use DrainPolicy to control how long to wait for pods to drain and what happens if the drain times out. Requires MaximumBatchSize in DeploymentConfig. Available only for clusters that use Amazon EKS as the orchestrator.
     current_patch_schedule: The currently active patch schedule that the system will execute.
     desired_patch_schedule: The requested patch schedule. Differs from CurrentPatchSchedule when a reschedule request is pending.
     deployment_config: The deployment configuration for rolling patch updates.
+    idle_wait_window_in_seconds: The maximum time, in seconds, that automatic patching waits for instances to become idle after a scheduled patch starts. Automatic patching uncordons instances that don't become idle within this window, and they remain on the previous AMI version. The default is 86400 (24 hours).
+    drain_policy: The policy that controls how pods are evicted from an instance before it is patched. Applies only when PatchingStrategy is DrainFirst.
     """
 
     patching_strategy: Optional[StrPipeVar] = Unassigned()
     current_patch_schedule: Optional[ClusterPatchScheduleDetails] = Unassigned()
     desired_patch_schedule: Optional[ClusterPatchScheduleDetails] = Unassigned()
     deployment_config: Optional[DeploymentConfiguration] = Unassigned()
+    idle_wait_window_in_seconds: Optional[int] = Unassigned()
+    drain_policy: Optional[ClusterDrainPolicy] = Unassigned()
 
 
 class ClusterAutoScalingConfig(Base):
@@ -4796,6 +4819,7 @@ class ClusterEventDetail(Base):
     event_details: Additional details about the event, including event-specific metadata.
     description: A human-readable description of the event.
     event_level: The severity level of the event. Valid values are Info, Warn, and Error.
+    operation_id: The unique identifier (UUID) of the cluster operation that the event is associated with, such as a scaling operation. This field is not returned when the event is not associated with an operation.
     """
 
     event_id: StrPipeVar
@@ -4808,6 +4832,7 @@ class ClusterEventDetail(Base):
     event_details: Optional[EventDetails] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
     event_level: Optional[StrPipeVar] = Unassigned()
+    operation_id: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterEventSummary(Base):
@@ -4826,6 +4851,7 @@ class ClusterEventSummary(Base):
     event_time: The timestamp when the event occurred.
     description: A brief, human-readable description of the event.
     event_level: The severity level of the event. Valid values are Info, Warn, and Error.
+    operation_id: The unique identifier (UUID) of the cluster operation that the event is associated with, such as a scaling operation. This field is not returned when the event is not associated with an operation.
     """
 
     event_id: StrPipeVar
@@ -4837,6 +4863,7 @@ class ClusterEventSummary(Base):
     instance_id: Optional[StrPipeVar] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
     event_level: Optional[StrPipeVar] = Unassigned()
+    operation_id: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterFsxLustreConfig(Base):
@@ -5350,6 +5377,63 @@ class ClusterNodeSummary(Base):
     private_dns_hostname: Optional[StrPipeVar] = Unassigned()
     current_image_release_version: Optional[StrPipeVar] = Unassigned()
     image_version_status: Optional[StrPipeVar] = Unassigned()
+
+
+class ClusterOperationScalingConfiguration(Base):
+    """
+    ClusterOperationScalingConfiguration
+      A point-in-time snapshot of an instance group's scaling configuration. This structure represents both the original configuration before the operation and the desired configuration requested by the operation.
+
+    Attributes
+    ----------------------
+    current_count: The number of instances that were in the instance group at the time of the operation.
+    target_count: The target number of instances for the instance group.
+    min_count: The minimum number of instances that must be available in the instance group of a HyperPod cluster before it transitions to InService status.
+    """
+
+    current_count: Optional[int] = Unassigned()
+    target_count: Optional[int] = Unassigned()
+    min_count: Optional[int] = Unassigned()
+
+
+class ClusterOperationScalingDetails(Base):
+    """
+    ClusterOperationScalingDetails
+      The scaling details for a single instance group that is affected by a cluster operation.
+
+    Attributes
+    ----------------------
+    instance_group_name: The name of the instance group being scaled.
+    status: The status of the scaling operation for this instance group. Valid values are InProgress, Superseded, or Done.
+    original: The scaling configuration of the instance group before the scaling operation was applied, including its current, target, and minimum instance counts.
+    desired: The desired scaling configuration of the instance group for the scaling operation, including its target and minimum instance counts.
+    """
+
+    instance_group_name: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    original: Optional[ClusterOperationScalingConfiguration] = Unassigned()
+    desired: Optional[ClusterOperationScalingConfiguration] = Unassigned()
+
+
+class ClusterOperationSummary(Base):
+    """
+    ClusterOperationSummary
+      A summary of an operation performed on a HyperPod cluster.
+
+    Attributes
+    ----------------------
+    operation_id: The unique identifier (UUID) of the operation.
+    cluster_arn: The Amazon Resource Name (ARN) of the HyperPod cluster associated with the operation.
+    type: The type of the operation. Valid values are Scaling or DeepHealthCheck.
+    status: The current status of the operation. Valid values are InProgress, Superseded, or Done.
+    creation_time: The timestamp when the operation was created.
+    """
+
+    operation_id: Optional[StrPipeVar] = Unassigned()
+    cluster_arn: Optional[StrPipeVar] = Unassigned()
+    type: Optional[StrPipeVar] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
 
 
 class ClusterOrchestratorEksConfig(Base):
@@ -10781,11 +10865,58 @@ class ExtensionNodeSummary(Base):
     Attributes
     ----------------------
     total_count: The number of nodes in your cluster that the extension targets. SageMaker HyperPod targets every running node in your cluster, including nodes that you add after you create the extension.
-    active_count: The number of nodes that are running the extension's current version and configuration. While SageMaker HyperPod creates or updates the extension, ActiveCount is lower than TotalCount.
+    active_count: The number of nodes that are running the extension's current version and configuration. Nodes that report the extension as unhealthy aren't counted. While SageMaker HyperPod creates or updates the extension, ActiveCount is lower than TotalCount. To see why nodes aren't counted, see Health in DescribeClusterExtension.
     """
 
     total_count: int
     active_count: int
+
+
+class ExtensionHealthIssue(Base):
+    """
+    ExtensionHealthIssue
+      Information about a problem that affects an extension on one or more nodes of a SageMaker HyperPod cluster, including the number of nodes that it affects.
+
+    Attributes
+    ----------------------
+    code: A code that describes the type of issue.
+    message: A description of the problem, for example the setting or component to check. Every node with the same problem has the same message.
+    node_count: The number of nodes that have this problem.
+    """
+
+    code: StrPipeVar
+    message: StrPipeVar
+    node_count: int
+
+
+class ExtensionHealth(Base):
+    """
+    ExtensionHealth
+      Contains information about the problems that affect an extension on the nodes of a SageMaker HyperPod cluster, including how many nodes each problem affects. DescribeClusterExtension returns ExtensionHealth only when at least one node has a problem.
+
+    Attributes
+    ----------------------
+    issues: The problems that affect the extension, grouped by cause, from the problem that affects the most nodes to the one that affects the fewest. SageMaker HyperPod counts each node in at most one issue. The list contains at most 20 issues. If more than 20 different problems exist, the list shows the 19 that affect the most nodes, and the 20th issue has the code Other and counts the nodes that the remaining problems affect.
+    """
+
+    issues: List[ExtensionHealthIssue]
+
+
+class InstanceGroupHealthCheckConfiguration(Base):
+    """
+    InstanceGroupHealthCheckConfiguration
+      The configuration of deep health checks for an instance group.  Overlapping deep health check configurations will be merged into a single operation.
+
+    Attributes
+    ----------------------
+    instance_group_name: The name of the instance group.
+    instance_ids: A list of Amazon Elastic Compute Cloud (EC2) instance IDs on which to perform deep health checks.  Leave this field blank to perform deep health checks on the entire instance group.
+    deep_health_checks: A list of deep health checks to be performed.
+    """
+
+    instance_group_name: StrPipeVar
+    deep_health_checks: List[StrPipeVar]
+    instance_ids: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class ModelArtifacts(Base):
@@ -12932,6 +13063,19 @@ class ExtensionSummary(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
 
 
+class ExtensionVersionSummary(Base):
+    """
+    ExtensionVersionSummary
+      A version of an extension that you can install on a SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    extension_version: The version of the extension, in MAJOR.MINOR.PATCH format, for example 1.0.0.
+    """
+
+    extension_version: StrPipeVar
+
+
 class FailStepMetadata(Base):
     """
     FailStepMetadata
@@ -13669,23 +13813,6 @@ class InferenceRecommendationsJobStep(Base):
     job_name: Union[StrPipeVar, object]
     status: StrPipeVar
     inference_benchmark: Optional[RecommendationJobInferenceBenchmark] = Unassigned()
-
-
-class InstanceGroupHealthCheckConfiguration(Base):
-    """
-    InstanceGroupHealthCheckConfiguration
-      The configuration of deep health checks for an instance group.  Overlapping deep health check configurations will be merged into a single operation.
-
-    Attributes
-    ----------------------
-    instance_group_name: The name of the instance group.
-    instance_ids: A list of Amazon Elastic Compute Cloud (EC2) instance IDs on which to perform deep health checks.  Leave this field blank to perform deep health checks on the entire instance group.
-    deep_health_checks: A list of deep health checks to be performed.
-    """
-
-    instance_group_name: StrPipeVar
-    deep_health_checks: List[StrPipeVar]
-    instance_ids: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class IterationContext(Base):
