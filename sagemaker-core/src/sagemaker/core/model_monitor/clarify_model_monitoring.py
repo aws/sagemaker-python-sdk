@@ -157,10 +157,10 @@ class ClarifyModelMonitor(mm.ModelMonitor):
         return [
             ClarifyMonitoringExecution(
                 sagemaker_session=execution.sagemaker_session,
-                job_name=execution.job_name,
-                inputs=execution.inputs,
+                job_name=execution.processing_job_name,
+                inputs=execution.processing_inputs,
                 output=execution.output,
-                output_kms_key=execution.output_kms_key,
+                output_kms_key=execution.processing_output_config.kms_key_id or None,
             )
             for execution in executions
         ]
@@ -556,7 +556,8 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         self.latest_baselining_job_config = latest_baselining_job_config
         self.latest_baselining_job_name = baselining_job_name
         self.latest_baselining_job = ClarifyBaseliningJob(
-            processing_job=baselining_processor.latest_job
+            processing_job=baselining_processor.latest_job,
+            sagemaker_session=self.sagemaker_session,
         )
 
         self.baselining_jobs.append(self.latest_baselining_job)
@@ -1006,7 +1007,8 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         )
         self.latest_baselining_job_name = baselining_job_name
         self.latest_baselining_job = ClarifyBaseliningJob(
-            processing_job=baselining_processor.latest_job
+            processing_job=baselining_processor.latest_job,
+            sagemaker_session=self.sagemaker_session,
         )
 
         self.baselining_jobs.append(self.latest_baselining_job)
@@ -1416,19 +1418,25 @@ class ClarifyBaseliningJob(mm.BaseliningJob):
     def __init__(
         self,
         processing_job,
+        sagemaker_session=None,
     ):
         """Initializes a ClarifyBaseliningJob that tracks a baselining job by suggest_baseline()
 
         Args:
-            processing_job (sagemaker.processing.ProcessingJob): The ProcessingJob used for
+            processing_job (sagemaker.core.resources.ProcessingJob): The ProcessingJob used for
                 baselining instance.
+            sagemaker_session (sagemaker.core.helper.session_helper.Session): Session object
+                which manages interactions with Amazon SageMaker APIs. The v3 ProcessingJob
+                resource does not carry a session, so callers should pass the monitor's.
         """
+        output_config = processing_job.processing_output_config or None
         super(ClarifyBaseliningJob, self).__init__(
-            sagemaker_session=processing_job.sagemaker_session,
-            job_name=processing_job.job_name,
-            inputs=processing_job.inputs,
-            outputs=processing_job.outputs,
-            output_kms_key=processing_job.output_kms_key,
+            sagemaker_session=sagemaker_session
+            or getattr(processing_job, "sagemaker_session", None),
+            job_name=processing_job.processing_job_name,
+            inputs=processing_job.processing_inputs or [],
+            outputs=output_config.outputs if output_config else [],
+            output_kms_key=(output_config.kms_key_id or None) if output_config else None,
         )
 
     def baseline_statistics(self, **_):
