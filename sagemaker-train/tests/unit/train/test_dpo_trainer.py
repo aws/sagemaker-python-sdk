@@ -529,6 +529,8 @@ class TestDPOTrainer:
         trainer.train(wait=True, wait_timeout=600)
 
         mock_wait.assert_called_once_with(mock_training_job, timeout=600, poll=5)
+        # BaseTrainer.stream_logs/show_metrics and ModelBuilder read _latest_training_job.
+        assert trainer._latest_training_job is mock_training_job
 
     @patch("sagemaker.train.common_utils.trainer_wait.wait")
     @patch("sagemaker.train.dpo_trainer._resolve_model_and_name")

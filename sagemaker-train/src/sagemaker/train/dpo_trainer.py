@@ -433,5 +433,8 @@ class DPOTrainer(BaseTrainer):
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 
+        self._latest_training_job = training_job
+        # Kept for backwards compatibility; the other trainers and the code that reads the
+        # job (stream_logs, show_metrics, ModelBuilder) use _latest_training_job.
         self.latest_training_job = training_job
         return training_job
