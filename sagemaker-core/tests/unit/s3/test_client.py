@@ -107,7 +107,9 @@ def test_download_with_kms_key(sagemaker_session):
         path="/path/for/download/",
         bucket=BUCKET_NAME,
         key_prefix=os.path.join(CURRENT_JOB_NAME, SOURCE_NAME),
-        extra_args={"SSECustomerKey": KMS_KEY},
+        # SSE-KMS objects are decrypted by S3 transparently; the KMS key must not be
+        # sent as an SSE-C customer key.
+        extra_args=None,
     )
 
 
