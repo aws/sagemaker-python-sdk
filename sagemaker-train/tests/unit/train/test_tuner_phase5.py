@@ -260,6 +260,103 @@ class TestHyperparameterTunerWarmStart:
         assert new_tuner is not None
         assert new_tuner.model_trainer == new_trainer
 
+    @patch("sagemaker.train.tuner.HyperParameterTuningJobWarmStartConfig")
+    def test_transfer_learning_tuner_with_new_ranges(
+        self, mock_warm_start_config, mock_model_trainer, hyperparameter_ranges
+    ):
+        """Test transfer_learning_tuner accepts new hyperparameter_ranges (single trainer)."""
+        tuner = HyperparameterTuner(
+            model_trainer=mock_model_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=hyperparameter_ranges,
+        )
+        tuner._current_job_name = "parent-tuning-job"
+
+        mock_tuning_job = MagicMock()
+        mock_tuning_job.hyper_parameter_tuning_job_name = "parent-tuning-job"
+        tuner.latest_tuning_job = mock_tuning_job
+
+        mock_warm_start_config.return_value = MagicMock()
+
+        new_ranges = {
+            "learning_rate": ContinuousParameter(0.0001, 0.01),
+            "batch_size": IntegerParameter(64, 512),
+        }
+        new_tuner = tuner.transfer_learning_tuner(hyperparameter_ranges=new_ranges)
+
+        assert new_tuner is not None
+        assert new_tuner._hyperparameter_ranges == new_ranges
+
+    @patch("sagemaker.train.tuner.HyperParameterTuningJobWarmStartConfig")
+    def test_transfer_learning_tuner_ranges_fallback_to_parent(
+        self, mock_warm_start_config, mock_model_trainer, hyperparameter_ranges
+    ):
+        """Test transfer_learning_tuner falls back to parent ranges when none provided."""
+        tuner = HyperparameterTuner(
+            model_trainer=mock_model_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=hyperparameter_ranges,
+        )
+        tuner._current_job_name = "parent-tuning-job"
+
+        mock_tuning_job = MagicMock()
+        mock_tuning_job.hyper_parameter_tuning_job_name = "parent-tuning-job"
+        tuner.latest_tuning_job = mock_tuning_job
+
+        mock_warm_start_config.return_value = MagicMock()
+
+        new_tuner = tuner.transfer_learning_tuner()
+
+        assert new_tuner is not None
+        assert new_tuner._hyperparameter_ranges == hyperparameter_ranges
+
+    @patch("sagemaker.train.tuner.HyperParameterTuningJobWarmStartConfig")
+    def test_transfer_learning_tuner_with_new_ranges_dict(
+        self, mock_warm_start_config, mock_model_trainer, hyperparameter_ranges
+    ):
+        """Test transfer_learning_tuner accepts a new ranges dict (dict-based tuner)."""
+        tuner = HyperparameterTuner.create(
+            model_trainer_dict={"trainer1": mock_model_trainer},
+            objective_metric_name_dict={"trainer1": "accuracy"},
+            hyperparameter_ranges_dict={"trainer1": hyperparameter_ranges},
+        )
+        tuner._current_job_name = "parent-tuning-job"
+
+        mock_tuning_job = MagicMock()
+        mock_tuning_job.hyper_parameter_tuning_job_name = "parent-tuning-job"
+        tuner.latest_tuning_job = mock_tuning_job
+
+        mock_warm_start_config.return_value = MagicMock()
+
+        new_ranges_dict = {"trainer1": {"learning_rate": ContinuousParameter(0.0001, 0.01)}}
+        new_tuner = tuner.transfer_learning_tuner(hyperparameter_ranges=new_ranges_dict)
+
+        assert new_tuner is not None
+        assert new_tuner._hyperparameter_ranges_dict == new_ranges_dict
+
+    @patch("sagemaker.train.tuner.HyperParameterTuningJobWarmStartConfig")
+    def test_transfer_learning_tuner_ranges_dict_fallback_to_parent(
+        self, mock_warm_start_config, mock_model_trainer, hyperparameter_ranges
+    ):
+        """Test transfer_learning_tuner falls back to parent ranges dict when none provided."""
+        tuner = HyperparameterTuner.create(
+            model_trainer_dict={"trainer1": mock_model_trainer},
+            objective_metric_name_dict={"trainer1": "accuracy"},
+            hyperparameter_ranges_dict={"trainer1": hyperparameter_ranges},
+        )
+        tuner._current_job_name = "parent-tuning-job"
+
+        mock_tuning_job = MagicMock()
+        mock_tuning_job.hyper_parameter_tuning_job_name = "parent-tuning-job"
+        tuner.latest_tuning_job = mock_tuning_job
+
+        mock_warm_start_config.return_value = MagicMock()
+
+        new_tuner = tuner.transfer_learning_tuner()
+
+        assert new_tuner is not None
+        assert new_tuner._hyperparameter_ranges_dict == tuner._hyperparameter_ranges_dict
+
 
 class TestHyperparameterTunerPrepare:
     """Test HyperparameterTuner preparation methods."""
