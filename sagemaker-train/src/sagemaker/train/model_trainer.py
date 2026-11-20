@@ -33,7 +33,11 @@ from sagemaker.core import shapes
 from sagemaker.core.shapes import AlgorithmSpecification, ModelPackageConfig
 from sagemaker.core.utils.utils import serialize
 from sagemaker.core.apiutils._boto_functions import to_pascal_case
-from sagemaker.core.common_utils import name_from_base
+from sagemaker.core.common_utils import (
+    name_from_base,
+    _validate_source_directory,
+    _validate_symlinks_within_root,
+)
 
 from dataclasses import dataclass
 
@@ -812,6 +816,14 @@ class ModelTrainer(BaseModel):
             # If source code is provided, create a channel for the source code
             # The source code will be mounted at /opt/ml/input/data/code in the container
             if self.source_code.source_dir:
+                if self.training_mode != Mode.LOCAL_CONTAINER:
+                    # The source directory is staged to S3 for the code channel by
+                    # copying/archiving it, which follows nested symlinks. Validate the
+                    # directory before staging so a nested symlink pointing outside it
+                    # does not pull in unrelated content from elsewhere on the file
+                    # system. S3 and .tar.gz inputs are unaffected.
+                    _validate_source_directory(self.source_code.source_dir)
+                    _validate_symlinks_within_root(self.source_code.source_dir, "source_dir")
                 source_code_channel = self.create_input_data_channel(
                     channel_name=SM_CODE,
                     data_source=self.source_code.source_dir,
