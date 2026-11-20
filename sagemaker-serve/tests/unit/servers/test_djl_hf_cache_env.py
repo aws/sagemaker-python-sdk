@@ -143,6 +143,13 @@ class TestDjlHfCacheAndModelId:
         builder = _create_djl_builder(tmp_path, mode=Mode.LOCAL_CONTAINER)
         # Local mode doesn't need GPU info mocks for instance_type validation
         builder.instance_type = None
+        envs_at_create = []
+        mock_create = self._mocks[
+            _DJL_PATCHES.index("sagemaker.serve.model_builder.ModelBuilder._create_model")
+        ]
+        mock_create.side_effect = lambda: envs_at_create.append(dict(builder.env_vars))
         builder._build_for_djl()
 
-        assert builder.env_vars["HF_HUB_OFFLINE"] == "1"
+        # The model (and so the local container) is created with HF_HUB_OFFLINE=1; the
+        # in-memory flag is reset afterwards so it does not leak into a later build.
+        assert envs_at_create[-1]["HF_HUB_OFFLINE"] == "1"
