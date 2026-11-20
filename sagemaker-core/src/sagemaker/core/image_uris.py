@@ -972,11 +972,14 @@ def get_base_python_image_uri(region, py_version="310") -> str:
 
     Args:
         region (str): The AWS region to use for image URI.
-        py_version (str): The python version to use for the image. Can be 310 or 38
-        Default to 310
+        py_version (str): The python version to use for the image. Can be 310 or 38.
+            Defaults to 310.
 
     Returns:
         str: The image URI string.
+
+    Raises:
+        ValueError: If the python version is unsupported.
     """
 
     framework = "sagemaker-base-python"
@@ -988,6 +991,7 @@ def get_base_python_image_uri(region, py_version="310") -> str:
     config = config_for_framework(framework)
     version_config = config["versions"][_version_for_config(version, config)]
 
+    py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     registry = _registry_from_region(region, version_config["registries"])
 
     repo = version_config["repository"] + "-" + py_version

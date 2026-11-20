@@ -47,6 +47,10 @@
                 "us-west-1": "742091327244",
                 "us-west-2": "236514542706"
             },
+            "py_versions": [
+                "310",
+                "38"
+            ],
             "repository": "sagemaker-base-python"
         }
     }
