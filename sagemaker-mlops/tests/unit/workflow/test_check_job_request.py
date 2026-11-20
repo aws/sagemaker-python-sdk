@@ -231,3 +231,50 @@ def test_defaults_when_processor_values_missing(processing_input, processing_out
 
     assert request["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 30
     assert request["StoppingCondition"]["MaxRuntimeInSeconds"] == 86400
+
+
+def test_network_config_object_is_serialized(processing_input, processing_output, processor):
+    """The processor's NetworkConfig object is sent as its request dict.
+
+    CheckJobConfig.network_config is a sagemaker.core.network.NetworkConfig; putting the
+    object itself in the request makes the pipeline definition fail to serialize.
+    """
+    import json
+
+    from sagemaker.core.network import NetworkConfig
+
+    processor.network_config = NetworkConfig(
+        enable_network_isolation=True,
+        subnets=["subnet-1"],
+        security_group_ids=["sg-1"],
+    )
+
+    request = _build(processing_input, processing_output, processor, _check_job_config())
+
+    assert request["NetworkConfig"] == {
+        "EnableNetworkIsolation": True,
+        "VpcConfig": {"SecurityGroupIds": ["sg-1"], "Subnets": ["subnet-1"]},
+    }
+    json.dumps(request)
+    input_shape = (
+        botocore.session.get_session()
+        .get_service_model("sagemaker")
+        .operation_model("CreateProcessingJob")
+        .input_shape
+    )
+    errors = ParamValidator().validate(request, input_shape)
+    assert not errors.has_errors(), errors.generate_report()
+
+
+def test_input_compression_and_distribution_type_are_kept(
+    processing_input, processing_output, processor
+):
+    """S3CompressionType/S3DataDistributionType (e.g. DataConfig(s3_compression_type="Gzip"))."""
+    processing_input.s3_input.s3_compression_type = "Gzip"
+    processing_input.s3_input.s3_data_distribution_type = "ShardedByS3Key"
+
+    request = _build(processing_input, processing_output, processor, _check_job_config())
+
+    s3_input = request["ProcessingInputs"][0]["S3Input"]
+    assert s3_input["S3CompressionType"] == "Gzip"
+    assert s3_input["S3DataDistributionType"] == "ShardedByS3Key"
