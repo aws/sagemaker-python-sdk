@@ -39,6 +39,22 @@ class TestDJLUtils(unittest.TestCase):
         result = _get_default_tensor_parallel_degree(hf_config)
         self.assertIsNotNone(result)
 
+    @patch("sagemaker.serve.model_server.djl_serving.utils._get_available_gpus")
+    def test_get_default_tensor_parallel_degree_prefers_target_gpu_count(self, mock_gpus):
+        """The target instance's GPU count wins over the GPUs on the build machine."""
+        hf_config = {"num_attention_heads": 32}
+
+        mock_gpus.return_value = [0]  # 1-GPU notebook building for a 4-GPU instance
+        self.assertEqual(_get_default_tensor_parallel_degree(hf_config, gpu_count=4), 4)
+
+        mock_gpus.return_value = list(range(8))  # 8-GPU box building for a 1-GPU instance
+        self.assertEqual(_get_default_tensor_parallel_degree(hf_config, gpu_count=1), 1)
+
+    @patch("sagemaker.serve.model_server.djl_serving.utils._get_available_gpus")
+    def test_get_default_tensor_parallel_degree_uses_local_gpus_without_gpu_count(self, mock_gpus):
+        mock_gpus.return_value = [0, 1]
+        self.assertEqual(_get_default_tensor_parallel_degree({"num_attention_heads": 32}), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

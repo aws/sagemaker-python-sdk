@@ -15,7 +15,9 @@ TOKENS_PER_WORD = 0.75
 
 def _get_default_tensor_parallel_degree(hf_model_config: dict, gpu_count: int = None) -> int:
     """Placeholder docstring"""
-    available_gpus = _get_available_gpus()
+    # gpu_count is the GPU count of the target instance; only fall back to the GPUs on the
+    # machine running the build when it is not known (e.g. local container mode).
+    available_gpus = None if gpu_count else _get_available_gpus()
     if not available_gpus and not gpu_count:
         return None
 
@@ -28,7 +30,7 @@ def _get_default_tensor_parallel_degree(hf_model_config: dict, gpu_count: int = 
     if not attention_heads:
         return 1
 
-    tot_gpus = len(available_gpus) if available_gpus else gpu_count
+    tot_gpus = gpu_count if gpu_count else len(available_gpus)
     for i in (n + 1 for n in reversed(range(tot_gpus))):
         if attention_heads % i == 0:
             logger.info(
