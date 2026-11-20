@@ -1112,6 +1112,28 @@ class TestEvaluationPipelineExecutionWait:
         with pytest.raises(FailedStatusError):
             execution.wait(target_status="Succeeded", poll=1)
 
+    @patch("sagemaker.train.evaluate.execution.time.sleep")
+    def test_wait_stops_on_stopped_status(self, mock_sleep):
+        """A Stopped execution is terminal: wait() must not poll it forever."""
+        mock_sleep.side_effect = AssertionError("wait() kept polling a Stopped execution")
+        execution = EvaluationPipelineExecution(
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
+        )
+
+        mock_pe = MagicMock()
+        mock_pe.pipeline_execution_status = "Stopped"
+        mock_pe.failure_reason = None
+        mock_pe.last_modified_time = datetime.now()
+        mock_pe.get_all_steps.return_value = iter([])
+
+        execution._pipeline_execution = mock_pe
+
+        with pytest.raises(FailedStatusError):
+            execution.wait(target_status="Succeeded", poll=1)
+
+        mock_pe.get_all_steps.return_value = iter([])
+        execution.wait(target_status="Stopped", poll=1)
+
     @patch("sagemaker.train.evaluate.execution.time")
     def test_wait_timeout_exceeded(self, mock_time):
         """Test wait raises exception on timeout."""

@@ -1321,6 +1321,17 @@ class EvaluationPipelineExecution(BaseModel):
                         reason=self.status.failure_reason,
                     )
 
+                # Stopped is terminal too; without this a stopped execution is polled forever
+                # (or until the timeout, reported as "still running").
+                if current_status == "Stopped":
+                    from sagemaker.core.utils.exceptions import FailedStatusError
+
+                    raise FailedStatusError(
+                        resource_type="PipelineExecution",
+                        status=current_status,
+                        reason=self.status.failure_reason,
+                    )
+
                 if timeout is not None and time.time() - start_time >= timeout:
                     from sagemaker.core.utils.exceptions import TimeoutExceededError
 
@@ -1433,6 +1444,17 @@ class EvaluationPipelineExecution(BaseModel):
                                         cw_url = get_cloudwatch_logs_url(step.job_arn)
                                         if cw_url:
                                             print(f"CloudWatch Logs: {cw_url}", flush=True)
+                    from sagemaker.core.utils.exceptions import FailedStatusError
+
+                    raise FailedStatusError(
+                        resource_type="PipelineExecution",
+                        status=current_status,
+                        reason=self.status.failure_reason,
+                    )
+
+                # Stopped is terminal too; without this a stopped execution is polled forever
+                # (or until the timeout, reported as "still running").
+                if current_status == "Stopped":
                     from sagemaker.core.utils.exceptions import FailedStatusError
 
                     raise FailedStatusError(
