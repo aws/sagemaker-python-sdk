@@ -111,6 +111,28 @@ class TestJobSettings:
         with pytest.raises(ValueError, match="instance_type is a required parameter"):
             _JobSettings(sagemaker_session=mock_session, image_uri="test-image")
 
+    def test_init_stores_training_plan_arn(self, mock_session):
+        """training_plan_arn is stored on the settings when provided."""
+        training_plan_arn = "arn:aws:sagemaker:us-west-2:123456789012:training-plan/test-plan"
+        settings = _JobSettings(
+            sagemaker_session=mock_session,
+            image_uri="test-image",
+            instance_type="ml.m5.xlarge",
+            role="arn:aws:iam::123456789012:role/test",
+            training_plan_arn=training_plan_arn,
+        )
+        assert settings.training_plan_arn == training_plan_arn
+
+    def test_init_training_plan_arn_defaults_to_none(self, mock_session):
+        """training_plan_arn defaults to None when not provided."""
+        settings = _JobSettings(
+            sagemaker_session=mock_session,
+            image_uri="test-image",
+            instance_type="ml.m5.xlarge",
+            role="arn:aws:iam::123456789012:role/test",
+        )
+        assert settings.training_plan_arn is None
+
     @patch.dict(os.environ, {"SAGEMAKER_INTERNAL_IMAGE_URI": "custom-image"})
     def test_get_default_image_from_env(self, mock_session):
         """Test getting default image from environment variable."""
@@ -859,6 +881,7 @@ class TestJobCompile:
         job_settings.job_conda_env = None
         job_settings.spark_config = None
         job_settings.dependencies = None
+        job_settings.training_plan_arn = None
 
         def test_func():
             pass
@@ -867,6 +890,77 @@ class TestJobCompile:
 
         assert result["TrainingJobName"] == "test-job"
         assert result["RoleArn"] == "arn:aws:iam::123456789012:role/test"
+
+    @staticmethod
+    def _base_job_settings(mock_session):
+        """Build a mock ``_JobSettings`` with the minimum attrs ``compile`` reads."""
+        job_settings = Mock()
+        job_settings.max_runtime_in_seconds = 3600
+        job_settings.max_wait_time_in_seconds = None
+        job_settings.max_retry_attempts = 1
+        job_settings.role = "arn:aws:iam::123456789012:role/test"
+        job_settings.tags = None
+        job_settings.s3_kms_key = None
+        job_settings.disable_output_compression = False
+        job_settings.volume_size = 30
+        job_settings.instance_count = 1
+        job_settings.instance_type = "ml.m5.xlarge"
+        job_settings.volume_kms_key = None
+        job_settings.keep_alive_period_in_seconds = None
+        job_settings.enable_network_isolation = False
+        job_settings.encrypt_inter_container_traffic = False
+        job_settings.vpc_config = None
+        job_settings.use_spot_instances = False
+        job_settings.environment_variables = {}
+        job_settings.image_uri = "test-image"
+        job_settings.sagemaker_session = mock_session
+        job_settings.use_torchrun = False
+        job_settings.use_mpirun = False
+        job_settings.nproc_per_node = None
+        job_settings.job_conda_env = None
+        job_settings.spark_config = None
+        job_settings.dependencies = None
+        job_settings.training_plan_arn = None
+        return job_settings
+
+    @patch("sagemaker.core.remote_function.job.StoredFunction")
+    @patch("sagemaker.core.remote_function.job._generate_input_data_config")
+    def test_compile_with_training_plan_arn(
+        self, mock_input_config, mock_stored_func, mock_session
+    ):
+        """TrainingPlanArn is added to ResourceConfig when training_plan_arn is set."""
+        mock_input_config.return_value = []
+        mock_stored_func.return_value.save = Mock()
+
+        training_plan_arn = "arn:aws:sagemaker:us-west-2:123456789012:training-plan/test-plan"
+        job_settings = self._base_job_settings(mock_session)
+        job_settings.training_plan_arn = training_plan_arn
+
+        def test_func():
+            pass
+
+        result = _Job.compile(job_settings, "test-job", "s3://bucket", test_func, (), {})
+
+        assert result["ResourceConfig"]["TrainingPlanArn"] == training_plan_arn
+
+    @patch("sagemaker.core.remote_function.job.StoredFunction")
+    @patch("sagemaker.core.remote_function.job._generate_input_data_config")
+    def test_compile_without_training_plan_arn(
+        self, mock_input_config, mock_stored_func, mock_session
+    ):
+        """TrainingPlanArn is absent from ResourceConfig when training_plan_arn is None."""
+        mock_input_config.return_value = []
+        mock_stored_func.return_value.save = Mock()
+
+        job_settings = self._base_job_settings(mock_session)
+        job_settings.training_plan_arn = None
+
+        def test_func():
+            pass
+
+        result = _Job.compile(job_settings, "test-job", "s3://bucket", test_func, (), {})
+
+        assert "TrainingPlanArn" not in result["ResourceConfig"]
 
 
 class TestJobStart:
