@@ -69,18 +69,17 @@ translation_mapping = {
 class DeserializerWrapper(BaseDeserializer):
     """Wraps the deserializer to comply with the function signature."""
 
-    def __init__(self, deserializer, accept):
+    def __init__(self, deserializer, accept, honor_content_type=False):
         self._deserializer = deserializer
         self._accept = accept
+        self._honor_content_type = honor_content_type
 
     def deserialize(self, stream, content_type: str = None):
         """Deserialize stream into object"""
-        return self._deserializer.deserialize(
-            stream,
-            # We need to overwrite the accept type because model
-            # servers like XGBOOST always returns "text/html"
-            self._accept[0],
+        deserialization_content_type = (
+            content_type if self._honor_content_type and content_type else self._accept[0]
         )
+        return self._deserializer.deserialize(stream, deserialization_content_type)
 
     @property
     def ACCEPT(self):
@@ -133,7 +132,9 @@ class SchemaBuilder(TritonSchemaBuilder):
             self.input_serializer = self._get_serializer(sample_input)
             self._input_deserializer = self._get_inverse(self.input_serializer)
             self.input_deserializer = DeserializerWrapper(
-                self._input_deserializer, self._input_deserializer.ACCEPT
+                self._input_deserializer,
+                self._input_deserializer.ACCEPT,
+                honor_content_type=True,
             )
 
         if output_translator:
@@ -148,7 +149,10 @@ class SchemaBuilder(TritonSchemaBuilder):
             self.output_serializer = self._get_inverse(self._output_deserializer)
 
             self.output_deserializer = DeserializerWrapper(
-                self._output_deserializer, self._output_deserializer.ACCEPT
+                self._output_deserializer,
+                self._output_deserializer.ACCEPT,
+                # Some model servers return misleading response types such as text/html.
+                honor_content_type=False,
             )
 
     def _get_serializer(self, obj):
