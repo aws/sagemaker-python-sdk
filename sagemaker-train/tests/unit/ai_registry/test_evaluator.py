@@ -35,6 +35,37 @@ def _keywords_from_import_call(mock_air_hub):
 
 
 class TestEvaluator:
+    def test_init_stores_sagemaker_session(self):
+        session = MagicMock()
+
+        evaluator = Evaluator(name="test", version="1.0.0", arn="arn", sagemaker_session=session)
+
+        assert evaluator.sagemaker_session is session
+        assert evaluator.description is None
+
+    @patch("sagemaker.ai_registry.evaluator.AIRHub")
+    def test_refresh_uses_constructor_session(self, mock_air_hub):
+        session = MagicMock()
+        mock_air_hub.describe_hub_content.return_value = {
+            "HubContentName": "test",
+            "HubContentArn": "arn",
+            "HubContentVersion": "1.0.0",
+            "HubContentStatus": "Available",
+            "HubContentDocument": json.dumps(
+                {
+                    "SubType": "AWS/Evaluator",
+                    "JsonContent": json.dumps(
+                        {"Reference": "ref", "EvaluatorType": REWARD_FUNCTION}
+                    ),
+                }
+            ),
+            "HubContentSearchKeywords": ["method:lambda"],
+        }
+
+        Evaluator(name="test", version="1.0.0", arn="arn", sagemaker_session=session).refresh()
+
+        assert mock_air_hub.describe_hub_content.call_args.kwargs["session"] is session
+
     @pytest.fixture(autouse=True)
     def stub_aws_resolution(self):
         """Keep these unit tests offline.
