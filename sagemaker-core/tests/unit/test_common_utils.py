@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 
 import pytest
+import random
 import time
 import tempfile
 import os
@@ -128,6 +129,16 @@ class TestUniqueNameFromBaseUuid4:
         result = unique_name_from_base_uuid4(base, max_length=50)
         assert len(result) <= 50
 
+    def test_unique_name_from_base_uuid4_preserves_global_random_state(self):
+        """Generating a name must not reseed the global ``random`` module."""
+        random.seed(1234)
+        expected = random.random()
+
+        random.seed(1234)
+        unique_name_from_base_uuid4("my-resource")
+
+        assert random.random() == expected
+
 
 class TestUniqueNameFromBase:
     """Test unique_name_from_base function."""
@@ -152,6 +163,16 @@ class TestUniqueNameFromBase:
         base = "y" * 100
         result = unique_name_from_base(base, max_length=45)
         assert len(result) <= 45
+
+    def test_unique_name_from_base_preserves_global_random_state(self):
+        """Generating a name must not reseed the global ``random`` module."""
+        random.seed(1234)
+        expected = random.random()
+
+        random.seed(1234)
+        unique_name_from_base("my-job")
+
+        assert random.random() == expected
 
 
 class TestBaseNameFromImage:
