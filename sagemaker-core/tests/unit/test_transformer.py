@@ -641,6 +641,56 @@ class TestTransformer:
         assert config["output_config"]["s3_output_path"] == "s3://bucket/output"
         assert config["resource_config"]["instance_count"] == 2
 
+    def test_instance_count_accepts_pipeline_variable(self, mock_session):
+        """Regression for #6577.
+
+        ``instance_count`` must accept a pipeline variable (e.g. a ParameterInteger).
+        Building the transform job request instantiates ``TransformResources`` with
+        ``instance_count``; when that field was typed ``int``, pydantic raised
+        a ValidationError.
+        """
+        from sagemaker.core.workflow.parameters import ParameterInteger
+        from sagemaker.core.shapes import TransformResources
+
+        count_param = ParameterInteger(name="InstanceCount", default_value=2)
+        resources = TransformResources(
+            instance_type="ml.m5.xlarge",
+            instance_count=count_param,
+        )
+        assert resources.instance_count is count_param
+
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=count_param,
+            instance_type="ml.m5.xlarge",
+            output_path="s3://bucket/output",
+            sagemaker_session=mock_session,
+        )
+        assert transformer.instance_count is count_param
+
+        config = transformer._load_config(
+            data="s3://bucket/input",
+            data_type="S3Prefix",
+            content_type="text/csv",
+            compression_type=None,
+            split_type="Line",
+        )
+        request = transformer._get_transform_request(
+            job_name="test-job",
+            model_name="test-model",
+            strategy=None,
+            max_concurrent_transforms=None,
+            max_payload=None,
+            env=None,
+            input_config=config["input_config"],
+            output_config=config["output_config"],
+            resource_config=config["resource_config"],
+            experiment_config=None,
+            tags=None,
+            data_processing=None,
+        )
+        assert request["TransformResources"].instance_count is count_param
+
 
 class TestTransformerTransformWithTags:
     """Regression tests for tags handling in Transformer.transform() (issue #6090)."""
