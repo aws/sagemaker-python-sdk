@@ -591,8 +591,13 @@ class HyperparameterTuner(object):
             with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
                 tar_path = tmp.name
             try:
+                ignore_fn = shutil.ignore_patterns(*source_code.ignore_patterns)
                 with tarfile.open(tar_path, "w:gz") as tar:
                     for root, _dirs, files in os.walk(source_code.source_dir):
+                        for x in ignore_fn(root, _dirs):
+                            _dirs.remove(x)
+                        for x in ignore_fn(root, files):
+                            files.remove(x)
                         for f in files:
                             fpath = os.path.join(root, f)
                             arcname = os.path.relpath(fpath, source_code.source_dir)
