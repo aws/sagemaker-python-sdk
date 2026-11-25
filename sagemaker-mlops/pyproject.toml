@@ -31,7 +31,6 @@ dependencies = [
     "botocore>=1.43.127,<2.0",
     "pyiceberg[glue]>=0.8.0",
     "pyarrow>=14.0.0",
-    "s3fs",
 ]
 
 [project.optional-dependencies]

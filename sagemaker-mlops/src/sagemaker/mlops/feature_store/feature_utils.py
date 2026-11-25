@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 """Utilities for working with FeatureGroups and FeatureStores."""
 
+import io
 import logging
 import os
 import time
@@ -14,6 +15,8 @@ import boto3
 import pandas
 import pandas as pd
 from pandas import DataFrame, Series, read_csv
+from pandas.io.common import infer_compression
+from sagemaker.core.common_utils import pop_out_unused_kwarg
 from sagemaker.core.shapes import FeatureValue, TtlDuration
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
@@ -857,7 +860,8 @@ def prepare_fg_from_dataframe_or_file(
 
     Args:
         feature_group_name (str): feature group name
-        dataframe_or_path (str, Path, pandas.DataFrame) : pandas.DataFrame or path to the data
+        dataframe_or_path (str, Path, pandas.DataFrame) : pandas.DataFrame, or a local path
+                                    or ``s3://`` URI to the data
         verbose (bool)           : True for displaying messages, False for silent method.
         record_id (str, 'record_id'): (Optional) Feature identifier of the rows. If specified each
                                     value of that feature has to be unique. If not specified or
@@ -882,17 +886,42 @@ def prepare_fg_from_dataframe_or_file(
     if verbose:
         logger.setLevel(logging.INFO)
 
+    # Resolve the session before reading any data, so that an S3 read below uses the
+    # caller's credentials instead of falling back to the default credential chain.
+    if session is not None:
+        sagemaker_session = session
+    elif role is not None and region is not None:
+        sagemaker_session = get_session_from_role(region=region)
+    else:
+        exc = Exception("Argument Session or role and region must be specified.")
+        logger.exception(exc)
+        raise exc
+
     if isinstance(dataframe_or_path, DataFrame):
         data = dataframe_or_path
-    elif isinstance(dataframe_or_path, str):
+    elif isinstance(dataframe_or_path, (str, Path)):
         kwargs.pop("filepath_or_buffer", None)
-        data = read_csv(filepath_or_buffer=dataframe_or_path, **kwargs)
+        path = str(dataframe_or_path)
+        if path.startswith("s3://"):
+            # storage_options configures the fsspec filesystem pandas would have opened
+            # the URI with. The object is fetched here instead, so pandas receives a
+            # buffer and would reject the argument outright; warn and drop it.
+            pop_out_unused_kwarg("storage_options", kwargs)
+            # pandas infers compression from the file extension only when it is handed a
+            # path; it cannot infer from an in-memory buffer. Infer from the S3 key so
+            # that gzipped/bz2/zip/xz/zstd objects keep working as they did via s3fs.
+            if "compression" not in kwargs:
+                kwargs["compression"] = infer_compression(path, "infer")
+            s3_bytes = S3Downloader.read_bytes(path, sagemaker_session=sagemaker_session)
+            data = read_csv(filepath_or_buffer=io.BytesIO(s3_bytes), **kwargs)
+        else:
+            data = read_csv(filepath_or_buffer=dataframe_or_path, **kwargs)
     else:
         exc = Exception(
             str(
                 f"Invalid type {type(dataframe_or_path)} for "
                 "argument dataframe_or_path. \nParameter must be"
-                " of type pandas.DataFrame or string"
+                " of type pandas.DataFrame, str or pathlib.Path"
             )
         )
         logger.exception(exc)
@@ -922,15 +951,6 @@ def prepare_fg_from_dataframe_or_file(
     if event_id not in data.columns:
         current_time_sec = int(time.time() + 0.5)
         data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
-
-    if session is not None:
-        sagemaker_session = session
-    elif role is not None and region is not None:
-        sagemaker_session = get_session_from_role(region=region)
-    else:
-        exc = Exception("Argument Session or role and region must be specified.")
-        logger.exception(exc)
-        raise exc
 
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=sagemaker_session)
 
