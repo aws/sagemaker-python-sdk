@@ -76,6 +76,7 @@ from sagemaker.mlops.feature_store.ingestion_manager_pandas import (
     IngestionError,
     IngestionManagerPandas,
 )
+from sagemaker.mlops.feature_store.write_audit import WriteAuditConfig
 
 __all__ = [
     # Resources
@@ -134,4 +135,5 @@ __all__ = [
     "JoinComparatorEnum",
     "JoinTypeEnum",
     "TableType",
+    "WriteAuditConfig",
 ]
