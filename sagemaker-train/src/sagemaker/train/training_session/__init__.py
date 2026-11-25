@@ -34,15 +34,15 @@ then derive a ``SamplingClient`` for inference::
     tc = svc.create_lora_training_client(base_model=svc.list_base_models()[0])
     for tokens in your_token_id_batches:
         # Every datum carries the loss inputs its loss function needs, one value
-        # per token of the datum.
+        # per model_input token.
         batch = [
             Datum(
-                model_input=ModelInput.from_ints(tokens),
+                model_input=ModelInput.from_ints(tokens[:-1]),
                 loss_fn_inputs={
                     "target_tokens": TensorData(
-                        data=tokens[1:] + [0], dtype=TensorDtype.INT64
+                        data=tokens[1:], dtype=TensorDtype.INT64
                     ),
-                    "weights": TensorData(data=[1.0] * len(tokens)),
+                    "weights": TensorData(data=[1.0] * (len(tokens) - 1)),
                 },
             )
         ]

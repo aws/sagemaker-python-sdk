@@ -34,12 +34,20 @@ from sagemaker.core.tools.data_extractor import load_combined_shapes_data
 class ShapesExtractor:
     """Extracts the shapes to DAG structure."""
 
-    def __init__(self, combined_shapes: Optional[dict] = None):
+    def __init__(
+        self,
+        combined_shapes: Optional[dict] = None,
+        qualified_shape_names: frozenset = frozenset(),
+    ):
         """Initializes a new instance of the ShapesExtractor class.
 
         :param combined_shapes: All the shapes put together from all Sagemaker Service JSONs
+        :param qualified_shape_names: Structure shape names to emit as ``shapes.<Name>``
+            in type annotations. Used by resource codegen for shapes that a resource
+            class of the same name shadows in resources.py. Empty for shape codegen.
         """
         self.combined_shapes = combined_shapes or load_combined_shapes_data()
+        self.qualified_shape_names = qualified_shape_names
 
         self.shape_dag = self.get_shapes_dag()
         with open(SHAPE_DAG_FILE_PATH, "w") as f:
@@ -121,6 +129,12 @@ class ShapesExtractor:
                 _dag[shape]["value_type"] = _all_shapes[_map_value_shape]["type"]
         return _dag
 
+    def _structure_type(self, shape_name):
+        """Return the annotation text for a structure shape, qualified when shadowed."""
+        if shape_name in self.qualified_shape_names:
+            return f"shapes.{shape_name}"
+        return shape_name
+
     def _evaluate_list_type(self, member_shape):
         list_shape_name = member_shape["member"]["shape"]
         list_shape_member = self.combined_shapes[list_shape_name]
@@ -134,7 +148,7 @@ class ShapesExtractor:
             if list_shape_name == "SearchExpression":
                 member_type = f"List['{list_shape_name}']"
             else:
-                member_type = f"List[{list_shape_name}]"
+                member_type = f"List[{self._structure_type(list_shape_name)}]"
         elif list_shape_type in BASIC_JSON_TYPES_TO_PYTHON_TYPES.keys():
             member_type = f"List[{BASIC_JSON_TYPES_TO_PYTHON_TYPES[list_shape_type]}]"
         else:
@@ -158,7 +172,7 @@ class ShapesExtractor:
         if map_value_shape_type == "structure":
             member_type = (
                 f"Dict[{BASIC_JSON_TYPES_TO_PYTHON_TYPES[map_key_shape_type]}, "
-                f"{map_value_shape_name}]"
+                f"{self._structure_type(map_value_shape_name)}]"
             )
         elif map_value_shape_type == "list":
             member_type = (
@@ -238,7 +252,7 @@ class ShapesExtractor:
                 member_shape = self.combined_shapes[member_shape_name]
                 member_shape_type = member_shape["type"]
                 if member_shape_type == "structure":
-                    member_type = member_shape_name
+                    member_type = self._structure_type(member_shape_name)
                 elif member_shape_type == "list":
                     member_type = self._evaluate_list_type(member_shape)
                 elif member_shape_type == "map":

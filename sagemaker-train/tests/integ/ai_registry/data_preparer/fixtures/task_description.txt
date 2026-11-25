@@ -1,0 +1,45 @@
+# Product Review Sentiment Classification Dataset
+
+## Use Case Context
+Generate a dataset of product reviews with sentiment labels for training a classification model. An online retailer wants to understand customer sentiment to identify actionable insights.
+
+## Output Format
+The dataset MUST be generated in HF_Prompt_Completion format. Each record must have exactly two fields: "prompt" and "completion". No other fields are allowed.
+
+## Quality Standards
+- Authenticity: Reviews must reflect genuine customer experiences, not template-like output
+- Sentiment accuracy: Labels must accurately match the expressed sentiment in the review
+- Diversity: Cover a range of product categories, review lengths, and writing styles
+- Naturalness: Written in conversational English with realistic customer language
+
+## Output Schema
+Each line of the JSONL output must be exactly:
+```json
+{"prompt": "Classify the sentiment of the following product review as positive, negative, or neutral:\n\n<review_text>", "completion": "<sentiment_label>"}
+```
+
+Where:
+- `prompt`: Contains the classification instruction followed by the review text
+- `completion`: One of "positive", "negative", or "neutral"
+
+## Data Generation
+
+### Data Fields
+
+1. **Sample categorical attributes**:
+    - product_category: weighted (25% Electronics, 20% Home & Kitchen, 15% Clothing, 10% Toys, 10% Sports, 8% Beauty, 5% Pet Supplies, 3% Automotive, 2% Books, 2% Health)
+    - sentiment: weighted (40% positive, 30% negative, 30% neutral)
+
+2. **LLM-generated fields**:
+    - review_text: Use product_category and sentiment. Write an authentic product review matching the sentiment. Vary writing style and length (20-100 words).
+
+3. **Compute programmatic fields**:
+    - prompt: Template "Classify the sentiment of the following product review as positive, negative, or neutral:\n\n{review_text}"
+    - completion: Copy the sentiment label exactly
+
+## Data Verification
+
+1. **Structural checks**:
+    - Each record contains exactly two fields: "prompt" and "completion"
+    - completion is one of [positive, negative, neutral]
+    - prompt contains the review text

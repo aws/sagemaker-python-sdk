@@ -26,6 +26,7 @@ import pytest
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
+from .. import integ_resources
 
 _REGION = "us-west-2"
 _ACCOUNT_ID = None  # Resolved lazily in fixtures
@@ -40,10 +41,11 @@ def _get_account_id():
     return _ACCOUNT_ID
 
 
-AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS"
+AGENT_RUNTIME_ID = integ_resources.agent_runtime_id()
 # BASE_MODEL = "openai-reasoning-gpt-oss-20b"
 BASE_MODEL = "mock-oss-test"
-EXISTING_JOB_NAME = "mock-oss-test-mtrl-20260616153024"
+# Completed MTRL fixture job in the account running the tests (see integ_resources).
+EXISTING_JOB_NAME = integ_resources.mtrl_job_name()
 
 # Training jobs in this module register their output into a dedicated scratch group.
 # Without it they fall back to the SDK default ``{BASE_MODEL}-mtrl-mpg``
@@ -92,10 +94,10 @@ def test_resources():
     """Resolve account-specific resource ARNs lazily."""
     account_id = _get_account_id()
     return {
-        "mlflow_arn": f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
-        "s3_input_path": f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",
+        "mlflow_arn": integ_resources.mlflow_app_arn(),
+        "s3_input_path": integ_resources.dataset_uri(integ_resources.MTRL_PROMPTS),
         "s3_output_path": f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/mtrl-trainer-integ/",
-        "lambda_arn": f"arn:aws:lambda:{_REGION}:{account_id}:function:SageMaker-AgentConnector-Lambda-MTRL-integ-test",
+        "lambda_arn": integ_resources.agent_connector_function_arn(),
     }
 
 

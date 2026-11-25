@@ -1147,6 +1147,19 @@ class AcceleratorPartitionConfig(Base):
     count: int
 
 
+class AcceleratorPartitionLayout(Base):
+    """
+    AcceleratorPartitionLayout
+      A layout of accelerator partitions for a production variant. On NVIDIA GPUs, the partitions are Multi-Instance GPU (MIG) instances. SageMaker applies the layout to every accelerator on the variant's instance type. You can't change the layout of a running endpoint. To use a different layout, create a new endpoint.
+
+    Attributes
+    ----------------------
+    accelerator_partition_types: The list of partition profiles to carve on each accelerator that this layout applies to. On NVIDIA GPUs these are Multi-Instance GPU (MIG) profiles, for example ["mig-3g.40gb", "mig-4g.40gb"]. The order of the profiles doesn't change how the accelerator is partitioned. However, when you update an endpoint, a layout with the same profiles in a different order counts as a different layout, and the update is rejected. Repeat a profile to request more than one partition of that size: for example, ["mig-3g.40gb", "mig-3g.40gb"] requests two mig-3g.40gb partitions.
+    """
+
+    accelerator_partition_types: Optional[List[StrPipeVar]] = Unassigned()
+
+
 class ActionSource(Base):
     """
     ActionSource
@@ -2019,6 +2032,21 @@ class AlgorithmValidationSpecification(Base):
     validation_profiles: List[AlgorithmValidationProfile]
 
 
+class AliasOperations(Base):
+    """
+    AliasOperations
+      The aliases to add to and remove from a pipeline version. An alias can't appear in both lists. After the update, the version can have up to 10 aliases.
+
+    Attributes
+    ----------------------
+    add: The aliases to add to the pipeline version. If you assigned an alias to another version of the same pipeline, you must remove it from that version before you add it here.
+    remove: The aliases to remove from the pipeline version.
+    """
+
+    add: Optional[List[StrPipeVar]] = Unassigned()
+    remove: Optional[List[StrPipeVar]] = Unassigned()
+
+
 class AmazonQSettings(Base):
     """
     AmazonQSettings
@@ -2360,7 +2388,7 @@ class UserContext(Base):
     user_profile_arn: The Amazon Resource Name (ARN) of the user's profile.
     user_profile_name: The name of the user's profile.
     domain_id: The domain associated with the user.
-    iam_identity: The IAM Identity details associated with the user. These details are associated with model package groups, model packages, and project entities only.
+    iam_identity: The IAM Identity details associated with the user. These details are associated with model package groups, model packages, project entities, hubs, and hub content only.
     """
 
     user_profile_arn: Optional[StrPipeVar] = Unassigned()
@@ -7208,8 +7236,8 @@ class PrefixAwareRoutingConfig(Base):
 
     Attributes
     ----------------------
-    prefix_length: The maximum length of the prefix used for routing decisions. Required when RoutingStrategy is PREFIX_AWARE.   For the SageMaker Runtime InvokeEndpoint and InvokeEndpointWithResponseStream APIs, this value specifies the number of bytes from the beginning of the request body.   For OpenAI-compatible API, this value specifies the number of characters from the text content of the messages array.   The endpoint routes requests that share the same prefix to the same instance. Set this value to cover shared content (such as system prompts) plus enough unique content to distribute workloads across instances.
-    concurrency_threshold: The maximum number of in-flight requests on the target instance before the endpoint routes to another instance. Required when RoutingStrategy is PREFIX_AWARE. When in-flight requests on the prefix-selected instance reach this threshold, the endpoint routes the request to an instance with more available capacity.
+    prefix_length: The maximum length of the prefix used for routing decisions. Required when RoutingStrategy is PREFIX_AWARE.   For the SageMaker Runtime InvokeEndpoint and InvokeEndpointWithResponseStream APIs, this value specifies the number of bytes from the beginning of the request body.   For OpenAI-compatible API, this value specifies the number of characters from the text content of the messages array.   The endpoint routes requests that share the same prefix to the same instance and, when that instance hosts more than one copy of the invoked inference component, to the same copy. Set this value to cover shared content (such as system prompts) plus enough unique content to distribute workloads across instances and copies.
+    concurrency_threshold: The number of in-flight requests on the selected instance or inference component copy at which the endpoint routes a request to another copy or instance. Required when RoutingStrategy is PREFIX_AWARE. On an endpoint without inference components, the endpoint compares this threshold with the number of in-flight requests on the selected instance. When that number reaches the threshold, the endpoint routes the request to another instance. On an endpoint with inference components, the endpoint compares this threshold with the number of in-flight requests on the selected copy of the invoked inference component. Requests to other inference components on the same instance don't count. When the instance hosts more than one copy of the inference component, the endpoint routes requests that share a prefix to the same copy and, while that copy has reached the threshold, to another copy on the instance that is under the threshold. When every copy on the instance has reached the threshold, the endpoint routes the request to another instance. The threshold applies to every instance and every copy of every inference component in the production variant, so choose a value that suits the instance or copy that can serve the fewest concurrent requests.
     """
 
     prefix_length: Optional[int] = Unassigned()
@@ -7223,7 +7251,7 @@ class ProductionVariantRoutingConfig(Base):
 
     Attributes
     ----------------------
-    routing_strategy: Sets how the endpoint routes incoming traffic:    LEAST_OUTSTANDING_REQUESTS: The endpoint routes requests to the specific instances that have more capacity to process them.    RANDOM: The endpoint routes each request to a randomly chosen instance.    PREFIX_AWARE: The endpoint routes requests that share the same prompt prefix to the same instance. When the number of in-flight requests on the selected instance reaches the configured threshold, the endpoint routes the request to an instance with more available capacity.
+    routing_strategy: Sets how the endpoint routes incoming traffic:    LEAST_OUTSTANDING_REQUESTS: The endpoint routes requests to the specific instances that have more capacity to process them.    RANDOM: The endpoint routes each request to a randomly chosen instance.    PREFIX_AWARE: The endpoint routes requests that share the same prompt prefix to the same instance and, when that instance hosts more than one copy of the invoked inference component, to the same copy. When the number of in-flight requests on the selected instance or copy reaches the ConcurrencyThreshold value, the endpoint routes the request to another copy on that instance or to another instance. The endpoint applies prefix-aware routing only when two or more instances can serve the request.
     prefix_aware_routing_config: The configuration for prefix-aware routing. Specify this parameter only when you set RoutingStrategy to PREFIX_AWARE.
     """
 
@@ -7271,6 +7299,7 @@ class ProductionVariant(Base):
     routing_config: Settings that control how the endpoint routes incoming traffic to the instances that the endpoint hosts.
     inference_ami_version: Specifies an option from a collection of preconfigured Amazon Machine Image (AMI) images. Each image is configured by Amazon Web Services with a set of software and driver versions. Amazon Web Services optimizes these configurations for different machine learning workloads. By selecting an AMI version, you can ensure that your inference environment is compatible with specific software requirements, such as CUDA driver versions, Linux kernel versions, or Amazon Web Services Neuron driver versions. The AMI version names, and their configurations, are the following:  al2-ami-sagemaker-inference-gpu-2    Accelerator: GPU   NVIDIA driver version: 535   CUDA version: 12.2    al2-ami-sagemaker-inference-gpu-2-1    Accelerator: GPU   NVIDIA driver version: 535   CUDA version: 12.2   NVIDIA Container Toolkit with disabled CUDA-compat mounting    al2-ami-sagemaker-inference-gpu-3-1    Accelerator: GPU   NVIDIA driver version: 550   CUDA version: 12.4   NVIDIA Container Toolkit with disabled CUDA-compat mounting    al2023-ami-sagemaker-inference-gpu-4-1    Accelerator: GPU   NVIDIA driver version: 580   CUDA version: 13.0   NVIDIA Container Toolkit with disabled CUDA-compat mounting    al2-ami-sagemaker-inference-neuron-2    Accelerator: Inferentia2 and Trainium   Neuron driver version: 2.19
     capacity_reservation_config: Settings for the capacity reservation for the compute instances that SageMaker AI reserves for an endpoint.
+    accelerator_partition_layouts: The accelerator partition layout for the accelerators backing this production variant. A layout lists the partition profiles to carve on the accelerators it applies to; on NVIDIA GPUs these are Multi-Instance GPU (MIG) profiles such as mig-3g.40gb. Specify a single layout: SageMaker applies it uniformly to every accelerator on the variant's instance type, and you place one inference component on each partition. Omit this field to use whole, unpartitioned accelerators.
     """
 
     variant_name: StrPipeVar
@@ -7291,6 +7320,7 @@ class ProductionVariant(Base):
     routing_config: Optional[ProductionVariantRoutingConfig] = Unassigned()
     inference_ami_version: Optional[StrPipeVar] = Unassigned()
     capacity_reservation_config: Optional[ProductionVariantCapacityReservationConfig] = Unassigned()
+    accelerator_partition_layouts: Optional[List[AcceleratorPartitionLayout]] = Unassigned()
 
 
 class DataCaptureConfig(Base):
@@ -7978,12 +8008,14 @@ class InferenceComponentComputeResourceRequirements(Base):
     number_of_accelerator_devices_required: The number of accelerators to allocate to run a model that you assign to an inference component. Accelerators include GPUs and Amazon Web Services Inferentia.
     min_memory_required_in_mb: The minimum MB of memory to allocate to run a model that you assign to an inference component.
     max_memory_required_in_mb: The maximum MB of memory to allocate to run a model that you assign to an inference component.
+    accelerator_partition_type: The accelerator partition profile this inference component occupies; on NVIDIA GPUs this is a Multi-Instance GPU (MIG) profile such as mig-3g.40gb. It must be one of the partition profiles declared in the target endpoint's accelerator partition layout, and when set, NumberOfAcceleratorDevicesRequired must be 1. This field is required when the endpoint's production variant has an accelerator partition layout. For endpoints without a layout, omit this field to place the inference component on a whole accelerator.
     """
 
     number_of_cpu_cores_required: Optional[float] = Unassigned()
     number_of_accelerator_devices_required: Optional[float] = Unassigned()
     min_memory_required_in_mb: Optional[int] = Unassigned()
     max_memory_required_in_mb: Optional[int] = Unassigned()
+    accelerator_partition_type: Optional[StrPipeVar] = Unassigned()
 
 
 class InferenceComponentDataCacheConfig(Base):
@@ -10183,7 +10215,7 @@ class ServerlessJobConfig(Base):
     peft:  The parameter-efficient fine-tuning configuration.
     evaluation_type:  The evaluation job type. Required when serverless job type is Evaluation.
     evaluator_arn:  The evaluator Amazon Resource Name (ARN) used as reward function or reward prompt.
-    sequence_length:  The maximum sequence length, in tokens, that the customization job supports. SageMaker uses this value to select a training configuration for the base model that you specify. The parameter supports the following values:     1K     2K     4K     8K     16K     32K     64K     128K     If you don't specify a value, SageMaker selects a training configuration based on the other values that you specify. The selection is not restricted to a particular sequence length.
+    sequence_length:  The maximum sequence length, in tokens, that the customization job supports. SageMaker uses this value to select a training configuration for the base model that you specify. The value must be an integer value from 1K to 1024K (for example, 32K).   If you don't specify a value, SageMaker selects a training configuration based on the other values that you specify. The selection is not restricted to a particular sequence length.
     """
 
     base_model_arn: StrPipeVar
@@ -10714,6 +10746,48 @@ class ModelDeployResult(Base):
     endpoint_name: Optional[Union[StrPipeVar, object]] = Unassigned()
 
 
+class ExtensionDetails(Base):
+    """
+    ExtensionDetails
+      Details of an extension installed on a SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    cluster_arn: The Amazon Resource Name (ARN) of the SageMaker HyperPod cluster on which the extension is installed.
+    extension_arn: The Amazon Resource Name (ARN) of the extension.
+    extension_name: The name of the extension.
+    extension_version: The version of the extension. While SageMaker HyperPod creates or updates the extension, some nodes might still run a different version. To see how many nodes run this version, see NodeSummary.
+    status: The status of the extension can be one of the following values:  Creating  SageMaker HyperPod is installing the extension on the cluster's nodes.  Active  The extension runs its current version and configuration on all of the cluster's nodes.  Updating  SageMaker HyperPod is applying a configuration change or version update to the cluster's nodes.  Degraded  The extension runs its current version and configuration on some of the cluster's nodes but not all of them. Or, at least one node recently reported that the extension is unhealthy.  CreateFailed  SageMaker HyperPod couldn't install the extension on any of the cluster's nodes.  UpdateFailed  SageMaker HyperPod couldn't apply the update on any of the cluster's nodes.  Deleting  SageMaker HyperPod is removing the extension from the cluster's nodes.  DeleteFailed  SageMaker HyperPod couldn't remove the extension from any of the cluster's nodes.
+    configuration_values: The configuration of the extension, as a JSON object serialized as a string. The configuration includes the default value of every setting that you didn't specify.
+    creation_time: The time when the extension was created.
+    last_modified_time: The time when the extension was last updated.
+    """
+
+    cluster_arn: StrPipeVar
+    extension_arn: StrPipeVar
+    extension_name: StrPipeVar
+    extension_version: StrPipeVar
+    status: StrPipeVar
+    configuration_values: Optional[StrPipeVar] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
+    last_modified_time: Optional[datetime.datetime] = Unassigned()
+
+
+class ExtensionNodeSummary(Base):
+    """
+    ExtensionNodeSummary
+      A summary of an extension's installation across the nodes of a SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    total_count: The number of nodes in your cluster that the extension targets. SageMaker HyperPod targets every running node in your cluster, including nodes that you add after you create the extension.
+    active_count: The number of nodes that are running the extension's current version and configuration. While SageMaker HyperPod creates or updates the extension, ActiveCount is lower than TotalCount.
+    """
+
+    total_count: int
+    active_count: int
+
+
 class ModelArtifacts(Base):
     """
     ModelArtifacts
@@ -10872,6 +10946,7 @@ class ProductionVariantSummary(Base):
     managed_instance_scaling: Settings that control the range in the number of instances that the endpoint provisions as it scales up or down to accommodate traffic.
     routing_config: Settings that control how the endpoint routes incoming traffic to the instances that the endpoint hosts.
     capacity_reservation_config: Settings for the capacity reservation for the compute instances that SageMaker AI reserves for an endpoint.
+    accelerator_partition_layouts: The accelerator partition layout that SageMaker applies to this production variant. On NVIDIA GPUs, the profiles are Multi-Instance GPU (MIG) profiles. SageMaker returns the accelerator partition layout as you provided it when you created the variant, without normalization.
     """
 
     variant_name: StrPipeVar
@@ -10889,6 +10964,7 @@ class ProductionVariantSummary(Base):
     capacity_reservation_config: Optional[ProductionVariantCapacityReservationSummary] = (
         Unassigned()
     )
+    accelerator_partition_layouts: Optional[List[AcceleratorPartitionLayout]] = Unassigned()
 
 
 class PendingProductionVariantSummary(Base):
@@ -10912,6 +10988,7 @@ class PendingProductionVariantSummary(Base):
     desired_serverless_config: The serverless configuration requested for this deployment, as specified in the endpoint configuration for the endpoint.
     managed_instance_scaling: Settings that control the range in the number of instances that the endpoint provisions as it scales up or down to accommodate traffic.
     routing_config: Settings that control how the endpoint routes incoming traffic to the instances that the endpoint hosts.
+    accelerator_partition_layouts: The accelerator partition layout that SageMaker is applying to this production variant. On NVIDIA GPUs, the profiles are Multi-Instance GPU (MIG) profiles. SageMaker returns the accelerator partition layout as you provided it in the pending deployment configuration, without normalization.
     """
 
     variant_name: StrPipeVar
@@ -10928,6 +11005,7 @@ class PendingProductionVariantSummary(Base):
     desired_serverless_config: Optional[ProductionVariantServerlessConfig] = Unassigned()
     managed_instance_scaling: Optional[ProductionVariantManagedInstanceScaling] = Unassigned()
     routing_config: Optional[ProductionVariantRoutingConfig] = Unassigned()
+    accelerator_partition_layouts: Optional[List[AcceleratorPartitionLayout]] = Unassigned()
 
 
 class PendingDeploymentSummary(Base):
@@ -12833,6 +12911,27 @@ class ExperimentSummary(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
 
 
+class ExtensionSummary(Base):
+    """
+    ExtensionSummary
+      A summary of an extension installed on a SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    extension_arn: The Amazon Resource Name (ARN) of the extension.
+    extension_name: The name of the extension.
+    extension_version: The version of the extension.
+    status: The status of the extension. For the meaning of each status, see ExtensionDetails.
+    creation_time: The time when the extension was created.
+    """
+
+    extension_arn: StrPipeVar
+    extension_name: StrPipeVar
+    extension_version: StrPipeVar
+    status: StrPipeVar
+    creation_time: Optional[datetime.datetime] = Unassigned()
+
+
 class FailStepMetadata(Base):
     """
     FailStepMetadata
@@ -13164,6 +13263,8 @@ class HubContent(Base):
     failure_reason: The failure reason if importing hub content failed.
     creation_time: The date and time that hub content was created.
     last_modified_time: The last modified time of the hub content.
+    created_by: Information about the user who created the hub content.
+    last_modified_by: Information about the user who last modified the hub content.
     tags: Any tags associated with the hub content.
     """
 
@@ -13187,6 +13288,8 @@ class HubContent(Base):
     hub_content_dependencies: Optional[List[HubContentDependency]] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
+    created_by: Optional[UserContext] = Unassigned()
+    last_modified_by: Optional[UserContext] = Unassigned()
     tags: Optional[List[Tag]] = Unassigned()
 
 
@@ -13225,6 +13328,21 @@ class HubContentInfo(Base):
     support_status: Optional[StrPipeVar] = Unassigned()
     hub_content_search_keywords: Optional[List[StrPipeVar]] = Unassigned()
     original_creation_time: Optional[datetime.datetime] = Unassigned()
+
+
+class HubContentStepMetadata(Base):
+    """
+    HubContentStepMetadata
+      The hub and the hub content that a HubContent step imported.
+
+    Attributes
+    ----------------------
+    hub_arn: The Amazon Resource Name (ARN) of the hub that the step imported the content into.
+    hub_content_arn: The Amazon Resource Name (ARN) of the hub content that was imported by this step execution.
+    """
+
+    hub_arn: Optional[StrPipeVar] = Unassigned()
+    hub_content_arn: Optional[StrPipeVar] = Unassigned()
 
 
 class HubInfo(Base):
@@ -14407,6 +14525,7 @@ class PipelineExecutionStepMetadata(Base):
     athena: The metadata for the Athena step execution.
     cleanup: The metadata for the cleanup step execution.
     for_each: The metadata for the ForEach step execution.
+    hub_content: The metadata for the HubContent step execution.
     """
 
     training_job: Optional[TrainingJobStepMetadata] = Unassigned()
@@ -14438,6 +14557,7 @@ class PipelineExecutionStepMetadata(Base):
     athena: Optional[AthenaStepMetadata] = Unassigned()
     cleanup: Optional[CleanupStepMetadata] = Unassigned()
     for_each: Optional[ForEachStepMetadata] = Unassigned()
+    hub_content: Optional[HubContentStepMetadata] = Unassigned()
 
 
 class SelectiveExecutionResult(Base):
@@ -14501,6 +14621,7 @@ class PipelineExecutionSummary(Base):
     pipeline_execution_description: The description of the pipeline execution.
     pipeline_execution_display_name: The display name of the pipeline execution.
     pipeline_execution_failure_reason: A message generated by SageMaker Pipelines describing why the pipeline execution failed.
+    pipeline_version_aliases: The aliases currently assigned to the pipeline version that the execution ran.
     """
 
     pipeline_execution_arn: Optional[StrPipeVar] = Unassigned()
@@ -14509,6 +14630,7 @@ class PipelineExecutionSummary(Base):
     pipeline_execution_description: Optional[StrPipeVar] = Unassigned()
     pipeline_execution_display_name: Optional[StrPipeVar] = Unassigned()
     pipeline_execution_failure_reason: Optional[StrPipeVar] = Unassigned()
+    pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class Parameter(Base):
@@ -14539,6 +14661,7 @@ class PipelineVersionSummary(Base):
     pipeline_version_description: The description of the pipeline version.
     pipeline_version_display_name: The display name of the pipeline version.
     last_execution_pipeline_execution_arn: The Amazon Resource Name (ARN) of the most recent pipeline execution created from this pipeline version.
+    pipeline_version_aliases: The aliases assigned to the pipeline version.
     """
 
     pipeline_arn: Optional[StrPipeVar] = Unassigned()
@@ -14547,6 +14670,7 @@ class PipelineVersionSummary(Base):
     pipeline_version_description: Optional[StrPipeVar] = Unassigned()
     pipeline_version_display_name: Optional[StrPipeVar] = Unassigned()
     last_execution_pipeline_execution_arn: Optional[StrPipeVar] = Unassigned()
+    pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class PipelineSummary(Base):
@@ -15463,6 +15587,7 @@ class PipelineVersion(Base):
     last_executed_pipeline_execution_arn: The Amazon Resource Name (ARN) of the most recent pipeline execution created from this pipeline version.
     last_executed_pipeline_execution_display_name: The display name of the most recent pipeline execution created from this pipeline version.
     last_executed_pipeline_execution_status: The status of the most recent pipeline execution created from this pipeline version.
+    pipeline_version_aliases: The aliases assigned to the pipeline version.
     """
 
     pipeline_arn: Optional[StrPipeVar] = Unassigned()
@@ -15476,6 +15601,7 @@ class PipelineVersion(Base):
     last_executed_pipeline_execution_arn: Optional[StrPipeVar] = Unassigned()
     last_executed_pipeline_execution_display_name: Optional[StrPipeVar] = Unassigned()
     last_executed_pipeline_execution_status: Optional[StrPipeVar] = Unassigned()
+    pipeline_version_aliases: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class ProcessingJob(Base):

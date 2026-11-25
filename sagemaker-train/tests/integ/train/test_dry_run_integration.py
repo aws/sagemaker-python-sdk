@@ -34,10 +34,9 @@ from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator
 from sagemaker.core.training.configs import TrainingJobCompute
+from .. import integ_resources
 
-MODEL_PACKAGE_GROUP = (
-    "arn:aws:sagemaker:us-west-2:729646638167:" "model-package-group/sdk-test-finetuned-models"
-)
+MODEL_PACKAGE_GROUP = integ_resources.output_model_package_group_arn()
 MODEL_ID = "meta-textgeneration-llama-3-2-1b-instruct"
 DATASET_KEY = "dry-run-integ-test/sample_train.jsonl"
 

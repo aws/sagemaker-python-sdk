@@ -53,6 +53,16 @@ BASIC_JSON_TYPES_TO_PYTHON_TYPES = {
 BASIC_RETURN_TYPES = {"str", "int", "bool", "float", "datetime.datetime"}
 
 SHAPE_DAG_FILE_PATH = os.getcwd() + "/src/sagemaker/core/utils/code_injection/shape_dag.py"
+
+# Shape names that a resource class of the same name shadows inside resources.py.
+# resources.py star-imports the shapes, then later defines ``class Tag(Base)`` (the
+# ListTags resource). An unqualified ``Tag`` annotation written before that class means
+# the shape only while annotations are evaluated eagerly; Python 3.14 evaluates them
+# lazily (PEP 649), so it resolves to the resource class and rejects shape instances
+# (issue #6554). Resource codegen emits these names as ``shapes.<Name>``. Other shared
+# names (Device, Workteam, ...) are only referenced after their resource class, so they
+# already resolve to the resource class on every Python version and are left alone.
+RESOURCE_SHADOWED_SHAPE_NAMES = frozenset({"Tag"})
 PYTHON_TYPES_TO_BASIC_JSON_TYPES = {
     "str": "string",
     "StrPipeVar": "string",

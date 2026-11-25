@@ -26,8 +26,12 @@ from sagemaker.train.common_utils.data_utils import (
 )
 from sagemaker.ai_registry.dataset import DataSet
 
-TEST_BUCKET = "sagemaker-train-data-utils-integ-test"
-TEST_PREFIX = "test-data"
+from .. import integ_resources
+
+# The account's default bucket. A fixed bucket name only ever worked in the one account
+# that owned it, since S3 bucket names are global.
+TEST_BUCKET = integ_resources.default_bucket()
+TEST_PREFIX = "integ-test-data-utils"
 DEFAULT_REGION = "us-west-2"
 
 # --- Sample dataset content ---
