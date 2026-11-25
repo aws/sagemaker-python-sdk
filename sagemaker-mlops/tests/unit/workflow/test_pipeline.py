@@ -695,6 +695,60 @@ def test_pipeline_start_with_version_id(mock_session, mock_step):
     assert call_kwargs["PipelineVersionId"] == 123
 
 
+MANAGED_PIPELINE_ARN = "arn:aws:sagemaker:us-west-2:aws:pipeline/aws-system-pipeline-example"
+EXECUTION_ROLE_ARN = "arn:aws:iam::123456789012:role/ExecutionRole"
+
+
+def test_pipeline_start_managed_pipeline_with_role_arn(mock_session):
+    pipeline = Pipeline(name=MANAGED_PIPELINE_ARN, sagemaker_session=mock_session)
+    mock_session.sagemaker_client.start_pipeline_execution.return_value = {
+        "PipelineExecutionArn": "arn:aws:sagemaker:us-west-2:123456789012:pipeline/"
+        "aws-system-pipeline-example/execution/abc123"
+    }
+    pipeline.start(role_arn=EXECUTION_ROLE_ARN, parameters={"InputPath": "s3://bucket/in"})
+    mock_session.sagemaker_client.start_pipeline_execution.assert_called_once_with(
+        PipelineName=MANAGED_PIPELINE_ARN,
+        RoleArn=EXECUTION_ROLE_ARN,
+        PipelineParameters=[{"Name": "InputPath", "Value": "s3://bucket/in"}],
+    )
+
+
+def test_pipeline_start_without_role_arn_omits_it(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    mock_session.sagemaker_client.start_pipeline_execution.return_value = {
+        "PipelineExecutionArn": "arn"
+    }
+    pipeline.start()
+    call_kwargs = mock_session.sagemaker_client.start_pipeline_execution.call_args[1]
+    assert "RoleArn" not in call_kwargs
+
+
+def test_pipeline_start_with_role_arn_does_not_retry_access_denied(mock_session):
+    from botocore.exceptions import ClientError
+
+    pipeline = Pipeline(name=MANAGED_PIPELINE_ARN, sagemaker_session=mock_session)
+    mock_session.sagemaker_client.start_pipeline_execution.side_effect = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": "not authorized"}},
+        "StartPipelineExecution",
+    )
+    with patch("sagemaker.mlops.workflow.pipeline.retry_with_backoff") as mock_retry:
+        with pytest.raises(ClientError):
+            pipeline.start(role_arn=EXECUTION_ROLE_ARN)
+    mock_retry.assert_not_called()
+    assert mock_session.sagemaker_client.start_pipeline_execution.call_count == 1
+
+
+def test_pipeline_start_without_role_arn_retries_access_denied(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    with patch(
+        "sagemaker.mlops.workflow.pipeline.retry_with_backoff",
+        return_value={"PipelineExecutionArn": "arn"},
+    ) as mock_retry:
+        pipeline.start()
+    mock_retry.assert_called_once()
+    assert mock_retry.call_args[1]["botocore_client_error_code"] == "AccessDeniedException"
+
+
 def test_pipeline_list_versions(mock_session, mock_step):
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
     pipeline.list_pipeline_versions(sort_order="Descending", max_results=10)

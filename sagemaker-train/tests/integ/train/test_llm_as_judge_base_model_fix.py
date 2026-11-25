@@ -28,6 +28,7 @@ import logging
 from sagemaker.train.evaluate import (
     LLMAsJudgeEvaluator,
 )
+from .. import integ_resources
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
@@ -62,17 +63,16 @@ CUSTOM_METRIC_DICT = {
 }
 
 # Test configuration
-MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
-REGION = "us-west-2"
-ACCOUNT_ID = "729646638167"
+MODEL_PACKAGE_GROUP = integ_resources.output_model_package_group()
+REGION = integ_resources.region()
 
 TEST_CONFIG = {
     "evaluator_model": "anthropic.claude-haiku-4-5-20251001-v1:0",
-    "dataset_s3_uri": f"s3://sagemaker-{REGION}-{ACCOUNT_ID}/model-customization/eval/gen_qa.jsonl",
+    "dataset_s3_uri": integ_resources.dataset_uri(integ_resources.EVAL_GEN_QA_DATASET),
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
-    "s3_output_path": f"s3://sagemaker-{REGION}-{ACCOUNT_ID}/model-customization/eval/base-model-fix-test/",
-    "mlflow_tracking_server_arn": f"arn:aws:sagemaker:{REGION}:{ACCOUNT_ID}:mlflow-app/app-TTAUWUNMUHH6",
+    "s3_output_path": integ_resources.output_uri("model-customization-eval/base-model-fix-test"),
+    "mlflow_tracking_server_arn": integ_resources.mlflow_app_arn(),
     "evaluate_base_model": True,  # This is the key difference - testing base model evaluation
     "region": REGION,
 }

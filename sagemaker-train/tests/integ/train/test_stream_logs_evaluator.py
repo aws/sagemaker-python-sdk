@@ -33,42 +33,34 @@ from sagemaker.train.evaluate.execution import (
     StepDetail,
 )
 
+from .. import integ_resources
+
 logger = logging.getLogger(__name__)
 
-REGION = "us-west-2"
+REGION = integ_resources.region()
 
-S3_OUTPUT = "s3://sagemaker-us-west-2-729646638167/model-customization/eval/"
-MODEL_PACKAGE_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1"
-)
-DATASET_S3 = "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl"
+S3_OUTPUT = integ_resources.output_uri("stream-logs-evaluator")
+MODEL_PACKAGE_ARN = integ_resources.fixture_model_package_arn()
+DATASET_S3 = integ_resources.dataset_uri(integ_resources.EVAL_ZC_DATASET)
 
-BENCHMARK_EXECUTION_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
-    "SagemakerEvaluation-BenchmarkEvaluation-499b3c7e-e456-4297-9dc0-cc5737137c9c/execution/p1gtwhjm9dzt"
-)
-BENCHMARK_STEP_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
-    "pipelines-p1gtwhjm9dzt-EvaluateCustomModel-XEdt5h2gQC"
-)
+# stream_logs() reads the step job's CloudWatch logs (from the job ARN) and never looks
+# the pipeline up, so each test fakes a completed execution whose one step is the
+# account's completed fixture training job. The execution ARNs are never resolved.
+STEP_ARN = integ_resources.pytorch_training_job_arn()
 
-CUSTOM_SCORER_EXECUTION_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
-    "SagemakerEvaluation-CustomScorerEvaluation-2d0fde36-af0f-49d7-8b8e-a5e11352dc1f/execution/yca2ij65mlhr"
-)
-CUSTOM_SCORER_STEP_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
-    "pipelines-yca2ij65mlhr-EvaluateCustomModel-MlMUskwbNB"
-)
 
-LLMAJ_EXECUTION_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:pipeline/"
-    "SagemakerEvaluation-LLMAJEvaluation-ac7a1fe7-fe8a-445c-8aa5-702b3d6b7771/execution/hmk0lcu6ufzc"
-)
-LLMAJ_STEP_ARN = (
-    "arn:aws:sagemaker:us-west-2:729646638167:training-job/"
-    "pipelines-hmk0lcu6ufzc-EvaluateCustomModelM-6UaY2bgNL5"
-)
+def _execution_arn(pipeline_name: str) -> str:
+    return integ_resources.arn("sagemaker", f"pipeline/{pipeline_name}/execution/fixture")
+
+
+BENCHMARK_EXECUTION_ARN = _execution_arn("SagemakerEvaluation-BenchmarkEvaluation")
+BENCHMARK_STEP_ARN = STEP_ARN
+
+CUSTOM_SCORER_EXECUTION_ARN = _execution_arn("SagemakerEvaluation-CustomScorerEvaluation")
+CUSTOM_SCORER_STEP_ARN = STEP_ARN
+
+LLMAJ_EXECUTION_ARN = _execution_arn("SagemakerEvaluation-LLMAJEvaluation")
+LLMAJ_STEP_ARN = STEP_ARN
 
 
 @pytest.fixture(scope="module")

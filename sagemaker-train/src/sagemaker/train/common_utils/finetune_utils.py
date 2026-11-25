@@ -824,6 +824,42 @@ def _parse_sequence_length(value) -> int:
         )
 
 
+_LENGTH_PARAMS = ("max_prompt_length", "max_response_length", "dataset_max_len")
+
+
+def _sequence_length_ceiling(options_dict: Dict[str, Any], sequence_length_label) -> Optional[int]:
+    """The token budget that prompt + response (RL) or dataset_max_len (SFT/DPO) must fit.
+
+    verl recipe publishers round the SequenceLength label down to a power of 2 to fit the
+    hub enum (a 20480-token budget is labelled "16K") and publish the exact budget as the
+    length params' override max. A max is taken as the budget only when it rounds down to
+    the label; any other max (e.g. llmft's generic 131072 on a "4K" recipe) is not the
+    recipe's budget, so the label stays the ceiling. Publishers write one budget on every
+    length param, so params that disagree are not trusted either.
+    """
+    label = _parse_sequence_length(sequence_length_label)
+    if not label:
+        return None
+    budgets = {
+        spec["max"]
+        for name in _LENGTH_PARAMS
+        if isinstance(spec := options_dict.get(name), dict)
+        and isinstance(spec.get("max"), int)
+        and label <= spec["max"] < 2 * label
+    }
+    if len(budgets) == 1:
+        return budgets.pop()
+    if budgets:
+        logger.warning(
+            "Length params declare different budgets %s for SequenceLength %s; "
+            "using %d as the ceiling.",
+            sorted(budgets),
+            sequence_length_label,
+            label,
+        )
+    return label
+
+
 def _get_fine_tuning_options_and_model_arn(
     model_name: str,
     customization_technique: str,
@@ -1010,11 +1046,9 @@ def _get_fine_tuning_options_and_model_arn(
                     f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}"
                 )
 
-        # Supported sequence-length ceiling: the recipe's SequenceLength ("<n>K")
-        # is the single source of truth. Parse it to an int so we can validate that
-        # max_prompt_length + max_response_length (or max_length) stays within
-        # what the recipe's hardware can serve. 0 if absent/unparseable (no-op).
-        sequence_length_ceiling = _parse_sequence_length(recipe.get("SequenceLength")) or None
+        sequence_length_ceiling = _sequence_length_ceiling(
+            options_dict, recipe.get("SequenceLength")
+        )
 
         if options_dict:
             return (

@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.30.0 (2026-11-16)
+
+### Dependencies
+
+- Raise the sagemaker-core and sagemaker-train minimum versions to 2.30.0 and 1.30.0
+
+
+## v1.29.0 (2026-11-04)
+
+### New Features
+
+- feat(serve): describe an endpoint's traffic and size workloads from it (#6552)
+
+### Bug Fixes
+
+- fix: normalize tar member paths when extracting Bedrock model artifacts (#6543)
+
+### Tests
+
+- test(serve): run the recommender integ tests on ml.g6 and ml.g7 instances (#6557)
+
+
 ## v1.28.0 (2026-10-29)
 
 ### Bug Fixes

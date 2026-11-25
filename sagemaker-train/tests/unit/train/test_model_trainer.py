@@ -546,6 +546,39 @@ def test_train_local_preserves_input_data(mock_train, mock_check_for_studio, tmp
     assert channel.data_source.file_system_data_source.directory_path == str(tmp_path)
 
 
+@patch("sagemaker.train.local.local_container.check_for_studio", return_value=False)
+@patch("sagemaker.train.model_trainer._LocalContainer.train", autospec=True)
+def test_train_local_returns_and_stores_result(mock_train, mock_check_for_studio, tmp_path):
+    """Local training exposes the artifact path and job state (issue #6556)."""
+    mock_train.return_value = "file:///tmp/artifacts/model.tar.gz"
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        training_mode=Mode.LOCAL_CONTAINER,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        local_container_root=str(tmp_path),
+    )
+
+    returned = trainer.train()
+
+    assert returned == "file:///tmp/artifacts/model.tar.gz"
+    result = trainer.latest_local_training_result
+    assert result is not None
+    assert result.training_job_name
+    assert result.model_artifact_path == "file:///tmp/artifacts/model.tar.gz"
+    assert result.output_artifact_path == "file:///tmp/artifacts/output.tar.gz"
+    # Remote job state is left untouched for local runs.
+    assert trainer._latest_training_job is None
+
+
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_train_managed_returns_none_and_no_local_result(mock_training_job, model_trainer):
+    """Remote training keeps returning None and sets no local result (issue #6556)."""
+    returned = model_trainer.train()
+
+    assert returned is None
+    assert model_trainer.latest_local_training_result is None
+
+
 @patch("sagemaker.train.model_trainer.TrainingJob")
 @patch.object(ModelTrainer, "_get_input_data_config")
 def test_train_with_input_data_channels(mock_get_input_config, mock_training_job, model_trainer):
@@ -1616,8 +1649,12 @@ def test_hyperparameters_valid_json(mock_exists, modules_session):
             hyperparameters="hyperparameters.json",
         )
         assert model_trainer.hyperparameters == expected_hyperparameters
-        mock_file_open.assert_called_once_with("hyperparameters.json", "r")
-        mock_exists.assert_called_once_with("hyperparameters.json")
+        # assert_any_call (not assert_called_once_with): os.path.exists and open
+        # are patched globally, so unrelated calls elsewhere in a full-suite run
+        # would break an exact-count assertion. We only care that the
+        # hyperparameters file itself was checked and opened for reading.
+        mock_file_open.assert_any_call("hyperparameters.json", "r")
+        mock_exists.assert_any_call("hyperparameters.json")
 
 
 @patch("os.path.exists")
@@ -1635,8 +1672,12 @@ def test_hyperparameters_valid_yaml(mock_exists, modules_session):
             hyperparameters="hyperparameters.yaml",
         )
         assert model_trainer.hyperparameters == expected_hyperparameters
-        mock_file_open.assert_called_once_with("hyperparameters.yaml", "r")
-        mock_exists.assert_called_once_with("hyperparameters.yaml")
+        # assert_any_call (not assert_called_once_with): os.path.exists and open
+        # are patched globally, so unrelated calls elsewhere in a full-suite run
+        # would break an exact-count assertion. We only care that the
+        # hyperparameters file itself was checked and opened for reading.
+        mock_file_open.assert_any_call("hyperparameters.yaml", "r")
+        mock_exists.assert_any_call("hyperparameters.yaml")
 
 
 def test_hyperparameters_not_exist(modules_session):
@@ -2754,10 +2795,9 @@ def test_boto3_request_uses_boto_style_tag_keys(model_trainer):
 def test_interactive_request_keeps_tags_training_job_create_accepts(model_trainer):
     """The interactive request carries dicts, not Tag models.
 
-    ``TrainingJob.create`` annotates ``tags`` with ``sagemaker.core.resources.Tag``,
-    which shadows the shape of the same name, so a ``sagemaker.core.shapes.Tag``
-    instance fails its validation. The dicts are revalidated into that model instead,
-    and come out boto-style on the wire.
+    ``TrainingJob.create`` validates ``tags`` as ``sagemaker.core.shapes.Tag`` (it used
+    to resolve to the shadowing ``sagemaker.core.resources.Tag``, see issue #6554). The
+    dicts are revalidated into that model and come out boto-style on the wire.
     """
     model_trainer.tags = [TAG]
 

@@ -818,6 +818,10 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     "type": "object",
                                     "properties": {"role_arn": {"type": "string"}},
                                 },
+                                "PipelineExecution": {
+                                    "type": "object",
+                                    "properties": {"role_arn": {"type": "string"}},
+                                },
                                 "ProcessingJob": {
                                     "type": "object",
                                     "properties": {

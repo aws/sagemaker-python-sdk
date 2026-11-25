@@ -19,6 +19,7 @@ import random
 from sagemaker.train.rlaif_trainer import RLAIFTrainer
 from sagemaker.train.common import TrainingType
 import pytest
+from .. import integ_resources
 
 
 @pytest.mark.gpu_intensive
@@ -29,13 +30,13 @@ def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     rlaif_trainer = RLAIFTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
+        model_package_group=integ_resources.output_model_package_group(),
         reward_model_id="openai.gpt-oss-120b-1:0",
         reward_prompt="Builtin.Summarize",
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         accept_eula=True,
         base_job_name=f"rlaif-lora-integ-{unique_id}",
     )
@@ -71,13 +72,13 @@ def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     rlaif_trainer = RLAIFTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
+        model_package_group=integ_resources.output_model_package_group(),
         reward_model_id="openai.gpt-oss-120b-1:0",
-        reward_prompt="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlaif-test-prompt/0.0.1",
+        reward_prompt=integ_resources.evaluator_arn("rlaif-test-prompt"),
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         accept_eula=True,
         base_job_name=f"rlaif-rwd-integ-{unique_id}",
     )
@@ -110,15 +111,15 @@ def test_rlaif_trainer_continued_finetuning(sagemaker_session):
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
 
     rlaif_trainer = RLAIFTrainer(
-        model="arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
+        model=integ_resources.fixture_model_package_arn(),
         training_type=TrainingType.LORA,
-        model_package_group="sdk-test-finetuned-models",
+        model_package_group=integ_resources.output_model_package_group(),
         reward_model_id="openai.gpt-oss-120b-1:0",
         reward_prompt="Builtin.Summarize",
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        training_dataset=integ_resources.dataset_uri(integ_resources.RLVR_RLAIF_DATASET),
+        s3_output_path=integ_resources.output_uri("model-customization"),
         accept_eula=True,
         base_job_name=f"rlaif-cont-integ-{unique_id}",
     )

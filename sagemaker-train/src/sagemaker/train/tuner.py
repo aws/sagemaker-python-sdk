@@ -577,8 +577,16 @@ class HyperparameterTuner(object):
             import tempfile
 
             session = model_trainer.sagemaker_session
-            bucket = session.default_bucket()
-            s3_key = f"{key_prefix}/sourcedir/sourcedir.tar.gz"
+            # Resolve bucket and prefix the same way as create_input_data_channel, so the
+            # source lands next to sm_drivers and honors default_bucket_prefix and the
+            # output-path fallback when the role can't write the default bucket (#6555).
+            source_key_prefix = f"{key_prefix}/sourcedir"
+            if session.default_bucket_prefix:
+                source_key_prefix = f"{session.default_bucket_prefix}/{source_key_prefix}"
+            bucket, staging_prefix = model_trainer._resolve_staging_bucket()
+            if staging_prefix:
+                source_key_prefix = f"{staging_prefix}/{source_key_prefix}"
+            s3_key = f"{source_key_prefix}/sourcedir.tar.gz"
 
             with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
                 tar_path = tmp.name
@@ -590,7 +598,10 @@ class HyperparameterTuner(object):
                             arcname = os.path.relpath(fpath, source_code.source_dir)
                             tar.add(fpath, arcname=arcname)
                 s3_client = session.boto_session.client("s3", region_name=session.boto_region_name)
-                s3_client.upload_file(tar_path, bucket, s3_key)
+                # Encrypt staged source with the trainer's output KMS key (parity with
+                # create_input_data_channel); None when no key is set. See issue #6555.
+                extra_args = model_trainer._resolve_upload_extra_args()
+                s3_client.upload_file(tar_path, bucket, s3_key, ExtraArgs=extra_args)
                 model_trainer.hyperparameters["sagemaker_submit_directory"] = (
                     f"s3://{bucket}/{s3_key}"
                 )

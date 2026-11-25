@@ -89,6 +89,7 @@ def _mock_model_trainer(**overrides):
     trainer.tags = []
     trainer.source_code = None
     trainer.configure_mock(**{"networking": None})
+    trainer._resolve_staging_bucket.return_value = ("my-bucket", None)
     for k, v in overrides.items():
         setattr(trainer, k, v)
     return trainer
@@ -276,6 +277,72 @@ class TestBuildDriverAndCodeChannels:
         assert "sourcedir.tar.gz" in upload_args[2]
         # sagemaker_submit_directory set
         assert trainer.hyperparameters["sagemaker_submit_directory"].startswith("s3://my-bucket/")
+
+    def _upload_trainer(self, tmp_path, extra_args):
+        """Mock trainer whose source upload returns ``extra_args`` from the resolver."""
+        src_dir = str(tmp_path / "src")
+        os.makedirs(src_dir)
+        with open(os.path.join(src_dir, "train.py"), "w") as f:
+            f.write("print('hello')")
+
+        mock_s3_client = MagicMock()
+        mock_session = MagicMock()
+        mock_session.default_bucket.return_value = "my-bucket"
+        mock_session.default_bucket_prefix = None
+        mock_session.boto_session.client.return_value = mock_s3_client
+        mock_session.boto_region_name = "us-west-2"
+
+        trainer = _mock_model_trainer(source_code=_make_source_code(source_dir=src_dir))
+        trainer.sagemaker_session = mock_session
+        trainer.create_input_data_channel.return_value = _create_channel("sm_drivers")
+        trainer.hyperparameters = {}
+        trainer._resolve_upload_extra_args.return_value = extra_args
+        return trainer, mock_s3_client
+
+    def test_uploads_sourcedir_with_output_kms_key(self, tmp_path):
+        """Local source upload must forward the trainer's KMS ExtraArgs (issue #6555)."""
+        extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": "my-kms-key"}
+        trainer, mock_s3_client = self._upload_trainer(tmp_path, extra_args)
+
+        HyperparameterTuner._build_driver_and_code_channels(trainer)
+
+        trainer._resolve_upload_extra_args.assert_called_once_with()
+        assert mock_s3_client.upload_file.call_args.kwargs["ExtraArgs"] == extra_args
+
+    def test_uploads_sourcedir_without_kms_key(self, tmp_path):
+        """No KMS key resolved means ExtraArgs=None, preserving default behavior."""
+        trainer, mock_s3_client = self._upload_trainer(tmp_path, None)
+
+        HyperparameterTuner._build_driver_and_code_channels(trainer)
+
+        assert mock_s3_client.upload_file.call_args.kwargs["ExtraArgs"] is None
+
+    def test_uploads_sourcedir_to_resolved_staging_bucket(self, tmp_path):
+        """Source upload must follow the trainer's staging-bucket fallback (issue #6555)."""
+        trainer, mock_s3_client = self._upload_trainer(tmp_path, None)
+        trainer._resolve_staging_bucket.return_value = ("output-bucket", "jobs")
+
+        HyperparameterTuner._build_driver_and_code_channels(trainer)
+
+        trainer._resolve_staging_bucket.assert_called_once_with()
+        trainer.sagemaker_session.default_bucket.assert_not_called()
+        _, bucket, key = mock_s3_client.upload_file.call_args.args
+        assert bucket == "output-bucket"
+        assert key.startswith("jobs/test-tuning/")
+        assert key.endswith("/input/sourcedir/sourcedir.tar.gz")
+        assert trainer.hyperparameters["sagemaker_submit_directory"] == f"s3://output-bucket/{key}"
+
+    def test_uploads_sourcedir_with_default_bucket_prefix(self, tmp_path):
+        """Source upload must honor the session's default_bucket_prefix (issue #6555)."""
+        trainer, mock_s3_client = self._upload_trainer(tmp_path, None)
+        trainer.sagemaker_session.default_bucket_prefix = "team-prefix"
+
+        HyperparameterTuner._build_driver_and_code_channels(trainer)
+
+        _, bucket, key = mock_s3_client.upload_file.call_args.args
+        assert bucket == "my-bucket"
+        assert key.startswith("team-prefix/test-tuning/")
+        assert key.endswith("/sourcedir/sourcedir.tar.gz")
 
     def test_sets_submit_directory_for_s3_source_dir(self, tmp_path):
         """Should set sagemaker_submit_directory directly when source_dir is an S3 URI."""

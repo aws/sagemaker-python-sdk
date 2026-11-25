@@ -122,7 +122,7 @@ def test_local_processor_runs_without_role_5562():
             msg = str(err).lower()
             if "pull" in msg and ("denied" in msg or "unauthorized" in msg or "403" in msg):
                 pytest.skip(f"ECR image pull denied locally: {err}")
-            if "toomanyrequests" in msg or "rate limit" in msg:
+            if any(x in msg for x in ("toomanyrequests", "too many requests", "rate limit")):
                 pytest.skip(f"Registry pull rate-limited locally: {err}")
             raise
 
@@ -136,7 +136,7 @@ def test_local_processor_runs_without_role_5562():
 # #3348 + #4996 -- local endpoint invoke response shape and binary payload
 # --------------------------------------------------------------------------- #
 _DOCKERFILE = """\
-FROM python:3.10-slim
+FROM public.ecr.aws/docker/library/python:3.10-slim
 COPY serve.py /serve.py
 ENTRYPOINT ["python3", "/serve.py"]
 """
@@ -234,10 +234,10 @@ def test_local_endpoint_invoke_response_shape_and_binary_3348_4996():
         build = _build_serving_image(tag)
         if build.returncode != 0:
             stderr = (build.stderr or "").lower()
-            if "toomanyrequests" in stderr or "rate limit" in stderr:
+            if any(x in stderr for x in ("toomanyrequests", "too many requests", "rate limit")):
                 pytest.skip("Docker Hub pull rate-limited building the serving image.")
             if "pull access denied" in stderr or "unauthorized" in stderr:
-                pytest.skip("python:3.10-slim base image pull denied locally.")
+                pytest.skip("python:3.10-slim base image pull denied.")
             raise AssertionError("docker build failed:\n%s" % build.stderr)
 
         session = LocalSession(boto_session=_boto_session())
