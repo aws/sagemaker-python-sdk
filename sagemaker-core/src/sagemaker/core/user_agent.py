@@ -17,6 +17,8 @@ from __future__ import absolute_import
 import json
 import os
 
+import importlib_metadata
+
 SDK_PREFIX = "AWS-SageMaker-Python-SDK"
 STUDIO_PREFIX = "AWS-SageMaker-Studio"
 NOTEBOOK_PREFIX = "AWS-SageMaker-Notebook-Instance"
@@ -24,7 +26,24 @@ NOTEBOOK_PREFIX = "AWS-SageMaker-Notebook-Instance"
 NOTEBOOK_METADATA_FILE = "/etc/opt/ml/sagemaker-notebook-instance-version.txt"
 STUDIO_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
 
-SDK_VERSION = "3.0"
+
+def _resolve_sdk_version():
+    """Resolve the installed SDK version for telemetry/user-agent reporting.
+
+    Prefers the ``sagemaker`` meta-package version (the V3 release number
+    customers install), falling back to ``sagemaker-core`` when the SDK is
+    installed standalone. Returns a static fallback if neither distribution's
+    metadata is resolvable, so user-agent/telemetry construction never raises.
+    """
+    for distribution in ("sagemaker", "sagemaker-core"):
+        try:
+            return importlib_metadata.version(distribution)
+        except importlib_metadata.PackageNotFoundError:
+            continue
+    return "3.0"
+
+
+SDK_VERSION = _resolve_sdk_version()
 
 
 def process_notebook_metadata_file():
