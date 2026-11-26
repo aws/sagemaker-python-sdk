@@ -1970,7 +1970,7 @@ class TransformResources(Base):
     """
 
     instance_type: StrPipeVar
-    instance_count: int
+    instance_count: IntPipeVar
     volume_kms_key_id: Optional[StrPipeVar] = Unassigned()
     transform_ami_version: Optional[StrPipeVar] = Unassigned()
 

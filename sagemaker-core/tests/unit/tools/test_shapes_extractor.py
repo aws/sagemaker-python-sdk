@@ -360,8 +360,10 @@ class TestInstancePreferencesPipeVarOverrides:
     _MODEL = {
         "TrainingInstanceCount": _COUNT,
         "ProcessingInstanceCount": _COUNT,
+        "TransformInstanceCount": _COUNT,
         "TrainingInstanceType": _STRING,
         "ProcessingInstanceType": _STRING,
+        "TransformInstanceType": _STRING,
         "ResourceConfig": {
             "type": "structure",
             "members": {
@@ -390,6 +392,13 @@ class TestInstancePreferencesPipeVarOverrides:
             "members": {
                 "InstanceType": {"shape": "ProcessingInstanceType"},
                 "InstanceCount": {"shape": "ProcessingInstanceCount"},
+            },
+        },
+        "TransformResources": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "TransformInstanceType"},
+                "InstanceCount": {"shape": "TransformInstanceCount"},
             },
         },
         # Control: same integer shape, no override registered -> must stay int.
@@ -421,6 +430,7 @@ class TestInstancePreferencesPipeVarOverrides:
             ("ProcessingClusterConfig", "instance_count"),
             ("ProcessingClusterConfig", "selected_instance_count"),
             ("ProcessingInstancePreference", "instance_count"),
+            ("TransformResources", "instance_count"),
         ],
     )
     def test_count_members_generate_as_int_pipe_var(self, extractor, shape, member):
