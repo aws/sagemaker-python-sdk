@@ -20,9 +20,8 @@ Contract summary
   side-by-side comparison.
 * ``VpcConfig`` is at the step ``Arguments`` level (not inside the
   ``JobConfigDocument``).
-* Hyperparameters (``eval_group_size``, ``sampling_temperature``,
-  ``top_p``, ``max_tokens``, ``pass_k_values``, ``success_threshold``)
-  are emitted as string values under ``EvaluationConfig.HyperParameters``.
+* User-changed hyperparameters are emitted as strings under
+  ``EvaluationConfig.HyperParameters``, keyed by recipe parameter name.
 * Lineage DAG:
   ``CreateEvaluationAction → (Evaluate…) → AssociateLineage``;
   ``AssociateLineage`` reads ``ServiceOutput.MlflowDetails.*`` from the
@@ -33,9 +32,7 @@ each template omits keys it does not need):
 
     pipeline_name, role_arn, base_model_arn, agent_arn, agent_qualifier,
     dataset_uri, s3_output_path, mlflow_resource_arn,
-    mlflow_experiment_name, eval_group_size,
-    sampling_temperature, top_p, max_tokens, pass_k_values,
-    success_threshold, model_package_group_arn, source_model_package_arn,
+    mlflow_experiment_name, model_package_group_arn, source_model_package_arn,
     action_arn_prefix, dataset_artifact_arn, kms_key_arn, vpc_config,
     vpc_security_group_ids, vpc_subnets, tags
 """
