@@ -31,3 +31,12 @@ def test_get_base_python_image_uri(py_version, load_config):
             repo=repo, account=REGISTRIES[region], region=region
         )
         assert expected == uri
+
+
+@pytest.mark.parametrize("unsupported_py_version", ["311", "312", "313", "39", "invalid"])
+def test_get_base_python_image_uri_unsupported_version(unsupported_py_version):
+    with pytest.raises(ValueError, match="Unsupported Python version"):
+        image_uris.get_base_python_image_uri(
+            region="us-west-2",
+            py_version=unsupported_py_version,
+        )
