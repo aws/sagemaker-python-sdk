@@ -496,8 +496,8 @@ class TestLocalContainer:
         assert result is False
 
     @patch("sagemaker.core.modules.local_core.local_container.download_folder")
-    @patch("sagemaker.core.modules.local_core.local_container.TemporaryDirectory")
-    def test_get_data_source_local_path_s3(self, mock_temp_dir, mock_download, mock_session):
+    @patch("sagemaker.core.modules.local_core.local_container.mkdtemp")
+    def test_get_data_source_local_path_s3(self, mock_mkdtemp, mock_download, mock_session):
         """Test _get_data_source_local_path with S3 data source"""
         data_source = DataSource(
             s3_data_source=S3DataSource(
@@ -522,12 +522,61 @@ class TestLocalContainer:
             sagemaker_session=mock_session,
         )
 
-        mock_temp_dir.return_value.name = "/tmp/temp123"
+        mock_mkdtemp.return_value = "/tmp/temp123"
 
         result = container._get_data_source_local_path(data_source)
 
         assert result == "/tmp/temp123"
         mock_download.assert_called_once()
+
+    @patch("sagemaker.core.modules.local_core.local_container.download_folder")
+    def test_get_data_source_local_path_s3_single_file_dir_exists(
+        self, mock_download, mock_session, tmp_path
+    ):
+        """Regression test for #5033: channel dir must exist when download_folder runs.
+
+        On unfixed code the TemporaryDirectory object is garbage-collected
+        immediately, deleting the directory before download_folder is called.
+        """
+        data_source = DataSource(
+            s3_data_source=S3DataSource(
+                s3_uri="s3://bucket/data/train.csv",
+                s3_data_type="S3Prefix",
+                s3_data_distribution_type="FullyReplicated",
+            )
+        )
+        channel = Channel(channel_name="training", data_source=data_source)
+
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root=str(tmp_path),
+            input_data_config=[channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        def download_side_effect(bucket, prefix, target, session):
+            # The target directory MUST exist at this point
+            assert os.path.isdir(target), f"Target directory {target} does not exist"
+            # Simulate downloading a file into the target
+            filepath = os.path.join(target, os.path.basename(prefix))
+            with open(filepath, "w") as f:
+                f.write("data")
+
+        mock_download.side_effect = download_side_effect
+
+        result = container._get_data_source_local_path(data_source)
+
+        assert os.path.isdir(result)
+        assert str(tmp_path) == str(os.path.dirname(result))
+        assert os.path.isfile(os.path.join(result, "train.csv"))
+        assert result in container._temporary_folders
 
     def test_get_data_source_local_path_local(self, mock_session):
         """Test _get_data_source_local_path with local file system"""
