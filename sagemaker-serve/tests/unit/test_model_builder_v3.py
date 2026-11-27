@@ -503,6 +503,73 @@ class TestModelBuilderV3BuildSingleModelBuilder(unittest.TestCase):
         self.assertEqual(result, mock_model)
         mock_build_passthrough.assert_called_once()
 
+    @patch("sagemaker.serve.model_builder.ModelBuilder._build_for_passthrough")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._get_client_translators")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._build_validations")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._handle_mlflow_input")
+    def test_build_single_without_user_agent_creator(
+        self,
+        mock_mlflow,
+        mock_validations,
+        mock_serve_setting,
+        mock_translators,
+        mock_build_passthrough,
+    ):
+        """Test _build_single_modelbuilder succeeds without _user_agent_creator.
+
+        This handles clients such as LocalSagemakerClient (LocalSession).
+        """
+        mock_model = Mock(spec=Model)
+        mock_build_passthrough.return_value = mock_model
+        mock_translators.return_value = (Mock(), Mock())
+        mock_serve_setting.return_value = Mock()
+
+        # Remove _user_agent_creator to simulate LocalSagemakerClient
+        del self.mock_client._user_agent_creator
+
+        builder = ModelBuilder(
+            image_uri="123456789012.dkr.ecr.us-west-2.amazonaws.com/custom:latest",
+            role_arn=self.mock_role_arn,
+            sagemaker_session=self.mock_session,
+        )
+        builder._passthrough = True
+
+        result = builder._build_single_modelbuilder()
+
+        self.assertEqual(result, mock_model)
+        mock_build_passthrough.assert_called_once()
+
+    @patch("sagemaker.serve.model_builder.ModelBuilder._build_for_passthrough")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._get_client_translators")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._build_validations")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._handle_mlflow_input")
+    def test_build_single_decorates_user_agent_when_creator_present(
+        self,
+        mock_mlflow,
+        mock_validations,
+        mock_serve_setting,
+        mock_translators,
+        mock_build_passthrough,
+    ):
+        """Test _build_single_modelbuilder decorates _user_agent_creator when present."""
+        mock_model = Mock(spec=Model)
+        mock_build_passthrough.return_value = mock_model
+        mock_translators.return_value = (Mock(), Mock())
+        mock_serve_setting.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789012.dkr.ecr.us-west-2.amazonaws.com/custom:latest",
+            role_arn=self.mock_role_arn,
+            sagemaker_session=self.mock_session,
+        )
+        builder._passthrough = True
+
+        builder._build_single_modelbuilder()
+
+        self.assertIn("ModelBuilder", self.mock_client._user_agent_creator.to_string())
+
     @patch("sagemaker.serve.model_builder.ModelBuilder._build_for_jumpstart")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_jumpstart_model_id")
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_client_translators")
