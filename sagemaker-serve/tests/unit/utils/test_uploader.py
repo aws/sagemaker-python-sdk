@@ -168,3 +168,71 @@ class TestUploadUncompressedFunction(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestModelDirSymlinkValidation(unittest.TestCase):
+    """Test symlink validation before model artifacts are uploaded."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = self._tmp.name
+        outside = os.path.join(self.tmp, "outside")
+        os.makedirs(outside)
+        self.decoy = os.path.join(outside, "credentials")
+        with open(self.decoy, "w") as f:
+            f.write("decoy-not-a-real-credential")
+        self.model_dir = os.path.join(self.tmp, "model")
+        os.makedirs(os.path.join(self.model_dir, "code"))
+        with open(os.path.join(self.model_dir, "serve.pkl"), "w") as f:
+            f.write("model")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    @patch("sagemaker.serve.utils.uploader.create_tar_file")
+    @patch("sagemaker.serve.utils.uploader.tqdm")
+    def test_upload_rejects_symlink_outside_model_dir(self, mock_tqdm, mock_create_tar):
+        from sagemaker.serve.utils.uploader import Uploader
+
+        os.symlink(self.decoy, os.path.join(self.model_dir, "code", "config.ini"))
+
+        with self.assertRaisesRegex(ValueError, "model_path contains a symlink"):
+            Uploader().upload(self.model_dir, 10, Mock(), "us-west-2", "bucket", "key")
+        mock_create_tar.assert_not_called()
+
+    @patch("sagemaker.serve.utils.uploader.S3Uploader")
+    @patch("sagemaker.serve.utils.uploader.tqdm")
+    def test_upload_uncompressed_rejects_symlink_outside_model_dir(
+        self, mock_tqdm, mock_s3_uploader
+    ):
+        from sagemaker.serve.utils.uploader import Uploader
+
+        os.symlink(self.decoy, os.path.join(self.model_dir, "settings.cfg"))
+
+        with self.assertRaisesRegex(ValueError, "model_path contains a symlink"):
+            Uploader().upload_uncompressed(self.model_dir, Mock(), "bucket", "prefix", 10)
+        mock_s3_uploader.upload.assert_not_called()
+
+    def test_allows_symlinks_inside_model_dir(self):
+        from sagemaker.serve.utils.uploader import _validate_model_dir_symlinks
+
+        os.symlink("../serve.pkl", os.path.join(self.model_dir, "code", "serve_link.pkl"))
+
+        _validate_model_dir_symlinks(self.model_dir)
+
+    def test_allows_huggingface_cache_snapshot(self):
+        from sagemaker.serve.utils.uploader import _validate_model_dir_symlinks
+
+        repo = os.path.join(self.tmp, "hub", "models--org--model")
+        os.makedirs(os.path.join(repo, "blobs"))
+        with open(os.path.join(repo, "blobs", "abc"), "w") as f:
+            f.write("weights")
+        snapshot = os.path.join(repo, "snapshots", "rev1")
+        os.makedirs(snapshot)
+        os.symlink("../../blobs/abc", os.path.join(snapshot, "model.safetensors"))
+
+        _validate_model_dir_symlinks(snapshot)
+
+        os.symlink(self.decoy, os.path.join(snapshot, "config.ini"))
+        with self.assertRaisesRegex(ValueError, "model_path contains a symlink"):
+            _validate_model_dir_symlinks(snapshot)

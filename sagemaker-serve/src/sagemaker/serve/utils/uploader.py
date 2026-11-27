@@ -10,7 +10,11 @@ import tqdm
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.utils import s3_path_join
 from sagemaker.core.s3 import S3Uploader
-from sagemaker.core.common_utils import create_tar_file
+from sagemaker.core.common_utils import (
+    _huggingface_cache_blobs_dirs,
+    _validate_symlinks_within_root,
+    create_tar_file,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +32,24 @@ def _get_dir_size(path):
             elif entry.is_dir():
                 total += _get_dir_size(entry.path)
     return total
+
+
+def _validate_model_dir_symlinks(model_dir):
+    """Validate that symlinks under a local model directory stay inside it.
+
+    Uploading the directory follows symlinks, so a symlink that points outside the
+    directory would include content from elsewhere on the file system. Hugging Face
+    cache snapshots, whose files link into the cache's ``blobs`` directory, are allowed.
+
+    Args:
+        model_dir (str): The local model directory to upload.
+
+    Raises:
+        ValueError: If a symlink under ``model_dir`` resolves outside of it.
+    """
+    _validate_symlinks_within_root(
+        model_dir, "model_path", allowed_roots=_huggingface_cache_blobs_dirs(model_dir)
+    )
 
 
 class Uploader(object):
@@ -52,6 +74,7 @@ class Uploader(object):
         key: str,
     ):
         """Compress and upload the model tar object to S3"""
+        _validate_model_dir_symlinks(model_dir)
         self.total_left = total_size
         with tqdm.tqdm(
             total=total_size, desc="Uploading model artifacts", unit="bytes", ncols=100
@@ -81,6 +104,7 @@ class Uploader(object):
         total_size: int,
     ):
         """Upload uncompressed model artifacts to S3"""
+        _validate_model_dir_symlinks(model_dir)
         self.total_left = total_size
         with tqdm.tqdm(
             total=total_size, desc="Uploading model artifacts", unit="bytes", ncols=100
