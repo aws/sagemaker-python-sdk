@@ -3650,9 +3650,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.sagemaker_session.settings._local_download_dir = self.model_path
 
         client = self.sagemaker_session.sagemaker_client
-        client._user_agent_creator.to_string = self._user_agent_decorator(
-            self.sagemaker_session.sagemaker_client._user_agent_creator.to_string
-        )
+        user_agent_creator = getattr(client, "_user_agent_creator", None)
+        if user_agent_creator is not None:
+            user_agent_creator.to_string = self._user_agent_decorator(user_agent_creator.to_string)
 
         self._is_custom_image_uri = self.image_uri is not None
 
