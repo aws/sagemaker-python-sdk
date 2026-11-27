@@ -4,6 +4,7 @@
 
 import logging
 import math
+import multiprocessing
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -23,6 +24,11 @@ logger = logging.getLogger(__name__)
 
 # Maximum number of records per BatchWriteRecord API call
 BATCH_WRITE_MAX_ENTRIES = 25
+
+
+def _initialize_worker():
+    """Ignore keyboard interrupts in child processes."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 class IngestionError(Exception):
@@ -214,10 +220,11 @@ class IngestionManagerPandas:
                 )
             )
 
-        def init_worker():
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        self._processing_pool = Pool(self.max_processes, init_worker)
+        spawn_context = multiprocessing.get_context("spawn")
+        self._processing_pool = spawn_context.Pool(
+            processes=self.max_processes,
+            initializer=_initialize_worker,
+        )
 
         self._async_result = self._processing_pool.starmap_async(
             IngestionManagerPandas._run_multi_threaded,
