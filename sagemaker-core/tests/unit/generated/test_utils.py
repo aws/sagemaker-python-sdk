@@ -5,6 +5,8 @@ from unittest.mock import Mock, patch, call
 from sagemaker.core.resources import TrainingJob, DataQualityJobDefinition
 from sagemaker.core.shapes import (
     AdditionalS3DataSource,
+    ProductionVariant,
+    ProductionVariantServerlessConfig,
     TrialComponent,
     TrialComponentParameterValue,
 )
@@ -399,6 +401,47 @@ def test_serialize_preserves_falsy_dict_values():
 def test_serialize_preserves_falsy_list_values():
     assert serialize([False, 0, ""]) == [False, 0, ""]  # noqa: F405
     assert serialize([None, "x", Unassigned(), 1]) == ["x", 1]  # noqa: F405
+
+
+def test_serialize_shape_uses_api_member_names():
+    # Members such as MemorySizeInMB and EnableSSMAccess cannot be rebuilt from snake_case.
+    serverless_config = ProductionVariantServerlessConfig(memory_size_in_mb=2048, max_concurrency=5)
+    variant = ProductionVariant(
+        variant_name="variant",
+        model_name="model",
+        enable_ssm_access=True,
+        serverless_config=serverless_config,
+    )
+    assert serialize(serverless_config) == {  # noqa: F405
+        "MemorySizeInMB": 2048,
+        "MaxConcurrency": 5,
+    }
+    serialized = serialize(variant)  # noqa: F405
+    assert serialized["EnableSSMAccess"] is True
+    assert serialized["ServerlessConfig"]["MemorySizeInMB"] == 2048
+
+
+def test_serialize_shape_request_passes_botocore_validation():
+    from botocore.session import get_session
+    from botocore.validate import validate_parameters
+
+    variant = ProductionVariant(
+        variant_name="variant",
+        model_name="model",
+        serverless_config=ProductionVariantServerlessConfig(
+            memory_size_in_mb=2048, max_concurrency=5
+        ),
+    )
+    request = serialize(  # noqa: F405
+        {"EndpointConfigName": "config", "ProductionVariants": [variant]}
+    )
+    input_shape = (
+        get_session()
+        .get_service_model("sagemaker")
+        .operation_model("CreateEndpointConfig")
+        .input_shape
+    )
+    validate_parameters(request, input_shape)
 
 
 def test_serialize_method_nested_shape():

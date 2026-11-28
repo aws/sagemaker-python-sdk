@@ -19,6 +19,7 @@ import re
 import subprocess
 import threading
 from collections import OrderedDict
+from functools import lru_cache
 
 from boto3.session import Session
 from botocore.config import Config
@@ -30,6 +31,7 @@ from rich.theme import Theme
 from rich.traceback import install
 from typing import Any, Dict, List, Optional, TypeVar, Generic, Type
 from sagemaker.core.utils.code_injection.codec import transform
+from sagemaker.core.utils.code_injection.shape_dag import SHAPE_DAG
 from sagemaker.core.utils.code_injection.constants import Color
 from sagemaker.core.utils.user_agent import get_user_agent_extra_suffix
 
@@ -719,6 +721,23 @@ def _serialize_list(value: List) -> list:
     return serialized_list
 
 
+@lru_cache(maxsize=None)
+def _get_api_member_names(shape_name: str) -> Dict[str, str]:
+    """Map the snake_case attribute names of a shape to its API member names.
+
+    Names such as ``MemorySizeInMB`` or ``EnableSSMAccess`` cannot be rebuilt
+    from their snake_case form, so they are looked up in the generated shape table.
+
+    Args:
+        shape_name (str): The name of the shape class.
+
+    Returns:
+        Dict[str, str]: Attribute name to API member name, empty if the shape is unknown.
+    """
+    members = SHAPE_DAG.get(shape_name, {}).get("members", [])
+    return {pascal_to_snake(member["name"]): member["name"] for member in members}
+
+
 def _serialize_shape(value: Any) -> dict:
     """Serialize a shape object defined in resource.py or shape.py to a dict
 
@@ -729,8 +748,12 @@ def _serialize_shape(value: Any) -> dict:
         dict: The dict of serialized shape
     """
     serialized_dict = {}
+    api_member_names = _get_api_member_names(type(value).__name__)
     for k, v in vars(value).items():
         if serialize_result := serialize(v):
-            key = snake_to_pascal(k) if is_snake_case(k) else k
-            serialized_dict.update({key[0].upper() + key[1:]: serialize_result})
+            key = api_member_names.get(k)
+            if key is None:
+                key = snake_to_pascal(k) if is_snake_case(k) else k
+                key = key[0].upper() + key[1:]
+            serialized_dict.update({key: serialize_result})
     return serialized_dict
